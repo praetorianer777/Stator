@@ -9,6 +9,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Every hint to connect one's Armature account, on chips, issue blocks, lists,
+  charts, roadmaps, calendars, the issue and project pickers, Create Armature
+  issue and the theme follow, opens the token form on the profile with the
+  field focused, and once Armature accepts the token goes back to the page it
+  came from with a short notice (#435). The way back is a path of this site
+  only, never another address. The form links straight to Armature's tokens,
+  and once an administrator has connected Armature, its settings page says
+  what members do next and offers the same form. In English and German.
 - Other tools, Exciter first, put remote links on pages (#419):
   `GET`, `POST` and `DELETE /api/v1/pages/{pageID}/remote-links`, each link a
   `url`, `title` (at most 255 characters), `source` and optional `iconUrl`,

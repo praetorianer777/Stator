@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { CalendarEvent } from "@/api/calendars";
 import { CALENDAR_EVENT_KINDS } from "@/config";
-import { stubApi } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { allowlist } from "@/test/allowlist";
 import { CalendarDialog } from "./CalendarDialog";
@@ -274,9 +274,11 @@ describe("the team calendar", () => {
         body: { account: { configured: true, baseUrl: "https://armature.test", connected: false, status: "not_connected", user: null, checkedAt: null } },
       },
     });
+    standOnHintPage();
     shown(<TeamCalendar settings={{ calendarId: team, project: "CP" }} />);
     const block = await screen.findByRole("figure", { name: "Team plans" });
     expect(await within(block).findByText(/Connect your Armature account to see the issues due this month/)).toBeInTheDocument();
+    expect(within(block).getByRole("link", { name: "Connect your account" })).toHaveAttribute("href", HINT_HREF);
     expect(block.querySelector('[data-day="2026-10-15"]')).toHaveTextContent("Release");
   });
 });

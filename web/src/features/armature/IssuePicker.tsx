@@ -2,12 +2,13 @@ import { useId, useState, type FormEvent } from "react";
 import { lacks, useArmatureAccount, useArmatureIssue } from "@/api/armature";
 import { Button, Dialog, Input, Labelled } from "@/components/ui";
 import { describedBy } from "@/components/ui/controls";
-import { ARMATURE_PICKER_DEBOUNCE_MS, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
+import { ARMATURE_PICKER_DEBOUNCE_MS } from "@/config";
 import { t } from "@/i18n";
 import { useDebounced } from "@/lib/debounce";
 import { StatusLozenge, TypeIcon } from "./IssueChip";
 import { keyFromIssueUrl, normalizeKey } from "./issueKeys";
 import { outdatedSentence } from "./outdated";
+import { ConnectArmatureLink } from "./connectLink";
 
 /** What the picker found for what was typed, as one state the form reads. */
 export type PickerState =
@@ -98,10 +99,7 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
           {state.kind === "outdated" && outdatedSentence("issues")}
           {state.kind === "connect" && (
             <span>
-              {p.connect}{" "}
-              <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="underline">
-                {p.connectLink}
-              </a>
+              {p.connect} <ConnectArmatureLink className="underline">{p.connectLink}</ConnectArmatureLink>
             </span>
           )}
           {state.kind === "found" && (

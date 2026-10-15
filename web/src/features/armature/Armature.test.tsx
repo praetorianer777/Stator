@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ArmatureAccount, ArmatureConnection } from "@/api/armature";
-import { renderAt, stubApi } from "@/test/app";
+import { arrival, renderAt, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => {
@@ -61,6 +61,7 @@ describe("connecting Armature as an administrator", () => {
         current = connection({ webhookSecretSet: true });
         return { status: 200, body: { connection: current } };
       },
+      "GET /armature/account": { status: 200, body: { account: account() } },
     });
     const user = userEvent.setup();
     await renderAt("/settings/armature");
@@ -78,6 +79,12 @@ describe("connecting Armature as an administrator", () => {
     expect(screen.getByLabelText("Webhook secret")).toHaveAttribute("placeholder", "Stored. Leave blank to keep it.");
     expect(screen.getByLabelText("Webhook address")).toHaveValue("http://stator.test/api/v1/armature/webhook/demo");
     expect(within(screen.getByRole("list", { name: "Topics" })).getAllByRole("listitem")).toHaveLength(4);
+    expect(screen.getByRole("heading", { name: "What members do next" })).toBeInTheDocument();
+    expect(screen.getByText(/Each member now connects their own Armature account/)).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Connect your own account" })).toHaveAttribute(
+      "href",
+      "/settings/profile?return=%2Fsettings%2Farmature#armature",
+    );
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -218,7 +225,8 @@ describe("connecting one's own Armature account", () => {
     const user = userEvent.setup();
     await renderAt("/settings/profile");
     expect(await screen.findByRole("heading", { level: 1, name: "Your profile" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Open Armature/ })).toHaveAttribute("href", BASE);
+    expect(screen.getByRole("link", { name: /Open Armature's tokens/ })).toHaveAttribute("href", `${BASE}/settings/tokens`);
+    expect(screen.getByLabelText("Armature token")).not.toHaveFocus();
     await user.type(await screen.findByLabelText("Armature token"), TOKEN);
     await user.click(screen.getByRole("button", { name: "Connect" }));
 
@@ -295,5 +303,63 @@ describe("connecting one's own Armature account", () => {
     await user.click(within(screen.getByRole("menu", { name: "Your account" })).getByRole("menuitem", { name: "Your profile" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/settings/profile"));
     expect(await screen.findByRole("heading", { name: "Armature" })).toBeInTheDocument();
+  });
+});
+
+describe("coming to the token form from a connect hint", () => {
+  function connecting() {
+    let current = account();
+    return stubApi({
+      "GET /armature/account": () => ({ status: 200, body: { account: current } }),
+      "PUT /armature/account/token": () => {
+        current = connectedAccount;
+        return { status: 200, body: { account: current } };
+      },
+    });
+  }
+
+  it("focuses the token field, and once connected goes back to the page with a notice", async () => {
+    connecting();
+    const user = userEvent.setup();
+    const router = await renderAt("/settings/profile?return=%2Fsettings%2Fthemes%3Fx%3D1#armature");
+    const field = await screen.findByLabelText("Armature token");
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(screen.getByText("Once Armature accepts the token, you go back to the page you came from.")).toBeInTheDocument();
+    await user.keyboard(TOKEN);
+    await user.click(screen.getByRole("button", { name: "Connect" }));
+
+    await arrival(router, "/settings/themes");
+    expect(router.state.location.href).toBe("/settings/themes?x=1");
+    expect(await screen.findByText("Your Armature account is connected, and here is the page you came from.")).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+
+    await router.navigate({ to: "/" });
+    await arrival(router, "/");
+    await waitFor(() => expect(document.querySelector("[data-armature-returned]")).toBeNull());
+  });
+
+  it("takes the notice down when asked", async () => {
+    connecting();
+    const user = userEvent.setup();
+    const router = await renderAt("/settings/profile?return=%2Fsettings%2Fthemes#armature");
+    await user.type(await screen.findByLabelText("Armature token"), TOKEN);
+    await user.click(screen.getByRole("button", { name: "Connect" }));
+    await arrival(router, "/settings/themes");
+    const notice = await screen.findByText(/here is the page you came from/);
+    await user.click(within(notice.closest("[data-armature-returned]") as HTMLElement).getByRole("button", { name: "Close" }));
+    expect(document.querySelector("[data-armature-returned]")).toBeNull();
+  });
+
+  it("stays on the profile for a way back that leads off this site", async () => {
+    connecting();
+    const user = userEvent.setup();
+    const router = await renderAt(`/settings/profile?return=${encodeURIComponent("//evil.example/pages")}#armature`);
+    await waitFor(() => expect(screen.getByLabelText("Armature token")).toHaveFocus());
+    expect(screen.queryByText(/you go back to the page you came from/)).toBeNull();
+    await user.keyboard(TOKEN);
+    await user.click(screen.getByRole("button", { name: "Connect" }));
+    expect(await screen.findByText("Connected as Ada (ada@acme.armature.test).")).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/settings/profile");
+    expect(document.querySelector("[data-armature-returned]")).toBeNull();
   });
 });

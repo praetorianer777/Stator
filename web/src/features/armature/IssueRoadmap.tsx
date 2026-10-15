@@ -1,13 +1,14 @@
 import { useContext, useMemo, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useArmatureRoadmap, type ArmatureRoadmapAnswer, lacks } from "@/api/armature";
-import { ARMATURE_ROADMAP_LABEL_ROOM_PX, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
+import { ARMATURE_ROADMAP_LABEL_ROOM_PX } from "@/config";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { locale, t } from "@/i18n";
 import { outdatedSentence } from "./outdated";
 import { BadQuery, Note, OpenInArmature } from "./IssueList";
 import { axisOf, axisTicks, dayNumber, labelEvery, place, type RoadmapSettings, type Tick } from "./roadmap";
 import { useWidth } from "./useWidth";
+import { ConnectArmatureLink } from "./connectLink";
 
 type Roadmap = NonNullable<ArmatureRoadmapAnswer["roadmap"]>;
 type Bar = Roadmap["groups"][number]["rows"][number];
@@ -180,10 +181,7 @@ export function IssueRoadmap({ settings, inEditor = false }: { settings: Roadmap
     state = "connect";
     body = (
       <Note>
-        {r.connect}{" "}
-        <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="underline" data-action="connect-armature-hint">
-          {l.connectLink}
-        </a>
+        {r.connect} <ConnectArmatureLink className="underline">{l.connectLink}</ConnectArmatureLink>
       </Note>
     );
   } else if (answer.error instanceof ApiError && answer.error.code === "bad_query") {

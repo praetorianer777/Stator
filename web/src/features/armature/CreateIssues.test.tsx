@@ -7,7 +7,7 @@ import type { ArmatureIssue } from "@/api/armature";
 import { Editor } from "@/features/editor/Editor";
 import type { IssueSource } from "@/features/editor/armatureIssue";
 import type { Doc, DocNode } from "@/features/editor/schema";
-import { stubApi, type Answer } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { ApiError } from "@/api/client";
 import { keysFor, outcomes, refusalText } from "./CreateIssuesDialog";
@@ -285,6 +285,23 @@ describe("creating Armature issues from a selection", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create 1 issue" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Armature no longer accepts your token.");
     expect(JSON.stringify(last() ?? sentence)).not.toContain("armatureIssue");
+  });
+
+  it("takes an author whose token is gone to the token form and back", async () => {
+    stubApi({
+      "GET /armature/account": account,
+      "GET /armature/projects": { status: 200, body: { status: "not_connected", projects: [] } },
+      "GET /armature/issue-types": types,
+    });
+    standOnHintPage();
+    const user = userEvent.setup();
+    const { box } = editorWith(sentence, source());
+    box.focus();
+    selectContents(box.querySelector("p")!);
+    await user.click(await screen.findByRole("button", { name: "Create Armature issue" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText(/Connect your Armature account to create issues/)).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: "Connect your account" })).toHaveAttribute("href", HINT_HREF);
   });
 
   it("says a create that timed out may have reached Armature", async () => {

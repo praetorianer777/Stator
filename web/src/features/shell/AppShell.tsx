@@ -2,6 +2,7 @@ import { useCallback, useState, type MouseEvent, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { useAccess } from "@/api/permissions";
 import { ShellHeaderContext } from "@/components/ui";
+import { ReturnNotice } from "@/features/armature/connectLink";
 import { NoAccess } from "@/features/permissions/NoAccess";
 import { QuickSearch } from "@/features/search/QuickSearch";
 import { BackdropEffect } from "@/features/themes/BackdropEffect";
@@ -63,7 +64,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             data-shell-header
           />
           <ShellHeaderContext.Provider value={strip}>
-            <div className="px-4 py-6 shell:px-8">{children}</div>
+            <div className="px-4 py-6 shell:px-8">
+              <ReturnNotice pathname={pathname} />
+              {children}
+            </div>
           </ShellHeaderContext.Provider>
         </main>
       </div>

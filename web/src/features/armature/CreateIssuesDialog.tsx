@@ -3,10 +3,11 @@ import { ApiError } from "@/api/client";
 import { lacks, useArmatureAccount, useArmatureIssueTypes, useArmatureProjects, useCreateArmatureIssues, type ArmatureCreated } from "@/api/armature";
 import { Button, Dialog, ErrorBanner, IconButton, Input, Labelled, Select } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { ARMATURE_SECTION_ID, ARMATURE_SUMMARY_MAX_LENGTH, PROFILE_PATH } from "@/config";
+import { ARMATURE_SUMMARY_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import type { SelectionPlan } from "@/features/editor/issueSelection";
 import { outdatedSentence } from "./outdated";
+import { ConnectArmatureLink } from "./connectLink";
 
 /** What became of each item a create sent, in the order it was sent. */
 export type ItemOutcome = { at: number; summary: string } & (
@@ -179,10 +180,7 @@ export function CreateIssuesDialog({
           )}
           {(status === "not_connected" || status === "not_configured") && (
             <p className="text-sm text-ink-muted">
-              {c.connect}{" "}
-              <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="underline">
-                {c.connectLink}
-              </a>
+              {c.connect} <ConnectArmatureLink className="underline">{c.connectLink}</ConnectArmatureLink>
             </p>
           )}
           {outdated && <ErrorBanner>{outdatedSentence("create")}</ErrorBanner>}

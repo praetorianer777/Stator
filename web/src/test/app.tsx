@@ -40,6 +40,16 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
   return router;
 }
 
+/** A page a connect hint is followed from, and where the hint leads from there: the token form, and back. */
+export const HINT_PAGE = "/spaces/eng/plan?tab=issues";
+export const HINT_HREF = "/settings/profile?return=%2Fspaces%2Feng%2Fplan%3Ftab%3Dissues#armature";
+
+/** Puts the browser on HINT_PAGE, for hints drawn without a router, until the test ends. */
+export function standOnHintPage() {
+  window.history.replaceState(null, "", HINT_PAGE);
+  onTestFinished(() => window.history.replaceState(null, "", "/"));
+}
+
 /** Resolves once the router has finished loading `pathname`, lazy chunks and loaders included. */
 export function arrival(router: ReturnType<typeof buildRouter>, pathname: string) {
   return new Promise<void>((resolve) => {

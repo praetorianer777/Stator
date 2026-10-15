@@ -11,7 +11,7 @@ import { Editor } from "@/features/editor/Editor";
 import type { IssueSource } from "@/features/editor/armatureIssue";
 import type { Doc } from "@/features/editor/schema";
 import { allowlist } from "@/test/allowlist";
-import { stubApi, type Answer } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { sortRows } from "./IssueList";
 import { checkSettings } from "./IssueListDialog";
@@ -228,6 +228,7 @@ describe("the issue list block in the read view", () => {
   });
 
   it("asks nothing and shows the way to connect to a reader without a token", async () => {
+    standOnHintPage();
     const sent = stubApi({
       "GET /armature/account": account({
         connected: false,
@@ -236,7 +237,7 @@ describe("the issue list block in the read view", () => {
     });
     wrap(<DocView doc={listDoc(QUERY, ["key"], 20)} />);
     await waitFor(() => expect(list()).toHaveAttribute("data-state", "connect"));
-    expect(screen.getByRole("link", { name: "Connect your account" })).toHaveAttribute("href", "/settings/profile#armature");
+    expect(screen.getByRole("link", { name: "Connect your account" })).toHaveAttribute("href", HINT_HREF);
     expect(sent.some((request) => request.path === "/armature/search")).toBe(false);
   });
 

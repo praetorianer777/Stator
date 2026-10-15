@@ -4,10 +4,11 @@ import { lacks, useArmatureAccount, useArmatureIssue, useArmatureIssues, type Ar
 import { cx } from "@/components/ui";
 import { useAnchored, useEscape } from "@/components/ui/overlay";
 import { Icon, type IconName } from "@/components/icons";
-import { ARMATURE_CARD_DELAY_MS, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
+import { ARMATURE_CARD_DELAY_MS } from "@/config";
 import { t } from "@/i18n";
 import { issueUrl, lookupBatches } from "./issueKeys";
 import { outdatedSentence } from "./outdated";
+import { ConnectArmatureLink } from "./connectLink";
 
 /**
  * What a chip can say about its issue to this viewer: only its key, the key
@@ -161,10 +162,10 @@ export function IssueChip({ issueKey, links = true }: { issueKey: string; links?
 function ConnectHint({ links }: { links: boolean }) {
   if (!links) return <span className="text-xs text-ink-muted">{t.armature.chip.connectShort}</span>;
   return (
-    <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="text-xs text-ink-muted underline" data-action="connect-armature-hint">
+    <ConnectArmatureLink className="text-xs text-ink-muted underline">
       {t.armature.chip.connectShort}
       <span className="sr-only">{t.armature.chip.connectRest}</span>
-    </a>
+    </ConnectArmatureLink>
   );
 }
 

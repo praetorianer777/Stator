@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { ArmatureAccount } from "@/api/armature";
-import { stubApi, type Answer } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { IssueChart } from "./IssueChart";
 import { checkChart } from "./IssueChartDialog";
@@ -181,8 +181,10 @@ describe("the chart block", () => {
 
   it("asks a reader without a token to connect, and says where a query goes wrong", async () => {
     stubApi({ "GET /armature/account": account({ connected: false }) });
+    standOnHintPage();
     shown(<IssueChart settings={pie} />);
     expect(await screen.findByText(/Connect your Armature account to see this chart/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Connect your account" })).toHaveAttribute("href", HINT_HREF);
     cleanup();
     stubApi({
       "GET /armature/account": account(),

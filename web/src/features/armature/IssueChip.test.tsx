@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import type { ArmatureAccount, ArmatureIssue } from "@/api/armature";
 import { DocDiffView, DocView } from "@/features/editor/DocView";
 import type { Doc } from "@/features/editor/schema";
-import { stubApi, type Answer } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => {
@@ -124,12 +124,13 @@ describe("Armature issue chips in the read view", () => {
   });
 
   it("show the key and the way to connect to a viewer without a token, and ask Armature nothing", async () => {
+    standOnHintPage();
     const sent = stubApi({ "GET /armature/account": account({ connected: false, status: "not_connected" }) });
     wrap(<DocView doc={doc} />);
     const [key] = await screen.findAllByRole("link", { name: "CP-1" });
     expect(key).toHaveAttribute("href", `${BASE}/issues/CP-1`);
     const hints = screen.getAllByRole("link", { name: "Connect Armature to see this issue" });
-    expect(hints[0]).toHaveAttribute("href", "/settings/profile#armature");
+    expect(hints[0]).toHaveAttribute("href", HINT_HREF);
     expect(chips().map((chip) => chip.dataset.state)).toEqual(["connect", "connect", "connect"]);
     expect(sent.some((request) => request.path.startsWith("/armature/issues"))).toBe(false);
     expect(await axeViolations()).toEqual([]);

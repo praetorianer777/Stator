@@ -132,8 +132,19 @@ test.describe("smart links to Armature issues", { tag: ["@auth"] }, () => {
       await expect(bob.locator("main")).not.toContainText("vulnerability");
       await expect(bob.locator("main")).not.toContainText("Sign-in fails");
       await expectAccessible(bob);
+      // The hint opens the token form ready to paste into, and comes back here once connected.
+      const pagePath = new URL(bob.url()).pathname;
       await bare.getByRole("link", { name: "Connect Armature to see this issue" }).click();
-      await expect(bob.locator("[data-armature-account]")).toBeVisible();
+      await expect(bob).toHaveURL((url) => url.pathname === "/settings/profile" && url.searchParams.get("return") === pagePath && url.hash === "#armature");
+      const field = bob.getByLabel("Armature token", { exact: true });
+      await expect(field).toBeFocused();
+      await expect(bob.locator('[data-action="open-armature-tokens"]')).toHaveAttribute("href", `${armatureURL()}/settings/tokens`);
+      await bob.keyboard.insertText(patFor(team.label, "admin"));
+      await bob.locator('[data-action="connect-armature"]').click();
+      await expect(bob).toHaveURL((url) => url.pathname === pagePath);
+      await expect(bob.locator("[data-armature-returned]")).toHaveText(/Your Armature account is connected, and here is the page you came from\./);
+      await expect(chip(bob.locator("[data-doc]"), "SEC-1")).toContainText("Patch the disclosed vulnerability");
+      await expectAccessible(bob);
     });
   }
 });
