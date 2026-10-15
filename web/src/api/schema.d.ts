@@ -6424,6 +6424,7 @@ export interface components {
             /** @description A JSON value. */
             payload: unknown;
             topic: string;
+            version: number;
         };
         WebhookInput: {
             enabled?: boolean;
@@ -7286,6 +7287,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
                 headers: {
@@ -7330,6 +7340,15 @@ export interface operations {
             };
             /** @description Request Entity Too Large */
             413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

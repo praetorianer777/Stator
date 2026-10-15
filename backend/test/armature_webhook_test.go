@@ -27,11 +27,18 @@ type delivery struct {
 	Topic   string
 	OrgID   uuid.UUID
 	Payload map[string]any
+	// Version is the envelope's; 0 leaves it out, as Armature did before it
+	// numbered the envelope.
+	Version int
 }
 
 func (d delivery) body(t *testing.T) []byte {
 	t.Helper()
-	raw, err := json.Marshal(map[string]any{"id": d.ID, "topic": d.Topic, "orgId": d.OrgID, "occurredAt": time.Now().UTC(), "payload": d.Payload})
+	envelope := map[string]any{"id": d.ID, "topic": d.Topic, "orgId": d.OrgID, "occurredAt": time.Now().UTC(), "payload": d.Payload}
+	if d.Version != 0 {
+		envelope["version"] = d.Version
+	}
+	raw, err := json.Marshal(envelope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,6 +227,27 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		}
 		if n, _ := h.valkey(t).Exists(context.Background(), armature.EventKey(h.site.ID, good.ID)).Result(); n != 0 {
 			t.Error("a refused delivery's event was remembered, so the genuine one would be taken for a replay")
+		}
+	})
+
+	t.Run("an envelope version the receiver does not read is refused, after the signature", func(t *testing.T) {
+		status("CP-1")
+		current := delivery{ID: uuid.New(), Topic: "issue.updated", OrgID: armatureOrg, Payload: map[string]any{"key": "CP-1"}, Version: armature.WebhookVersion}
+		if r := send(current, webhookSecret); r.Status != http.StatusNoContent {
+			t.Fatalf("version %d is answered %d %s", armature.WebhookVersion, r.Status, r.Raw)
+		}
+		status("CP-1")
+		next := delivery{ID: uuid.New(), Topic: "issue.updated", Payload: map[string]any{"key": "CP-1"}, Version: armature.WebhookVersion + 1}
+		r := send(next, webhookSecret)
+		if r.Status != http.StatusUnprocessableEntity || errorCode(t, r) != "unsupported_version" {
+			t.Errorf("a newer version is answered %d %s", r.Status, r.Raw)
+		}
+		if _, cached := cachedIssue(t, h, tokenID, "CP-1"); !cached {
+			t.Error("a delivery in an unknown version cleared the cache")
+		}
+		unsigned := next.body(t)
+		if r := postWebhook(t, api, "", unsigned, armature.Sign(unsigned, webhookSecret+"x")); r.Status != http.StatusUnauthorized {
+			t.Errorf("an unknown version with a wrong signature is answered %d, which tells the version apart before the secret", r.Status)
 		}
 	})
 

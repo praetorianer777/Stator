@@ -205,14 +205,8 @@ func (s *Service) meta(ctx context.Context, v *Viewer) (*meta, error) {
 	if s.cache.Meta(ctx, v.SiteID, v.TokenID, &m) {
 		return &m, nil
 	}
-	var projects struct {
-		Projects []struct {
-			Key        string     `json:"key"`
-			Name       string     `json:"name"`
-			ArchivedAt *time.Time `json:"archivedAt"`
-		} `json:"projects"`
-	}
-	if err := v.Caller.Get(ctx, "/projects", nil, &projects); err != nil {
+	projects, err := listProjects(ctx, v.Caller)
+	if err != nil {
 		return nil, err
 	}
 	var access struct {
@@ -234,7 +228,7 @@ func (s *Service) meta(ctx context.Context, v *Viewer) (*meta, error) {
 		return nil, err
 	}
 	m.Projects = []Project{}
-	for _, p := range projects.Projects {
+	for _, p := range projects {
 		if p.ArchivedAt != nil {
 			continue
 		}
@@ -252,4 +246,32 @@ func (s *Service) meta(ctx context.Context, v *Viewer) (*meta, error) {
 	}
 	s.cache.PutMeta(ctx, v.SiteID, v.TokenID, m)
 	return &m, nil
+}
+
+// listedProject is a project as GET /projects lists it.
+type listedProject struct {
+	Key        string     `json:"key"`
+	Name       string     `json:"name"`
+	ArchivedAt *time.Time `json:"archivedAt"`
+}
+
+// listProjects reads every page of the projects the caller sees, as Armature
+// answers them a page at a time, stopping at MaxProjectPages.
+func listProjects(ctx context.Context, caller *Caller) ([]listedProject, error) {
+	var out []listedProject
+	for page := 0; page < MaxProjectPages; page++ {
+		var answer struct {
+			Projects []listedProject `json:"projects"`
+			Total    int             `json:"total"`
+		}
+		query := url.Values{"limit": {strconv.Itoa(ProjectPageSize)}, "offset": {strconv.Itoa(len(out))}}
+		if err := caller.Get(ctx, "/projects", query, &answer); err != nil {
+			return nil, err
+		}
+		out = append(out, answer.Projects...)
+		if len(answer.Projects) == 0 || len(out) >= answer.Total {
+			break
+		}
+	}
+	return out, nil
 }

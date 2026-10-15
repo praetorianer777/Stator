@@ -83,7 +83,7 @@ func (s *stub) plan(c *call) {
 	}
 	respond(c.w, http.StatusOK, map[string]any{
 		"projectKey": pr.Key, "items": tree, "matched": keys, "from": from, "to": to,
-		"dependencies": []any{}, "sprints": []any{}, "milestones": []any{}, "warnings": []any{}, "linkTypes": []any{},
+		"dependencies": []any{}, "sprints": []any{}, "milestones": []any{}, "holidays": []any{}, "warnings": []any{}, "linkTypes": []any{},
 		"load": map[string]any{"weeks": []any{}, "rows": []any{}}, "unscheduled": unscheduled, "unestimated": len(mine),
 	})
 }

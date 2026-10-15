@@ -120,6 +120,7 @@ type remoteLink struct {
 	Title     string
 	Source    string
 	IconURL   *string
+	Relation  string
 	CreatedBy uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time

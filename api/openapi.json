@@ -1349,6 +1349,16 @@
               }
             }
           },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
             "content": {
@@ -1405,6 +1415,16 @@
           },
           "413": {
             "description": "Request Entity Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
             "content": {
               "application/json": {
                 "schema": {
@@ -27468,9 +27488,13 @@
           },
           "topic": {
             "type": "string"
+          },
+          "version": {
+            "type": "integer"
           }
         },
         "required": [
+          "version",
           "id",
           "topic",
           "orgId",
