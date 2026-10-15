@@ -8,7 +8,7 @@ import { DocDiffView, DocView } from "@/features/editor/DocView";
 import { Editor } from "@/features/editor/Editor";
 import type { IssueSource } from "@/features/editor/armatureIssue";
 import type { Doc } from "@/features/editor/schema";
-import { stubApi, type Answer } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { pickedKey } from "./IssuePicker";
 
@@ -104,10 +104,11 @@ describe("the Armature issue block in the read view", () => {
   });
 
   it("shows the key and the way to connect to a viewer without a token, and asks Armature nothing", async () => {
+    standOnHintPage();
     const sent = stubApi({ "GET /armature/account": account({ connected: false, status: "not_connected" }) });
     wrap(<DocView doc={blockDoc("CP-4")} />);
     await waitFor(() => expect(block("CP-4")).toHaveAttribute("data-state", "connect"));
-    expect(within(block("CP-4")!).getByRole("link", { name: "Connect Armature to see this issue" })).toHaveAttribute("href", "/settings/profile#armature");
+    expect(within(block("CP-4")!).getByRole("link", { name: "Connect Armature to see this issue" })).toHaveAttribute("href", HINT_HREF);
     expect(sent.some((request) => request.path.startsWith("/armature/issues"))).toBe(false);
     expect(await axeViolations()).toEqual([]);
   });
@@ -209,6 +210,7 @@ describe("inserting an issue block from the slash menu", () => {
   });
 
   it("tells an author without a token to connect, and inserts nothing", async () => {
+    standOnHintPage();
     stubApi({ "GET /armature/account": account({ connected: false, status: "not_connected" }) });
     const user = userEvent.setup();
     const { box } = editorWith(source);
@@ -217,7 +219,7 @@ describe("inserting an issue block from the slash menu", () => {
     await screen.findByRole("listbox", { name: "Insert a block" });
     await user.keyboard("{Enter}");
     const dialog = await screen.findByRole("dialog", { name: "Insert an Armature issue" });
-    expect(await within(dialog).findByRole("link", { name: "Connect your account" })).toHaveAttribute("href", "/settings/profile#armature");
+    expect(await within(dialog).findByRole("link", { name: "Connect your account" })).toHaveAttribute("href", HINT_HREF);
     expect(within(dialog).getByRole("button", { name: "Insert" })).toBeDisabled();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

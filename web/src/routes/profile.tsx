@@ -1,18 +1,36 @@
 import { useEffect, useState } from "react";
-import { createRoute } from "@tanstack/react-router";
+import { createRoute, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMe, useSetLanguage } from "@/api/auth";
 import { useSetShowInReaders } from "@/api/pageviews";
 import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
-import { PROFILE_PATH } from "@/config";
+import { announceReturn, safeReturn } from "@/features/armature/connectLink";
+import { ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
 import { appRoute } from "./app";
 
 /** The caller's profile: who they are here, and their Armature account. */
-export const profileRoute = createRoute({ getParentRoute: () => appRoute, path: PROFILE_PATH, component: ProfilePage });
+export const profileRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: PROFILE_PATH,
+  validateSearch: (search: Record<string, unknown>): { [ARMATURE_RETURN_PARAM]?: string } => {
+    const back = safeReturn(search[ARMATURE_RETURN_PARAM]);
+    return back ? { [ARMATURE_RETURN_PARAM]: back } : {};
+  },
+  component: ProfilePage,
+});
 
 function ProfilePage() {
   const { data: me } = useMe();
+  const back = safeReturn(profileRoute.useSearch()[ARMATURE_RETURN_PARAM]);
+  const hash = useRouterState({ select: (s) => s.location.hash });
+  const router = useRouter();
+  const goBack = back
+    ? () => {
+        announceReturn(back);
+        router.history.push(back);
+      }
+    : undefined;
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader crumb={t.settings.title} title={t.profile.title} />
@@ -30,7 +48,7 @@ function ProfilePage() {
       )}
       {me && <LanguageSection choice={me.user.locale} />}
       {me && <PrivacySection shown={me.user.showInReaders} />}
-      <AccountSection />
+      <AccountSection focusToken={hash === ARMATURE_SECTION_ID} onReturn={goBack} />
     </div>
   );
 }

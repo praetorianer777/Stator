@@ -1,21 +1,14 @@
 import { useContext, useId, useMemo, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useArmatureChart, type ArmatureChartAnswer, lacks } from "@/api/armature";
-import {
-  ARMATURE_FLOW_HEIGHT,
-  ARMATURE_FLOW_TICKS,
-  ARMATURE_FLOW_WIDTH,
-  ARMATURE_PIE_HOLE,
-  ARMATURE_PIE_SIZE,
-  ARMATURE_SECTION_ID,
-  PROFILE_PATH,
-} from "@/config";
+import { ARMATURE_FLOW_HEIGHT, ARMATURE_FLOW_TICKS, ARMATURE_FLOW_WIDTH, ARMATURE_PIE_HOLE, ARMATURE_PIE_SIZE } from "@/config";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { locale, t } from "@/i18n";
 import { outdatedSentence } from "./outdated";
 import { BadQuery, Note, OpenInArmature } from "./IssueList";
 import { useWidth } from "./useWidth";
 import { donutPaths, foldSlices, linePoints, percent, readoutAnchor, ticks, type ChartSettings, type Slice } from "./chart";
+import { ConnectArmatureLink } from "./connectLink";
 
 type Chart = NonNullable<ArmatureChartAnswer["chart"]>;
 
@@ -302,10 +295,7 @@ export function IssueChart({ settings, inEditor = false }: { settings: ChartSett
     state = "connect";
     body = (
       <Note>
-        {c.connect}{" "}
-        <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="underline" data-action="connect-armature-hint">
-          {l.connectLink}
-        </a>
+        {c.connect} <ConnectArmatureLink className="underline">{l.connectLink}</ConnectArmatureLink>
       </Note>
     );
   } else if (answer.error instanceof ApiError && answer.error.code === "bad_query") {

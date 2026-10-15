@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import {
+  useArmatureAccount,
   useArmatureConnection,
   useRemoveArmatureConnection,
   useSaveArmatureConnection,
@@ -13,6 +14,7 @@ import { Icon } from "@/components/icons";
 import { ARMATURE_WEBHOOK_SECRET_PREFIX, COPY_FEEDBACK_MS } from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { ConnectArmatureLink } from "./connectLink";
 
 /** The organization's Armature instance and its webhook, for administrators. */
 export function ConnectionSettings() {
@@ -38,6 +40,7 @@ export function ConnectionSettings() {
         {notice}
       </p>
       <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
+      {connection && <MembersNext />}
       {connection && <Capabilities partner={connection.partner} />}
       {connection && <Webhook connection={connection} />}
       {connection && (
@@ -126,6 +129,19 @@ function ConnectionForm({
         </Button>
       </Card>
     </form>
+  );
+}
+
+/** Once Armature is connected, what each member does to see its issues, and the way for the administrator to do it too. */
+function MembersNext() {
+  const { data: own } = useArmatureAccount();
+  const works = own?.connected && own.status !== "rejected";
+  return (
+    <section aria-labelledby="armature-members" className="space-y-2" data-armature-members="">
+      <SectionTitle id="armature-members">{t.armature.members.title}</SectionTitle>
+      <p className="text-sm text-ink-muted">{t.armature.members.intro}</p>
+      {own && !works && <ConnectArmatureLink className="inline-flex text-sm text-accent hover:underline">{t.armature.members.own}</ConnectArmatureLink>}
+    </section>
   );
 }
 

@@ -1,16 +1,20 @@
 import { localDateFormat } from "@/lib/format";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useCheckArmature, useConnectArmature, useDisconnectArmature, type ArmatureAccount } from "@/api/armature";
 import { Button, Card, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ARMATURE_SECTION_ID, ARMATURE_TOKEN_PREFIX } from "@/config";
 import { t } from "@/i18n";
+import { tokensUrl } from "./connectLink";
 
 const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
-/** The caller's own Armature account: paste a token, see whom it acts as, check it, disconnect. */
-export function AccountSection() {
+/**
+ * The caller's own Armature account: paste a token, see whom it acts as, check it, disconnect.
+ * Reached from a connect hint, it focuses the token field and, once connected, hands over to onReturn.
+ */
+export function AccountSection({ focusToken = false, onReturn }: { focusToken?: boolean; onReturn?: () => void }) {
   const { data: account, isLoading, error } = useArmatureAccount();
   const check = useCheckArmature();
   const disconnect = useDisconnectArmature();
@@ -55,7 +59,17 @@ export function AccountSection() {
               </Button>
             </div>
           )}
-          {account.status !== "ok" && <TokenForm account={account} onConnected={() => setNotice("")} />}
+          {account.status !== "ok" && (
+            <TokenForm
+              account={account}
+              focus={focusToken}
+              returns={Boolean(onReturn)}
+              onConnected={() => {
+                setNotice("");
+                onReturn?.();
+              }}
+            />
+          )}
         </Card>
       )}
     </section>
@@ -79,9 +93,13 @@ function Connected({ account }: { account: ArmatureAccount }) {
 
 // The token field is only offered while there is no working token: a stored
 // one is never shown, and a rejected one is replaced by pasting a new one.
-function TokenForm({ account, onConnected }: { account: ArmatureAccount; onConnected: () => void }) {
+function TokenForm({ account, focus, returns, onConnected }: { account: ArmatureAccount; focus: boolean; returns: boolean; onConnected: () => void }) {
   const connect = useConnectArmature();
   const [token, setToken] = useState("");
+  const field = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (focus) field.current?.focus();
+  }, [focus]);
   const fields = connect.error instanceof ApiError ? connect.error.fields : {};
   const formError = connect.error && Object.keys(fields).length === 0 ? connect.error.message : null;
 
@@ -99,12 +117,19 @@ function TokenForm({ account, onConnected }: { account: ArmatureAccount; onConne
     <form onSubmit={submit} noValidate className="space-y-3" data-armature-token-form>
       <p className="text-sm text-ink-muted">{t.armature.account.steps}</p>
       {account.baseUrl && (
-        <a href={account.baseUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
-          {t.armature.account.openArmature}
+        <a
+          href={tokensUrl(account.baseUrl)}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-accent hover:underline"
+          data-action="open-armature-tokens"
+        >
+          {t.armature.account.openTokens}
           <Icon.External aria-hidden="true" />
         </a>
       )}
       <Field
+        ref={field}
         label={account.connected ? t.armature.account.replace : t.armature.account.token}
         type="password"
         autoComplete="off"
@@ -114,6 +139,7 @@ function TokenForm({ account, onConnected }: { account: ArmatureAccount; onConne
         onChange={(event) => setToken(event.target.value)}
       />
       {formError && <ErrorBanner>{formError}</ErrorBanner>}
+      {returns && <p className="text-sm text-ink-muted">{t.armature.account.returns}</p>}
       <Button type="submit" loading={connect.isPending} disabled={!token.trim()} data-action="connect-armature">
         {t.armature.account.connect}
       </Button>

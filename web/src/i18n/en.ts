@@ -176,6 +176,12 @@ export const en = {
     disconnect: "Disconnect Armature",
     confirmDisconnect: "Disconnect Armature? Every member's token is forgotten, and pages show issue keys only.",
     disconnected: "Armature is disconnected.",
+    members: {
+      title: "What members do next",
+      intro:
+        "Each member now connects their own Armature account: in Armature they open Tokens, make a token without the read-only mark and paste it under Your profile, Armature. Every hint to connect on a page takes them straight there.",
+      own: "Connect your own account",
+    },
     capabilities: {
       title: "What Armature offers",
       intro: "Stator asks Armature which integration features it offers, and turns off the ones it lacks instead of failing later.",
@@ -204,7 +210,9 @@ export const en = {
       intro: "Connect your Armature account so pages show you the issues you may see in Armature.",
       notConfigured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",
       steps: "In Armature, open Tokens and make a token without the read-only mark, so pages can also create issues and link to them. Then paste it here.",
-      openArmature: "Open Armature",
+      openTokens: "Open Armature's tokens",
+      returns: "Once Armature accepts the token, you go back to the page you came from.",
+      returned: "Your Armature account is connected, and here is the page you came from.",
       token: "Armature token",
       connect: "Connect",
       replace: "Paste a new token",

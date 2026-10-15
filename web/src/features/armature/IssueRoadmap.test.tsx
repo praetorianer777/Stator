@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { ArmatureAccount } from "@/api/armature";
-import { stubApi, type Answer } from "@/test/app";
+import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { allowlist } from "@/test/allowlist";
 import { ARMATURE_ROADMAP_GROUPINGS } from "@/config";
@@ -190,8 +190,10 @@ describe("the roadmap block", () => {
     expect(await screen.findByText("No issues match this query.")).toBeInTheDocument();
     cleanup();
     stubApi({ "GET /armature/account": account({ connected: false }) });
+    standOnHintPage();
     shown(<IssueRoadmap settings={byEpic} />);
     expect(await screen.findByText(/Connect your Armature account to see this roadmap/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Connect your account" })).toHaveAttribute("href", HINT_HREF);
     cleanup();
     stubApi({
       "GET /armature/account": account(),

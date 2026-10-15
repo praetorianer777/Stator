@@ -1,6 +1,7 @@
 import { useArmatureAccount, useArmatureThemeFollow, useFollowArmatureTheme, useUnfollowArmatureTheme, type ArmatureThemeFollow } from "@/api/armature";
 import { Card, ErrorBanner, Switch } from "@/components/ui";
 import { t } from "@/i18n";
+import { ConnectArmatureLink } from "./connectLink";
 import { outdatedSentence } from "./outdated";
 
 /** What the follow says to its owner: what they see, or why Armature's theme is not it. */
@@ -21,14 +22,23 @@ export function followState(follow: ArmatureThemeFollow | undefined): string {
   }
 }
 
-/** Follow my Armature theme, offered to whoever stored an Armature token. */
+/** Follow my Armature theme, offered to whoever stored an Armature token; the others are shown how to store one. */
 export function FollowArmatureTheme() {
   const { data: account } = useArmatureAccount();
   const connected = Boolean(account?.configured && account.connected);
   const { data: follow } = useArmatureThemeFollow(connected);
   const start = useFollowArmatureTheme();
   const stop = useUnfollowArmatureTheme();
-  if (!connected) return null;
+  if (!connected) {
+    if (!account?.configured) return null;
+    return (
+      <Card className="mb-4 p-4" data-armature-theme-connect="">
+        <p className="text-sm text-ink-muted">
+          {t.themes.armature.notConnected} <ConnectArmatureLink className="underline">{t.armature.list.connectLink}</ConnectArmatureLink>
+        </p>
+      </Card>
+    );
+  }
 
   const following = follow?.following ?? false;
   const failure = start.error ?? stop.error;
@@ -50,6 +60,12 @@ export function FollowArmatureTheme() {
       </div>
       <p role="status" className={trouble ? "text-sm text-ink" : "text-sm text-ink-muted"} data-armature-theme-note>
         {followState(follow)}
+        {followState(follow) === t.themes.armature.rejected && (
+          <>
+            {" "}
+            <ConnectArmatureLink className="underline">{t.armature.account.replace}</ConnectArmatureLink>
+          </>
+        )}
       </p>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
     </Card>

@@ -43,6 +43,8 @@ function stubThemes(answers: Record<string, Answer | (() => Answer)>) {
   });
 }
 
+const THEMES_HINT = "/settings/profile?return=%2Fsettings%2Fthemes#armature";
+
 const followSwitch = () => screen.getByRole("switch", { name: "Follow my Armature theme" });
 
 describe("following the Armature theme", () => {
@@ -57,7 +59,7 @@ describe("following the Armature theme", () => {
     );
   });
 
-  it("is not offered to somebody without an Armature token", async () => {
+  it("is not offered to somebody without an Armature token, who is shown the way to connect", async () => {
     stubThemes({
       "GET /armature/account": {
         status: 200,
@@ -74,6 +76,7 @@ describe("following the Armature theme", () => {
     expect(await screen.findByRole("heading", { name: "Themes" })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("switch")).toBeNull());
     expect(document.querySelector("[data-armature-theme]")).toBeNull();
+    expect(await screen.findByRole("link", { name: "Connect your account" })).toHaveAttribute("href", THEMES_HINT);
   });
 
   it("follows and stops following from the themes page", async () => {
@@ -137,5 +140,14 @@ describe("following the Armature theme", () => {
     await waitFor(() => expect(followSwitch()).toHaveAttribute("aria-checked", "true"));
     expect(document.querySelector("[data-armature-theme-note]")).toHaveTextContent(/^Armature did not answer in time/);
     expect(document.querySelector("[data-armature-theme]")).toHaveAttribute("data-armature-theme-status", "unreachable");
+  });
+
+  it("takes a follower whose token Armature refuses to the token form", async () => {
+    stubThemes({
+      "GET /armature/account": { status: 200, body: { account: account({ status: "rejected" }) } },
+      "GET /armature/theme": { status: 200, body: { follow: follow({ following: true, status: "rejected" }) } },
+    });
+    await renderAt("/settings/themes");
+    expect(await screen.findByRole("link", { name: "Paste a new token" })).toHaveAttribute("href", THEMES_HINT);
   });
 });

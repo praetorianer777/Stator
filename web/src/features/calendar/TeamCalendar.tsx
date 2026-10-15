@@ -4,11 +4,11 @@ import { lacks, useArmatureAccount, useArmatureCalendar, type ArmatureCalendarAn
 import { useCalendarEvents, type CalendarEvent } from "@/api/calendars";
 import { Button, IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
 import { locale, t } from "@/i18n";
 import { outdatedSentence } from "@/features/armature/outdated";
 import { localDay, monthKey, monthOf, monthSpan, monthWeeks, onDay, shiftMonth, startTime, weekdays, type CalendarSettings, type Month } from "./calendar";
 import { EventDialog } from "./EventDialog";
+import { ConnectArmatureLink } from "@/features/armature/connectLink";
 
 type Issue = NonNullable<ArmatureCalendarAnswer["month"]>["issues"][number];
 
@@ -86,10 +86,7 @@ function useIssues(project: string | null, month: Month): { issues: Issue[]; not
       issues: [],
       note: (
         <>
-          {i.connect}{" "}
-          <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="underline" data-action="connect-armature-hint">
-            {t.armature.list.connectLink}
-          </a>
+          {i.connect} <ConnectArmatureLink className="underline">{t.armature.list.connectLink}</ConnectArmatureLink>
         </>
       ),
     };

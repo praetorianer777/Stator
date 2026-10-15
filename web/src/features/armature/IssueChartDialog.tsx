@@ -4,6 +4,7 @@ import { Button, Dialog, Labelled, Select, Textarea } from "@/components/ui";
 import { describedBy } from "@/components/ui/controls";
 import { ARMATURE_CHART_DAY_CHOICES, ARMATURE_CHART_GROUPINGS, ARMATURE_QUERY_MAX_LENGTH, type ArmatureChartGrouping } from "@/config";
 import { t } from "@/i18n";
+import { ConnectArmatureLink } from "./connectLink";
 import type { ArmatureChartKind, ChartSettings } from "./chart";
 
 type Problems = Partial<Record<"project" | "query", string>>;
@@ -76,6 +77,11 @@ export function IssueChartDialog({
             </option>
           ))}
         </Select>
+        {account.data && !connected && (
+          <p className="text-sm text-ink-muted">
+            <ConnectArmatureLink className="underline">{t.armature.list.connectLink}</ConnectArmatureLink>
+          </p>
+        )}
         <Labelled id={queryId} label={d.query} hint={d.queryHint} error={problems.query}>
           <Textarea
             id={queryId}

@@ -4,6 +4,7 @@ import { Button, Dialog, Labelled, Select, Textarea } from "@/components/ui";
 import { describedBy } from "@/components/ui/controls";
 import { ARMATURE_QUERY_MAX_LENGTH, ARMATURE_ROADMAP_GROUPINGS } from "@/config";
 import { t } from "@/i18n";
+import { ConnectArmatureLink } from "./connectLink";
 import type { RoadmapSettings } from "./roadmap";
 
 type Problems = Partial<Record<"project" | "query", string>>;
@@ -75,6 +76,11 @@ export function IssueRoadmapDialog({
             </option>
           ))}
         </Select>
+        {account.data && !connected && (
+          <p className="text-sm text-ink-muted">
+            <ConnectArmatureLink className="underline">{t.armature.list.connectLink}</ConnectArmatureLink>
+          </p>
+        )}
         <Labelled id={queryId} label={d.query} hint={d.queryHint} error={problems.query}>
           <Textarea
             id={queryId}

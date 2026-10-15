@@ -173,6 +173,12 @@ export const de: Messages = {
     disconnect: "Armature trennen",
     confirmDisconnect: "Armature trennen? Die Tokens aller Mitglieder werden verworfen, und Seiten zeigen nur noch Vorgangsschlüssel.",
     disconnected: "Armature ist getrennt.",
+    members: {
+      title: "Was die Mitglieder jetzt tun",
+      intro:
+        "Jedes Mitglied verbindet jetzt sein eigenes Armature-Konto: In Armature öffnet es Tokens, erstellt ein Token ohne die Markierung read-only und fügt es unter Ihr Profil, Armature ein. Jeder Hinweis zum Verbinden auf einer Seite führt direkt dorthin.",
+      own: "Eigenes Konto verbinden",
+    },
     capabilities: {
       title: "Was Armature anbietet",
       intro: "Stator fragt Armature, welche Integrationsfunktionen es anbietet, und schaltet die fehlenden ab, statt später zu scheitern.",
@@ -202,7 +208,9 @@ export const de: Messages = {
       notConfigured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",
       steps:
         "Öffnen Sie in Armature Tokens und erstellen Sie ein Token ohne die Markierung read-only, damit Seiten auch Vorgänge anlegen und verknüpfen können. Fügen Sie es dann hier ein.",
-      openArmature: "Armature öffnen",
+      openTokens: "Tokens in Armature öffnen",
+      returns: "Sobald Armature das Token annimmt, geht es zurück zu der Seite, von der Sie kamen.",
+      returned: "Ihr Armature-Konto ist verbunden, und hier ist die Seite, von der Sie kamen.",
       token: "Armature-Token",
       connect: "Verbinden",
       replace: "Neues Token einfügen",

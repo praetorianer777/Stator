@@ -9,9 +9,7 @@ import {
   ARMATURE_LIST_DEFAULT_LIMIT,
   ARMATURE_LIST_MAX_LIMIT,
   ARMATURE_PRIORITIES,
-  ARMATURE_SECTION_ID,
   ARMATURE_STATUS_CATEGORIES,
-  PROFILE_PATH,
   type ArmatureColumn,
 } from "@/config";
 import { DocPageContext } from "@/features/editor/BlockViews";
@@ -19,6 +17,7 @@ import { t } from "@/i18n";
 import { outdatedSentence } from "./outdated";
 import { formatDue } from "./IssueBlock";
 import { StatusLozenge, TypeIcon } from "./IssueChip";
+import { ConnectArmatureLink } from "./connectLink";
 
 /** What a list block stores: the query and how to show it, never its rows. */
 export interface IssueListSettings {
@@ -82,10 +81,7 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
     state = "connect";
     body = (
       <Note>
-        {l.connect}{" "}
-        <a href={`${PROFILE_PATH}#${ARMATURE_SECTION_ID}`} className="underline" data-action="connect-armature-hint">
-          {l.connectLink}
-        </a>
+        {l.connect} <ConnectArmatureLink className="underline">{l.connectLink}</ConnectArmatureLink>
       </Note>
     );
   } else if (search.error instanceof ApiError && search.error.code === "bad_query") {

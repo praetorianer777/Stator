@@ -6,6 +6,7 @@ import { useSpaces } from "@/api/spaces";
 import { Button, Dialog, ErrorBanner, Field, Select } from "@/components/ui";
 import { CALENDAR_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
+import { ConnectArmatureLink } from "@/features/armature/connectLink";
 import type { CalendarSettings } from "./calendar";
 
 // The calendar choice that names a new calendar instead of one there is.
@@ -148,6 +149,11 @@ export function CalendarDialog({
               </option>
             ))}
           </Select>
+        )}
+        {configured && !connected && (
+          <p className="text-sm text-ink-muted">
+            <ConnectArmatureLink className="underline">{t.armature.list.connectLink}</ConnectArmatureLink>
+          </p>
         )}
         {failed && <ErrorBanner>{failed}</ErrorBanner>}
         <div className="flex justify-end gap-2 pt-1">

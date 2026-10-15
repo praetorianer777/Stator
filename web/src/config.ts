@@ -439,6 +439,12 @@ export const INLINE_QUOTE_SHOWN_LENGTH = 200;
 /** Where a person connects their Armature account, and the section's anchor there; the connect hints of issue chips link to it. */
 export const PROFILE_PATH = "/settings/profile";
 export const ARMATURE_SECTION_ID = "armature";
+/** The query parameter that carries where a connect hint was followed from, to go back there once connected. */
+export const ARMATURE_RETURN_PARAM = "return";
+/** The longest path a connect hint carries back; a longer one is dropped rather than cut. */
+export const ARMATURE_RETURN_MAX_LENGTH = 2000;
+/** Armature's own page for making tokens, under the connected Armature's address. */
+export const ARMATURE_TOKENS_PATH = "/settings/tokens";
 /** Where an administrator connects the organization's Armature. */
 export const ARMATURE_SETTINGS_PATH = "/settings/armature";
 
