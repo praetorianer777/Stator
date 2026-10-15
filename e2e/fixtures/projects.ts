@@ -11,6 +11,7 @@ export const INSTANCE_SPECS = [
   "add-member",
   "anonymous-access",
   "armature",
+  "armature-capabilities",
   "armature-charts",
   "armature-roadmap",
   "armature-theme",

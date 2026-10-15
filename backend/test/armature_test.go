@@ -81,7 +81,12 @@ func (h *harness) armature(t *testing.T) *armature.Service {
 // olderArmatureURL is the stub under a host of the harness's own, which a
 // test tells to answer /meta as an older Armature; /meta takes no token, so
 // the host is what keeps one test's Armature from another's.
-func olderArmatureURL(h *harness) string { return "http://" + h.site.Slug + ".older-armature.test" }
+func olderArmatureURL(h *harness) string {
+	if h.olderArmature == "" {
+		h.olderArmature = "http://" + uuid.NewString()[:8] + ".older-armature.test"
+	}
+	return h.olderArmature
+}
 
 func patFor(tenant, person string) string { return armature.TokenPrefix + tenant + "_" + person }
 
