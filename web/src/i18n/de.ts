@@ -22,6 +22,9 @@ export const de: Messages = {
     expandSidebar: "Seitenleiste ausklappen",
     drawer: "Navigation",
     openDrawer: "Navigation öffnen",
+    buildVersion: (version: string) => `Stator ${version}`,
+    buildCommit: (commit: string) => `Commit ${commit}`,
+    buildBuiltAt: (when: string) => `Gebaut am ${when}`,
     closeDrawer: "Navigation schließen",
   },
   shell: {

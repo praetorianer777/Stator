@@ -1,5 +1,6 @@
 import { expect, test } from "../fixtures/auth";
 import { openShell } from "../fixtures/shell";
+import { buildCommit } from "../fixtures/stack";
 
 // The shell around every page: a visitor's until sign-in exists, alice's after.
 
@@ -16,6 +17,30 @@ for (const { path, heading } of PAGES) {
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     await expect(page).toHaveTitle(/Stator/);
   });
+}
+
+test("the sidebar names the api's build, as GET /api/v1/meta does, with the stamped commit", async ({ page, isMobile }) => {
+  await openShell(page, "/");
+  const meta = await (await page.request.get("/api/v1/meta")).json();
+  expect(meta.product).toBe("stator");
+  const commit = buildCommit();
+  if (commit) expect(meta.build.commit).toBe(commit);
+
+  if (isMobile) await page.locator('[data-action="drawer"]').click();
+  const stamp = page.locator('[data-sidebar] [data-build="api"]');
+  await expect(stamp).toBeVisible();
+  await expect(stamp).toHaveText(expectedLabel(meta.build));
+  const details = (await stamp.getAttribute("title")) ?? "";
+  expect(details).toContain(`Stator ${meta.build.version}`);
+  if (meta.build.commit) expect(details).toContain(`Commit ${meta.build.commit}`);
+  expect(details).toContain("Built ");
+});
+
+// As web/src/lib/build.ts names a build: a release by its tag, anything else with its commit.
+function expectedLabel({ version, commit }: { version: string; commit?: string }): string {
+  if (/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) return `v${version}`;
+  const named = `v${version.replace(/\.g[0-9a-f]+$/, "")}`;
+  return commit ? `${named} · ${commit}` : named;
 }
 
 test("the search box and Ctrl K both open quick search", async ({ page }) => {

@@ -7,8 +7,18 @@ export const APP_NAME = "Stator";
 export const LOGO_WIDTH_PX = 112;
 export const MARK_WIDTH_PX = 24;
 
-/** The release this client was built from, read from the root VERSION file at build time. */
-export const APP_VERSION: string = __APP_VERSION__;
+/** What a build says it is: semver as scripts/build-stamp.sh writes it, the short commit and when it was built. */
+export interface BuildStamp {
+  version: string;
+  commit?: string;
+  builtAt?: string;
+}
+
+/** This client's own build; the sidebar shows the api's, and this only while the api cannot be reached. */
+export const WEB_BUILD: BuildStamp = __APP_BUILD__;
+
+/** How many characters of a commit hash the sidebar shows, as git abbreviates one. */
+export const SHORT_COMMIT_LENGTH = 7;
 
 /** Where the API lives, relative to the page; the dev server proxies it. */
 export const API_BASE = "/api/v1";

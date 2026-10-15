@@ -29,6 +29,9 @@ export const en = {
     expandSidebar: "Expand the sidebar",
     drawer: "Navigation",
     openDrawer: "Open the navigation",
+    buildVersion: (version: string) => `Stator ${version}`,
+    buildCommit: (commit: string) => `Commit ${commit}`,
+    buildBuiltAt: (when: string) => `Built ${when}`,
     closeDrawer: "Close the navigation",
   },
   shell: {

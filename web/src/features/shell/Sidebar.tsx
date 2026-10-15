@@ -7,9 +7,10 @@ import { Icon } from "@/components/icons";
 import { LogoMark } from "@/components/Logo";
 import { brandLogoHref, useBrand } from "@/api/brand";
 import { BRAND_LOGO_HEIGHT_PX } from "@/config";
-import { APP_NAME, APP_VERSION, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
+import { APP_NAME, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
 import { t } from "@/i18n";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
+import { BuildStamp } from "./BuildStamp";
 import { NavItem, SpacesNavItem } from "./nav";
 import { Rail } from "./Rail";
 import { SidebarGroup } from "./SidebarGroup";
@@ -53,9 +54,7 @@ export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean
             <SidebarGroups />
           </div>
 
-          <div className="truncate px-3 pb-2 text-2xs text-ink-subtle" data-build>
-            {APP_VERSION}
-          </div>
+          <BuildStamp className="block truncate px-3 pb-2 text-2xs text-ink-subtle" />
         </nav>
       )}
     </>
@@ -124,9 +123,7 @@ function SidebarDrawer({ onClose, children }: { onClose: () => void; children: R
         </nav>
         <div className="flex items-center gap-2 border-t border-border px-2 py-2">
           <ThemeButton side="top" />
-          <span className="min-w-0 flex-1 truncate text-right text-2xs text-ink-subtle" data-build>
-            {APP_VERSION}
-          </span>
+          <BuildStamp className="min-w-0 flex-1 truncate text-right text-2xs text-ink-subtle" />
         </div>
       </div>
     </div>,

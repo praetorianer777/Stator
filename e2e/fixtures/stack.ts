@@ -52,6 +52,11 @@ export function apiFromStubURL(): string {
   return process.env.STATOR_API_FROM_STUB_URL ?? "http://api:8080";
 }
 
+/** The commit the stack's images were stamped with, or nothing for a stack built outside git. */
+export function buildCommit(): string {
+  return process.env.STATOR_BUILD_COMMIT ?? env.STATOR_BUILD_COMMIT ?? "";
+}
+
 /** The stack's database as its superuser, for arranging what no endpoint makes; read when first needed. */
 export function superuserURL(): string {
   return setting("STATOR_TEST_SUPERUSER_URL");

@@ -9,9 +9,16 @@ import { join, relative, sep } from "node:path";
 import { availableParallelism, loadavg } from "node:os";
 import { fileURLToPath, URL } from "node:url";
 
-// The root VERSION file is the one release.sh bumps, so the client reads it
-// rather than keeping a second copy in package.json.
-const version = readFileSync(fileURLToPath(new URL("../VERSION", import.meta.url)), "utf8").trim();
+// The image builds and make pass what scripts/build-stamp.sh says, the same as
+// the api's; a build without them falls back to the root VERSION file, the one
+// release.sh bumps, and says it is a development build.
+const releaseFile = readFileSync(fileURLToPath(new URL("../VERSION", import.meta.url)), "utf8").trim();
+const build = {
+  version: process.env.STATOR_BUILD_VERSION || `${releaseFile}+dev`,
+  commit: process.env.STATOR_BUILD_COMMIT || undefined,
+  // RFC 3339 to the second, as the api's linker stamp is written.
+  builtAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
+};
 
 // Excalidraw fetches its fonts from window.EXCALIDRAW_ASSET_PATH, and names a
 // public CDN beside it as a fallback, which the browser asks for fonts it
@@ -75,7 +82,7 @@ const testWorkers = Math.max(TEST_MIN_WORKERS, Math.min(Math.floor(cores * TEST_
 export default defineConfig({
   plugins: [react(), tailwindcss(), excalidrawAssets()],
   define: {
-    __APP_VERSION__: JSON.stringify(version),
+    __APP_BUILD__: JSON.stringify(build),
   },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
