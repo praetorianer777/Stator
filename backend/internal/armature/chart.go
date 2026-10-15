@@ -118,7 +118,7 @@ func (s *Service) Chart(ctx context.Context, in ChartInput) (Status, *Chart, err
 	if err := CheckChart(in); err != nil {
 		return "", nil, err
 	}
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureCharts)
 	if v == nil {
 		return status, nil, err
 	}

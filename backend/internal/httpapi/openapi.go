@@ -1150,6 +1150,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)
+	b.Enums[reflect.TypeOf(armature.Feature(""))] = enumStrings(armature.Features)
 	b.Enums[reflect.TypeOf(armature.ChartKind(""))] = enumStrings(armature.ChartKinds)
 	b.Enums[reflect.TypeOf(armature.RoadmapGrouping(""))] = enumStrings(armature.RoadmapGroupings)
 	b.Enums[reflect.TypeOf(calendar.Kind(""))] = enumStrings(calendar.Kinds)

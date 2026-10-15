@@ -54,6 +54,7 @@ type route struct {
 // docs/api-contract-m3.md. Each issue of M3 adds what it calls.
 var routes = []route{
 	{Method: "GET", Path: "/openapi.json", Public: true, handler: (*stub).openAPI},
+	{Method: "GET", Path: "/meta", Public: true, handler: (*stub).meta},
 	{Method: "GET", Path: "/auth/me", handler: (*stub).me},
 	{Method: "GET", Path: "/access/me", handler: (*stub).access},
 	{Method: "GET", Path: "/projects", handler: (*stub).projects},
@@ -76,6 +77,7 @@ type stub struct {
 	openapi []byte
 	client  *http.Client
 	hooks   *bins
+	metas   *metas
 }
 
 // call is one request as a person of a tenant.
@@ -87,7 +89,7 @@ type call struct {
 }
 
 func newStub(openapi []byte) *stub {
-	return &stub{world: newWorld(), openapi: openapi, client: &http.Client{Timeout: webhookTimeout}, hooks: newBins()}
+	return &stub{world: newWorld(), openapi: openapi, client: &http.Client{Timeout: webhookTimeout}, hooks: newBins(), metas: &metas{byHost: map[string]metaOverride{}}}
 }
 
 // handler routes Armature's operations and the /_stub/ controls.
@@ -97,6 +99,8 @@ func (s *stub) handler() http.Handler {
 		mux.HandleFunc(rt.Method+" "+apiPrefix+rt.Path, s.serve(rt))
 	}
 	mux.HandleFunc("GET "+stubPrefix+"/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	mux.HandleFunc("PUT "+metaPrefix+"/{host}", s.setMeta)
+	mux.HandleFunc("DELETE "+metaPrefix+"/{host}", s.forgetMeta)
 	mux.HandleFunc("PATCH "+stubPrefix+"/{tenant}/issues/{issueKey}", s.control((*stub).changeIssue))
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/projects/{projectKey}/issues", s.control((*stub).addIssue))
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/issues/{issueKey}/move", s.control((*stub).moveIssue))

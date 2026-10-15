@@ -97,10 +97,13 @@ const (
 	StatusRejected Status = "rejected"
 	// StatusUnreachable is Armature not answering, or answering an error.
 	StatusUnreachable Status = "unreachable"
+	// StatusOutdated is an Armature that does not report the capability the
+	// read needs; Account lists which.
+	StatusOutdated Status = "outdated"
 )
 
 // Statuses lists every Status, for the API document.
-var Statuses = []Status{StatusOK, StatusNotConfigured, StatusNotConnected, StatusRejected, StatusUnreachable}
+var Statuses = []Status{StatusOK, StatusNotConfigured, StatusNotConnected, StatusRejected, StatusUnreachable, StatusOutdated}
 
 // Column is a column an issue list block may show.
 type Column string
@@ -152,6 +155,8 @@ type Connection struct {
 	// Connected counts the members who stored a token.
 	Connected int       `json:"connected"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	// Partner is what Armature said of itself at /meta, asked afresh.
+	Partner Partner `json:"partner"`
 }
 
 // ConnectionInput sets the instance. Changing baseUrl or orgSlug forgets
@@ -176,6 +181,9 @@ type Account struct {
 	// User is who the token acts as in Armature, as the last check found.
 	User      *AccountUser `json:"user"`
 	CheckedAt *time.Time   `json:"checkedAt"`
+	// Missing are the features the connected Armature does not offer, which
+	// pages show a sentence for instead of asking it.
+	Missing []MissingFeature `json:"missing"`
 }
 
 // AccountUser is a person in Armature.

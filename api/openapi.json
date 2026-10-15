@@ -378,7 +378,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -498,7 +499,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -676,7 +678,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -742,7 +745,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -900,7 +904,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -963,7 +968,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -1050,7 +1056,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     }
                   },
@@ -1145,7 +1152,8 @@
                         "not_configured",
                         "not_connected",
                         "rejected",
-                        "unreachable"
+                        "unreachable",
+                        "outdated"
                       ]
                     },
                     "total": {
@@ -18121,6 +18129,12 @@
           "connected": {
             "type": "boolean"
           },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingFeature"
+            }
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -18128,7 +18142,8 @@
               "not_configured",
               "not_connected",
               "rejected",
-              "unreachable"
+              "unreachable",
+              "outdated"
             ]
           },
           "user": {
@@ -18148,7 +18163,8 @@
           "connected",
           "status",
           "user",
-          "checkedAt"
+          "checkedAt",
+          "missing"
         ]
       },
       "AccountUser": {
@@ -19435,6 +19451,9 @@
           "orgSlug": {
             "type": "string"
           },
+          "partner": {
+            "$ref": "#/components/schemas/Partner"
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
@@ -19460,7 +19479,8 @@
           "webhookUrl",
           "webhookTopics",
           "connected",
-          "updatedAt"
+          "updatedAt",
+          "partner"
         ]
       },
       "ConnectionInput": {
@@ -21702,6 +21722,31 @@
           "capabilities"
         ]
       },
+      "MissingFeature": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "type": "string"
+          },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "issues",
+              "create",
+              "charts",
+              "roadmap",
+              "calendar",
+              "links",
+              "theme",
+              "webhooks"
+            ]
+          }
+        },
+        "required": [
+          "feature",
+          "capability"
+        ]
+      },
       "MissingPerson": {
         "type": "object",
         "properties": {
@@ -22909,6 +22954,50 @@
           "name",
           "in",
           "schema"
+        ]
+      },
+      "Partner": {
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "meta": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingFeature"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not_configured",
+              "not_connected",
+              "rejected",
+              "unreachable",
+              "outdated"
+            ]
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "meta",
+          "version",
+          "capabilities",
+          "missing"
         ]
       },
       "PermissionCopyInput": {
@@ -26424,7 +26513,8 @@
               "not_configured",
               "not_connected",
               "rejected",
-              "unreachable"
+              "unreachable",
+              "outdated"
             ]
           }
         },

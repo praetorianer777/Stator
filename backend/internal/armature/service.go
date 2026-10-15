@@ -67,6 +67,8 @@ type Service struct {
 	client *Client
 	cache  *Cache
 	opts   Options
+	// partners keeps what each Armature said at /meta; see Partner.
+	partners *partners
 }
 
 // NewService returns the service. A nil box refuses to store a token or a
@@ -75,7 +77,8 @@ func NewService(cluster *db.Cluster, box *secret.Box, client *Client, cache *Cac
 	if opts.Log == nil {
 		opts.Log = slog.Default()
 	}
-	return &Service{db: cluster, box: box, client: client, cache: cache, opts: opts}
+	return &Service{db: cluster, box: box, client: client, cache: cache, opts: opts,
+		partners: &partners{entries: map[string]partnerEntry{}, now: time.Now}}
 }
 
 // Cache is the per-person answer cache, nil without Valkey.
@@ -104,7 +107,8 @@ func (s *Service) endpoint(ctx context.Context, tx db.DBTX) (*endpoint, error) {
 	return &e, nil
 }
 
-// Connection is the site's connection for an administrator, or nil.
+// Connection is the site's connection for an administrator, or nil. It asks
+// Armature afresh what it offers, so the settings page shows an upgrade at once.
 func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 	var out *Connection
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -112,6 +116,9 @@ func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 		out, err = s.readConnection(ctx, tx)
 		return err
 	})
+	if out != nil {
+		out.Partner = s.Partner(ctx, out.BaseURL, true)
+	}
 	return out, err
 }
 
@@ -215,6 +222,7 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	if err != nil {
 		return nil, lsn, err
 	}
+	out.Partner = s.Partner(ctx, base, true)
 	return out, lsn, nil
 }
 
@@ -285,7 +293,17 @@ func (s *Service) Account(ctx context.Context) (*Account, error) {
 		out, err = s.account(ctx, tx)
 		return err
 	})
+	s.noteMissing(ctx, out, false)
 	return out, err
+}
+
+// noteMissing lists what the account's Armature does not offer, outside any
+// transaction, since asking Armature may take a while.
+func (s *Service) noteMissing(ctx context.Context, a *Account, fresh bool) {
+	if a == nil || a.BaseURL == nil {
+		return
+	}
+	a.Missing = s.Partner(ctx, *a.BaseURL, fresh).Missing
 }
 
 func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
@@ -294,9 +312,9 @@ func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
 		return nil, err
 	}
 	if e == nil {
-		return &Account{Status: StatusNotConfigured}, nil
+		return &Account{Status: StatusNotConfigured, Missing: []MissingFeature{}}, nil
 	}
-	a := &Account{Configured: true, BaseURL: &e.BaseURL, Status: StatusNotConnected}
+	a := &Account{Configured: true, BaseURL: &e.BaseURL, Status: StatusNotConnected, Missing: []MissingFeature{}}
 	row, err := s.ownToken(ctx, tx)
 	if err != nil || row == nil {
 		return a, err
@@ -403,6 +421,7 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 		return nil, lsn, err
 	}
 	s.learnOrg(ctx, e, me)
+	s.noteMissing(ctx, out, false)
 	return out, lsn, nil
 }
 
@@ -459,6 +478,7 @@ func (s *Service) Check(ctx context.Context) (*Account, db.LSN, error) {
 		out, err = s.account(ctx, tx)
 		return err
 	})
+	s.noteMissing(ctx, out, true)
 	return out, lsn, err
 }
 

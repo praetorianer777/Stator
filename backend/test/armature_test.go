@@ -73,10 +73,15 @@ func (h *harness) armature(t *testing.T) *armature.Service {
 		t.Fatal(err)
 	}
 	allow := netguard.ParseAllow(armatureStubHost)
-	client := armature.NewClient(allow, map[string]string{armatureURL(t): os.Getenv(envArmatureStub)})
+	client := armature.NewClient(allow, map[string]string{armatureURL(t): os.Getenv(envArmatureStub), olderArmatureURL(h): os.Getenv(envArmatureStub)})
 	return armature.NewService(h.cluster, box, client, armature.NewCache(h.valkey(t), discard()),
 		armature.Options{AppURL: armatureAppURL, Allow: allow, Development: true, Log: discard()})
 }
+
+// olderArmatureURL is the stub under a host of the harness's own, which a
+// test tells to answer /meta as an older Armature; /meta takes no token, so
+// the host is what keeps one test's Armature from another's.
+func olderArmatureURL(h *harness) string { return "http://" + h.site.Slug + ".older-armature.test" }
 
 func patFor(tenant, person string) string { return armature.TokenPrefix + tenant + "_" + person }
 

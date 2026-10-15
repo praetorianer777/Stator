@@ -319,6 +319,10 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &armatureField) {
 		return ErrValidation(map[string]string{armatureField.Field: armatureField.Message})
 	}
+	var outdated *armature.OutdatedError
+	if errors.As(err, &outdated) {
+		return &APIError{Status: http.StatusConflict, Code: "armature_outdated", Message: outdated.Error()}
+	}
 	var armatureRefused *armature.RefusedError
 	if errors.As(err, &armatureRefused) {
 		return &APIError{Status: armatureRefused.Status, Code: armatureRefused.Code, Message: sentence(armatureRefused.Message),

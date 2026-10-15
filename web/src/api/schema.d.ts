@@ -4068,8 +4068,9 @@ export interface components {
             checkedAt: string | null;
             configured: boolean;
             connected: boolean;
+            missing: components["schemas"]["MissingFeature"][];
             /** @enum {string} */
-            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
             user: components["schemas"]["AccountUser"] | null;
         };
         AccountUser: {
@@ -4378,6 +4379,7 @@ export interface components {
             baseUrl: string;
             connected: number;
             orgSlug: string;
+            partner: components["schemas"]["Partner"];
             /** Format: date-time */
             updatedAt: string;
             webhookSecretSet: boolean;
@@ -4953,6 +4955,11 @@ export interface components {
             capabilities: string[];
             product: string;
         };
+        MissingFeature: {
+            capability: string;
+            /** @enum {string} */
+            feature: "issues" | "create" | "charts" | "roadmap" | "calendar" | "links" | "theme" | "webhooks";
+        };
         MissingPerson: {
             email: string;
             name: string;
@@ -5269,6 +5276,14 @@ export interface components {
             name: string;
             required?: boolean;
             schema: components["schemas"]["Schema"] | null;
+        };
+        Partner: {
+            capabilities: string[];
+            meta: boolean;
+            missing: components["schemas"]["MissingFeature"][];
+            /** @enum {string} */
+            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
+            version: string | null;
         };
         PermissionCopyInput: {
             fingerprint?: string;
@@ -6150,7 +6165,7 @@ export interface components {
             error: string | null;
             following: boolean;
             /** @enum {string} */
-            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+            status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
         };
         Thread: {
             anchor: components["schemas"]["Anchor"] | null;
@@ -6661,7 +6676,7 @@ export interface operations {
                     "application/json": {
                         month: components["schemas"]["CalendarMonth"] | null;
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -6714,7 +6729,7 @@ export interface operations {
                     "application/json": {
                         chart: components["schemas"]["Chart"] | null;
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -6849,7 +6864,7 @@ export interface operations {
                     "application/json": {
                         issueTypes: components["schemas"]["IssueType"][];
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -6885,7 +6900,7 @@ export interface operations {
                     "application/json": {
                         issues: components["schemas"]["IssueResult"][];
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -6983,7 +6998,7 @@ export interface operations {
                     "application/json": {
                         issue: components["schemas"]["Issue"] | null;
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -7025,7 +7040,7 @@ export interface operations {
                     "application/json": {
                         projects: components["schemas"]["Project"][];
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -7065,7 +7080,7 @@ export interface operations {
                     "application/json": {
                         roadmap: components["schemas"]["Roadmap"] | null;
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };
                 };
             };
@@ -7116,7 +7131,7 @@ export interface operations {
                         limit: number;
                         offset: number;
                         /** @enum {string} */
-                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable";
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                         total: number;
                         url: string;
                     };

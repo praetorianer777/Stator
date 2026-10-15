@@ -179,7 +179,7 @@ func (l *LinkSync) Handle(ctx context.Context, e events.Event) error {
 			return nil
 		}
 		run := &linkRun{sync: l, tx: tx, pageID: in.PageID, as: db.WithUser(pinned, in.ActorID)}
-		if run.viewer, run.status, err = l.svc.Viewer(run.as); err != nil {
+		if run.viewer, run.status, err = l.svc.ViewerFor(run.as, FeatureLinks); err != nil {
 			return err
 		}
 		if err := run.pending(ctx, steps); err != nil {
@@ -339,6 +339,8 @@ func (r *linkRun) refusal(e *RefusedError) string {
 func (r *linkRun) withoutToken() string {
 	again := " The next change to the page tries again."
 	switch r.status {
+	case StatusOutdated:
+		return "The connected Armature does not offer " + FeatureCapabilities[FeatureLinks] + ", so the page was not linked. Ask an administrator to update Armature to a release that offers it." + again
 	case StatusRejected:
 		return r.person() + "'s Armature token was not accepted. Store a new one under Profile, Armature." + again
 	default:

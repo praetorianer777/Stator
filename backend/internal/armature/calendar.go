@@ -77,7 +77,7 @@ func (s *Service) Calendar(ctx context.Context, project, month string) (Status, 
 	if err := CheckCalendar(project, month); err != nil {
 		return "", nil, err
 	}
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureCalendar)
 	if v == nil {
 		return status, nil, err
 	}
