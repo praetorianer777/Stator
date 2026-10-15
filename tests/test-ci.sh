@@ -82,10 +82,11 @@ echo "🧪 nothing names the tenant"
 # The tenant setting, its function and the slug in Stator's own paths went
 # with #380. They stay where history is kept: the migrations, the changelog,
 # the decision record and the plan; the catalog test spells what it hunts,
-# and Armature's own API document has paths of its own named so.
+# the upgrade test writes an instance at a schema that still had them, and
+# Armature's own API document has paths of its own named so.
 tenant=$(git -C "$SRC" grep -lE 'current_org_id|app\.org_id|/\{orgSlug\}' -- . \
   ':!backend/migrations/' ':!CHANGELOG.md' ':!docs/decisions.md' ':!docs/plans/' \
-  ':!backend/test/rls_test.go' ':!api/armature/' ':!tests/test-ci.sh')
+  ':!backend/test/rls_test.go' ':!backend/test/migrations_rls_test.go' ':!api/armature/' ':!tests/test-ci.sh')
 [[ -z "$tenant" ]] && pass "no file outside the history names current_org_id, app.org_id or a /{orgSlug} path" \
   || fail "these name current_org_id, app.org_id or a /{orgSlug} path, which went with one organization per instance (#380): $(paste -sd' ' <<< "$tenant")"
 

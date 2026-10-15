@@ -5,6 +5,10 @@
 -- and migrate exits non-zero. The operator reads the message in migrate's
 -- log, so it says what to do without the docs. An empty instance passes, and
 -- bootstrap or seed makes its organization as before.
+-- Not forced meanwhile, so that an owner that is no superuser counts every
+-- organization too, and is refused here rather than by the index below with
+-- nothing to act on; see 00070 (#423).
+ALTER TABLE org NO FORCE ROW LEVEL SECURITY;
 -- +goose StatementBegin
 DO $$
 DECLARE
@@ -20,6 +24,7 @@ BEGIN
 END;
 $$;
 -- +goose StatementEnd
+ALTER TABLE org FORCE ROW LEVEL SECURITY;
 
 -- Holds the one organization through SQL as well as through the service,
 -- for the superuser and stator_admin, whom no policy binds.

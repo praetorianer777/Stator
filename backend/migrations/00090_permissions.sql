@@ -306,6 +306,11 @@ CREATE TRIGGER org_default_grants AFTER INSERT ON org
 CREATE TRIGGER space_default_grants AFTER INSERT ON space
     FOR EACH ROW EXECUTE FUNCTION space_default_grants();
 
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE org NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE org_member NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE space NO FORCE ROW LEVEL SECURITY;
 INSERT INTO global_grant (org_id, permission, subject_type)
 SELECT id, 'use', 'everyone' FROM org;
 
@@ -316,6 +321,9 @@ FROM space s CROSS JOIN unnest(ARRAY['view', 'addPages', 'addComments', 'delete'
 INSERT INTO space_grant (org_id, space_id, permission, subject_type, user_id)
 SELECT s.org_id, s.id, 'administer', 'user', s.created_by
 FROM space s JOIN org_member m ON m.org_id = s.org_id AND m.user_id = s.created_by;
+ALTER TABLE org FORCE ROW LEVEL SECURITY;
+ALTER TABLE org_member FORCE ROW LEVEL SECURITY;
+ALTER TABLE space FORCE ROW LEVEL SECURITY;
 
 -- Moves of pages the actor cannot see, which trashing, restoring and
 -- reordering have to make, go through these functions, each of which checks

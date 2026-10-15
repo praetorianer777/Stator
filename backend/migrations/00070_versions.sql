@@ -92,11 +92,21 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON page_draft TO stator_app, stator_admin;
 -- Every page there is becomes version 1 of itself. The sequence trigger
 -- comes after, since it would read the old save counts; updated_at stays, as
 -- nobody changed the pages.
+-- Forced row level security binds the owner too, and with no organization
+-- named the tenant policy shows it no row: where the migrations run as an
+-- ordinary owner, as stator_owner under CloudNativePG, this would reach
+-- nothing. The owner passes its own policies while they are not forced
+-- (#423). Added after release: an instance past this migration never runs
+-- it again, and one before it needs exactly this.
+ALTER TABLE page NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE page_version NO FORCE ROW LEVEL SECURITY;
 INSERT INTO page_version (org_id, page_id, number, title, body, created_by, created_at)
 SELECT org_id, id, 1, title, body, updated_by, updated_at FROM page;
 ALTER TABLE page DISABLE TRIGGER page_set_updated_at;
 UPDATE page SET version = 1;
 ALTER TABLE page ENABLE TRIGGER page_set_updated_at;
+ALTER TABLE page FORCE ROW LEVEL SECURITY;
+ALTER TABLE page_version FORCE ROW LEVEL SECURITY;
 
 CREATE TRIGGER page_version_in_sequence BEFORE INSERT ON page_version
     FOR EACH ROW EXECUTE FUNCTION page_version_next();

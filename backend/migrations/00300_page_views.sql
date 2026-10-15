@@ -100,9 +100,15 @@ REVOKE ALL ON page_view_tally FROM stator_app;
 
 -- Every visit noted so far counts as one view on its day, so no page starts
 -- with more readers than views.
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE page_visit NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE page_view NO FORCE ROW LEVEL SECURITY;
 INSERT INTO page_view (org_id, page_id, user_id, day)
 SELECT org_id, page_id, user_id, (visited_at AT TIME ZONE 'UTC')::date FROM page_visit
 ON CONFLICT DO NOTHING;
+ALTER TABLE page_visit FORCE ROW LEVEL SECURITY;
+ALTER TABLE page_view FORCE ROW LEVEL SECURITY;
 
 -- +goose StatementBegin
 -- Seeing who read a page is for whoever may change it: viewing it, the space's

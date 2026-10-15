@@ -44,11 +44,17 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON star TO stator_admin;
 -- move, rank and trash mark, so the feed of updates cannot order by it.
 ALTER TABLE page ADD COLUMN published_at timestamptz;
 
+-- Not forced meanwhile, so that an owner that is no superuser reaches every
+-- row too; see 00070 (#423).
+ALTER TABLE page NO FORCE ROW LEVEL SECURITY;
+ALTER TABLE page_version NO FORCE ROW LEVEL SECURITY;
 ALTER TABLE page DISABLE TRIGGER USER;
 UPDATE page p SET published_at = v.created_at
 FROM page_version v
 WHERE v.org_id = p.org_id AND v.page_id = p.id AND v.number = p.version;
 ALTER TABLE page ENABLE TRIGGER USER;
+ALTER TABLE page FORCE ROW LEVEL SECURITY;
+ALTER TABLE page_version FORCE ROW LEVEL SECURITY;
 
 -- +goose StatementBegin
 -- published_at follows the version and nothing else, so nobody moves a page

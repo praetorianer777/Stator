@@ -1206,6 +1206,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- An instance under CloudNativePG that holds data upgrades again (#423).
+  There the migrations run as `stator_owner`, which row level security binds,
+  and the migrations that fill new columns or tables from the rows already
+  there saw none: 00670 then stopped the upgrade on `space_example_versioned`,
+  00420 and 00500 on their constraints, and 00070, 00090, 00195, 00210 and
+  00300 wrote nothing. Each now lifts the forced row level security on its
+  tables for its statements, and 00740 counts every organization. An instance
+  stuck at one of them upgrades with this release; to finish an upgrade to an
+  earlier one, grant the owner `BYPASSRLS` for the upgrade and revoke it
+  after, as `docs/upgrading.md` says.
 - An export the list shows as done now always downloads (#404). The download
   read the export from a replica, which may not yet have replayed the
   worker's write that finished it, and then answered `not_ready`; it now

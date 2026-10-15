@@ -4,7 +4,8 @@ Stator {{ .Chart.AppVersion }} is installed as {{ .Release.Name }}.
 
 It serves one organization. An upgrade of a database that holds several is
 refused by the migrate Job, which changes nothing and names them; split the
-instance first as docs/organization-transfer.md says.
+instance first as docs/organization-transfer.md says. When the migrate Job
+fails, docs/upgrading.md says how to read why and what to do.
 
 Writes go to {{ include "stator.dbHost" . }}.
 {{- with include "stator.replicaHosts" . }}
