@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Tests for release.sh: version derivation, the notes it generates, the files
-# it writes and the cases where it must refuse.
+# it writes, the branch and pull request it opens and the cases where it must
+# refuse; and for scripts/release-tag.sh, which tags the merged release.
 #
-# Runs the real script against a throwaway repository with a local file remote;
-# nothing is built, fetched from the network or pushed. Needs bash, git and
-# python3 — no Go or Node toolchain.
+# Runs the real scripts against a throwaway repository with a local bare
+# remote, and a stand-in for gh; nothing is built or leaves the machine.
+# Needs bash, git and python3, no Go or Node toolchain.
 set -u
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -44,7 +45,16 @@ build_pristine() { # target tagged
     rm -rf "${dir}" "${dir}.remote" || fixture_failed "removing ${dir}"
     mkdir -p "${dir}" || fixture_failed "creating ${dir}"
     cp "${SRC}/release.sh" "${dir}/release.sh" || fixture_failed "copying release.sh"
+    mkdir -p "${dir}/scripts" "${dir}/deploy/charts/stator" "${dir}/web" || fixture_failed "creating the directories of ${dir}"
+    cp "${SRC}/scripts/version-files.sh" "${SRC}/scripts/release-notes.sh" "${SRC}/scripts/release-tag.sh" "${dir}/scripts/" \
+        || fixture_failed "copying the release scripts"
     printf '0.1.0\n' > "${dir}/VERSION" || fixture_failed "writing VERSION"
+    printf 'apiVersion: v2\nname: stator\nversion: 0.1.0\nappVersion: "0.1.0"\n' > "${dir}/deploy/charts/stator/Chart.yaml" \
+        || fixture_failed "writing Chart.yaml"
+    # The real web/package.json carries no version; this one does, so the test
+    # shows that one which does is kept in step.
+    printf '{\n  "name": "stator-web",\n  "version": "0.1.0",\n  "private": true\n}\n' > "${dir}/web/package.json" \
+        || fixture_failed "writing web/package.json"
     cat > "${dir}/CHANGELOG.md" <<'EOF' || fixture_failed "writing CHANGELOG.md"
 # Changelog
 
@@ -79,8 +89,25 @@ commit() { # subject [body]
     git -C "${REPO}" push -q origin main
 }
 
+# GitHub is the one thing this test cannot reach, so gh is a stand-in that
+# records what it was asked and keeps the body of the pull request.
+mkdir -p "${W}/bin" || fixture_failed "creating the directory for the gh stand-in"
+cat > "${W}/bin/gh" <<'EOF' || fixture_failed "writing the gh stand-in"
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${GH_LOG}"
+[[ -n "${GH_FAIL:-}" ]] && { echo "gh: not signed in" >&2; exit 1; }
+while (( $# )); do
+    [[ "$1" == --body-file ]] && cp "$2" "${GH_LOG}.body"
+    shift
+done
+echo "https://github.com/praetorianer777/Stator/pull/999"
+EOF
+chmod +x "${W}/bin/gh" || fixture_failed "making the gh stand-in executable"
+export GH_LOG="${W}/gh.log"
+
 run_release() {
-    (cd "${REPO}" && ./release.sh "$@") > "${W}/out.log" 2>&1
+    rm -f "${GH_LOG}" "${GH_LOG}.body"
+    (cd "${REPO}" && PATH="${W}/bin:${PATH}" ./release.sh "$@") > "${W}/out.log" 2>&1
 }
 
 released_version() { cat "${REPO}/VERSION"; }
@@ -189,7 +216,7 @@ check "the rejected run changed nothing" "$(tree_state)$(git -C "${REPO}" tag -l
 
 # ── What the release writes ──────────────────────────────
 
-echo "🧪 release.sh — version, changelog, notes, commit and tag"
+echo "🧪 release.sh: version files, changelog, notes, branch and pull request"
 use_fixture tagged
 commit "feat: add a reminder setting"
 commit "fix: stop the timeline flickering (#42)"
@@ -257,17 +284,38 @@ EOF
     check "the changelog header is not repeated" \
         "$(grep -c '^# Changelog$' "${REPO}/CHANGELOG.md")" "1"
 
+    check "the chart's version moves with VERSION" \
+        "$(sed -n 's/^version: //p' "${REPO}/deploy/charts/stator/Chart.yaml")" "0.2.0"
+    check "the chart's appVersion moves with VERSION" \
+        "$(sed -n 's/^appVersion: //p' "${REPO}/deploy/charts/stator/Chart.yaml")" '"0.2.0"'
+    check "a package.json that carries a version moves with it" \
+        "$(grep -c '"version": "0.2.0"' "${REPO}/web/package.json")" "1"
+    check "the version files agree afterwards" \
+        "$("${REPO}/scripts/version-files.sh" check 0.2.0 2>&1 && echo agree)" "agree"
+
+    check "the release travels on a branch of its own" \
+        "$(git -C "${REPO}" branch --show-current)" "release/v0.2.0"
     check "the release commit subject stays one short line" \
         "$(git -C "${REPO}" log -1 --format=%s)" "release: v0.2.0"
     check "only the release files are committed" \
         "$(git -C "${REPO}" show --name-only --format= HEAD | LC_ALL=C sort | tr '\n' ' ')" \
-        "CHANGELOG.md VERSION "
+        "CHANGELOG.md VERSION deploy/charts/stator/Chart.yaml web/package.json "
     check "the working tree is left clean" "$(tree_state)" ""
 
-    # release-notes-*.md is git-ignored, so a release built from the tag (CI)
-    # has only the tag message to go on.
-    check "the tag is annotated with the generated notes" \
-        "$(git -C "${REPO}" tag -l --format='%(contents)' v0.2.0 | grep -c 'add a reminder setting')" "1"
+    check "release.sh sets no tag; the merge commit gets it" \
+        "$(git -C "${REPO}" tag -l 'v0.2.*')$(git -C "${REPO}.remote" tag -l 'v0.2.*')" ""
+    check "the release branch is pushed" \
+        "$(git -C "${REPO}.remote" rev-parse --verify -q release/v0.2.0)" "$(git -C "${REPO}" rev-parse HEAD)"
+    check "main on the remote is left alone" \
+        "$(git -C "${REPO}.remote" rev-parse main)" "$(git -C "${REPO}" rev-parse origin/main)"
+    check "the release commit sits on top of main" \
+        "$(git -C "${REPO}" rev-list --count 'origin/main..HEAD')" "1"
+
+    check "a pull request into main is opened" \
+        "$(cut -d' ' -f1-9 "${GH_LOG}" 2>/dev/null)" \
+        "pr create --base main --head release/v0.2.0 --title release: v0.2.0"
+    check "the pull request carries the notes" \
+        "$(grep -c 'add a reminder setting' "${GH_LOG}.body" 2>/dev/null)" "1"
     check "the notes are printed for pasting" \
         "$(grep -c 'add a reminder setting' "${W}/out.log")" "1"
 
@@ -276,9 +324,45 @@ EOF
     else
         pass "release.sh builds no artifact"
     fi
-    check "release.sh does not push by itself" \
-        "$(git -C "${REPO}" rev-list --count 'origin/main..HEAD')" "1"
 }
+
+# What the release workflow does once the pull request is merged; the merge
+# is done here by hand, as GitHub would.
+echo "🧪 release-tag.sh: the merge commit becomes the release"
+RELEASE_COMMIT="$(git -C "${REPO}" rev-parse HEAD)"
+git -C "${REPO}" switch -q main
+check "the release commit is not on main before the merge" \
+    "$(cd "${REPO}" && scripts/release-tag.sh release/v0.2.0 "${RELEASE_COMMIT}" >/dev/null 2>&1 && echo tagged || echo refused)" "refused"
+git -C "${REPO}" merge -q --no-ff -m "Merge pull request #999 from praetorianer777/release/v0.2.0" release/v0.2.0
+git -C "${REPO}" push -q origin main
+MERGE_COMMIT="$(git -C "${REPO}" rev-parse HEAD)"
+if (cd "${REPO}" && scripts/release-tag.sh release/v0.2.0 "${MERGE_COMMIT}") > "${W}/tag.log" 2>&1; then
+    pass "the merge commit is tagged"
+else
+    fail "the merge commit was not tagged"
+    sed 's/^/      /' "${W}/tag.log"
+fi
+check "the tag on the remote points at the merge commit" \
+    "$(git -C "${REPO}.remote" rev-parse -q --verify 'v0.2.0^{commit}')" "${MERGE_COMMIT}"
+check "the tag is annotated" "$(git -C "${REPO}.remote" cat-file -t v0.2.0)" "tag"
+check "the tag message is the release's changelog section" \
+    "$(git -C "${REPO}.remote" tag -l --format='%(contents)' v0.2.0 | grep -c 'add a reminder setting')" "1"
+check "the tag message carries no other release" \
+    "$(git -C "${REPO}.remote" tag -l --format='%(contents)' v0.2.0 | grep -c '^## ')" "0"
+if (cd "${REPO}" && scripts/release-tag.sh release/v0.2.0 "${MERGE_COMMIT}") > "${W}/tag.log" 2>&1; then
+    pass "tagging the same merge again is a no-op, so the workflow can be re-run"
+else
+    fail "tagging the same merge again failed"
+    sed 's/^/      /' "${W}/tag.log"
+fi
+check "a non-release branch is refused" \
+    "$(cd "${REPO}" && scripts/release-tag.sh fix/12-something HEAD >/dev/null 2>&1 && echo tagged || echo refused)" "refused"
+check "a tag is never moved to another commit" \
+    "$(cd "${REPO}" && git commit -q --allow-empty -m 'chore: later' && git push -q origin main && scripts/release-tag.sh release/v0.2.0 HEAD >/dev/null 2>&1 && echo moved || echo refused)" "refused"
+git -C "${REPO}" reset -q --hard "${MERGE_COMMIT}"
+git -C "${REPO}" push -q -f origin main
+check "a merge whose files say another version is refused" \
+    "$(cd "${REPO}" && scripts/release-tag.sh release/v0.3.0 HEAD 2>&1 | grep -c 'disagree with 0.3.0')" "1"
 
 echo "🧪 release.sh — a second release prepends to CHANGELOG.md"
 commit "fix: repair the second thing"
@@ -339,10 +423,73 @@ expect_release --dry-run && {
         pass "the dry run wrote no notes file"
     fi
     check "the dry run prints the version it would release" \
-        "$(grep -c 'Dry run — Stator v0.2.0' "${W}/out.log")" "1"
+        "$(grep -c 'Dry run: Stator v0.2.0' "${W}/out.log")" "1"
     check "the dry run prints the notes it would write" \
         "$(grep -c 'add a reminder setting' "${W}/out.log")" "1"
+    check "the dry run names the branch it would open" \
+        "$(grep -c 'Branch:    release/v0.2.0' "${W}/out.log")" "1"
+    check "the dry run names every file it would write" \
+        "$(grep -c 'Files:     VERSION deploy/charts/stator/Chart.yaml web/package.json CHANGELOG.md' "${W}/out.log")" "1"
+    check "the dry run creates no branch" "$(git -C "${REPO}" branch --list 'release/*')" ""
+    check "the dry run opens no pull request" "$(cat "${GH_LOG}" 2>/dev/null)" ""
 }
+
+echo "🧪 release.sh: what stands in the way of a release is refused"
+use_fixture tagged
+commit "feat: add a reminder setting"
+printf 'local edit\n' >> "${REPO}/CHANGELOG.md"
+if run_release; then
+    fail "a release swept an uncommitted edit along"
+else
+    pass "a working tree with uncommitted changes is refused"
+fi
+check "the dirty refusal created no branch" "$(git -C "${REPO}" branch --list 'release/*')" ""
+git -C "${REPO}" checkout -q -- CHANGELOG.md
+
+git -C "${REPO}" push -q origin main:release/v0.2.0
+if run_release; then
+    fail "a release reused a release branch that exists"
+else
+    pass "an existing release branch is refused"
+fi
+check "the refusal names the branch" "$(grep -c 'release/v0.2.0 already exists' "${W}/out.log")" "1"
+git -C "${REPO}" push -q origin --delete release/v0.2.0
+
+if run_release 0.1.0; then
+    fail "a version that was already tagged was released again"
+else
+    pass "a version that was already tagged is refused"
+fi
+check "the refusal names the tag" "$(grep -c 'v0.1.0 already exists' "${W}/out.log")" "1"
+check "the tag refusal changed nothing" "$(tree_state)$(git -C "${REPO}" branch --list 'release/*')" ""
+
+echo "🧪 release.sh: without gh the release still lands on its branch"
+use_fixture tagged
+commit "fix: something"
+if GH_FAIL=1 run_release; then
+    pass "a pull request that cannot be opened does not fail the release"
+else
+    fail "a pull request that cannot be opened failed the release"
+    sed 's/^/      /' "${W}/out.log"
+fi
+check "the release branch is pushed anyway" \
+    "$(git -C "${REPO}.remote" rev-parse --verify -q release/v0.1.1 >/dev/null && echo pushed)" "pushed"
+check "the command to open it by hand is printed" \
+    "$(grep -c 'gh pr create --base main --head release/v0.1.1' "${W}/out.log")" "1"
+
+echo "🧪 version-files.sh: the files that carry the version must agree"
+check "this repository's version files agree" \
+    "$("${SRC}/scripts/version-files.sh" check 2>&1 && echo agree)" "agree"
+use_fixture tagged
+sed -i 's/^appVersion: .*/appVersion: "0.1.1"/' "${REPO}/deploy/charts/stator/Chart.yaml"
+check "a chart appVersion that disagrees is refused" \
+    "$("${REPO}/scripts/version-files.sh" check 2>&1 | grep -c 'Chart.yaml appVersion says 0.1.1')" "1"
+use_fixture tagged
+sed -i 's/"version": "0.1.0"/"version": "0.0.9"/' "${REPO}/web/package.json"
+check "a package.json that disagrees is refused" \
+    "$("${REPO}/scripts/version-files.sh" check 2>&1 | grep -c 'web/package.json says 0.0.9')" "1"
+check "a version that is no semver is never written" \
+    "$("${REPO}/scripts/version-files.sh" set 1.2 >/dev/null 2>&1 && echo written || echo refused)$(cat "${REPO}/VERSION")" "refused0.1.0"
 
 echo "🧪 release.sh — a checkout behind its remote is refused"
 use_fixture tagged
