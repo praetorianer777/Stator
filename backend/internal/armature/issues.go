@@ -36,7 +36,7 @@ func IssueURL(baseURL, key string) string {
 // Lookup answers one result per key, in order, as the viewer may see them.
 // Keys are distinct and normalized; a status other than ok has no results.
 func (s *Service) Lookup(ctx context.Context, keys []string) (Status, []IssueResult, error) {
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureIssues)
 	if v == nil {
 		return status, nil, err
 	}
@@ -70,7 +70,7 @@ func (s *Service) Lookup(ctx context.Context, keys []string) (Status, []IssueRes
 // Issue is one issue as the viewer may see it, nil when they may not; the
 // key is normalized.
 func (s *Service) Issue(ctx context.Context, key string) (Status, *Issue, error) {
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureIssues)
 	if v == nil {
 		return status, nil, err
 	}

@@ -1,9 +1,11 @@
 import { useArmatureAccount, useArmatureThemeFollow, useFollowArmatureTheme, useUnfollowArmatureTheme, type ArmatureThemeFollow } from "@/api/armature";
 import { Card, ErrorBanner, Switch } from "@/components/ui";
 import { t } from "@/i18n";
+import { outdatedSentence } from "./outdated";
 
 /** What the follow says to its owner: what they see, or why Armature's theme is not it. */
 export function followState(follow: ArmatureThemeFollow | undefined): string {
+  if (follow?.status === "outdated") return outdatedSentence("theme");
   if (!follow?.following) return t.themes.armature.off;
   if (follow.error) return follow.error;
   switch (follow.status) {
@@ -30,14 +32,15 @@ export function FollowArmatureTheme() {
 
   const following = follow?.following ?? false;
   const failure = start.error ?? stop.error;
-  const trouble = following && (follow?.status !== "ok" || Boolean(follow?.error));
+  const outdated = follow?.status === "outdated";
+  const trouble = outdated || (following && (follow?.status !== "ok" || Boolean(follow?.error)));
   return (
     <Card className="mb-4 space-y-2 p-4" data-armature-theme={following ? "following" : "off"} data-armature-theme-status={follow?.status}>
       <div className="flex items-center gap-3">
         <Switch
           label={t.themes.armature.follow}
           checked={following}
-          disabled={!follow || start.isPending || stop.isPending}
+          disabled={!follow || (outdated && !following) || start.isPending || stop.isPending}
           onChange={(on) => (on ? start.mutate() : stop.mutate())}
           data-action="follow-armature-theme"
         />

@@ -13,6 +13,16 @@ afterEach(() => {
 const BASE = "https://armature.example.com";
 const TOKEN = "armature_pat_acme_ada";
 const SECRET = "armature_whs_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG";
+const ARMATURE_CAPABILITIES = [
+  "calendar@1",
+  "issue-embed@1",
+  "plan@1",
+  "remote-link-relations@1",
+  "remote-links@1",
+  "reports@1",
+  "theme-export@1",
+  "webhooks@1",
+];
 const REFUSED = "Armature did not accept this token. Make a new one under Tokens in Armature and paste it here.";
 
 function connection(over: Partial<ArmatureConnection> = {}): ArmatureConnection {
@@ -25,12 +35,13 @@ function connection(over: Partial<ArmatureConnection> = {}): ArmatureConnection 
     webhookTopics: ["issue.created", "issue.updated", "issue.transitioned", "comment.added"],
     connected: 0,
     updatedAt: "2026-10-01T08:00:00Z",
+    partner: { status: "ok", meta: true, version: "1.3.0", capabilities: ARMATURE_CAPABILITIES, missing: [] },
     ...over,
   };
 }
 
 function account(over: Partial<ArmatureAccount> = {}): ArmatureAccount {
-  return { configured: true, baseUrl: BASE, connected: false, status: "not_connected", user: null, checkedAt: null, ...over };
+  return { configured: true, baseUrl: BASE, connected: false, status: "not_connected", user: null, checkedAt: null, missing: [], ...over };
 }
 
 const connectedAccount = account({
@@ -114,6 +125,48 @@ describe("connecting Armature as an administrator", () => {
     expect(confirm).toHaveBeenCalled();
     expect(await screen.findByText("Armature is disconnected.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Connect Armature" })).toBeInTheDocument();
+  });
+
+  it("says which features Stator turns off for an Armature that lacks their capability", async () => {
+    stubApi({
+      "GET /armature/connection": {
+        status: 200,
+        body: {
+          connection: connection({
+            partner: {
+              status: "ok",
+              meta: true,
+              version: "1.2.0",
+              capabilities: ARMATURE_CAPABILITIES.filter((c) => c !== "reports@1"),
+              missing: [{ feature: "charts", capability: "reports@1" }],
+            },
+          }),
+        },
+      },
+    });
+    await renderAt("/settings/armature");
+    expect(await screen.findByText("Armature 1.2.0 answers at this address.")).toBeInTheDocument();
+    expect(document.querySelector("[data-armature-capabilities]")).toHaveAttribute("data-armature-capabilities", "missing");
+    expect(document.querySelector('[data-missing="charts"]')).toHaveTextContent(
+      "Stator turns off charts, because Armature does not offer reports@1. Update Armature to a release that does.",
+    );
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says an Armature from before /meta is too old to say what it offers", async () => {
+    stubApi({
+      "GET /armature/connection": {
+        status: 200,
+        body: {
+          connection: connection({
+            partner: { status: "ok", meta: false, version: null, capabilities: [], missing: [{ feature: "issues", capability: "issue-embed@1" }] },
+          }),
+        },
+      },
+    });
+    await renderAt("/settings/armature");
+    expect(await screen.findByText(/This Armature is too old to say what it offers/)).toBeInTheDocument();
+    expect(document.querySelector('[data-missing="issues"]')).toHaveTextContent(/issue chips, blocks and lists/);
   });
 
   it("tells a member the page is for administrators", async () => {

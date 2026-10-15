@@ -24,6 +24,7 @@ const account = (over: Partial<ArmatureAccount> = {}): ArmatureAccount => ({
     email: "ada@acme.armature.test",
   },
   checkedAt: "2026-10-01T09:00:00Z",
+  missing: [],
   ...over,
 });
 
@@ -51,6 +52,9 @@ describe("following the Armature theme", () => {
     expect(followState(follow({ following: true, status: "unreachable" }))).toMatch(/^Armature did not answer in time/);
     expect(followState(follow({ following: true, status: "rejected" }))).toMatch(/Paste a new token under Profile, Armature\.$/);
     expect(followState(follow({ following: true, error: INVALID }))).toBe(INVALID);
+    expect(followState(follow({ status: "outdated" }))).toBe(
+      "The connected Armature does not offer theme-export@1, which Stator needs for following the Armature theme. Ask an administrator to update Armature.",
+    );
   });
 
   it("is not offered to somebody without an Armature token", async () => {

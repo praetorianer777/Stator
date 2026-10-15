@@ -48,7 +48,7 @@ func (s *Service) Search(ctx context.Context, query string, limit, offset int) (
 	if err := CheckQuery(query); err != nil {
 		return "", nil, err
 	}
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureIssues)
 	if v == nil {
 		return status, nil, err
 	}

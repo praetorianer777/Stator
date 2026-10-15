@@ -1,7 +1,7 @@
 import { localDateFormat } from "@/lib/format";
 import { useContext, useMemo, useState, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { useArmatureAccount, useArmatureSearch, type ArmatureIssue } from "@/api/armature";
+import { useArmatureAccount, useArmatureSearch, type ArmatureIssue, lacks } from "@/api/armature";
 import { Button } from "@/components/ui";
 import {
   ARMATURE_COLUMNS,
@@ -16,6 +16,7 @@ import {
 } from "@/config";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { t } from "@/i18n";
+import { outdatedSentence } from "./outdated";
 import { formatDue } from "./IssueBlock";
 import { StatusLozenge, TypeIcon } from "./IssueChip";
 
@@ -54,7 +55,8 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
   const links = !inEditor;
   const account = useArmatureAccount();
   const configured = Boolean(account.data?.configured && account.data.baseUrl);
-  const asks = Boolean(configured && account.data?.connected && account.data.status !== "rejected");
+  const outdated = lacks(account.data, "issues");
+  const asks = Boolean(configured && account.data?.connected && account.data.status !== "rejected" && !outdated);
   const search = useArmatureSearch(settings.query, settings.limit, asks);
   const [sort, setSort] = useState<Sort>(null);
   const rows = useMemo(() => (search.data?.pages ?? []).flatMap((p) => (p.status === "ok" ? p.issues : [])), [search.data]);
@@ -73,6 +75,9 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
   } else if (!configured || first?.status === "not_configured") {
     state = "plain";
     body = <Note>{l.notConfigured}</Note>;
+  } else if (outdated || first?.status === "outdated") {
+    state = "outdated";
+    body = <Note>{outdatedSentence("issues")}</Note>;
   } else if (!asks || first?.status === "not_connected" || first?.status === "rejected") {
     state = "connect";
     body = (

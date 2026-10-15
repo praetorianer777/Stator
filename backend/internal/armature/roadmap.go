@@ -115,7 +115,7 @@ func (s *Service) Roadmap(ctx context.Context, in RoadmapInput) (Status, *Roadma
 	if err := CheckRoadmap(in); err != nil {
 		return "", nil, err
 	}
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureRoadmap)
 	if v == nil {
 		return status, nil, err
 	}

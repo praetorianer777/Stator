@@ -6,6 +6,7 @@ import {
   useSaveArmatureConnection,
   type ArmatureConnection,
   type ArmatureConnectionInput,
+  type ArmaturePartner,
 } from "@/api/armature";
 import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -36,6 +37,7 @@ export function ConnectionSettings() {
         {notice}
       </p>
       <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
+      {connection && <Capabilities partner={connection.partner} />}
       {connection && <Webhook connection={connection} />}
       {connection && (
         <section aria-labelledby="armature-disconnect" className="space-y-2">
@@ -123,6 +125,43 @@ function ConnectionForm({
         </Button>
       </Card>
     </form>
+  );
+}
+
+/** What the connected Armature offers, and what Stator turns off for what it lacks. */
+function Capabilities({ partner }: { partner: ArmaturePartner }) {
+  const c = t.armature.capabilities;
+  const known = partner.status === "ok";
+  const summary = !known ? c.unreachable : !partner.meta ? c.noMeta : partner.missing.length === 0 ? c.all : null;
+  return (
+    <section
+      aria-labelledby="armature-capabilities"
+      className="space-y-2"
+      data-armature-capabilities={!known ? "unknown" : partner.missing.length > 0 ? "missing" : "all"}
+    >
+      <SectionTitle id="armature-capabilities">{c.title}</SectionTitle>
+      <p className="text-sm text-ink-muted">{c.intro}</p>
+      {partner.version && <p className="text-sm text-ink">{c.version(partner.version)}</p>}
+      {summary && <p className="text-sm text-ink">{summary}</p>}
+      {partner.missing.length > 0 && (
+        <ul className="list-disc space-y-1 pl-5 text-sm text-ink">
+          {partner.missing.map((m) => (
+            <li key={m.feature} data-missing={m.feature}>
+              {c.missing(c.features[m.feature], m.capability)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {partner.capabilities.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5" aria-label={c.title}>
+          {partner.capabilities.map((name) => (
+            <li key={name}>
+              <code className="rounded bg-surface-raised px-1 font-mono text-xs text-ink">{name}</code>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

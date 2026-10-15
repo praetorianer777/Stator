@@ -1,7 +1,8 @@
 import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
-import { readSeed } from "./armature";
+import { armatureURL } from "../fixtures/stack";
+import { readSeed, realArmatureURL } from "./armature";
 
 // Connecting the real Armature as an administrator and a member would: the
 // address and slug Armature answers to, and tokens Armature made.
@@ -54,6 +55,30 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     // The settings name the address Armature's webhook is to post to.
     await page.goto("/settings/armature");
     await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(/\/api\/v1\/armature\/webhook$/);
+  });
+
+  test("Stator reads what the real Armature offers, which the stub reports too", async ({ api, page, request }) => {
+    const seed = readSeed();
+    const meta = await request.get(`${realArmatureURL()}/api/v1/meta`);
+    expect(meta.status()).toBe(200);
+    const real = (await meta.json()) as { product: string; capabilities: string[] };
+    expect(real.product).toBe("armature");
+
+    const saved = await api.PUT("/armature/connection", { body: { baseUrl: seed.url, orgSlug: seed.orgSlug } });
+    expect(saved.response.status).toBe(200);
+    const partner = saved.data!.connection.partner;
+    expect(partner.status).toBe("ok");
+    expect(partner.meta).toBe(true);
+    expect(partner.capabilities).toEqual([...real.capabilities].sort());
+    // Everything Stator relies on is there, so nothing is turned off.
+    expect(partner.missing).toEqual([]);
+    // The stub the other suites run against answers as this Armature does.
+    const stub = (await (await request.get(`${armatureURL()}/api/v1/meta`)).json()) as { capabilities: string[] };
+    expect([...stub.capabilities].sort()).toEqual([...real.capabilities].sort());
+
+    await page.goto("/settings/armature");
+    await expect(page.locator("[data-armature-capabilities]")).toHaveAttribute("data-armature-capabilities", "all");
+    await expect(page.getByText("Armature offers everything Stator uses.")).toBeVisible();
   });
 
   test("a slug that is not the installation's turns every token away", async ({ api, page }) => {

@@ -217,6 +217,9 @@ process, which is only right for a single api process. `/readyz` and
   addresses inside the network unless `STATOR_OUTBOUND_ALLOW` names them.
 - **Themes.** Armature theme files import unchanged, and a user can follow
   their active Armature theme.
+- **Capabilities.** Stator reports what it offers at `/api/v1/meta` and reads
+  Armature's there, turning off and naming each feature whose capability
+  Armature lacks (`docs/integration.md`).
 
 `docs/api-contract-m3.md` says how each of these works.
 

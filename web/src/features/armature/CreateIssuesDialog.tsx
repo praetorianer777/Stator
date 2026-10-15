@@ -1,11 +1,12 @@
 import { useId, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
-import { useArmatureIssueTypes, useArmatureProjects, useCreateArmatureIssues, type ArmatureCreated } from "@/api/armature";
+import { lacks, useArmatureAccount, useArmatureIssueTypes, useArmatureProjects, useCreateArmatureIssues, type ArmatureCreated } from "@/api/armature";
 import { Button, Dialog, ErrorBanner, IconButton, Input, Labelled, Select } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ARMATURE_SECTION_ID, ARMATURE_SUMMARY_MAX_LENGTH, PROFILE_PATH } from "@/config";
 import { t } from "@/i18n";
 import type { SelectionPlan } from "@/features/editor/issueSelection";
+import { outdatedSentence } from "./outdated";
 
 /** What became of each item a create sent, in the order it was sent. */
 export type ItemOutcome = { at: number; summary: string } & (
@@ -44,6 +45,7 @@ export function refusalText(error: unknown): string | null {
   if (!error) return null;
   if (!(error instanceof ApiError)) return c.failed;
   if (error.code === "armature_unreachable") return c.timeout;
+  if (error.code === "armature_outdated") return outdatedSentence("create");
   const fields = Object.values(error.fields);
   return fields.length > 0 ? fields.join(" ") : error.message;
 }
@@ -76,6 +78,7 @@ export function CreateIssuesDialog({
   const projects = useArmatureProjects(true);
   const types = useArmatureIssueTypes(true);
   const create = useCreateArmatureIssues();
+  const outdated = lacks(useArmatureAccount().data, "create");
   const [rows, setRows] = useState<Row[]>(() => plan.items.map((item, at) => ({ at, summary: item.summary, kept: true })));
   const [project, setProject] = useState("");
   const [typeId, setTypeId] = useState("");
@@ -182,6 +185,7 @@ export function CreateIssuesDialog({
               </a>
             </p>
           )}
+          {outdated && <ErrorBanner>{outdatedSentence("create")}</ErrorBanner>}
           {status === "rejected" && <ErrorBanner>{c.rejected}</ErrorBanner>}
           {(status === "unreachable" || projects.isError) && <ErrorBanner>{c.unreachable}</ErrorBanner>}
           {status === "ok" && creatable.length === 0 && <ErrorBanner>{c.noProjects}</ErrorBanner>}
@@ -247,7 +251,7 @@ export function CreateIssuesDialog({
             <Button type="button" variant="secondary" onClick={onClose}>
               {c.cancel}
             </Button>
-            <Button type="submit" disabled={status !== "ok" || creatable.length === 0 || create.isPending || n === 0} data-action="create-issues">
+            <Button type="submit" disabled={outdated || status !== "ok" || creatable.length === 0 || create.isPending || n === 0} data-action="create-issues">
               {c.submit(n)}
             </Button>
           </div>

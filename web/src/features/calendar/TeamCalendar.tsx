@@ -1,11 +1,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { useArmatureAccount, useArmatureCalendar, type ArmatureCalendarAnswer } from "@/api/armature";
+import { lacks, useArmatureAccount, useArmatureCalendar, type ArmatureCalendarAnswer } from "@/api/armature";
 import { useCalendarEvents, type CalendarEvent } from "@/api/calendars";
 import { Button, IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
 import { locale, t } from "@/i18n";
+import { outdatedSentence } from "@/features/armature/outdated";
 import { localDay, monthKey, monthOf, monthSpan, monthWeeks, onDay, shiftMonth, startTime, weekdays, type CalendarSettings, type Month } from "./calendar";
 import { EventDialog } from "./EventDialog";
 
@@ -74,10 +75,12 @@ function useIssues(project: string | null, month: Month): { issues: Issue[]; not
   const i = t.calendar.issues;
   const account = useArmatureAccount();
   const configured = Boolean(account.data?.configured && account.data.baseUrl);
-  const asks = Boolean(project && configured && account.data?.connected && account.data.status !== "rejected");
+  const outdated = lacks(account.data, "calendar");
+  const asks = Boolean(project && configured && account.data?.connected && account.data.status !== "rejected" && !outdated);
   const answer = useArmatureCalendar(project, monthKey(month), asks);
   if (!project || account.isPending) return { issues: [], note: null };
   if (!configured || answer.data?.status === "not_configured") return { issues: [], note: i.notConfigured };
+  if (outdated || answer.data?.status === "outdated") return { issues: [], note: outdatedSentence("calendar") };
   if (!asks || answer.data?.status === "not_connected" || answer.data?.status === "rejected") {
     return {
       issues: [],

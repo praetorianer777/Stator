@@ -73,7 +73,7 @@ type CreateRequest struct {
 // CreateIssues files in's items in order as the viewer, stopping at the first
 // refusal: the issues made, and the refused item's index with its error.
 func (s *Service) CreateIssues(ctx context.Context, in CreateIssuesInput, page PageLink) ([]Issue, int, error) {
-	v, status, err := s.Viewer(ctx)
+	v, status, err := s.ViewerFor(ctx, FeatureCreate)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -84,6 +84,8 @@ func (s *Service) CreateIssues(ctx context.Context, in CreateIssuesInput, page P
 		return nil, 0, ErrNotConnected
 	case StatusRejected:
 		return nil, 0, ErrRejected
+	case StatusOutdated:
+		return nil, 0, &OutdatedError{Feature: FeatureCreate, Capability: FeatureCapabilities[FeatureCreate]}
 	}
 	description := Description(page.Title, PageURL(s.opts.AppURL, page.SpaceKey, page.ID))
 	made := []Issue{}

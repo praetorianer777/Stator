@@ -23,7 +23,7 @@ func themeInvalid(why string) string {
 // one, and how asking went; a status other than ok or an error falls back.
 func (s *Server) followedTheme(ctx context.Context, reader uuid.UUID, fresh bool) (*theme.Theme, armature.ThemeFollow, error) {
 	follow := armature.ThemeFollow{Following: true, Status: armature.StatusOK}
-	v, status, err := s.Armature.Viewer(ctx)
+	v, status, err := s.Armature.ViewerFor(ctx, armature.FeatureTheme)
 	if err != nil {
 		return nil, follow, err
 	}
@@ -93,7 +93,7 @@ func (s *Server) handleArmatureThemeFollow(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	} else {
-		_, status, err := s.Armature.Viewer(r.Context())
+		_, status, err := s.Armature.ViewerFor(r.Context(), armature.FeatureTheme)
 		if err != nil {
 			respondError(w, r, err)
 			return
@@ -108,12 +108,15 @@ func (s *Server) handleFollowArmatureTheme(w http.ResponseWriter, r *http.Reques
 		respondError(w, r, errArmatureOff)
 		return
 	}
-	_, status, err := s.Armature.Viewer(r.Context())
+	_, status, err := s.Armature.ViewerFor(r.Context(), armature.FeatureTheme)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
 	switch status {
+	case armature.StatusOutdated:
+		respondError(w, r, &armature.OutdatedError{Feature: armature.FeatureTheme, Capability: armature.FeatureCapabilities[armature.FeatureTheme]})
+		return
 	case armature.StatusNotConfigured:
 		respondError(w, r, armature.ErrNotConfigured)
 		return

@@ -1,6 +1,7 @@
 import type { WordImport } from "@/api/word";
 import type { AuditAction } from "@/api/audit";
 import type { DeliveryState, WebhookTopic } from "@/api/webhooks";
+import type { ArmatureFeature } from "@/api/armature";
 
 /** The events a webhook may name besides everything. */
 type WebhookEventTopic = Exclude<WebhookTopic, "*">;
@@ -167,6 +168,30 @@ export const en = {
     disconnect: "Disconnect Armature",
     confirmDisconnect: "Disconnect Armature? Every member's token is forgotten, and pages show issue keys only.",
     disconnected: "Armature is disconnected.",
+    capabilities: {
+      title: "What Armature offers",
+      intro: "Stator asks Armature which integration features it offers, and turns off the ones it lacks instead of failing later.",
+      version: (version: string) => `Armature ${version} answers at this address.`,
+      all: "Armature offers everything Stator uses.",
+      noMeta:
+        "This Armature is too old to say what it offers, because it does not answer /api/v1/meta. Update Armature to a current release; until then everything that needs Armature stays off.",
+      unreachable: "Armature did not say what it offers just now. Reload this page in a moment.",
+      missing: (feature: string, capability: string) =>
+        `Stator turns off ${feature}, because Armature does not offer ${capability}. Update Armature to a release that does.`,
+      outdated: (feature: string, capability: string) =>
+        `The connected Armature does not offer ${capability}, which Stator needs for ${feature}. Ask an administrator to update Armature.`,
+      short: "Needs a newer Armature",
+      features: {
+        issues: "issue chips, blocks and lists",
+        create: "creating issues from a page",
+        charts: "charts",
+        roadmap: "roadmaps",
+        calendar: "issues in calendars",
+        links: "linking pages to issues",
+        theme: "following the Armature theme",
+        webhooks: "the webhook",
+      } as Record<ArmatureFeature, string>,
+    },
     account: {
       intro: "Connect your Armature account so pages show you the issues you may see in Armature.",
       notConfigured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",

@@ -174,6 +174,21 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 		t.Errorf("the document served is not Armature's: %v", got["info"])
 	}
 
+	meta := c.expect("GET", "/meta", "", nil, 200)
+	for _, f := range armature.Features {
+		if want := armature.FeatureCapabilities[f]; !strings.Contains(fmt.Sprint(meta["capabilities"]), want) {
+			t.Errorf("the stub does not report %s, which Stator needs for %s: %v", want, f, meta["capabilities"])
+		}
+	}
+	host := strings.TrimPrefix(server.URL, "http://")
+	c.expect("PUT", metaPrefix+"/"+host, "", map[string]any{"capabilities": []string{"issue-embed@1"}}, 204)
+	if got := fmt.Sprint(c.expect("GET", "/meta", "", nil, 200)["capabilities"]); got != "[issue-embed@1]" {
+		t.Errorf("an older Armature reports %s", got)
+	}
+	c.expect("PUT", metaPrefix+"/"+host, "", map[string]any{"absent": true}, 204)
+	c.expect("GET", "/meta", "", nil, 404)
+	c.expect("DELETE", metaPrefix+"/"+host, "", nil, 204)
+
 	me := c.expect("GET", "/auth/me", alice, nil, 200)["principal"].(map[string]any)
 	if me["org"].(map[string]any)["slug"] != "acme" || me["user"].(map[string]any)["name"] != "Alice" {
 		t.Errorf("a token names its tenant and person: %v", me)

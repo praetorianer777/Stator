@@ -717,7 +717,10 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   key or empty), `GET /_stub/{tenant}/remote-links`,
   `POST /_stub/{tenant}/webhooks` (`url`, `secret`, `topic`, `payload`, and
   `id` to repeat an event), and `DELETE /_stub/{tenant}` to start a tenant
-  afresh.
+  afresh. `/meta` answers with the capabilities the pinned Armature reports; since
+  it takes no token, `PUT /_stub-meta/{host}` (`capabilities`, or `absent`
+  for a 404) makes it answer as an older Armature when reached by `host`, and
+  `DELETE /_stub-meta/{host}` undoes it (#409).
 - **The fixed world.** Every tenant has the projects `CP` and `SEC`, the
   types Task, Bug, Story, Sub-task and Epic, and the issues `CP-1` to `CP-5` and
   `SEC-1`; `CP-5` was `SEC-2` before it moved, and answers to that key too.

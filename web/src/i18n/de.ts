@@ -165,6 +165,30 @@ export const de: Messages = {
     disconnect: "Armature trennen",
     confirmDisconnect: "Armature trennen? Die Tokens aller Mitglieder werden verworfen, und Seiten zeigen nur noch Vorgangsschlüssel.",
     disconnected: "Armature ist getrennt.",
+    capabilities: {
+      title: "Was Armature anbietet",
+      intro: "Stator fragt Armature, welche Integrationsfunktionen es anbietet, und schaltet die fehlenden ab, statt später zu scheitern.",
+      version: (version: string) => `Unter dieser Adresse antwortet Armature ${version}.`,
+      all: "Armature bietet alles an, was Stator nutzt.",
+      noMeta:
+        "Dieses Armature ist zu alt, um zu sagen, was es anbietet, denn es beantwortet /api/v1/meta nicht. Aktualisieren Sie Armature auf eine aktuelle Version; bis dahin bleibt alles abgeschaltet, was Armature braucht.",
+      unreachable: "Armature hat gerade nicht gesagt, was es anbietet. Laden Sie diese Seite gleich neu.",
+      missing: (feature: string, capability: string) =>
+        `Stator schaltet ${feature} ab, weil Armature ${capability} nicht anbietet. Aktualisieren Sie Armature auf eine Version, die es anbietet.`,
+      outdated: (feature: string, capability: string) =>
+        `Das verbundene Armature bietet ${capability} nicht an, das Stator für ${feature} braucht. Bitten Sie einen Administrator, Armature zu aktualisieren.`,
+      short: "Braucht ein neueres Armature",
+      features: {
+        issues: "Vorgangs-Chips, -Blöcke und -Listen",
+        create: "das Anlegen von Vorgängen aus einer Seite",
+        charts: "Diagramme",
+        roadmap: "Roadmaps",
+        calendar: "Vorgänge in Kalendern",
+        links: "das Verknüpfen von Seiten mit Vorgängen",
+        theme: "das Folgen des Armature-Designs",
+        webhooks: "den Webhook",
+      },
+    },
     account: {
       intro: "Verbinden Sie Ihr Armature-Konto, damit Seiten Ihnen die Vorgänge zeigen, die Sie in Armature sehen dürfen.",
       notConfigured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",

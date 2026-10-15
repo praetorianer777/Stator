@@ -68,6 +68,8 @@ type harness struct {
 	// stack is set on the stack's own database, where makeMember adds people
 	// to the seed's organization and removes them when the test ends.
 	stack bool
+	// olderArmature is the test's own address of the stub; see olderArmatureURL.
+	olderArmature string
 }
 
 // newHarness connects to a database of the test's own, cloned from the
