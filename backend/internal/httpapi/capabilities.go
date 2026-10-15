@@ -31,6 +31,16 @@ var integrationCapabilities = []capability{
 		topics:     []string{events.TopicArmatureLinks},
 	},
 	{
+		name:    "page-remote-links@1",
+		promise: "Another tool puts links to its objects on a page as somebody who may edit it, a link with the same url replacing the one there, and hears through webhooks when somebody takes one off.",
+		operations: []string{
+			"GET /pages/{pageID}/remote-links",
+			"POST /pages/{pageID}/remote-links",
+			"DELETE /pages/{pageID}/remote-links/{linkID}",
+		},
+		topics: []string{events.TopicPageRemoteLinkRemoved},
+	},
+	{
 		name:       "webhook-receiver@1",
 		promise:    "Armature's signed webhook deliveries, envelope version 1, received for the issue topics, so pages show a change to an issue at once.",
 		operations: []string{"POST /armature/webhook"},

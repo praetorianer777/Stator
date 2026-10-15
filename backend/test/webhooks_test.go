@@ -416,6 +416,14 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 		t.Errorf("the move reads %v", moved)
 	}
 
+	link := obj(t, want(t, putRemoteLink(t, owner, page, requirementLink("1")), http.StatusCreated, "link REQ-1 to Plans"), "remoteLink")
+	want(t, owner.delete(t, pagePath(page, "/remote-links/"+link["id"].(string))), http.StatusNoContent, "take REQ-1 off")
+	unlinked := awaitTopic(t, bin, events.TopicPageRemoteLinkRemoved, page, 1)[0].payload()
+	if l := unlinked["remoteLink"].(map[string]any); l["id"] != link["id"] || l["url"] != "https://exciter.example/r/1" || l["source"] != "Exciter" ||
+		unlinked["page"].(map[string]any)["title"] != "Plans" || unlinked["actor"].(map[string]any)["id"] != home.user.String() {
+		t.Errorf("the removed link reads %v", unlinked)
+	}
+
 	want(t, owner.delete(t, pagePath(page)), http.StatusNoContent, "trash Plans")
 	deleted := awaitTopic(t, bin, events.TopicPageDeleted, page, 1)[0].payload()
 	if deleted["page"].(map[string]any)["title"] != "Plans" {

@@ -196,6 +196,7 @@ var notTools = map[string]string{
 	"DELETE /spaces/{spaceKey}/trash/{pageID}":                     whyRemoves,
 	"DELETE /pages/{pageID}":                                       whyRemoves,
 	"DELETE /pages/{pageID}/labels/{labelName}":                    whyRemoves,
+	"DELETE /pages/{pageID}/remote-links/{linkID}":                 whyRemoves,
 	"DELETE /attachments/{attachmentID}":                           whyRemoves,
 	"DELETE /comments/{commentID}":                                 whyRemoves,
 	"GET /search/quick":                                            whyBrowser,

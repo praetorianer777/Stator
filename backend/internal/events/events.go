@@ -40,10 +40,13 @@ const (
 	// TopicReviewDecided a reviewer's word on one, or its going out without.
 	TopicReviewSubmitted = "review.submitted"
 	TopicReviewDecided   = "review.decided"
+	// TopicPageRemoteLinkRemoved is a link another tool put on a page taken
+	// off, by whoever took it.
+	TopicPageRemoteLinkRemoved = "page.remote_link.removed"
 )
 
 // Topics lists every topic the product emits.
-var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue, TopicScheduleFailed, TopicReviewSubmitted, TopicReviewDecided}
+var Topics = []string{TopicPagePublished, TopicPageAmended, TopicCommentCreated, TopicCommentEdited, TopicThreadResolved, TopicThreadReopened, TopicArmatureLinks, TopicVerificationLapsed, TopicPageMoved, TopicPageDeleted, TopicPageShared, TopicTaskDue, TopicScheduleFailed, TopicReviewSubmitted, TopicReviewDecided, TopicPageRemoteLinkRemoved}
 
 // Event is one committed domain event.
 type Event struct {
@@ -186,6 +189,17 @@ type ReviewDecided struct {
 	Outcome string `json:"outcome"`
 	// Version is the version it went out as, when it did.
 	Version *int `json:"version,omitempty"`
+}
+
+// PageRemoteLinkRemoved is a remote link taken off a page, as it was, since
+// its row is gone by the time a webhook is sent.
+type PageRemoteLinkRemoved struct {
+	PageID  uuid.UUID `json:"pageId"`
+	ActorID uuid.UUID `json:"actorId"`
+	LinkID  uuid.UUID `json:"linkId"`
+	URL     string    `json:"url"`
+	Title   string    `json:"title"`
+	Source  string    `json:"source"`
 }
 
 // Emit writes an event in the caller's transaction, the one that makes the

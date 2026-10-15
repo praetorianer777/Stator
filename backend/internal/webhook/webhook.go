@@ -76,7 +76,7 @@ const (
 var Backoff = []time.Duration{time.Minute, 5 * time.Minute, 30 * time.Minute, 2 * time.Hour, 12 * time.Hour}
 
 // Topics are the events an endpoint may take besides TopicAny.
-var Topics = []string{events.TopicPagePublished, events.TopicPageMoved, events.TopicPageDeleted, events.TopicCommentCreated}
+var Topics = []string{events.TopicPagePublished, events.TopicPageMoved, events.TopicPageDeleted, events.TopicCommentCreated, events.TopicPageRemoteLinkRemoved}
 
 // Subscribable is every value an endpoint's topics may hold.
 var Subscribable = append([]string{TopicAny}, Topics...)

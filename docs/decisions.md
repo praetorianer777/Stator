@@ -3,6 +3,42 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-15: Other tools put remote links on pages, as on Armature's issues (#419)
+
+Exciter traces requirements to the pages that specify them and wants each
+page to show them, so a tool may now put links on a page, as tools put them
+on Armature's issues: `GET`, `POST` and `DELETE /pages/{pageID}/remote-links`,
+the panel on the page, the topic `page.remote_link.removed` and the
+capability, all as Exciter's contract for its #42 (`docs/api-contract-m4.md`
+in Exciter, agreed in Cloudster1/Exciter#39) and Armature's remote links have
+them. The choices that were Stator's:
+
+- **The capability is `page-remote-links@1`.** The contract and #419 say
+  `page.remote-links`, which a dot keeps out of the `name@version` scheme
+  every other name follows (#409); Exciter matches the name under any
+  version, and was told on Cloudster1/Exciter#42 to look for this one.
+- **A link is its page's.** View of the page reads it and edit puts and
+  takes it, in the service and in the database's policies; it stays with the
+  page in the trash and goes with it when purged, as labels do. A copy takes
+  none, since the tool that put a link knows nothing of the copy.
+- **A replaced link keeps who first put it**, as Armature's do: `createdBy`
+  says who brought the link, not who last sent it again.
+- **No audit entry.** Labels, the nearest thing on a page, are not audited,
+  nor are Armature's remote links, and a tool's sync puts links again with
+  every change of the requirement, which would bury what the log is for. The
+  link says who put it, and taking one off goes out as a webhook.
+- **No topic for a link put.** The contract asks only for the removal; the
+  tool that puts a link knows it did.
+- **No relation.** Armature's links say whether they are a page or a
+  requirement; the contract has Exciter say the relation in the title, and
+  nothing else on a page would read the field.
+- **An icon that does not load** shows the source's initial, as Armature's
+  panel does; the stack's content security policy keeps other servers'
+  pictures out, so that is what a deployment shows today.
+
+**Reconsider if** a second tool needs links on pages that are not about the
+page itself, or a relation the page should read.
+
 ## 2026-10-15: The suite signs in through one realm, dynamo (#411)
 
 Stator, Armature and Exciter each ran a Keycloak realm of their own, so one

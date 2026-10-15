@@ -34,6 +34,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/remotelink"
 	"github.com/praetorianer777/stator/backend/internal/render"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -91,8 +92,10 @@ type Server struct {
 	Pages     *page.Service
 	Search    *search.Service
 	Labels    *label.Service
-	Comments  *comment.Service
-	Reactions *reaction.Service
+	// RemoteLinks keeps the links other tools put on pages.
+	RemoteLinks *remotelink.Service
+	Comments    *comment.Service
+	Reactions   *reaction.Service
 	// Watches keeps who follows which pages and spaces; Notifications what
 	// they were told and how they want to hear.
 	Watches       *watch.Service
@@ -445,6 +448,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/labels", s.handleListPageLabels)
 			r.Post("/pages/{pageID}/labels", s.handleAddPageLabel)
 			r.Delete("/pages/{pageID}/labels/{labelName}", s.handleRemovePageLabel)
+			r.Get("/pages/{pageID}/remote-links", s.handleListPageRemoteLinks)
+			r.Post("/pages/{pageID}/remote-links", s.handlePutPageRemoteLink)
+			r.Delete("/pages/{pageID}/remote-links/{linkID}", s.handleRemovePageRemoteLink)
 			r.Get("/labels", s.handleSuggestLabels)
 			r.Get("/labels/{labelName}/pages", s.handleListLabelPages)
 			r.Get("/properties-report", s.handlePropertiesReport)

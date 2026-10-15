@@ -45,6 +45,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/remotelink"
 	"github.com/praetorianer777/stator/backend/internal/render"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/secret"
@@ -198,6 +199,7 @@ func run() error {
 		Perms:             perm.NewService(cluster),
 		Search:            search.NewService(cluster),
 		Labels:            label.NewService(cluster, pages),
+		RemoteLinks:       remotelink.NewService(cluster),
 		Comments:          comment.NewService(cluster),
 		Reactions:         reaction.NewService(cluster),
 		Watches:           watch.NewService(cluster),

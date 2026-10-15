@@ -1622,6 +1622,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{pageID}/remote-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The links other tools put on a page, by source and then in the order they were put. For anybody who may view the page. */
+        get: operations["listPageRemoteLinks"];
+        put?: never;
+        /** Put a link to another tool's object on a page, or replace the one with the same url, which keeps its id and who first put it: 201 when new, 200 when replaced. For people who may edit the page. */
+        post: operations["putPageRemoteLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/remote-links/{linkID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a link off a page and tell webhooks with page.remote_link.removed, whoever took it off. For people who may edit the page. */
+        delete: operations["removePageRemoteLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{pageID}/restrictions": {
         parameters: {
             query?: never;
@@ -4621,13 +4656,13 @@ export interface components {
              */
             occurredAt: string;
             /** @description The event's own fields, by topic, read as the endpoint's owner when the attempt is sent. */
-            payload: components["schemas"]["WebhookPagePublished"] | components["schemas"]["WebhookPageMoved"] | components["schemas"]["WebhookPageDeleted"] | components["schemas"]["WebhookCommentCreated"] | components["schemas"]["WebhookPing"];
+            payload: components["schemas"]["WebhookPagePublished"] | components["schemas"]["WebhookPageMoved"] | components["schemas"]["WebhookPageDeleted"] | components["schemas"]["WebhookCommentCreated"] | components["schemas"]["WebhookRemoteLinkRemoved"] | components["schemas"]["WebhookPing"];
             /**
              * @description The product that sent the delivery, always stator. Added to version 1 without raising it, as a receiver ignores a field it does not know.
              * @enum {string}
              */
             source: "stator";
-            /** @description What happened: ping, page.published, page.moved, page.deleted, comment.created. A receiver ignores a topic it does not know. */
+            /** @description What happened: ping, page.published, page.moved, page.deleted, comment.created, page.remote_link.removed. A receiver ignores a topic it does not know. */
             topic: string;
             /** @description The envelope version, 1 here; the version header says the same. */
             version: number;
@@ -5223,6 +5258,27 @@ export interface components {
             spaceKey: string;
             spaceName: string;
             title: string;
+        };
+        PageRemoteLink: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: uuid */
+            createdBy: string | null;
+            createdByName: string;
+            iconUrl: string | null;
+            /** Format: uuid */
+            id: string;
+            source: string;
+            title: string;
+            /** Format: date-time */
+            updatedAt: string;
+            url: string;
+        };
+        PageRemoteLinkInput: {
+            iconUrl?: string;
+            source: string;
+            title: string;
+            url: string;
         };
         PageResponse: {
             page: components["schemas"]["Page"];
@@ -6449,7 +6505,7 @@ export interface components {
             name: string;
             owner: components["schemas"]["WebhookOwner"] | null;
             secret?: string;
-            topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created")[];
+            topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created" | "page.remote_link.removed")[];
             /** Format: date-time */
             updatedAt: string;
             url: string;
@@ -6489,7 +6545,7 @@ export interface components {
             state: "pending" | "delivered" | "failed" | "withheld" | "cancelled";
             status: number | null;
             /** @enum {string} */
-            topic: "ping" | "page.published" | "page.moved" | "page.deleted" | "comment.created";
+            topic: "ping" | "page.published" | "page.moved" | "page.deleted" | "comment.created" | "page.remote_link.removed";
             /** Format: uuid */
             webhookId: string;
         };
@@ -6508,7 +6564,7 @@ export interface components {
         WebhookInput: {
             enabled?: boolean;
             name: string;
-            topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created")[];
+            topics: ("*" | "page.published" | "page.moved" | "page.deleted" | "comment.created" | "page.remote_link.removed")[];
             url: string;
             version?: number;
         };
@@ -6559,6 +6615,18 @@ export interface components {
             timestamped: boolean;
             topic: string;
             version: number | null;
+        };
+        WebhookRemoteLinkRef: {
+            /** Format: uuid */
+            id: string;
+            source: string;
+            title: string;
+            url: string;
+        };
+        WebhookRemoteLinkRemoved: {
+            actor: components["schemas"]["WebhookPerson"] | null;
+            page: components["schemas"]["WebhookPageRef"];
+            remoteLink: components["schemas"]["WebhookRemoteLinkRef"];
         };
         WebhookSpaceRef: {
             key: string;
@@ -11545,6 +11613,126 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Readers"];
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listPageRemoteLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        remoteLinks: components["schemas"]["PageRemoteLink"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    putPageRemoteLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageRemoteLinkInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        remoteLink: components["schemas"]["PageRemoteLink"];
+                    };
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        remoteLink: components["schemas"]["PageRemoteLink"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removePageRemoteLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                linkID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

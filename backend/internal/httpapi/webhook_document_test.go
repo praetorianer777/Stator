@@ -55,11 +55,12 @@ func TestEveryPayloadFitsTheDocumentedEnvelope(t *testing.T) {
 	actor := &webhook.Person{ID: uuid.New(), Name: "Ada"}
 	parent := uuid.New()
 	payloads := map[string]any{
-		webhook.TopicPing:          webhook.Ping{Message: "Stator can reach this address."},
-		events.TopicPagePublished:  webhook.PagePublished{Page: page, Actor: actor},
-		events.TopicPageMoved:      webhook.PageMoved{Page: page, From: webhook.Place{Space: &page.Space, ParentID: &parent}, To: webhook.Place{}, Actor: nil},
-		events.TopicPageDeleted:    webhook.PageDeleted{Page: page, Actor: actor},
-		events.TopicCommentCreated: webhook.CommentCreated{Comment: webhook.CommentRef{ID: uuid.New(), ThreadID: uuid.New(), Text: "Ship it", URL: page.URL + "?thread=x"}, Page: page, Actor: actor},
+		webhook.TopicPing:                 webhook.Ping{Message: "Stator can reach this address."},
+		events.TopicPagePublished:         webhook.PagePublished{Page: page, Actor: actor},
+		events.TopicPageMoved:             webhook.PageMoved{Page: page, From: webhook.Place{Space: &page.Space, ParentID: &parent}, To: webhook.Place{}, Actor: nil},
+		events.TopicPageDeleted:           webhook.PageDeleted{Page: page, Actor: actor},
+		events.TopicPageRemoteLinkRemoved: webhook.RemoteLinkRemoved{Page: page, RemoteLink: webhook.RemoteLinkRef{ID: uuid.New(), URL: "https://exciter.example/r/x", Title: "REQ-1 Sign in (specifies)", Source: "Exciter"}, Actor: actor},
+		events.TopicCommentCreated:        webhook.CommentCreated{Comment: webhook.CommentRef{ID: uuid.New(), ThreadID: uuid.New(), Text: "Ship it", URL: page.URL + "?thread=x"}, Page: page, Actor: actor},
 	}
 	for _, topic := range append([]string{webhook.TopicPing}, webhook.Topics...) {
 		payload, ok := payloads[topic]

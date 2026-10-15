@@ -91,6 +91,9 @@
       "name": "reactions"
     },
     {
+      "name": "remote-links"
+    },
+    {
       "name": "reviews"
     },
     {
@@ -7634,6 +7637,189 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/remote-links": {
+      "get": {
+        "operationId": "listPageRemoteLinks",
+        "summary": "The links other tools put on a page, by source and then in the order they were put. For anybody who may view the page.",
+        "tags": [
+          "remote-links"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "remoteLinks": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PageRemoteLink"
+                      }
+                    }
+                  },
+                  "required": [
+                    "remoteLinks"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "putPageRemoteLink",
+        "summary": "Put a link to another tool's object on a page, or replace the one with the same url, which keeps its id and who first put it: 201 when new, 200 when replaced. For people who may edit the page.",
+        "tags": [
+          "remote-links"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageRemoteLinkInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "remoteLink": {
+                      "$ref": "#/components/schemas/PageRemoteLink"
+                    }
+                  },
+                  "required": [
+                    "remoteLink"
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "remoteLink": {
+                      "$ref": "#/components/schemas/PageRemoteLink"
+                    }
+                  },
+                  "required": [
+                    "remoteLink"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/remote-links/{linkID}": {
+      "delete": {
+        "operationId": "removePageRemoteLink",
+        "summary": "Take a link off a page and tell webhooks with page.remote_link.removed, whoever took it off. For people who may edit the page.",
+        "tags": [
+          "remote-links"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "linkID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -20376,6 +20562,9 @@
                 "$ref": "#/components/schemas/WebhookCommentCreated"
               },
               {
+                "$ref": "#/components/schemas/WebhookRemoteLinkRemoved"
+              },
+              {
                 "$ref": "#/components/schemas/WebhookPing"
               }
             ]
@@ -20389,7 +20578,7 @@
           },
           "topic": {
             "type": "string",
-            "description": "What happened: ping, page.published, page.moved, page.deleted, comment.created. A receiver ignores a topic it does not know."
+            "description": "What happened: ping, page.published, page.moved, page.deleted, comment.created, page.remote_link.removed. A receiver ignores a topic it does not know."
           },
           "version": {
             "type": "integer",
@@ -22741,6 +22930,81 @@
           "title",
           "spaceKey",
           "spaceName"
+        ]
+      },
+      "PageRemoteLink": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "title",
+          "source",
+          "iconUrl",
+          "createdBy",
+          "createdByName",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PageRemoteLinkInput": {
+        "type": "object",
+        "properties": {
+          "iconUrl": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "title",
+          "source"
         ]
       },
       "PageResponse": {
@@ -27625,7 +27889,8 @@
                 "page.published",
                 "page.moved",
                 "page.deleted",
-                "comment.created"
+                "comment.created",
+                "page.remote_link.removed"
               ]
             }
           },
@@ -27777,7 +28042,8 @@
               "page.published",
               "page.moved",
               "page.deleted",
-              "comment.created"
+              "comment.created",
+              "page.remote_link.removed"
             ]
           },
           "webhookId": {
@@ -27853,7 +28119,8 @@
                 "page.published",
                 "page.moved",
                 "page.deleted",
-                "comment.created"
+                "comment.created",
+                "page.remote_link.removed"
               ]
             }
           },
@@ -28070,6 +28337,56 @@
           "topic",
           "version",
           "timestamped"
+        ]
+      },
+      "WebhookRemoteLinkRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "title",
+          "source"
+        ]
+      },
+      "WebhookRemoteLinkRemoved": {
+        "type": "object",
+        "properties": {
+          "actor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/WebhookPerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page": {
+            "$ref": "#/components/schemas/WebhookPageRef"
+          },
+          "remoteLink": {
+            "$ref": "#/components/schemas/WebhookRemoteLinkRef"
+          }
+        },
+        "required": [
+          "page",
+          "remoteLink",
+          "actor"
         ]
       },
       "WebhookSpaceRef": {

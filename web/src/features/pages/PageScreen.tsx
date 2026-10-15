@@ -34,6 +34,7 @@ import { DocView } from "@/features/editor/DocView";
 import { AppearanceDialog, coverPosition } from "./AppearanceDialog";
 import { ModeDialog } from "./ModeDialog";
 import { PageLabels } from "@/features/labels/PageLabels";
+import { PageRemoteLinks } from "@/features/remoteLinks/PageRemoteLinks";
 import { PageReactions } from "@/features/reactions/Reactions";
 import { AccessDialog } from "@/features/permissions/AccessDialog";
 import { RestrictionsDialog } from "@/features/permissions/RestrictionsDialog";
@@ -443,6 +444,7 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
               <PageReactions page={page} />
               <PageLabels page={page} />
               <ArmatureLinks page={page} />
+              <PageRemoteLinks page={page} />
               {/* The panel's drop zone reaches past the text with negative margins, which would undo the sheet's centring. */}
               <div>
                 <AttachmentPanel pageId={page.id} editable={page.can.edit} />

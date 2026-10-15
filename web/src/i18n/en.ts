@@ -1495,6 +1495,15 @@ export const en = {
     draftNote: "You have a draft of this page that nobody else sees yet.",
     continueDraft: "Continue editing",
   },
+  remoteLinks: {
+    title: "Linked from other tools",
+    intro: "Each tool puts its own links here, with the token of somebody who may edit the page.",
+    group: (source: string, count: number) => `${source} (${count})`,
+    putBy: (name: string) => (name ? `Put by ${name}` : "Put by somebody no longer here"),
+    remove: (title: string) => `Remove the link ${title}`,
+    removeShort: "Remove",
+    removed: (title: string) => `Removed the link ${title}. The tool that put it is told, so it leaves it off.`,
+  },
   labels: {
     title: "Labels",
     add: "Add a label",
@@ -3206,6 +3215,7 @@ export const en = {
       "page.moved": "A page is moved",
       "page.deleted": "A page is deleted",
       "comment.created": "A comment is added",
+      "page.remote_link.removed": "A link another tool put on a page is taken off",
     } satisfies Record<WebhookEventTopic, string>,
     ping: "Test ping",
     create: "Add webhook",
