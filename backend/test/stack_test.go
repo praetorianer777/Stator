@@ -18,7 +18,9 @@ import (
 	"time"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
+	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/seed"
+	"github.com/praetorianer777/stator/backend/internal/version"
 	"github.com/praetorianer777/stator/backend/migrations"
 )
 
@@ -27,6 +29,9 @@ import (
 const (
 	envWebURL      = "STATOR_TEST_WEB_URL"
 	envKeycloakURL = "STATOR_TEST_KEYCLOAK_URL"
+	// What the stack's images were stamped with, from scripts/build-stamp.sh.
+	envBuildVersion = "STATOR_TEST_BUILD_VERSION"
+	envBuildCommit  = "STATOR_TEST_BUILD_COMMIT"
 )
 
 // The development realm and its credentials, as deploy/keycloak/realm.json
@@ -111,6 +116,31 @@ func TestTheWebContainerServesTheAppAndProxiesTheAPI(t *testing.T) {
 			t.Fatalf("GET /api/v1/openapi.json = %s, want the OpenAPI document:\n%.200s", resp.Status, body)
 		}
 		requireSecurityHeaders(t, "an api answer", resp)
+	})
+
+	t.Run("the api reports the build this checkout stamped, to anybody", func(t *testing.T) {
+		resp, body := get(t, web+httpapi.APIPrefix+"/meta")
+		var meta struct {
+			Product      string       `json:"product"`
+			Build        version.Info `json:"build"`
+			APIVersion   string       `json:"apiVersion"`
+			Capabilities []string     `json:"capabilities"`
+		}
+		if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &meta) != nil {
+			t.Fatalf("GET /api/v1/meta = %s, want the build:\n%s", resp.Status, body)
+		}
+		if meta.Product != httpapi.ProductName || meta.APIVersion != httpapi.Spec().Info.Version || meta.Capabilities == nil || meta.Build.BuiltAt == "" {
+			t.Errorf("GET /api/v1/meta = %s", body)
+		}
+		// make test-integration passes what the stack's images were built with.
+		for _, stamp := range []struct{ env, got string }{
+			{envBuildVersion, meta.Build.Version},
+			{envBuildCommit, meta.Build.Commit},
+		} {
+			if want := os.Getenv(stamp.env); want != "" && stamp.got != want {
+				t.Errorf("the api says %q where the build was stamped %q (%s); rebuild the stack with make stack-up", stamp.got, want, stamp.env)
+			}
+		}
 	})
 
 	t.Run("an app route falls back to the single page app", func(t *testing.T) {

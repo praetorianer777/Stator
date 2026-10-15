@@ -56,6 +56,37 @@ describe("the shell", () => {
   });
 });
 
+describe("the build in the sidebar", () => {
+  it("names the api's build, with the commit and build time on hover", async () => {
+    stubApi({
+      "GET /meta": {
+        status: 200,
+        body: {
+          product: "stator",
+          build: { version: "0.1.0+4.gabc1234", commit: "abc1234", builtAt: "2026-10-14T09:00:00Z" },
+          apiVersion: "1",
+          capabilities: [],
+        },
+      },
+    });
+    await renderAt("/");
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar="open"]')!;
+    await waitFor(() => expect(sidebar.querySelector('[data-build="api"]')).not.toBeNull());
+    const stamp = sidebar.querySelector<HTMLElement>("[data-build]")!;
+    expect(stamp).toHaveTextContent("v0.1.0+4 · abc1234");
+    expect(stamp.title).toContain("Commit abc1234");
+    expect(stamp.title).toMatch(/Built .*2026/);
+  });
+
+  it("names the client's own build while the api cannot say", async () => {
+    stubApi({ "GET /meta": { status: 503, body: { error: { code: "unavailable", message: "Down." } } } });
+    await renderAt("/");
+    const stamp = document.querySelector<HTMLElement>('[data-sidebar="open"] [data-build]')!;
+    expect(stamp).toHaveAttribute("data-build", "web");
+    expect(stamp.textContent).toMatch(/^v\d+\.\d+\.\d+/);
+  });
+});
+
 describe("the theme switch", () => {
   it("cycles Auto, Light, Dark and back, and persists each choice", async () => {
     await renderAt("/");

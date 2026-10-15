@@ -54,6 +54,7 @@ var notTools = map[string]string{
 	"GET /healthz":                                                 whyEdge,
 	"GET /readyz":                                                  whyEdge,
 	"GET /openapi.json":                                            whyEdge,
+	"GET /meta":                                                    whyEdge,
 	"POST /auth/login":                                             whyEdge,
 	"GET /auth/oidc/start":                                         whyEdge,
 	"GET /auth/oidc/callback":                                      whyEdge,

@@ -6,7 +6,7 @@
 GO_IMAGE ?= golang:1.26-bookworm
 GO_CACHE := $(ROOT)/.cache/go
 GO_PKG   := github.com/praetorianer777/stator/backend
-GO_LDFLAGS := -X $(GO_PKG)/internal/version.Version=$(VERSION)
+GO_LDFLAGS := -X $(GO_PKG)/internal/version.Version=$(STATOR_BUILD_VERSION) -X $(GO_PKG)/internal/version.Commit=$(STATOR_BUILD_COMMIT)
 
 # The whole checkout is mounted so the tests find api/openapi.json where a plain
 # go test would, three levels above internal/httpapi.
@@ -42,7 +42,7 @@ test-go: | $(GO_CACHE) ## Run the Go unit tests with the race detector
 	$(ROOT)/scripts/go-test.sh $(REPORTS)/go-unit.json $(DOCKER_GO) go test -race -json $(TESTFLAGS) $(PKG)
 
 .PHONY: build-go
-build-go: | $(GO_CACHE) ## Build every backend binary into backend/bin, stamped with VERSION
+build-go: | $(GO_CACHE) ## Build every backend binary into backend/bin, stamped with the version and commit
 	$(DOCKER_GO) go build -trimpath -ldflags '$(GO_LDFLAGS)' -o bin/ ./cmd/...
 
 .PHONY: tidy

@@ -9,6 +9,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `GET /api/v1/meta` says which build answers, without signing in (#407):
+  the product, the version, short commit and build time, the API version and
+  the integration capabilities, in the shape Armature and Exciter share. The
+  sidebar shows that build (#398), `v1.2.3` for a release and
+  `v1.2.3+4 · abc1234` otherwise, with the commit and build time on hover.
+  Every image is stamped with the version and commit by
+  `scripts/build-stamp.sh`.
 - An administrator exports the whole organization as one archive and imports
   it into a fresh Stator (#383), under Settings, Export and import. The
   archive holds every space in the space archive format with its drafts and

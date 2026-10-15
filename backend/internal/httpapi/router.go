@@ -207,6 +207,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 
 	r.Route(APIPrefix, func(r chi.Router) {
 		r.Get("/openapi.json", s.handleOpenAPI)
+		r.Get("/meta", s.handleMeta)
 
 		r.Post("/auth/login", s.handleLogin)
 		r.Get("/auth/oidc/start", s.handleOIDCStart)

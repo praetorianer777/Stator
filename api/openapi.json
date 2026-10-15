@@ -3942,6 +3942,37 @@
         }
       }
     },
+    "/meta": {
+      "get": {
+        "operationId": "meta",
+        "summary": "Which product and build answers here, the API version it speaks and the integration features it offers. Armature and Exciter answer the same shape.",
+        "tags": [
+          "health"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notification-preferences": {
       "get": {
         "operationId": "notificationPreferences",
@@ -18834,6 +18865,23 @@
           "footer"
         ]
       },
+      "BuildInfo": {
+        "type": "object",
+        "properties": {
+          "builtAt": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
       "Calendar": {
         "type": "object",
         "properties": {
@@ -21606,6 +21654,32 @@
           "name",
           "email",
           "canView"
+        ]
+      },
+      "Meta": {
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "build": {
+            "$ref": "#/components/schemas/BuildInfo"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "product": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "build",
+          "apiVersion",
+          "capabilities"
         ]
       },
       "MissingPerson": {
