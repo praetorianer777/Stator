@@ -30,6 +30,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/remotelink"
 	"github.com/praetorianer777/stator/backend/internal/review"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -477,6 +478,16 @@ var operations = append([]operation{
 	{method: "POST", path: "/pages/{pageID}/labels", handler: "handleAddPageLabel", tool: "add_page_label", toolHelp: "Put a label, one lower case word, on a page.", tag: "labels", summary: "Put a label on a page, normalized to one lower case word; one it carries already is no change.",
 		request: label.LabelInput{}, responses: ok(env{"labels": []string{}})},
 	{method: "DELETE", path: "/pages/{pageID}/labels/{labelName}", handler: "handleRemovePageLabel", tag: "labels", summary: "Take a label off a page; one it does not carry is no change.",
+		responses: none()},
+	// Remote links (#419): other tools' objects about a page.
+	{method: "GET", path: "/pages/{pageID}/remote-links", handler: "handleListPageRemoteLinks", tool: "list_page_remote_links", toolHelp: "The objects in other tools, such as requirements, linked to a page, each with its source and who put it.", tag: "remote-links",
+		summary:   "The links other tools put on a page, by source and then in the order they were put. For anybody who may view the page.",
+		responses: ok(env{"remoteLinks": []remotelink.Link{}})},
+	{method: "POST", path: "/pages/{pageID}/remote-links", handler: "handlePutPageRemoteLink", tool: "add_page_remote_link", toolHelp: "Link an object in another tool to a page by its url, with a title and the tool's name as source; a url the page has already is replaced.", tag: "remote-links",
+		summary: "Put a link to another tool's object on a page, or replace the one with the same url, which keeps its id and who first put it: 201 when new, 200 when replaced. For people who may edit the page.",
+		request: remotelink.Input{}, responses: map[int]any{200: env{"remoteLink": remotelink.Link{}}, 201: env{"remoteLink": remotelink.Link{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/pages/{pageID}/remote-links/{linkID}", handler: "handleRemovePageRemoteLink", tag: "remote-links",
+		summary:   "Take a link off a page and tell webhooks with page.remote_link.removed, whoever took it off. For people who may edit the page.",
 		responses: none()},
 	{method: "GET", path: "/labels", handler: "handleSuggestLabels", tool: "list_labels", toolHelp: "Labels in use that start with q, the most used first.", tag: "labels", summary: "Labels on pages the caller may view that start with the words typed, the most used first.",
 		query: []param{
@@ -1060,6 +1071,8 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(page.Schedule{})] = "PageSchedule"
 	b.Names[reflect.TypeOf(page.ScheduleInput{})] = "PageScheduleInput"
 	b.Names[reflect.TypeOf(example.Job{})] = "ExampleSpaceJob"
+	b.Names[reflect.TypeOf(remotelink.Link{})] = "PageRemoteLink"
+	b.Names[reflect.TypeOf(remotelink.Input{})] = "PageRemoteLinkInput"
 	b.Names[reflect.TypeOf(review.Rule{})] = "ReviewRule"
 	b.Names[reflect.TypeOf(review.RuleInput{})] = "ReviewRuleInput"
 	b.Names[reflect.TypeOf(review.PageRef{})] = "ReviewPageRef"
@@ -1305,16 +1318,18 @@ func Spec() *openapi.Document {
 // signed in are here.
 func webhookDelivery(b *openapi.Builder) *openapi.Operation {
 	for t, name := range map[reflect.Type]string{
-		reflect.TypeOf(webhook.PagePublished{}):  "WebhookPagePublished",
-		reflect.TypeOf(webhook.PageMoved{}):      "WebhookPageMoved",
-		reflect.TypeOf(webhook.PageDeleted{}):    "WebhookPageDeleted",
-		reflect.TypeOf(webhook.CommentCreated{}): "WebhookCommentCreated",
-		reflect.TypeOf(webhook.Ping{}):           "WebhookPing",
-		reflect.TypeOf(webhook.PageRef{}):        "WebhookPageRef",
-		reflect.TypeOf(webhook.SpaceRef{}):       "WebhookSpaceRef",
-		reflect.TypeOf(webhook.Person{}):         "WebhookPerson",
-		reflect.TypeOf(webhook.Place{}):          "WebhookPlace",
-		reflect.TypeOf(webhook.CommentRef{}):     "WebhookCommentRef",
+		reflect.TypeOf(webhook.PagePublished{}):     "WebhookPagePublished",
+		reflect.TypeOf(webhook.PageMoved{}):         "WebhookPageMoved",
+		reflect.TypeOf(webhook.PageDeleted{}):       "WebhookPageDeleted",
+		reflect.TypeOf(webhook.CommentCreated{}):    "WebhookCommentCreated",
+		reflect.TypeOf(webhook.Ping{}):              "WebhookPing",
+		reflect.TypeOf(webhook.PageRef{}):           "WebhookPageRef",
+		reflect.TypeOf(webhook.SpaceRef{}):          "WebhookSpaceRef",
+		reflect.TypeOf(webhook.Person{}):            "WebhookPerson",
+		reflect.TypeOf(webhook.Place{}):             "WebhookPlace",
+		reflect.TypeOf(webhook.CommentRef{}):        "WebhookCommentRef",
+		reflect.TypeOf(webhook.RemoteLinkRemoved{}): "WebhookRemoteLinkRemoved",
+		reflect.TypeOf(webhook.RemoteLinkRef{}):     "WebhookRemoteLinkRef",
 	} {
 		b.Names[t] = name
 	}
@@ -1326,7 +1341,7 @@ func webhookDelivery(b *openapi.Builder) *openapi.Operation {
 		Description: "What happened: " + strings.Join(append([]string{webhook.TopicPing}, webhook.Topics...), ", ") + ". A receiver ignores a topic it does not know."}
 	b.FieldOverrides["EnvelopeV1.occurredAt"] = &openapi.Schema{Type: "string", Format: "date-time", Description: "When the event happened, in UTC."}
 	payloads := []*openapi.Schema{}
-	for _, p := range []any{webhook.PagePublished{}, webhook.PageMoved{}, webhook.PageDeleted{}, webhook.CommentCreated{}, webhook.Ping{}} {
+	for _, p := range []any{webhook.PagePublished{}, webhook.PageMoved{}, webhook.PageDeleted{}, webhook.CommentCreated{}, webhook.RemoteLinkRemoved{}, webhook.Ping{}} {
 		payloads = append(payloads, b.SchemaOf(p))
 	}
 	b.FieldOverrides["EnvelopeV1.payload"] = &openapi.Schema{AnyOf: payloads,

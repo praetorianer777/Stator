@@ -29,6 +29,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/public"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/remotelink"
 	"github.com/praetorianer777/stator/backend/internal/render"
 	"github.com/praetorianer777/stator/backend/internal/search"
 	"github.com/praetorianer777/stator/backend/internal/share"
@@ -205,6 +206,10 @@ func toAPIError(err error) *APIError {
 	var guestField *guest.FieldError
 	if errors.As(err, &guestField) {
 		return ErrValidation(map[string]string{guestField.Field: guestField.Message})
+	}
+	var remoteLinkField *remotelink.FieldError
+	if errors.As(err, &remoteLinkField) {
+		return ErrValidation(map[string]string{remoteLinkField.Field: remoteLinkField.Message})
 	}
 	var labelField *label.FieldError
 	if errors.As(err, &labelField) {
@@ -466,6 +471,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That page was not found. It may have been moved or deleted; look for it from its space.")
 	case errors.Is(err, task.ErrNotFound):
 		return ErrNotFound("That task is not on the page any more. Reload the page or your list of tasks.")
+	case errors.Is(err, remotelink.ErrNotFound):
+		return ErrNotFound("That link is not on the page any more. Somebody may have removed it already; reload the page.")
 	case errors.Is(err, shortcut.ErrNotFound):
 		return ErrNotFound("That shortcut was not found. Somebody may have removed it already; reload the list.")
 	case errors.Is(err, calendar.ErrNotFound):

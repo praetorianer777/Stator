@@ -125,6 +125,22 @@ type CommentCreated struct {
 	Actor   *Person    `json:"actor"`
 }
 
+// RemoteLinkRef is a remote link as it was when it was taken off its page.
+type RemoteLinkRef struct {
+	ID     uuid.UUID `json:"id"`
+	URL    string    `json:"url"`
+	Title  string    `json:"title"`
+	Source string    `json:"source"`
+}
+
+// RemoteLinkRemoved is the payload of page.remote_link.removed, sent whoever
+// took the link off, so the tool that put it can leave it off.
+type RemoteLinkRemoved struct {
+	Page       PageRef       `json:"page"`
+	RemoteLink RemoteLinkRef `json:"remoteLink"`
+	Actor      *Person       `json:"actor"`
+}
+
 // Ping is the payload of a test delivery.
 type Ping struct {
 	Message string `json:"message"`
@@ -214,6 +230,17 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 		}
 		c.URL = p.URL + "?thread=" + c.ThreadID.String()
 		return CommentCreated{Comment: c, Page: *p, Actor: person(ctx, tx, in.ActorID)}, nil
+	case events.TopicPageRemoteLinkRemoved:
+		var in events.PageRemoteLinkRemoved
+		if err := json.Unmarshal(event, &in); err != nil {
+			return nil, err
+		}
+		p, err := s.page(ctx, tx, in.PageID)
+		if err != nil {
+			return nil, err
+		}
+		return RemoteLinkRemoved{Page: *p, RemoteLink: RemoteLinkRef{ID: in.LinkID, URL: in.URL, Title: in.Title, Source: in.Source},
+			Actor: person(ctx, tx, in.ActorID)}, nil
 	}
 	return nil, errWithheld
 }
