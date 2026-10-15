@@ -1,12 +1,13 @@
 import { localDateFormat } from "@/lib/format";
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { useArmatureAccount, useArmatureIssue, useArmatureIssues, type ArmatureAccount, type ArmatureIssue, type ArmatureIssues } from "@/api/armature";
+import { lacks, useArmatureAccount, useArmatureIssue, useArmatureIssues, type ArmatureAccount, type ArmatureIssue, type ArmatureIssues } from "@/api/armature";
 import { cx } from "@/components/ui";
 import { useAnchored, useEscape } from "@/components/ui/overlay";
 import { Icon, type IconName } from "@/components/icons";
 import { ARMATURE_CARD_DELAY_MS, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
 import { t } from "@/i18n";
 import { issueUrl, lookupBatches } from "./issueKeys";
+import { outdatedSentence } from "./outdated";
 
 /**
  * What a chip can say about its issue to this viewer: only its key, the key
@@ -17,6 +18,7 @@ export type ChipState =
   | { kind: "connect"; href: string }
   | { kind: "loading"; href: string }
   | { kind: "unreachable"; href: string }
+  | { kind: "outdated"; href: string }
   | { kind: "hidden"; href: string }
   | { kind: "issue"; issue: ArmatureIssue };
 
@@ -35,6 +37,7 @@ export function chipState(key: string, account: ArmatureAccount | undefined, loo
   if (!account?.configured || !account.baseUrl) return { kind: "plain" };
   const href = issueUrl(account.baseUrl, key);
   if (!account.connected || account.status === "rejected") return { kind: "connect", href };
+  if (lacks(account, "issues")) return { kind: "outdated", href };
   switch (lookup.status) {
     case "not_configured":
       return { kind: "plain" };
@@ -43,6 +46,8 @@ export function chipState(key: string, account: ArmatureAccount | undefined, loo
       return { kind: "connect", href };
     case "unreachable":
       return { kind: "unreachable", href };
+    case "outdated":
+      return { kind: "outdated", href };
   }
   if (!lookup.issues.has(key)) return { kind: "loading", href };
   const issue = lookup.issues.get(key);
@@ -58,7 +63,7 @@ export function ArmatureIssuesProvider({ keys, children }: { keys: readonly stri
   // The joined keys say when the set changed; the array is new on every render.
   const signature = keys.join(" ");
   const batches = useMemo(() => lookupBatches(signature ? signature.split(" ") : []), [signature]);
-  const asks = Boolean(account.data?.connected && account.data.status !== "rejected");
+  const asks = Boolean(account.data?.connected && account.data.status !== "rejected" && !lacks(account.data, "issues"));
   const lookup = useArmatureIssues(batches, asks && batches.length > 0);
   const known = useRef<ArmatureIssues>({ status: undefined, issues: new Map() });
   const merged = useMemo(() => {
@@ -142,6 +147,11 @@ export function IssueChip({ issueKey, links = true }: { issueKey: string; links?
         {state.kind === "connect" && <ConnectHint links={links} />}
         {state.kind === "hidden" && <span className="text-xs text-ink-muted">{t.armature.chip.notAvailable}</span>}
         {state.kind === "unreachable" && <span className="text-xs text-ink-muted">{t.armature.chip.unreachable}</span>}
+        {state.kind === "outdated" && (
+          <span className="text-xs text-ink-muted" title={outdatedSentence("issues")} data-armature-outdated="issues">
+            {t.armature.capabilities.short}
+          </span>
+        )}
       </span>
     );
   }

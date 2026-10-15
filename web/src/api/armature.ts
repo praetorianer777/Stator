@@ -12,6 +12,15 @@ export type ArmatureConnectionInput = Wire["ConnectionInput"];
 /** The caller's own link to Armature; the token never comes back. */
 export type ArmatureAccount = Wire["Account"];
 export type ArmatureStatus = ArmatureAccount["status"];
+/** A part of Stator that needs Armature to offer a capability. */
+export type ArmatureFeature = Wire["MissingFeature"]["feature"];
+/** What the connected Armature said of itself at /meta. */
+export type ArmaturePartner = Wire["Partner"];
+
+/** Whether the connected Armature lacks what feature needs, as the account says; pages then say so instead of asking. */
+export function lacks(account: ArmatureAccount | undefined, feature: ArmatureFeature): boolean {
+  return Boolean(account?.missing?.some((m) => m.feature === feature));
+}
 
 export const armatureConnectionQueryKey = ["armature", "connection"] as const;
 export const armatureAccountQueryKey = ["armature", "account"] as const;

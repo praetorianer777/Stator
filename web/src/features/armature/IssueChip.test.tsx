@@ -150,6 +150,15 @@ describe("Armature issue chips in the read view", () => {
     expect(chips()[0]).toHaveTextContent("Armature did not answer");
   });
 
+  it("say an Armature without issue-embed@1 needs updating, and ask it nothing", async () => {
+    const sent = stubApi({ "GET /armature/account": account({ missing: [{ feature: "issues", capability: "issue-embed@1" }] }) });
+    wrap(<DocView doc={doc} />);
+    await waitFor(() => expect(chips()[0]?.dataset.state).toBe("outdated"));
+    expect(chips()[0]).toHaveTextContent("Needs a newer Armature");
+    expect(chips()[0]?.querySelector("[data-armature-outdated]")).toHaveAttribute("title", expect.stringContaining("issue-embed@1"));
+    expect(sent.some((r) => r.path === "/armature/issues")).toBe(false);
+  });
+
   it("are drawn in a comparison of versions, with what changed marked", async () => {
     stubApi({
       "GET /armature/account": account({}),

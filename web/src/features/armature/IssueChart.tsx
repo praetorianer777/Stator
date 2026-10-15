@@ -1,6 +1,6 @@
 import { useContext, useId, useMemo, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { useArmatureAccount, useArmatureChart, type ArmatureChartAnswer } from "@/api/armature";
+import { useArmatureAccount, useArmatureChart, type ArmatureChartAnswer, lacks } from "@/api/armature";
 import {
   ARMATURE_FLOW_HEIGHT,
   ARMATURE_FLOW_TICKS,
@@ -12,6 +12,7 @@ import {
 } from "@/config";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { locale, t } from "@/i18n";
+import { outdatedSentence } from "./outdated";
 import { BadQuery, Note, OpenInArmature } from "./IssueList";
 import { useWidth } from "./useWidth";
 import { donutPaths, foldSlices, linePoints, percent, readoutAnchor, ticks, type ChartSettings, type Slice } from "./chart";
@@ -281,7 +282,8 @@ export function IssueChart({ settings, inEditor = false }: { settings: ChartSett
   const edit = inEditor ? undefined : page?.onEdit;
   const account = useArmatureAccount();
   const configured = Boolean(account.data?.configured && account.data.baseUrl);
-  const asks = Boolean(configured && account.data?.connected && account.data.status !== "rejected");
+  const outdated = lacks(account.data, "charts");
+  const asks = Boolean(configured && account.data?.connected && account.data.status !== "rejected" && !outdated);
   const answer = useArmatureChart(settings, asks);
   const chart = answer.data?.status === "ok" ? answer.data.chart : null;
 
@@ -293,6 +295,9 @@ export function IssueChart({ settings, inEditor = false }: { settings: ChartSett
   } else if (!configured || answer.data?.status === "not_configured") {
     state = "plain";
     body = <Note>{l.notConfigured}</Note>;
+  } else if (outdated || answer.data?.status === "outdated") {
+    state = "outdated";
+    body = <Note>{outdatedSentence("charts")}</Note>;
   } else if (!asks || answer.data?.status === "not_connected" || answer.data?.status === "rejected") {
     state = "connect";
     body = (

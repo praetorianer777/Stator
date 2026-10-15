@@ -4,6 +4,7 @@ import type { ArmatureIssue } from "@/api/armature";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { IssueChip, StatusLozenge, TypeIcon, useChip } from "./IssueChip";
+import { outdatedSentence } from "./outdated";
 
 const changedAt = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 // Armature keeps a due date as a day at midnight UTC; read in the viewer's
@@ -29,8 +30,9 @@ export function IssueBlock({ issueKey, links = true }: { issueKey: string; links
   } as const;
   if (state.kind !== "issue") {
     return (
-      <div {...frame} className="doc-block">
+      <div {...frame} className="doc-block space-y-1">
         <IssueChip issueKey={issueKey} links={links} />
+        {state.kind === "outdated" && <p className="text-sm text-ink-muted">{outdatedSentence("issues")}</p>}
       </div>
     );
   }

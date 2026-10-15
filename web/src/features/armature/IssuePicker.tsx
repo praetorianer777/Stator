@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { useArmatureAccount, useArmatureIssue } from "@/api/armature";
+import { lacks, useArmatureAccount, useArmatureIssue } from "@/api/armature";
 import { Button, Dialog, Input, Labelled } from "@/components/ui";
 import { describedBy } from "@/components/ui/controls";
 import { ARMATURE_PICKER_DEBOUNCE_MS, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
@@ -7,6 +7,7 @@ import { t } from "@/i18n";
 import { useDebounced } from "@/lib/debounce";
 import { StatusLozenge, TypeIcon } from "./IssueChip";
 import { keyFromIssueUrl, normalizeKey } from "./issueKeys";
+import { outdatedSentence } from "./outdated";
 
 /** What the picker found for what was typed, as one state the form reads. */
 export type PickerState =
@@ -15,6 +16,7 @@ export type PickerState =
   | { kind: "connect" }
   | { kind: "looking" }
   | { kind: "unreachable" }
+  | { kind: "outdated" }
   | { kind: "notFound"; key: string }
   | { kind: "found"; key: string; summary: string; type: { icon: string; name: string }; status: { name: string; category: string } };
 
@@ -35,16 +37,19 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
   const account = useArmatureAccount();
   const baseUrl = account.data?.configured ? (account.data.baseUrl ?? null) : null;
   const connected = Boolean(account.data?.connected && account.data.status !== "rejected");
+  const outdated = lacks(account.data, "issues");
   const typed = pickedKey(text, baseUrl);
   const key = useDebounced(typed, ARMATURE_PICKER_DEBOUNCE_MS);
-  const found = useArmatureIssue(key ?? "", connected && key !== null && key === typed);
+  const found = useArmatureIssue(key ?? "", connected && !outdated && key !== null && key === typed);
 
   let state: PickerState;
-  if (!connected) state = { kind: "connect" };
+  if (outdated) state = { kind: "outdated" };
+  else if (!connected) state = { kind: "connect" };
   else if (!text.trim()) state = { kind: "empty" };
   else if (!typed) state = { kind: "notAKey" };
   else if (key !== typed || found.isPending) state = { kind: "looking" };
   else if (found.isError || found.data?.status === "unreachable") state = { kind: "unreachable" };
+  else if (found.data?.status === "outdated") state = { kind: "outdated" };
   else if (found.data?.status !== "ok") state = { kind: "connect" };
   else if (!found.data.issue) state = { kind: "notFound", key: typed };
   else {
@@ -90,6 +95,7 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
         </Labelled>
         <div id={statusId} role="status" className="min-h-6 text-sm text-ink-muted" data-picker-state={state.kind}>
           {state.kind === "looking" && p.looking}
+          {state.kind === "outdated" && outdatedSentence("issues")}
           {state.kind === "connect" && (
             <span>
               {p.connect}{" "}
@@ -116,7 +122,7 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
           <Button type="button" variant="secondary" onClick={onClose}>
             {p.cancel}
           </Button>
-          <Button type="submit" disabled={state.kind === "connect"} data-action="insert-issue">
+          <Button type="submit" disabled={state.kind === "connect" || state.kind === "outdated"} data-action="insert-issue">
             {p.insert}
           </Button>
         </div>

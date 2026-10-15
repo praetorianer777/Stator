@@ -474,6 +474,17 @@ export const PAGE_READERS_PAGE_SIZE = 25;
 /** How every Armature personal access token and webhook secret starts, as Armature makes them. */
 export const ARMATURE_TOKEN_PREFIX = "armature_pat_";
 export const ARMATURE_WEBHOOK_SECRET_PREFIX = "armature_whs_";
+/** The capability each part of Stator needs Armature to report at /meta, as armature.FeatureCapabilities. */
+export const ARMATURE_FEATURE_CAPABILITIES = {
+  issues: "issue-embed@1",
+  create: "issue-embed@1",
+  charts: "reports@1",
+  roadmap: "plan@1",
+  calendar: "calendar@1",
+  links: "remote-links@1",
+  theme: "theme-export@1",
+  webhooks: "webhooks@1",
+} as const;
 /** The most issue keys one lookup asks for, as the API takes them; a page naming more asks in batches. */
 export const ARMATURE_LOOKUP_MAX_KEYS = 50;
 /** How long an issue chip's card waits before it shows, so a pointer passing over shows nothing. */

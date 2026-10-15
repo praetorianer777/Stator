@@ -191,4 +191,20 @@ describe("the chart block", () => {
     const { container } = shown(<IssueChart settings={{ ...pie, query: "project =" }} inEditor />);
     await waitFor(() => expect(container.querySelector("[data-armature-chart]")).toHaveAttribute("data-state", "bad_query"));
   });
+
+  it("says which capability Armature lacks instead of asking it, and believes the server when it says so", async () => {
+    const sent = stubApi({ "GET /armature/account": account({ missing: [{ feature: "charts", capability: "reports@1" }] }) });
+    const { container } = shown(<IssueChart settings={pie} />);
+    expect(
+      await screen.findByText("The connected Armature does not offer reports@1, which Stator needs for charts. Ask an administrator to update Armature."),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-armature-chart]")).toHaveAttribute("data-state", "outdated");
+    expect(sent.some((r) => r.path.startsWith("/armature/chart"))).toBe(false);
+    cleanup();
+
+    stubApi({ "GET /armature/account": account({ missing: [] }), "GET /armature/chart": { status: 200, body: { status: "outdated", chart: null } } });
+    const again = shown(<IssueChart settings={pie} />);
+    await waitFor(() => expect(again.container.querySelector("[data-armature-chart]")).toHaveAttribute("data-state", "outdated"));
+    expect(screen.getByText(/does not offer reports@1/)).toBeInTheDocument();
+  });
 });

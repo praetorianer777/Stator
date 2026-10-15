@@ -1,9 +1,10 @@
 import { useContext, useMemo, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { useArmatureAccount, useArmatureRoadmap, type ArmatureRoadmapAnswer } from "@/api/armature";
+import { useArmatureAccount, useArmatureRoadmap, type ArmatureRoadmapAnswer, lacks } from "@/api/armature";
 import { ARMATURE_ROADMAP_LABEL_ROOM_PX, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { locale, t } from "@/i18n";
+import { outdatedSentence } from "./outdated";
 import { BadQuery, Note, OpenInArmature } from "./IssueList";
 import { axisOf, axisTicks, dayNumber, labelEvery, place, type RoadmapSettings, type Tick } from "./roadmap";
 import { useWidth } from "./useWidth";
@@ -159,7 +160,8 @@ export function IssueRoadmap({ settings, inEditor = false }: { settings: Roadmap
   const edit = inEditor ? undefined : page?.onEdit;
   const account = useArmatureAccount();
   const configured = Boolean(account.data?.configured && account.data.baseUrl);
-  const asks = Boolean(configured && account.data?.connected && account.data.status !== "rejected");
+  const outdated = lacks(account.data, "roadmap");
+  const asks = Boolean(configured && account.data?.connected && account.data.status !== "rejected" && !outdated);
   const answer = useArmatureRoadmap(settings, asks);
   const roadmap = answer.data?.status === "ok" ? answer.data.roadmap : null;
 
@@ -171,6 +173,9 @@ export function IssueRoadmap({ settings, inEditor = false }: { settings: Roadmap
   } else if (!configured || answer.data?.status === "not_configured") {
     state = "plain";
     body = <Note>{l.notConfigured}</Note>;
+  } else if (outdated || answer.data?.status === "outdated") {
+    state = "outdated";
+    body = <Note>{outdatedSentence("roadmap")}</Note>;
   } else if (!asks || answer.data?.status === "not_connected" || answer.data?.status === "rejected") {
     state = "connect";
     body = (
