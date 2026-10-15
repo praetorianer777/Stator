@@ -67,10 +67,11 @@ export function stubApi(answers: Record<string, Answer | ((request: Request) => 
     const path = url.pathname.replace(/^\/api\/v1/, "");
     const text = await input.clone().text();
     sent.push({ method: input.method, path, body: text ? JSON.parse(text) : undefined });
-    // Every page shows its comments; a test that does not speak of them means none.
+    // Every page shows its comments and remote links; a test that does not speak of them means none.
     const found =
       answers[`${input.method} ${path}`] ??
-      (input.method === "GET" && /^\/pages\/[^/]+\/comments$/.test(path) ? { status: 200, body: { threads: [] } } : undefined);
+      (input.method === "GET" && /^\/pages\/[^/]+\/comments$/.test(path) ? { status: 200, body: { threads: [] } } : undefined) ??
+      (input.method === "GET" && /^\/pages\/[^/]+\/remote-links$/.test(path) ? { status: 200, body: { remoteLinks: [] } } : undefined);
     const answer =
       typeof found === "function" ? await found(input) : (found ?? { status: 404, body: { error: { code: "not_found", message: "Not stubbed." } } });
     return new Response(answer.body === undefined ? null : JSON.stringify(answer.body), {

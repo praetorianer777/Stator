@@ -452,7 +452,7 @@ export const AUDIT_EXPORT_PATH = "/audit/export";
 export const WEBHOOKS_PATH = "/settings/webhooks";
 /** The topic that takes every event, and the events a webhook may take, as the API lists them. */
 export const WEBHOOK_TOPIC_ANY = "*";
-export const WEBHOOK_TOPICS = ["page.published", "page.moved", "page.deleted", "comment.created"] as const;
+export const WEBHOOK_TOPICS = ["page.published", "page.moved", "page.deleted", "comment.created", "page.remote_link.removed"] as const;
 /** The database's bounds on a webhook's name and address. */
 export const WEBHOOK_NAME_MAX_LENGTH = 100;
 export const WEBHOOK_URL_MAX_LENGTH = 2000;

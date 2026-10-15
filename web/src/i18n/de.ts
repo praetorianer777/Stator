@@ -1556,6 +1556,15 @@ export const de: Messages = {
     draftNote: "Sie haben einen Entwurf dieser Seite, den noch niemand sonst sieht.",
     continueDraft: "Weiter bearbeiten",
   },
+  remoteLinks: {
+    title: "Aus anderen Werkzeugen verknüpft",
+    intro: "Jedes Werkzeug setzt seine Links selbst, mit dem Token von jemandem, der die Seite bearbeiten darf.",
+    group: (source: string, count: number) => `${source} (${count})`,
+    putBy: (name: string) => (name ? `Gesetzt von ${name}` : "Gesetzt von jemandem, der nicht mehr hier ist"),
+    remove: (title: string) => `Link ${title} entfernen`,
+    removeShort: "Entfernen",
+    removed: (title: string) => `Link ${title} entfernt. Das Werkzeug, das ihn gesetzt hat, erfährt es und setzt ihn nicht wieder.`,
+  },
   labels: {
     title: "Schlagwörter",
     add: "Schlagwort hinzufügen",
@@ -3309,6 +3318,7 @@ export const de: Messages = {
       "page.moved": "Eine Seite wird verschoben",
       "page.deleted": "Eine Seite wird gelöscht",
       "comment.created": "Ein Kommentar wird hinzugefügt",
+      "page.remote_link.removed": "Ein Link eines anderen Werkzeugs wird von einer Seite entfernt",
     },
     ping: "Testsendung",
     create: "Webhook hinzufügen",
