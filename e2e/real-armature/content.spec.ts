@@ -120,6 +120,39 @@ test.describe("Armature's issues on a page, from a real Armature", { tag: ["@aut
     for (const issue of [guide, runbooks, signIn, epic]) await expect(bob.locator("main")).not.toContainText(issue.summary);
   });
 
+  test("Mia finds an issue by a word of its summary, and Nils finds nothing", async ({ page, api, apiAs }, testInfo) => {
+    const seed = readSeed();
+    const { guide } = seed.issues;
+    const word = "onboarding";
+    expect(guide.summary.toLowerCase()).toContain(word);
+    const space = await freshSpace(api, testInfo);
+    const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Onboarding"), { type: "doc", content: [paragraph("Tracked work.")] } as Body);
+
+    await openPage(page, space.key, target);
+    await page.locator('[data-action="edit-page"]').click();
+    const box = page.locator("#page-body");
+    await caretTo(box, "end");
+    await page.keyboard.type(` See [[${word}`);
+    const option = page.locator(`[data-issue-menu] [data-issue-option="${guide.key}"]`);
+    await expect(option).toContainText(guide.summary);
+    await expect(option).toContainText(seed.project.key);
+    await page.keyboard.press("Enter");
+    await expect(box.locator(`[data-armature-issue="${guide.key}"]`)).toBeVisible();
+    await publishFromEditor(page);
+    await expect(shown(page).locator(`[data-armature-issue="${guide.key}"]`)).toHaveAttribute("data-state", "issue");
+
+    const found = must(await api.GET("/armature/find", { params: { query: { words: word } } }));
+    expect(found.status).toBe("ok");
+    expect(found.issues.map((each) => each.key)).toContain(guide.key);
+
+    // Nils's token works, and Armature's search shows him nothing of the project.
+    const bobApi = await apiAs("bob");
+    await connectAccount(bobApi, seed.people.outsider);
+    const none = must(await bobApi.GET("/armature/find", { params: { query: { words: word } } }));
+    expect(none.status).toBe("ok");
+    expect(none.issues).toEqual([]);
+  });
+
   test("alice inserts an issue from the slash menu by its address in Armature", async ({ page, api }, testInfo) => {
     const seed = readSeed();
     const { runbooks } = seed.issues;
@@ -136,11 +169,11 @@ test.describe("Armature's issues on a page, from a real Armature", { tag: ["@aut
     await page.keyboard.press("Enter");
 
     const dialog = page.getByRole("dialog", { name: "Insert an Armature issue" });
-    const field = dialog.getByRole("textbox", { name: "Issue key or address" });
+    const field = dialog.getByRole("combobox", { name: "Find an issue" });
     await field.fill(`${seed.project.key}-999`);
     await expect(dialog).toContainText(`No issue ${seed.project.key}-999 that you can see in Armature.`);
     await field.fill(`${seed.url}/issues/${runbooks.key.toLowerCase()}`);
-    await expect(dialog.locator("[data-picked]")).toContainText(runbooks.summary);
+    await expect(dialog.locator(`[data-issue-option="${runbooks.key}"]`)).toContainText(runbooks.summary);
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
     await publishFromEditor(page);

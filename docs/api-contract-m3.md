@@ -669,6 +669,24 @@ left out. Answers are kept per token for as long as searches and cleared
 with them. A project the reader may not see is a 422 on `project`, and a
 month not written `YYYY-MM` a 422 on `month`.
 
+## #425: finding an issue by words
+
+The "Armature issue" dialog and the inline menu that two opening brackets,
+`[[`, start in running text ask `GET /armature/find?words`. No other editor
+trigger uses `[[`: the slash menu takes `/`, mentions `@`, emoji `:`, a
+typed key turns into a chip at the next space, and a checklist item starts
+with `[ ]`. Stator tidies the words' white space, refuses none or more than
+200 characters with a 422 on `words`, and asks Armature's `GET /issues` as
+the reader with `text ~ "<words>" ORDER BY updated DESC` and a limit of 10:
+the words are always one NQL string, a backslash before each `"` and `\`,
+so they can never become a field or a condition. Armature's `text ~` looks
+for the words as typed in the summary, in any case, and for each of them in
+the description. Words that are an issue key put that issue first. The
+answer is `{status, issues}`, cached like any search and gated on
+`issue-embed@1`. A key or an issue address typed in the dialog still goes
+straight to that issue; while nothing is typed, both offer the issues the
+person inserted last in this browser, looked up afresh.
+
 ## The armature-stub
 
 `cmd/armature-stub` stands in for Armature in the integration suite and in
@@ -681,7 +699,8 @@ its port published as `ARMATURE_STUB_PORT`, the ninth of the checkout's block.
   `GET /openapi.json` (Armature's document, vendored), `GET /auth/me`,
   `GET /access/me`, `GET /projects`, `GET /issue-types`, `GET /issues` (NQL:
   `key in (...)`, `key =`, `project =`, `project in`, `statusCategory =` and
-  `!=`, `assignee = currentUser()`, joined by `AND`, and `ORDER BY` key,
+  `!=`, `assignee = currentUser()`, `summary ~` and `text ~` with backslash
+  escapes in strings, joined by `AND`, and `ORDER BY` key,
   created, updated or priority; anything else is 400 `bad_query` with a
   position), `GET /issues/{issueKey}` (with old keys of moved issues),
   `POST /issues`, `GET` and `POST /issues/{issueKey}/remote-links`,
