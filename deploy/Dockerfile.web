@@ -16,7 +16,8 @@ COPY web/ ./
 # arguments as the backend image's, so the two agree.
 ARG VERSION=""
 ARG COMMIT=""
-RUN STATOR_BUILD_VERSION="$VERSION" STATOR_BUILD_COMMIT="$COMMIT" npm run build
+RUN if [ -z "$COMMIT" ]; then echo 'Warning: COMMIT is empty, so this build will say commit unknown. Pass --build-arg COMMIT="$(scripts/build-stamp.sh commit)" to name it.' >&2; fi && \
+    STATOR_BUILD_VERSION="$VERSION" STATOR_BUILD_COMMIT="$COMMIT" npm run build
 
 FROM nginx:1.29-alpine
 COPY --from=build /src/web/dist /usr/share/nginx/html

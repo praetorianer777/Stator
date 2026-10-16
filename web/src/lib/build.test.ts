@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildDetails, buildLabel } from "./build";
 
 describe("the build label", () => {
-  it("names a release by its tag", () => {
-    expect(buildLabel({ version: "0.1.0", commit: "abc1234" })).toBe("v0.1.0");
-    expect(buildLabel({ version: "1.0.0-rc.1" })).toBe("v1.0.0-rc.1");
+  it("names a release by its tag and its commit", () => {
+    expect(buildLabel({ version: "0.2.0", commit: "abc1234" })).toBe("v0.2.0 · abc1234");
+    expect(buildLabel({ version: "1.0.0-rc.1", commit: "abc1234" })).toBe("v1.0.0-rc.1 · abc1234");
   });
 
   it("names any other build by its version and commit", () => {
@@ -20,9 +20,10 @@ describe("the build label", () => {
     expect(buildLabel({ version: "0.1.0+dev", commit: "0123456789abcdef0123456789abcdef01234567" })).toBe("v0.1.0+dev · 0123456");
   });
 
-  it("says what it knows when a build carries no git at all", () => {
-    expect(buildLabel({ version: "0.1.0+dev" })).toBe("v0.1.0+dev");
-    expect(buildLabel({ version: "dev" })).toBe("dev");
+  it("says so when the commit is unknown", () => {
+    expect(buildLabel({ version: "0.2.0" })).toBe("v0.2.0 · commit unknown");
+    expect(buildLabel({ version: "0.1.0+dev", commit: "" })).toBe("v0.1.0+dev · commit unknown");
+    expect(buildLabel({ version: "dev" })).toBe("dev · commit unknown");
   });
 });
 

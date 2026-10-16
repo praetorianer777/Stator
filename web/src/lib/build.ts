@@ -2,9 +2,6 @@ import { type BuildStamp, SHORT_COMMIT_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "./format";
 
-// A release is plain semver, a prerelease included; anything with build
-// metadata (+4.gabc1234, +dev) was built past or without a release tag.
-const RELEASE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 // git describe's hash, which the label shows on its own after the dot.
 const DESCRIBED_HASH = /\.g([0-9a-f]+)$/;
 
@@ -15,13 +12,12 @@ function shortCommit(build: BuildStamp): string | undefined {
   return commit?.slice(0, SHORT_COMMIT_LENGTH);
 }
 
-/** The build as the sidebar names it: v1.2.3 for a release, else the version with its commit, v1.2.3+4 · abc1234. */
+/** The build as the sidebar names it, always with its commit: v1.2.3 · abc1234, v1.2.3+4 · abc1234. */
 export function buildLabel(build: BuildStamp): string {
-  if (RELEASE.test(build.version)) return `v${build.version}`;
   const version = build.version.replace(DESCRIBED_HASH, "");
   const named = /^\d/.test(version) ? `v${version}` : version;
-  const commit = shortCommit(build);
-  return commit ? `${named} · ${commit}` : named;
+  // Said rather than left out, so an image built without COMMIT shows it.
+  return `${named} · ${shortCommit(build) ?? t.nav.buildCommitUnknown}`;
 }
 
 /** The whole stamp, one fact a line, for the label's tooltip and a bug report. */
