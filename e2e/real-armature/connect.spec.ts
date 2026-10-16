@@ -28,7 +28,6 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
 
     await page.goto("/settings/armature");
     await page.getByLabel("Armature address", { exact: true }).fill(seed.url);
-    await page.getByLabel("Armature organization", { exact: true }).fill(seed.orgSlug);
     await page.getByLabel("Webhook secret", { exact: true }).fill(seed.webhookSecret);
     await page.locator('[data-action="save-armature"]').click();
     await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
@@ -64,7 +63,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const real = (await meta.json()) as { product: string; capabilities: string[] };
     expect(real.product).toBe("armature");
 
-    const saved = await api.PUT("/armature/connection", { body: { baseUrl: seed.url, orgSlug: seed.orgSlug } });
+    const saved = await api.PUT("/armature/connection", { body: { baseUrl: seed.url } });
     expect(saved.response.status).toBe(200);
     const partner = saved.data!.connection.partner;
     expect(partner.status).toBe("ok");
@@ -81,11 +80,14 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     await expect(page.getByText("Armature offers everything Stator uses.")).toBeVisible();
   });
 
-  test("a slug that is not the installation's turns every token away", async ({ api, page }) => {
+  test("the first token that checks out teaches Stator the installation, by the id Armature names", async ({ api, page }) => {
     const seed = readSeed();
-    expect((await api.PUT("/armature/connection", { body: { baseUrl: seed.url, orgSlug: `${seed.orgSlug}-elsewhere` } })).response.status).toBe(200);
+    expect((await api.PUT("/armature/connection", { body: { baseUrl: seed.url } })).response.status).toBe(200);
     await page.goto("/settings/profile");
     await paste(page, seed.people.member.token);
-    await expect(page.locator("[data-armature-account]")).toContainText("another Armature organization");
+    await expect(page.locator("[data-armature-account]")).not.toContainText("another Armature installation");
+    await expect.poll(async () => (await api.GET("/armature/connection")).data?.connection?.installationId).toBe(seed.installationId);
+    await page.goto("/settings/armature");
+    await expect(page.getByText(/confirmed its installation through a member's token/)).toBeVisible();
   });
 });

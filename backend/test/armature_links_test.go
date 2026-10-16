@@ -153,7 +153,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	carolID := h.addPerson(t, "member")
 	carol := api.as(t, carolID)
 
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "the owner connects as alice")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "bob")}), http.StatusOK, "bob connects")
 	h.settle(t)
@@ -340,7 +340,7 @@ func TestPagesAreLinkedOnTheIssuesTheyName(t *testing.T) {
 	})
 
 	t.Run("a new Armature address forgets the records", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug + "-moved"}), http.StatusOK, "point at another organization")
+		want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": os.Getenv(envArmatureStub)}), http.StatusOK, "point at another address")
 		if n := h.countRows(t, `SELECT count(*) FROM armature_remote_link`); n != 0 {
 			t.Errorf("%d records survived the move", n)
 		}

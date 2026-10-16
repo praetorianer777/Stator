@@ -346,7 +346,7 @@ func TestACalendarMonthOfArmatureIssues(t *testing.T) {
 	if status, got := month(bob, monthPath("CP", "2026-10")); status != "not_configured" || got != nil {
 		t.Errorf("before a connection the month is %s %v", status, got)
 	}
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "bob connects")
 	stubControl(t, http.MethodPatch, slug+"/issues/CP-1", map[string]any{"startDate": "2026-10-01", "dueDate": "2026-10-09"})

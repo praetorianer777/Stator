@@ -73,7 +73,7 @@ func TestIssuesAreFiledFromASelectionAsTheCaller(t *testing.T) {
 	const items = "/api/v1/armature/issues"
 
 	errorCodeIs(t, want(t, bob.post(t, items, createBody(page, "CP", "Before a connection")), http.StatusConflict, "no connection"), "armature_not_configured")
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	// In Armature the owner is its admin and bob is alice.
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "bob connects")

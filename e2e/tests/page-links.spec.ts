@@ -45,7 +45,7 @@ test.describe("pages linked in Armature", { tag: ["@auth"] }, () => {
   test.beforeEach(async ({ api, team, request }) => {
     await request.delete(`${armatureURL()}/_stub/${team.label}`);
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } }));
     must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "admin") } }));
   });
 

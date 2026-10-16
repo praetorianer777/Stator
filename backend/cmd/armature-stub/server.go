@@ -219,9 +219,8 @@ type userView struct {
 	IsActive bool      `json:"isActive"`
 }
 
-type orgView struct {
+type installationView struct {
 	ID   uuid.UUID `json:"id"`
-	Slug string    `json:"slug"`
 	Name string    `json:"name"`
 }
 
@@ -238,9 +237,10 @@ func (s *stub) me(c *call) {
 	p, t := c.person, c.tenant
 	respond(c.w, http.StatusOK, map[string]any{
 		"principal": map[string]any{
-			"user":         userView{ID: p.ID, Email: p.Email, Name: p.Display, Timezone: "UTC", Locale: "en", IsActive: true},
-			"org":          orgView{ID: t.OrgID, Slug: t.Slug, Name: orgName(t)},
-			"installation": map[string]any{"id": t.OrgID, "name": orgName(t)},
+			"user": userView{ID: p.ID, Email: p.Email, Name: p.Display, Timezone: "UTC", Locale: "en", IsActive: true},
+			// Without the deprecated org, as the Armature that drops it will
+			// answer, so Stator is shown to need only the installation.
+			"installation": installationView{ID: t.OrgID, Name: orgName(t)},
 			"role":         roleOf(p),
 		},
 		"limits": map[string]any{"uploadBytes": uploadBytes},

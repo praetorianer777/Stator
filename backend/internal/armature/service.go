@@ -36,7 +36,6 @@ var (
 	// ErrNotConnected is a caller who stored no token.
 	ErrNotConnected = errors.New("the caller has not connected their Armature account")
 
-	slugShape          = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$`)
 	webhookSecretShape = regexp.MustCompile(`^` + WebhookSecretPrefix + `[A-Za-z0-9_-]{43}$`)
 )
 
@@ -89,15 +88,14 @@ func (s *Service) Client() *Client { return s.client }
 
 // endpoint is what any member may know of the connection.
 type endpoint struct {
-	BaseURL       string
-	OrgSlug       string
-	ArmatureOrgID *uuid.UUID
+	BaseURL        string
+	InstallationID *uuid.UUID
 }
 
 func (s *Service) endpoint(ctx context.Context, tx db.DBTX) (*endpoint, error) {
 	var e endpoint
-	err := tx.QueryRow(ctx, `SELECT base_url, org_slug, armature_org_id FROM armature_endpoint()`).
-		Scan(&e.BaseURL, &e.OrgSlug, &e.ArmatureOrgID)
+	err := tx.QueryRow(ctx, `SELECT base_url, armature_org_id FROM armature_endpoint()`).
+		Scan(&e.BaseURL, &e.InstallationID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -133,9 +131,9 @@ func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, 
 	c := Connection{WebhookURL: s.opts.AppURL + WebhookPath, WebhookTopics: WebhookTopics}
 	var connected *int
 	err := tx.QueryRow(ctx, `
-		SELECT base_url, org_slug, armature_org_id, webhook_secret IS NOT NULL, updated_at, armature_connected_count()
+		SELECT base_url, armature_org_id, webhook_secret IS NOT NULL, updated_at, armature_connected_count()
 		FROM armature_connection`,
-	).Scan(&c.BaseURL, &c.OrgSlug, &c.ArmatureOrgID, &c.WebhookSecretSet, &c.UpdatedAt, &connected)
+	).Scan(&c.BaseURL, &c.InstallationID, &c.WebhookSecretSet, &c.UpdatedAt, &connected)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -148,17 +146,13 @@ func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, 
 	return &c, nil
 }
 
-// SaveConnection sets the site's Armature. A new address or Armature
-// organization forgets every stored token in the same transaction.
+// SaveConnection sets the site's Armature. A new address forgets every
+// stored token in the same transaction.
 func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip string) (*Connection, db.LSN, error) {
 	actor, _ := db.UserFrom(ctx)
 	base, err := s.normalizeBaseURL(in.BaseURL)
 	if err != nil {
 		return nil, 0, err
-	}
-	slug := strings.ToLower(strings.TrimSpace(in.OrgSlug))
-	if !slugShape.MatchString(slug) {
-		return nil, 0, &FieldError{Field: "orgSlug", Message: "Enter the slug of your organization in Armature, such as acme: 3 to 40 lower case letters, digits and hyphens."}
 	}
 	secret := ""
 	secretChange := "kept"
@@ -190,8 +184,8 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 			return nil, 0, err
 		}
 	}
-	moved := before == nil || before.BaseURL != base || before.OrgSlug != slug
-	if before == nil || before.BaseURL != base {
+	moved := before == nil || before.BaseURL != base
+	if moved {
 		if err := s.describe(ctx, base); err != nil {
 			return nil, 0, err
 		}
@@ -206,20 +200,19 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 			}
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO armature_connection (base_url, org_slug, webhook_secret, updated_by)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO armature_connection (base_url, webhook_secret, updated_by)
+			VALUES ($1, $2, $3)
 			ON CONFLICT (singleton) DO UPDATE SET
 			    base_url = EXCLUDED.base_url,
-			    org_slug = EXCLUDED.org_slug,
-			    webhook_secret = CASE WHEN $5 THEN armature_connection.webhook_secret ELSE EXCLUDED.webhook_secret END,
+			    webhook_secret = CASE WHEN $4 THEN armature_connection.webhook_secret ELSE EXCLUDED.webhook_secret END,
 			    updated_by = EXCLUDED.updated_by`,
-			base, slug, sealed, nullable(actor), in.WebhookSecret == nil)
+			base, sealed, nullable(actor), in.WebhookSecret == nil)
 		if err != nil {
 			return fmt.Errorf("save the Armature connection: %w", err)
 		}
 		if err := audit.Write(ctx, tx, audit.Entry{
 			Action: ActionConnectionSaved, TargetType: "armature_connection", Actor: actor, IP: ip,
-			Data: map[string]any{"baseUrl": base, "orgSlug": slug, "webhookSecret": secretChange, "moved": moved, "tokensForgotten": forgotten},
+			Data: map[string]any{"baseUrl": base, "webhookSecret": secretChange, "moved": moved, "tokensForgotten": forgotten},
 		}); err != nil {
 			return err
 		}
@@ -401,7 +394,7 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 	case err != nil:
 		return nil, 0, &FieldError{Field: "token", Message: "Armature did not accept this token. Make a new one under Tokens in Armature and paste it here."}
 	case !e.owns(me):
-		return nil, 0, &FieldError{Field: "token", Message: fmt.Sprintf("This token belongs to another Armature organization than %s. Make one while signed in to %s in Armature and paste it here.", e.OrgSlug, e.OrgSlug)}
+		return nil, 0, &FieldError{Field: "token", Message: fmt.Sprintf("This token belongs to another Armature installation than the one at %s. Make one while signed in to %s and paste it here.", e.BaseURL, e.BaseURL)}
 	}
 	sealed, err := s.seal(token, tokenContext(siteID, user), "token")
 	if err != nil {
@@ -427,7 +420,7 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 	if err != nil {
 		return nil, lsn, err
 	}
-	s.learnOrg(ctx, e, me)
+	s.learnInstallation(ctx, e, me)
 	s.noteMissing(ctx, out, false)
 	return out, lsn, nil
 }
@@ -463,7 +456,7 @@ func (s *Service) Check(ctx context.Context) (*Account, db.LSN, error) {
 			status = StatusUnreachable
 		case err == nil && e.owns(me):
 			status, user = StatusOK, &me.User
-			s.learnOrg(ctx, e, me)
+			s.learnInstallation(ctx, e, me)
 		}
 	}
 
@@ -566,19 +559,19 @@ func (s *Service) me(ctx context.Context, base, token string) (*Me, error) {
 	return me, err
 }
 
-// owns says whether a token's identity belongs to the connected organization,
-// by slug and, once learned, by id.
+// owns says whether a token's identity belongs to the connected installation;
+// until its id is learned, the first token that checks out decides it.
 func (e *endpoint) owns(me *Me) bool {
-	if me == nil || me.OrgSlug != e.OrgSlug {
+	if me == nil {
 		return false
 	}
-	return e.ArmatureOrgID == nil || *e.ArmatureOrgID == me.OrgID
+	return e.InstallationID == nil || *e.InstallationID == me.InstallationID
 }
 
-// learnOrg keeps the Armature organization's id from the first token that
-// checks out, while the address is still the one that was asked.
-func (s *Service) learnOrg(ctx context.Context, e *endpoint, me *Me) {
-	if e.ArmatureOrgID != nil || me.OrgID == uuid.Nil {
+// learnInstallation keeps the Armature installation's id from the first token
+// that checks out, while the address is still the one that was asked.
+func (s *Service) learnInstallation(ctx context.Context, e *endpoint, me *Me) {
+	if e.InstallationID != nil || me.InstallationID == uuid.Nil {
 		return
 	}
 	// As the admin role: a member's token teaches it, and stator_app may not
@@ -586,12 +579,12 @@ func (s *Service) learnOrg(ctx context.Context, e *endpoint, me *Me) {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `
 			UPDATE armature_connection SET armature_org_id = $1
-			WHERE armature_org_id IS NULL AND base_url = $2 AND org_slug = $3`,
-			me.OrgID, e.BaseURL, e.OrgSlug)
+			WHERE armature_org_id IS NULL AND base_url = $2`,
+			me.InstallationID, e.BaseURL)
 		return err
 	})
 	if err != nil {
-		s.opts.Log.Warn("the Armature organization's id could not be kept", "error", err)
+		s.opts.Log.Warn("the Armature installation's id could not be kept", "error", err)
 	}
 }
 

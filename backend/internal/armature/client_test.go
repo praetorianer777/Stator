@@ -27,21 +27,29 @@ func armature(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 }
 
 func TestMeReadsWhomATokenActsAs(t *testing.T) {
-	user, org := uuid.New(), uuid.New()
+	user, installation, org := uuid.New(), uuid.New(), uuid.New()
 	srv := armature(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/auth/me" || r.Header.Get("Authorization") != "Bearer armature_pat_good" {
+		principal := `"user":{"id":"` + user.String() + `","name":"Alice","email":"alice@example.com"},"org":{"id":"` + org.String() + `","slug":"acme","name":"Acme"}`
+		switch {
+		case r.URL.Path != "/api/v1/auth/me":
+			w.WriteHeader(http.StatusNotFound)
+		case r.Header.Get("Authorization") == "Bearer armature_pat_good":
+			_, _ = w.Write([]byte(`{"principal":{` + principal + `,"installation":{"id":"` + installation.String() + `","name":"Acme"}},"limits":{"uploadBytes":1}}`))
+		case r.Header.Get("Authorization") == "Bearer armature_pat_older":
+			_, _ = w.Write([]byte(`{"principal":{` + principal + `},"limits":{"uploadBytes":1}}`))
+		default:
 			w.WriteHeader(http.StatusUnauthorized)
-			return
 		}
-		_, _ = w.Write([]byte(`{"principal":{"user":{"id":"` + user.String() + `","name":"Alice","email":"alice@example.com"},
-			"org":{"id":"` + org.String() + `","slug":"acme","name":"Acme"}},"organizations":[],"limits":{"uploadBytes":1}}`))
 	})
 	me, err := loopback().As(srv.URL+"/", "armature_pat_good").Me(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if me.User.ID != user || me.User.Name != "Alice" || me.OrgID != org || me.OrgSlug != "acme" {
-		t.Errorf("me = %+v", me)
+	if me.User.ID != user || me.User.Name != "Alice" || me.InstallationID != installation {
+		t.Errorf("me = %+v, want the installation's id over the deprecated org's", me)
+	}
+	if older, err := loopback().As(srv.URL, "armature_pat_older").Me(context.Background()); err != nil || older.InstallationID != org {
+		t.Errorf("an Armature without installation answers %+v, %v; want the org's id", older, err)
 	}
 	if _, err := loopback().As(srv.URL, "armature_pat_bad").Me(context.Background()); !errors.Is(err, ErrRejected) || StatusOf(err) != StatusRejected {
 		t.Errorf("a 401 is %v, want ErrRejected", err)
@@ -224,14 +232,14 @@ func TestASealedTokenOpensOnlyForItsOwner(t *testing.T) {
 	}
 }
 
-func TestAnIdentityBelongsToTheConnectedOrganization(t *testing.T) {
+func TestAnIdentityBelongsToTheConnectedInstallation(t *testing.T) {
 	learned := uuid.New()
-	e := &endpoint{OrgSlug: "acme"}
-	if !e.owns(&Me{OrgSlug: "acme", OrgID: uuid.New()}) || e.owns(&Me{OrgSlug: "globex"}) || e.owns(nil) {
-		t.Error("before the id is learned, the slug decides")
+	e := &endpoint{}
+	if !e.owns(&Me{InstallationID: uuid.New()}) || e.owns(nil) {
+		t.Error("before the id is learned, any identity is the first")
 	}
-	e.ArmatureOrgID = &learned
-	if !e.owns(&Me{OrgSlug: "acme", OrgID: learned}) || e.owns(&Me{OrgSlug: "acme", OrgID: uuid.New()}) {
-		t.Error("once learned, the id decides too")
+	e.InstallationID = &learned
+	if !e.owns(&Me{InstallationID: learned}) || e.owns(&Me{InstallationID: uuid.New()}) || e.owns(&Me{}) {
+		t.Error("once learned, the installation's id decides")
 	}
 }

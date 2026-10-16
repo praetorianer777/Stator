@@ -67,7 +67,7 @@ func TestWhatArmatureOffersDecidesWhatPagesShow(t *testing.T) {
 	withoutReports := []string{"calendar@1", "issue-embed@1", "plan@1", "remote-links@1", "theme-export@1", "webhooks@1"}
 	olderArmature(t, h, withoutReports, false)
 
-	conn := obj(t, want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base, "orgSlug": slug}), http.StatusOK, "connect an older Armature"), "connection")
+	conn := obj(t, want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base}), http.StatusOK, "connect an older Armature"), "connection")
 	partner := conn["partner"].(map[string]any)
 	if partner["status"] != "ok" || partner["meta"] != true || partner["version"] != "0.0.0+stub" {
 		t.Errorf("the older Armature is %v", partner)

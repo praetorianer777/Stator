@@ -159,28 +159,36 @@ func (a *Caller) Send(ctx context.Context, method, path string, body, out any) e
 
 // Me is who a token acts as, from Armature's GET /auth/me.
 type Me struct {
-	User    AccountUser
-	OrgID   uuid.UUID
-	OrgSlug string
+	User AccountUser
+	// InstallationID is the Armature the token belongs to, uuid.Nil when
+	// Armature named none.
+	InstallationID uuid.UUID
 }
 
-// Me asks Armature who the token acts as, and in which organization.
+type idOnly struct {
+	ID uuid.UUID `json:"id"`
+}
+
+// Me asks Armature who the token acts as, and in which installation.
 func (a *Caller) Me(ctx context.Context) (*Me, error) {
 	var answer struct {
 		Principal struct {
-			User AccountUser `json:"user"`
-			Org  *struct {
-				ID   uuid.UUID `json:"id"`
-				Slug string    `json:"slug"`
-			} `json:"org"`
+			User         AccountUser `json:"user"`
+			Installation *idOnly     `json:"installation"`
+			// Org is the installation under its deprecated name, read only
+			// from an Armature too old to answer installation.
+			Org *idOnly `json:"org"`
 		} `json:"principal"`
 	}
 	if err := a.Get(ctx, "/auth/me", nil, &answer); err != nil {
 		return nil, err
 	}
 	me := &Me{User: answer.Principal.User}
-	if answer.Principal.Org != nil {
-		me.OrgID, me.OrgSlug = answer.Principal.Org.ID, answer.Principal.Org.Slug
+	switch {
+	case answer.Principal.Installation != nil:
+		me.InstallationID = answer.Principal.Installation.ID
+	case answer.Principal.Org != nil:
+		me.InstallationID = answer.Principal.Org.ID
 	}
 	return me, nil
 }

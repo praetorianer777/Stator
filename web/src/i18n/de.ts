@@ -134,15 +134,12 @@ export const de: Messages = {
     notAdmin: "Nur ein Administrator kann Armature verbinden.",
     baseUrl: "Armature-Adresse",
     baseUrlHint: "Wo Armature geöffnet wird, etwa https://armature.example.com.",
-    orgSlug: "Armature-Organisation",
-    orgSlugHint: "Das Kürzel Ihrer Organisation in Armature. Das Token jedes Mitglieds muss zu ihr gehören.",
-    movesForget:
-      "Wenn Sie die Adresse oder die Organisation ändern, werden die Tokens aller Mitglieder verworfen. Sie verbinden sich dann in ihrem Profil neu.",
+    movesForget: "Wenn Sie die Adresse ändern, werden die Tokens aller Mitglieder verworfen. Sie verbinden sich dann in ihrem Profil neu.",
     connect: "Armature verbinden",
     save: "Speichern",
     saved: "Gespeichert.",
     connectedCount: (count: number) => (count === 1 ? "1 Mitglied hat sein Konto verbunden." : `${count} Mitglieder haben ihr Konto verbunden.`),
-    orgKnown: "Armature hat die Organisation über das Token eines Mitglieds bestätigt.",
+    installationKnown: "Armature hat seine Installation über das Token eines Mitglieds bestätigt und weist Tokens jeder anderen ab.",
     webhookTitle: "Webhook",
     webhookIntro: "Armature meldet Stator, wenn sich Vorgänge ändern, damit Seiten eine Änderung sofort zeigen statt innerhalb einer Minute.",
     webhookSteps: [

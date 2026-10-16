@@ -663,8 +663,8 @@ func (oi *siteImporter) writeArmature(ctx context.Context, tx db.DBTX) error {
 		return nil
 	}
 	tag, err := tx.Exec(ctx, `
-		INSERT INTO armature_connection (base_url, org_slug, updated_by) VALUES ($1, $2, $3) ON CONFLICT (singleton) DO NOTHING`,
-		a.BaseURL, a.OrgSlug, oi.importer)
+		INSERT INTO armature_connection (base_url, updated_by) VALUES ($1, $2) ON CONFLICT (singleton) DO NOTHING`,
+		a.BaseURL, oi.importer)
 	if err != nil {
 		return part("the Armature connection", err)
 	}

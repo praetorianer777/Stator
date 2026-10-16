@@ -85,7 +85,7 @@ test.describe("creating Armature issues from a selection", {
     await api.DELETE("/armature/connection");
     must(
       await api.PUT("/armature/connection", {
-        body: { baseUrl: armatureURL(), orgSlug: team.label },
+        body: { baseUrl: armatureURL() },
       }),
     );
     await connect(api, patFor(team.label, "admin"));

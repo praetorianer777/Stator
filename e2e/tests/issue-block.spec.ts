@@ -37,7 +37,7 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
 
   test.beforeEach(async ({ api, team }) => {
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } }));
     await connect(api, patFor(team.label, "admin"));
   });
 

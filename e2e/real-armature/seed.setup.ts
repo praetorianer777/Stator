@@ -53,7 +53,7 @@ setup("seed the real Armature", async () => {
   const outsider = await sessionOf("outsider");
   const as = admin.context;
 
-  const me = await answered<{ principal: { org: { slug: string } } }>(as.get("auth/me"), 200, "the installation's slug");
+  const me = await answered<{ principal: { installation: { id: string } } }>(as.get("auth/me"), 200, "the installation's id");
 
   // Nils keeps his account but loses the user grant every member joins with,
   // so his token works and shows him nothing.
@@ -136,7 +136,7 @@ setup("seed the real Armature", async () => {
 
   const seed: Seed = {
     url: realArmatureURL(),
-    orgSlug: me.principal.org.slug,
+    installationId: me.principal.installation.id,
     project: PROJECT,
     team: { id: team.id, name: team.name },
     people: { admin: await tokenFor("admin", admin), member: await tokenFor("member", member), outsider: await tokenFor("outsider", outsider) },

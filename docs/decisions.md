@@ -3,6 +3,22 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-16: A token is checked against Armature's installation, not a slug (#422)
+
+Armature deprecated `principal.org` on `/auth/me` for `installation`, which
+has an id and no slug, so the connection no longer asks for the Armature
+organization's slug. Neither `/auth/me` without a token nor `/meta` names
+the installation, so the first member's token that checks out teaches its
+id (from `installation`, or from the deprecated `org` of an older Armature)
+and every later token must name the same one. A connection made before
+learns it on the next token that checks out, without the administrator
+doing anything. `orgSlug` left the connection's API and the site archive;
+a slug stored before stays in its now nullable column, unread and never
+written, so it cannot move the connection and forget the tokens. One
+Armature address is one installation, so the first token deciding is no
+weaker than the slug was. This replaces the `orgSlug` exception in the
+entry on one organization per instance.
+
 ## 2026-10-15: Other tools put remote links on pages, as on Armature's issues (#419)
 
 Exciter traces requirements to the pages that specify them and wants each

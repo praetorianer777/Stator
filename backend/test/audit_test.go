@@ -68,7 +68,6 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
 	home := h.makeMember(t, "audit-acts")
-	slug := h.site.Slug
 	owner := api.as(t, home.user)
 	annID := h.namedPerson(t, "Ann Audit")
 	ann := api.as(t, annID)
@@ -177,7 +176,7 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	}
 
 	base := armatureURL(t)
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base, "orgSlug": slug, "webhookSecret": webhookSecret}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base, "webhookSecret": webhookSecret}), http.StatusOK, "connect Armature")
 	if data := once(audit.ActionArmatureConnectionSaved, me, nil); strings.Contains(data, webhookSecret) || !strings.Contains(data, `"webhookSecret": "set"`) {
 		t.Errorf("the connection's record reads %s", data)
 	}
