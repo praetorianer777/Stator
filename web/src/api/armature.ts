@@ -147,6 +147,15 @@ export function useArmatureIssues(batches: readonly (readonly string[])[], enabl
   });
 }
 
+/** One lookup of at most ARMATURE_LOOKUP_MAX_KEYS keys, sharing the chips' cache. */
+export function useArmatureLookup(keys: readonly string[], enabled: boolean) {
+  return useQuery({
+    queryKey: [...issuesQueryKey, ...keys],
+    enabled: enabled && keys.length > 0,
+    queryFn: async () => (await api.GET("/armature/issues", { params: { query: { key: [...keys] } } })).data!,
+  });
+}
+
 /** One issue, for a chip's card; the server answers it from the same cache as the lookup. */
 export function useArmatureIssue(key: string, enabled: boolean) {
   return useQuery({
@@ -162,6 +171,19 @@ export function useArmatureProjects(enabled: boolean) {
     queryKey: projectsQueryKey,
     enabled,
     queryFn: async () => (await api.GET("/armature/projects")).data!,
+  });
+}
+
+/**
+ * The issues whose summary or description holds words, or whose key they are,
+ * as the caller may see them: the newest first, one page. A newer word aborts
+ * the request still running for the last, so one field has one in flight.
+ */
+export function useArmatureFind(words: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...searchQueryKey, "find", words],
+    enabled: enabled && words.trim() !== "",
+    queryFn: async ({ signal }) => (await api.GET("/armature/find", { params: { query: { words } }, signal })).data!,
   });
 }
 

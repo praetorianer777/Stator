@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { isChangeOrigin } from "@tiptap/extension-collaboration";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
@@ -17,7 +17,9 @@ import { selectedQuery } from "./findReplace";
 import { useSuggestion } from "./useSuggestion";
 import type { AttachmentIndex } from "./attachmentIndex";
 import type { UploadFile } from "./attachments";
-import type { IssueSource } from "./armatureIssue";
+import type { FoundKey, IssueSource } from "./armatureIssue";
+import type { ArmatureIssue } from "@/api/armature";
+import { IssueMenu } from "./IssueMenu";
 import { IssuePicker } from "@/features/armature/IssuePicker";
 import { settleSketches } from "@/features/sketch/settle";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
@@ -166,6 +168,26 @@ export function Editor({
   const [editingValue, setEditingValue] = useState<InlineValueTarget | null>(null);
   const emojiId = useId();
   const emoji = useSuggestion<Emoji>((item) => item);
+  const issueMenuId = useId();
+  // The menu finds the issues itself; the suggestion reads the last it found,
+  // so a keystroke keeps them in the list while the next lookup is on its way.
+  const foundIssuesRef = useRef<ArmatureIssue[]>([]);
+  const rememberIssueRef = useRef<(key: string) => void>(() => {});
+  const issueFind = useSuggestion<ArmatureIssue, FoundKey>((issue) => {
+    rememberIssueRef.current(issue.key);
+    return { key: issue.key };
+  });
+  const replaceIssues = issueFind.replace;
+  const showIssues = useCallback(
+    (issues: ArmatureIssue[]) => {
+      foundIssuesRef.current = issues;
+      replaceIssues(issues);
+    },
+    [replaceIssues],
+  );
+  const takeRemember = useCallback((remember: (key: string) => void) => {
+    rememberIssueRef.current = remember;
+  }, []);
   // The words to look for when the bar opens, and a count that tells an open
   // bar to take focus again on a second Ctrl or Cmd+F.
   const [finding, setFinding] = useState<{ seed: string; token: number } | null>(null);
@@ -200,6 +222,7 @@ export function Editor({
       pageId: page?.id,
       editInlineValue: setEditingValue,
       emoji: { render: emoji.renderer },
+      issueFind: { items: () => foundIssuesRef.current, render: issueFind.renderer },
       find: openFind,
       collab,
       taskIds,
@@ -272,7 +295,15 @@ export function Editor({
 
   // The list under the caret belongs to the editable element, which keeps
   // focus; these attributes tell a screen reader which option is current.
-  const controls = slash.open ? slashId : mention.open && mention.open.items.length > 0 ? mentionId : emoji.open && emoji.open.rect ? emojiId : null;
+  const controls = slash.open
+    ? slashId
+    : mention.open && mention.open.items.length > 0
+      ? mentionId
+      : emoji.open && emoji.open.rect
+        ? emojiId
+        : issueFind.open && issueFind.open.items.length > 0
+          ? issueMenuId
+          : null;
   const activeOption = !controls
     ? null
     : controls === slashId
@@ -283,7 +314,9 @@ export function Editor({
         ? emoji.open?.items.length
           ? `${emojiId}-${emoji.active}`
           : null
-        : `${mentionId}-${mention.active}`;
+        : controls === issueMenuId
+          ? `${issueMenuId}-${issueFind.active}`
+          : `${mentionId}-${mention.active}`;
   useEffect(() => {
     // Between an unmount and the next mount, as when a Suspense boundary hides
     // and shows the editor again, TipTap throws on any access to the view.
@@ -346,6 +379,18 @@ export function Editor({
       )}
       {emoji.open && (
         <EmojiList id={emojiId} items={emoji.open.items} active={emoji.active} rect={emoji.open.rect} onHover={emoji.setActive} onPick={emoji.open.pick} />
+      )}
+      {issueFind.open && (
+        <IssueMenu
+          id={issueMenuId}
+          query={issueFind.open.query}
+          rect={issueFind.open.rect}
+          active={issueFind.active}
+          onItems={showIssues}
+          onRemember={takeRemember}
+          onHover={issueFind.setActive}
+          onPick={issueFind.open.pick}
+        />
       )}
       {status}
       {editingValue?.kind === "status" && editor && (

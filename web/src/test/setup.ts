@@ -52,6 +52,16 @@ if (!globalThis.localStorage) {
   }
 }
 
+// The page's AbortSignal is jsdom's, which Node's Request refuses outright, so a
+// query that hands its signal to a request would fail in every test. Tests
+// answer every request from a stub, so there is nothing for the signal to abort.
+const NodeRequest = globalThis.Request;
+globalThis.Request = class extends NodeRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    super(input, init?.signal ? { ...init, signal: undefined } : init);
+  }
+};
+
 // jsdom leaves scrollTo unimplemented and logs an error each time the router
 // restores the scroll position after a navigation.
 if (typeof window !== "undefined") {

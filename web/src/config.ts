@@ -500,6 +500,22 @@ export const ARMATURE_LOOKUP_MAX_KEYS = 50;
 export const ARMATURE_CARD_DELAY_MS = 300;
 /** How long the issue picker waits after a keystroke before it asks Armature for the key. */
 export const ARMATURE_PICKER_DEBOUNCE_MS = 250;
+/** How long the picker and the inline menu wait after a keystroke before they look for issues by words. */
+export const ARMATURE_FIND_DEBOUNCE_MS = 300;
+/** The fewest characters a word search looks for; fewer match nearly everything. */
+export const ARMATURE_FIND_MIN_LENGTH = 2;
+/** The most characters a word search takes, as armature.MaxFindLength. */
+export const ARMATURE_FIND_MAX_LENGTH = 200;
+/** What typed in running text opens the menu that finds an Armature issue at the caret. */
+export const ARMATURE_FIND_TRIGGER = "[[";
+/** What typed after the trigger closes that menu and leaves the text as it is. */
+export const ARMATURE_FIND_CLOSE = "]]";
+/** How many recently inserted issues the picker and the inline menu offer while nothing is typed. */
+export const ARMATURE_RECENT_ISSUES = 5;
+/** Where a browser keeps a person's recently inserted issues; their user id follows. */
+export const ARMATURE_RECENT_STORAGE_PREFIX = "stator.armature-recent.";
+/** How wide the inline issue menu is, so a summary has room beside its key. */
+export const ARMATURE_FIND_MENU_WIDTH_PX = 384;
 /** The columns an Armature issue list may show, in the order the dialog offers them; the server's allowlist holds the same. */
 export const ARMATURE_COLUMNS = ["key", "summary", "type", "status", "priority", "assignee", "reporter", "created", "updated", "due"] as const;
 export type ArmatureColumn = (typeof ARMATURE_COLUMNS)[number];

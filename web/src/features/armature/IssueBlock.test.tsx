@@ -172,24 +172,19 @@ describe("inserting an issue block from the slash menu", () => {
     await user.keyboard("{Enter}");
 
     const dialog = await screen.findByRole("dialog", { name: "Insert an Armature issue" });
-    const field = within(dialog).getByRole("textbox", { name: "Issue key or address" });
+    const field = within(dialog).getByRole("combobox", { name: "Find an issue" });
     await waitFor(() => expect(field).toHaveFocus());
     await user.type(field, "cp-99");
     expect(
       await within(dialog).findByText("No issue CP-99 that you can see in Armature. Check the key, or connect your Armature account."),
     ).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Insert" }));
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    await user.keyboard("{Enter}");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
 
     await user.clear(field);
-    await user.type(field, "not a key");
-    await user.click(within(dialog).getByRole("button", { name: "Insert" }));
-    expect(within(dialog).getByText(/That is not an issue key/)).toBeInTheDocument();
-    expect(field).toHaveAttribute("aria-invalid", "true");
-
-    await user.clear(field);
     await user.type(field, "cp-4");
-    expect(await within(dialog).findByText("Found CP-4: Rotate the signing keys")).toBeInTheDocument();
+    expect(await within(dialog).findByRole("option", { name: /Rotate the signing keys/ })).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
     await user.keyboard("{Enter}");
 

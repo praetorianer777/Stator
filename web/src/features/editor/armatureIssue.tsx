@@ -1,7 +1,10 @@
-import { InputRule, Node, mergeAttributes } from "@tiptap/core";
+import { Extension, InputRule, Node, mergeAttributes } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
+import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
+import type { ArmatureIssue as FoundIssue } from "@/api/armature";
+import { ARMATURE_FIND_CLOSE, ARMATURE_FIND_TRIGGER } from "@/config";
 import { IssueChip } from "@/features/armature/IssueChip";
 import { ARMATURE_ISSUE_NODE, TYPED_KEY, keyFromIssueUrl, normalizeKey, projectOf } from "@/features/armature/issueKeys";
 
@@ -79,6 +82,8 @@ export const ArmatureIssue = Node.create<ArmatureIssueOptions>({
       new InputRule({
         find: TYPED_KEY,
         handler: ({ state, range, match }) => {
+          // Typed after the trigger, a key is what the menu looks for, not a chip yet.
+          if (issueFindKey.getState(state)?.active) return null;
           const key = match[1];
           const after = match[2] ?? "";
           if (!key || !source?.knowsProject(projectOf(key))) return null;
@@ -105,6 +110,58 @@ export const ArmatureIssue = Node.create<ArmatureIssueOptions>({
             return true;
           },
         },
+      }),
+    ];
+  },
+});
+
+/** What the inline menu hands its command: the picked issue's key. */
+export interface FoundKey {
+  key: string;
+}
+
+export interface IssueFindOptions {
+  source: IssueSource | undefined;
+  suggestion: Omit<SuggestionOptions<FoundIssue, FoundKey>, "editor">;
+}
+
+export const issueFindKey = new PluginKey("armatureIssueFind");
+
+/**
+ * Two opening brackets start a menu at the caret that finds an Armature
+ * issue by words or key; the one picked goes in as a chip. Escape, or the
+ * closing brackets, leave the typed text as it is.
+ */
+export const ArmatureIssueFind = Extension.create<IssueFindOptions>({
+  name: "armatureIssueFind",
+  addOptions() {
+    return {
+      source: undefined,
+      suggestion: {
+        char: ARMATURE_FIND_TRIGGER,
+        pluginKey: issueFindKey,
+        allowSpaces: true,
+        command: ({ editor, range, props }) => {
+          editor
+            .chain()
+            .focus()
+            .insertContentAt(range, [
+              { type: ARMATURE_ISSUE_NODE, attrs: { key: props.key } },
+              { type: "text", text: " " },
+            ])
+            .run();
+        },
+      },
+    };
+  },
+  addProseMirrorPlugins() {
+    const source = this.options.source;
+    return [
+      Suggestion({
+        editor: this.editor,
+        ...this.options.suggestion,
+        allow: ({ state, range }) =>
+          Boolean(source?.baseUrl()) && !inCode(state, range.from) && !state.doc.textBetween(range.from, range.to).includes(ARMATURE_FIND_CLOSE),
       }),
     ];
   },
