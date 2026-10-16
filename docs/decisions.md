@@ -3,6 +3,24 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-16: CI runs the integration suite in three parts (#403)
+
+The integration job took about 12 minutes, 8 of them in the tests, and set
+the pace of every run while the browser parts finished in 6 to 10.
+
+- **Three parts, each with a stack.** `scripts/integration-shard.sh` deals
+  the sorted names from `go test -list` out in turn and prints the part's
+  `-run` pattern, so every job derives the same split from the commit. Three
+  parts bring each to about 3 minutes of tests beside 2 of stack; the run
+  grows to ten jobs.
+- **A test in no part fails the run.** Before printing, the script matches
+  every listed test against the patterns of all parts and fails unless
+  exactly one selects it. Deal by name rather than by duration: a split by
+  timings would need them stored, and the parts already finish inside the
+  browser suite's time.
+- **Locally the suite stays whole.** Without `SHARD` the target runs every
+  test in one go, and the parts' reports join into one suite in the summary.
+
 ## 2026-10-16: A token is checked against Armature's installation, not a slug (#422)
 
 Armature deprecated `principal.org` on `/auth/me` for `installation`, which

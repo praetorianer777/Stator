@@ -8,6 +8,7 @@
 #   ./run-tests.sh                      every layer
 #   ./run-tests.sh check-go check-web   only these
 #   SHARD=2/4 ./run-tests.sh test-e2e   the second quarter of the browser suite
+#   SHARD=1/3 ./run-tests.sh test-integration   the first third of the integration suite
 #   ./run-tests.sh --list               the layers, in order
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -42,7 +43,7 @@ has_target() { [[ -f Makefile ]] && make -n "$1" >/dev/null 2>&1; }
 
 # Chained rather than relying on set -e, which a call from run_layer turns off.
 shell_tests() {
-  ./tests/test-release.sh && ./tests/test-release-workflow.sh && ./tests/test-build-stamp.sh && ./tests/test-helm.sh && ./tests/test-ci.sh && ./tests/test-load.sh && ./tests/test-realm.sh \
+  ./tests/test-release.sh && ./tests/test-release-workflow.sh && ./tests/test-build-stamp.sh && ./tests/test-helm.sh && ./tests/test-ci.sh && ./tests/test-integration-shard.sh && ./tests/test-load.sh && ./tests/test-realm.sh \
     && ./.claude/hooks/tests/branch-guard-test.sh
 }
 
@@ -68,7 +69,7 @@ trap finish EXIT
 run_layer() {
   local name="$1" label="$1" start=$SECONDS status=passed
   shift
-  case "$name" in test-e2e | stack-up) label="$name${SHARD:+ $SHARD}" ;; esac
+  case "$name" in test-e2e | test-integration | stack-up) label="$name${SHARD:+ $SHARD}" ;; esac
   echo "🧪 $label"
   "$@" || status=failed
   printf '%s\t%s\t%s\n' "$label" "$status" "$((SECONDS - start))" >> "$LAYER_LOG"

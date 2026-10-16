@@ -235,7 +235,8 @@ process, which is only right for a single api process. `/readyz` and
 `./run-tests.sh` runs all four; the branch-guard hook runs the layers a push
 can affect before every push (the stack-backed ones only with
 `STATOR_GATE=full`), and CI runs nothing else: its jobs run the script side by side, each
-for some of the layers, the browser suite in four parts with a stack each,
+for some of the layers, the browser suite in four parts and the integration
+suite in three, each part with a stack of its own,
 and a last job merges their reports into the run's summary and one
 Playwright report. Each checkout gets its own compose project and
 ports, so parallel worktrees do not collide.
