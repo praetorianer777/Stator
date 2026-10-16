@@ -636,6 +636,8 @@ export const BLOG_BLOCK_EXCERPT_LENGTH = 140;
 /** How many tasks a task report shows when it names no number, and the most, as document.DefaultReportedTasks and MaxReportedTasks. */
 export const TASK_REPORT_DEFAULT_LIMIT = 20;
 export const TASK_REPORT_MAX_LIMIT = 100;
+/** How many people a task report's choice of assignee offers for what is typed, within the API's limit of 50. */
+export const TASK_REPORT_PEOPLE_LIMIT = 20;
 /** The lengths a task report's settings offer, within 1 to TASK_REPORT_MAX_LIMIT. */
 export const TASK_REPORT_LIMIT_CHOICES: readonly number[] = [10, 20, 50, 100];
 /** The due days and states a task report picks, as document.TaskReportDues and TaskReportStates. */

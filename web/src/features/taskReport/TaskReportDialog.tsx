@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { usePeople } from "@/api/search";
+import { usePeopleFound } from "@/api/search";
 import { useSpaces } from "@/api/spaces";
-import { Button, Dialog, Select } from "@/components/ui";
-import { TASK_REPORT_DUES, TASK_REPORT_LIMIT_CHOICES, TASK_REPORT_STATES } from "@/config";
+import { Button, Dialog, Field, Select } from "@/components/ui";
+import { PICKER_DEBOUNCE_MS, TASK_REPORT_DUES, TASK_REPORT_LIMIT_CHOICES, TASK_REPORT_PEOPLE_LIMIT, TASK_REPORT_STATES } from "@/config";
 import { t } from "@/i18n";
+import { useDebounced } from "@/lib/debounce";
 import { ASSIGNEE_NOBODY, ASSIGNEE_READER, isPerson, type ReportDue, type ReportState, type TaskReportSettings } from "./report";
 
 /** Asks for what a task report picks: a space, an assignee, a due day, a state and a length. */
@@ -23,7 +24,10 @@ export function TaskReportDialog({
 }) {
   const d = t.taskReport.dialog;
   const spaces = useSpaces();
-  const people = usePeople();
+  const [find, setFind] = useState("");
+  const people = usePeopleFound(useDebounced(find.trim(), PICKER_DEBOUNCE_MS), TASK_REPORT_PEOPLE_LIMIT);
+  // The chosen person stays a choice when a later search leaves them out.
+  const [chosenName, setChosenName] = useState(assigneeName);
   const [space, setSpace] = useState(initial.space ?? "");
   const [assignee, setAssignee] = useState(initial.assignee ?? "");
   const [due, setDue] = useState<ReportDue>(initial.due);
@@ -37,7 +41,7 @@ export function TaskReportDialog({
     onSave({ space: space || null, assignee: assignee || null, due, state, limit });
   }
 
-  const listed = people.data ?? [];
+  const listed = people.data?.people ?? [];
   return (
     <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} data-task-report-dialog="">
       <form onSubmit={submit} className="space-y-4" noValidate>
@@ -50,13 +54,30 @@ export function TaskReportDialog({
             </option>
           ))}
         </Select>
-        <Select label={d.assignee} value={assignee} onChange={(event) => setAssignee(event.target.value)}>
+        <Field
+          label={d.findPerson}
+          type="search"
+          autoComplete="off"
+          value={find}
+          onChange={(event) => setFind(event.target.value)}
+          // Enter after a name narrows the list; it would otherwise save the report before a person is chosen.
+          onKeyDown={(event) => event.key === "Enter" && event.preventDefault()}
+        />
+        <Select
+          label={d.assignee}
+          value={assignee}
+          hint={people.data?.more ? d.morePeople : undefined}
+          onChange={(event) => {
+            const value = event.target.value;
+            setAssignee(value);
+            const person = listed.find((p) => p.id === value);
+            if (person) setChosenName(person.name);
+          }}
+        >
           <option value="">{d.anybody}</option>
           <option value={ASSIGNEE_READER}>{d.reader}</option>
           <option value={ASSIGNEE_NOBODY}>{d.nobody}</option>
-          {isPerson(initial.assignee) && !listed.some((p) => p.id === initial.assignee) && (
-            <option value={initial.assignee}>{assigneeName || d.somebodyGone}</option>
-          )}
+          {isPerson(assignee) && !listed.some((p) => p.id === assignee) && <option value={assignee}>{chosenName || d.somebodyGone}</option>}
           {listed.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}

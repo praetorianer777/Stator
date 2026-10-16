@@ -4,9 +4,7 @@
 // all the others, each file from the organization's settings as the bootstrap
 // left them: its permissions, hub, brand, anonymous access and public links,
 // themes, templates, sign-in provider, members, Armature connection, webhooks,
-// audit log and example space. With them is the task report, whose choice of
-// assignee offers only the first people of the organization by name, which
-// every other spec's people would push the spec's own out of.
+// audit log and example space.
 export const INSTANCE_SPECS = [
   "add-member",
   "anonymous-access",
@@ -36,7 +34,6 @@ export const INSTANCE_SPECS = [
   "public-links",
   "sketches",
   "smart-links",
-  "task-report",
   "team-calendar",
   "template-variables",
   "themes",
