@@ -354,6 +354,17 @@ ran "the command overrides the environment" "shell check-format check-go"
 out="$(push_json "env STATOR_GATE='full' STATOR_GATE_LIMIT=900 git push" | STATOR_GATE_LIMIT=600 .claude/hooks/branch-guard.sh)"
 ran "env STATOR_GATE='full' git push" "$FULL"
 gating_logged "limit from the command" $'\tgate_mode=full (command)\tgate_limit=900 (command)'
+for push in "git -C $W3/r push" "git -c x=y push" "git -C $W3/r -c x=y push -u origin HEAD"; do
+  rm -f "$GATE_ARGS"
+  out="$(push_json "STATOR_GATE=full $push" | env -u STATOR_GATE .claude/hooks/branch-guard.sh)"
+  ran "STATOR_GATE=full $push (#417)" "$FULL"
+  rm -f "$GATE_ARGS"
+  out="$(push_json "STATOR_GATE=quick $push" | STATOR_GATE=full .claude/hooks/branch-guard.sh)"
+  ran "STATOR_GATE=quick $push (#417)" "shell check-format check-go"
+done
+rm -f "$GATE_ARGS"
+out="$(push_json "cd /tmp && STATOR_GATE=full git -C $W3/r push" | env -u STATOR_GATE .claude/hooks/branch-guard.sh)"
+ran "STATOR_GATE=full git -C <dir> push from outside the checkout (#417)" "$FULL"
 out="$(push_json | env -u STATOR_GATE STATOR_GATE_LIMIT=600 .claude/hooks/branch-guard.sh)"
 gating_logged "limit from the environment" $'\tgate_limit=600 (env)'
 for bad in "STATOR_GATE=yes git push" "STATOR_GATE_LIMIT=2400 git push" "STATOR_GATE_LIMIT=10m git push" "STATOR_GATE_LIMIT=0 git push" 'STATOR_GATE=$MODE git push'; do
