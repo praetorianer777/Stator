@@ -720,8 +720,9 @@ func (s *stub) changeIssue(c *call) {
 // epic, which Stator itself never files.
 func (s *stub) addIssue(c *call) {
 	var req struct {
-		Summary string `json:"summary"`
-		Type    string `json:"type"`
+		Summary     string          `json:"summary"`
+		Type        string          `json:"type"`
+		Description json.RawMessage `json:"description,omitempty"`
 	}
 	if !decode(c, &req) {
 		return
@@ -732,6 +733,7 @@ func (s *stub) addIssue(c *call) {
 		return
 	}
 	is := c.tenant.add(pr, kind, req.Summary, c.tenant.person(adminName), time.Now().UTC())
+	is.Description = req.Description
 	respond(c.w, http.StatusCreated, map[string]any{"issue": issueView(is)})
 }
 

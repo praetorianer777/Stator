@@ -230,6 +230,7 @@ var notTools = map[string]string{
 	"GET /armature/issues":                                         whyArmature,
 	"GET /armature/issues/{issueKey}":                              whyArmature,
 	"GET /armature/search":                                         whyArmature,
+	"GET /armature/find":                                           whyArmature,
 	"GET /armature/chart":                                          whyArmature,
 	"GET /armature/roadmap":                                        whyArmature,
 	"GET /armature/calendar":                                       whyArmature,

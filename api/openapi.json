@@ -653,6 +653,80 @@
         }
       }
     },
+    "/armature/find": {
+      "get": {
+        "operationId": "findArmatureIssues",
+        "summary": "Issues whose summary or description holds the words, or whose key they are, as the caller may see them in Armature: the most recently updated first, at most 10.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "words",
+            "in": "query",
+            "description": "The words to look for, or an issue key, at most 200 characters.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "issues": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Issue"
+                      }
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable",
+                        "outdated"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "issues",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/armature/issue-types": {
       "get": {
         "operationId": "listArmatureIssueTypes",

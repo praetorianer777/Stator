@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/find": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Issues whose summary or description holds the words, or whose key they are, as the caller may see them in Armature: the most recently updated first, at most 10. */
+        get: operations["findArmatureIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/issue-types": {
         parameters: {
             query?: never;
@@ -7014,6 +7031,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    findArmatureIssues: {
+        parameters: {
+            query?: {
+                /** @description The words to look for, or an issue key, at most 200 characters. */
+                words?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        issues: components["schemas"]["Issue"][];
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {

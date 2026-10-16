@@ -912,6 +912,11 @@ var operations = append([]operation{
 			{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 			{name: "offset", schema: intParam, description: "How many matches to skip; 0 when absent."},
 		}, responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.Issue{}, "total": 0, "limit": 0, "offset": 0, "url": ""}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/armature/find", handler: "handleFindArmatureIssues", tag: "armature",
+		summary: "Issues whose summary or description holds the words, or whose key they are, as the caller may see them in Armature: the most recently updated first, at most 10.",
+		query: []param{
+			{name: "words", description: "The words to look for, or an issue key, at most 200 characters."},
+		}, responses: map[int]any{200: env{"status": armature.Status(""), "issues": []armature.Issue{}}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/armature/chart", handler: "handleArmatureChart", tag: "armature",
 		summary: "A count of the issues an NQL query matches in one project, as the caller may see them, for a chart block: shared out by a field for a pie, or created and resolved each day. Refused with bad_query and its position.",
 		query: []param{

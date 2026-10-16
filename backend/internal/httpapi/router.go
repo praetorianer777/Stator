@@ -348,6 +348,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/armature/issues/{issueKey}", s.handleGetArmatureIssue)
 			r.Get("/armature/projects", s.handleListArmatureProjects)
 			r.Get("/armature/search", s.handleSearchArmatureIssues)
+			r.Get("/armature/find", s.handleFindArmatureIssues)
 			r.Get("/armature/chart", s.handleArmatureChart)
 			r.Get("/armature/roadmap", s.handleArmatureRoadmap)
 			r.Get("/armature/calendar", s.handleArmatureCalendar)

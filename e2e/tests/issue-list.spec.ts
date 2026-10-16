@@ -15,7 +15,7 @@ import { armatureURL } from "../fixtures/stack";
 const patFor = (tenant: string, person: string) => `armature_pat_${tenant}_${person}`;
 const SCHEMES: ColourScheme[] = ["light", "dark"];
 const BOTH = "project in (CP, SEC) ORDER BY key";
-const BAD = 'project = CP AND summary ~ "keys"';
+const BAD = 'project = CP AND summary ^ "keys"';
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const list = (page: Page) => page.locator("[data-doc] [data-armature-issue-list]");
@@ -72,7 +72,7 @@ test.describe("the Armature issue list", { tag: ["@auth"] }, () => {
     await expect(query).toBeFocused();
     await query.fill(BAD);
     await expect(dialog).toContainText("at character 26");
-    await expect(dialog.locator("[data-query-position='26']")).toHaveText("~");
+    await expect(dialog.locator("[data-query-position='26']")).toHaveText("^");
     await query.fill("project = CP ORDER BY key");
     await expect(dialog).toContainText("The query matches 5 issues you can see.");
     await dialog.getByRole("checkbox", { name: "Assignee" }).uncheck();
@@ -130,8 +130,8 @@ test.describe("the Armature issue list", { tag: ["@auth"] }, () => {
       // alice may edit the page: she sees where the query went wrong and can fix it.
       await openPage(page, space.key, broken);
       await expect(list(page)).toHaveAttribute("data-state", "bad_query");
-      await expect(list(page)).toContainText('Armature cannot read this query at character 26: "~" cannot be used here.');
-      await expect(list(page).locator("[data-query-position='26']")).toHaveText("~");
+      await expect(list(page)).toContainText('Armature cannot read this query at character 26: "^" cannot be used here.');
+      await expect(list(page).locator("[data-query-position='26']")).toHaveText("^");
       await expectAccessible(page);
       await list(page).getByRole("button", { name: "Edit list" }).click();
       await expect(page).toHaveURL(/\/edit$/);

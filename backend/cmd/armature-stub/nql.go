@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
@@ -9,8 +10,9 @@ import (
 )
 
 // The part of Armature's NQL that Stator sends: conditions on key, project,
-// statusCategory and assignee joined by AND, then ORDER BY. Anything else is
-// refused as Armature refuses a query it cannot read: with a position.
+// statusCategory and assignee, and words of the text, joined by AND, then
+// ORDER BY. Anything else is refused as Armature refuses a query it cannot
+// read: with a position.
 
 type queryError struct {
 	Pos int
@@ -47,8 +49,8 @@ func lex(q string) ([]token, error) {
 		case r == ',':
 			out = append(out, token{"comma", ",", pos})
 			i++
-		case r == '=':
-			out = append(out, token{"op", "=", pos})
+		case r == '=' || r == '~':
+			out = append(out, token{"op", string(r), pos})
 			i++
 		case r == '!':
 			if i+1 < len(runes) && runes[i+1] == '=' {
@@ -58,14 +60,20 @@ func lex(q string) ([]token, error) {
 			}
 			return nil, errAt(pos, "\"!\" on its own means nothing. Write !=.")
 		case r == '"' || r == '\'':
+			// As Armature's lexer: a backslash takes the next character as it is.
+			var b strings.Builder
 			end := i + 1
 			for end < len(runes) && runes[end] != r {
+				if runes[end] == '\\' && end+1 < len(runes) {
+					end++
+				}
+				b.WriteRune(runes[end])
 				end++
 			}
 			if end == len(runes) {
 				return nil, errAt(pos, "The quote opened at character %d is never closed.", pos)
 			}
-			out = append(out, token{"string", string(runes[i+1 : end]), pos})
+			out = append(out, token{"string", b.String(), pos})
 			i = end + 1
 		case unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' || r == '-':
 			end := i
@@ -84,7 +92,9 @@ func lex(q string) ([]token, error) {
 type condition struct {
 	field  string
 	negate bool
-	values []string
+	// contains is ~: values holds the one text to look for.
+	contains bool
+	values   []string
 }
 
 type ordering struct {
@@ -97,7 +107,10 @@ type query struct {
 	order []ordering
 }
 
-var queryFields = []string{"key", "project", "statuscategory", "assignee"}
+var queryFields = []string{"key", "project", "statuscategory", "assignee", "summary", "text"}
+
+// textFields take ~ and nothing else here.
+var textFields = []string{"summary", "text"}
 var orderFields = []string{"key", "created", "updated", "priority"}
 
 type parser struct {
@@ -178,14 +191,30 @@ func (p *parser) pos() int {
 func (p *parser) condition() (condition, error) {
 	t := p.peek()
 	if t.kind != "word" || !slices.Contains(queryFields, strings.ToLower(t.text)) {
-		return condition{}, errAt(t.pos, "%q is not a field. Use key, project, statusCategory or assignee.", t.text)
+		return condition{}, errAt(t.pos, "%q is not a field. Use key, project, statusCategory, assignee, summary or text.", t.text)
 	}
 	c := condition{field: strings.ToLower(t.text)}
 	p.at++
 	op := p.peek()
+	text := slices.Contains(textFields, c.field)
 	switch {
 	case op == nil:
 		return c, errAt(p.end, "The query ends where an operator was expected after %s.", t.text)
+	case text || (op.kind == "op" && op.text == "~"):
+		if !text || op.kind != "op" || op.text != "~" {
+			return c, errAt(op.pos, "~ works on summary and text only here.")
+		}
+		p.at++
+		v := p.peek()
+		if v == nil || (v.kind != "string" && v.kind != "word") {
+			return c, errAt(p.pos(), "A value was expected here.")
+		}
+		p.at++
+		if strings.TrimSpace(v.text) == "" {
+			return c, errAt(v.pos, "Give %s some text to look for.", c.field)
+		}
+		c.contains = true
+		c.values = []string{v.text}
 	case op.kind == "op":
 		c.negate = op.text == "!="
 		if c.negate && c.field != "statuscategory" {
@@ -287,6 +316,12 @@ func (q *query) run(t *tenant, p *person) []*issue {
 
 func (q *query) matches(is *issue, p *person) bool {
 	for _, c := range q.where {
+		if c.contains {
+			if !containsText(is, c.field, c.values[0]) {
+				return false
+			}
+			continue
+		}
 		var got string
 		switch c.field {
 		case "key":
@@ -306,6 +341,61 @@ func (q *query) matches(is *issue, p *person) bool {
 		}
 	}
 	return true
+}
+
+// containsText is Armature's ~: the summary holds the text as typed, in any
+// case, and for text the description may hold each of its words instead, as
+// Postgres's simple text search finds them.
+func containsText(is *issue, field, text string) bool {
+	if strings.Contains(strings.ToLower(is.Summary), strings.ToLower(text)) {
+		return true
+	}
+	if field != "text" {
+		return false
+	}
+	have := map[string]bool{}
+	for _, word := range textWords(descriptionText(is.Description)) {
+		have[word] = true
+	}
+	words := textWords(text)
+	for _, word := range words {
+		if !have[word] {
+			return false
+		}
+	}
+	return len(words) > 0
+}
+
+func textWords(s string) []string {
+	return strings.FieldsFunc(strings.ToLower(s), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+}
+
+// descriptionText is every string in a rich text document, as Armature's
+// jsonb_to_tsvector reads them.
+func descriptionText(raw json.RawMessage) string {
+	var doc any
+	if len(raw) == 0 || json.Unmarshal(raw, &doc) != nil {
+		return ""
+	}
+	var b strings.Builder
+	var walk func(any)
+	walk = func(v any) {
+		switch v := v.(type) {
+		case string:
+			b.WriteString(v)
+			b.WriteByte(' ')
+		case []any:
+			for _, each := range v {
+				walk(each)
+			}
+		case map[string]any:
+			for _, each := range v {
+				walk(each)
+			}
+		}
+	}
+	walk(doc)
+	return b.String()
 }
 
 var priorityRank = map[string]int{"lowest": 0, "low": 1, "medium": 2, "high": 3, "highest": 4}
