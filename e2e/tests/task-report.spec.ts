@@ -79,6 +79,9 @@ test.describe("task report", { tag: ["@auth"] }, () => {
 
     await editorBox(page).locator("[data-task-report-node]").getByRole("button", { name: "Edit report" }).click();
     const edit = page.getByRole("dialog", { name: "Edit the task report" });
+    // Every spec's people share the organization, so bob is found by name rather than among the first listed.
+    await edit.getByLabel("Find a person").fill(BOB);
+    await expect(edit.getByLabel("Assigned to").getByRole("option", { name: BOB })).toBeAttached();
     await edit.getByLabel("Assigned to").selectOption({ label: BOB });
     await edit.getByRole("button", { name: "Save" }).click();
     await expect(editorBox(page).getByRole("region", { name: `Open tasks in ${space.key}, assigned to ${BOB}` })).toBeVisible();

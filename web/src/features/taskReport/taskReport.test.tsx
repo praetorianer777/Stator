@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { RouterProvider, createMemoryHistory, createRootRoute, createRouter } from "@tanstack/react-router";
 import type { Task } from "@/api/tasks";
-import { TASK_REPORT_DUES, TASK_REPORT_MAX_LIMIT, TASK_REPORT_STATES } from "@/config";
+import { TASK_REPORT_DUES, TASK_REPORT_MAX_LIMIT, TASK_REPORT_PEOPLE_LIMIT, TASK_REPORT_STATES } from "@/config";
 import { stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { allowlist } from "@/test/allowlist";
@@ -157,6 +157,45 @@ describe("the task report dialog", () => {
     expect(await axeViolations({ popupOpen: true })).toEqual([]);
     await user.click(within(dialog).getByRole("button", { name: "Insert" }));
     expect(onSave).toHaveBeenCalledWith({ space: "TEAM", assignee: ada, due: "today", state: "all", limit: 50 });
+  });
+
+  it("finds by what is typed someone beyond the people it lists, and says that more match", async () => {
+    const everyone = Array.from({ length: TASK_REPORT_PEOPLE_LIMIT * 2 }, (_, i) => ({
+      id: `0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f${String(i).padStart(4, "0")}`,
+      name: `Person ${String(i).padStart(2, "0")}`,
+      email: `p${i}@example.test`,
+    }));
+    const zed = { id: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f9999", name: "Zed Last", email: "zed@example.test" };
+    const asked: string[] = [];
+    stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [] } },
+      "GET /people": (request) => {
+        const params = new URL(request.url).searchParams;
+        asked.push(params.toString());
+        const q = (params.get("q") ?? "").toLowerCase();
+        const matching = [...everyone, zed].filter((p) => p.name.toLowerCase().startsWith(q) || p.name.toLowerCase().includes(` ${q}`));
+        return { status: 200, body: { people: matching.slice(0, Number(params.get("limit"))) } };
+      },
+    });
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    shown(<TaskReportDialog initial={taskReportSettings({})} isNew onSave={onSave} onClose={() => {}} />);
+    const dialog = await screen.findByRole("dialog", { name: "Insert a task report" });
+    await within(dialog).findByRole("option", { name: "Person 00" });
+    expect(within(dialog).queryByRole("option", { name: "Zed Last" })).toBeNull();
+    expect(within(dialog).queryByRole("option", { name: `Person ${TASK_REPORT_PEOPLE_LIMIT}` })).toBeNull();
+    expect(within(dialog).getByLabelText("Assigned to")).toHaveAccessibleDescription(/More people match than are listed/);
+
+    await user.type(within(dialog).getByLabelText("Find a person"), "zed");
+    await within(dialog).findByRole("option", { name: "Zed Last" });
+    expect(asked.at(-1)).toBe(`q=zed&limit=${TASK_REPORT_PEOPLE_LIMIT + 1}`);
+    expect(within(dialog).getByLabelText("Assigned to")).not.toHaveAccessibleDescription(/More people/);
+    await user.selectOptions(within(dialog).getByLabelText("Assigned to"), zed.id);
+    await user.clear(within(dialog).getByLabelText("Find a person"));
+    await within(dialog).findByRole("option", { name: "Person 00" });
+    expect(within(dialog).getByLabelText("Assigned to")).toHaveDisplayValue("Zed Last");
+    await user.click(within(dialog).getByRole("button", { name: "Insert" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ assignee: zed.id }));
   });
 
   it("keeps a person the people offered leave out, by the name the report gave", async () => {

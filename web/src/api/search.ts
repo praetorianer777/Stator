@@ -95,6 +95,19 @@ export function usePeople() {
   });
 }
 
+/** People whose name, a word of it or email starts with q, at most limit of them, and whether more match. */
+export function usePeopleFound(q: string, limit: number) {
+  return useQuery({
+    queryKey: ["people", "found", q, limit],
+    queryFn: async () => {
+      // One more than is shown tells whether more match without counting them all.
+      const people = (await api.GET("/people", { params: { query: { q: q || undefined, limit: limit + 1 } } })).data!.people;
+      return { people: people.slice(0, limit), more: people.length > limit };
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
 /**
  * Notes that the reader opened a page, once each time it is shown, for their
  * recent pages and its views. It never holds up the page, and a failure is not the reader's concern.

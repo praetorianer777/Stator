@@ -1266,6 +1266,8 @@ export const de: Messages = {
       reader: "Wer die Seite liest",
       nobody: "Niemanden",
       somebodyGone: "Eine Person, die gegangen ist",
+      findPerson: "Person suchen",
+      morePeople: "Es passen mehr Personen, als aufgeführt sind; tippen Sie mehr von einem Namen ein, um sie zu finden.",
       due: "Fällig",
       dues: { any: "An jedem Tag oder nie", overdue: "Überfällig", today: "Heute", week: "In den nächsten 7 Tagen", none: "Ohne Fälligkeitsdatum" } as Record<
         string,

@@ -1219,6 +1219,8 @@ export const en = {
       reader: "Whoever reads the page",
       nobody: "Nobody",
       somebodyGone: "Somebody who has left",
+      findPerson: "Find a person",
+      morePeople: "More people match than are listed; type more of a name to find them.",
       due: "Due",
       dues: { any: "Any day, or none", overdue: "Overdue", today: "Today", week: "In the next 7 days", none: "No due date" } as Record<string, string>,
       state: "State",
