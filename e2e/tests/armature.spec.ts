@@ -41,7 +41,6 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       await expect(page.locator("main").getByRole("heading", { level: 1, name: "Armature" })).toBeVisible();
 
       await page.getByLabel("Armature address", { exact: true }).fill(armatureURL());
-      await page.getByLabel("Armature organization", { exact: true }).fill(tenant);
       await page.getByLabel("Webhook secret", { exact: true }).fill(WEBHOOK_SECRET);
       await page.locator('[data-action="save-armature"]').click();
       await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
@@ -89,13 +88,13 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
     });
   }
 
-  test("a member is told to ask an administrator until Armature is connected", async ({ pageAs, team, api }) => {
+  test("a member is told to ask an administrator until Armature is connected", async ({ pageAs, api }) => {
     const bob = await pageAs("bob");
     // The beforeEach took away a connection an earlier test may have left.
     await openShowing(bob, PROFILE_PATH, bob.locator('[data-armature-status="not_configured"]'));
     await expect(bob.locator('[data-armature-status="not_configured"]')).toContainText("Ask an administrator to connect it under Settings, Armature.");
 
-    expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } })).response.status).toBe(200);
+    expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } })).response.status).toBe(200);
     await openShowing(bob, PROFILE_PATH, bob.getByLabel("Armature token", { exact: true }));
     await bob.goto(SETTINGS_PATH);
     await expect(bob.getByText("Only an administrator can connect Armature.")).toBeVisible();

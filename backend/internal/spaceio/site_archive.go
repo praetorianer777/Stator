@@ -125,7 +125,6 @@ type SiteGroupRole struct {
 // SiteArmature is where the organization's Armature is, without its webhook secret.
 type SiteArmature struct {
 	BaseURL string `json:"baseUrl"`
-	OrgSlug string `json:"orgSlug"`
 }
 
 // SiteBrand is the brand of the exports; the logo's bytes are at brand/logo.

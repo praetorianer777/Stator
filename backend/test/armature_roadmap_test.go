@@ -61,7 +61,7 @@ func TestARoadmapDrawsWhatEachReaderMaySee(t *testing.T) {
 	if status, got := roadmap(bob, byEpic); status != "not_configured" || got != nil {
 		t.Errorf("before a connection the roadmap is %s %v", status, got)
 	}
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "bob connects")
 	h.settle(t)

@@ -69,7 +69,6 @@ function ConnectionForm({
   onSaved: (notice: string) => void;
 }) {
   const [baseUrl, setBaseUrl] = useState(connection?.baseUrl ?? "");
-  const [orgSlug, setOrgSlug] = useState(connection?.orgSlug ?? "");
   const [secret, setSecret] = useState("");
   const [forget, setForget] = useState(false);
   const fields = save.error instanceof ApiError ? save.error.fields : {};
@@ -78,7 +77,7 @@ function ConnectionForm({
   function submit(event: FormEvent) {
     event.preventDefault();
     onSaved("");
-    const body: ArmatureConnectionInput = { baseUrl: baseUrl.trim(), orgSlug: orgSlug.trim() };
+    const body: ArmatureConnectionInput = { baseUrl: baseUrl.trim() };
     if (secret.trim()) body.webhookSecret = secret.trim();
     else if (forget) body.webhookSecret = "";
     save.mutate(body, { onSuccess: () => onSaved(t.armature.saved) });
@@ -88,25 +87,15 @@ function ConnectionForm({
     <form onSubmit={submit} noValidate aria-label={t.armature.title} data-armature-connection>
       <Card className="space-y-4 p-4">
         <p className="text-sm text-ink-muted">{t.armature.intro}</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field
-            label={t.armature.baseUrl}
-            value={baseUrl}
-            type="url"
-            placeholder="https://armature.example.com"
-            hint={t.armature.baseUrlHint}
-            error={fields.baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-          />
-          <Field
-            label={t.armature.orgSlug}
-            value={orgSlug}
-            placeholder="acme"
-            hint={t.armature.orgSlugHint}
-            error={fields.orgSlug}
-            onChange={(event) => setOrgSlug(event.target.value)}
-          />
-        </div>
+        <Field
+          label={t.armature.baseUrl}
+          value={baseUrl}
+          type="url"
+          placeholder="https://armature.example.com"
+          hint={t.armature.baseUrlHint}
+          error={fields.baseUrl}
+          onChange={(event) => setBaseUrl(event.target.value)}
+        />
         <Field
           label={t.armature.webhookSecret}
           type="password"
@@ -119,7 +108,7 @@ function ConnectionForm({
         {connection?.webhookSecretSet && <Checkbox label={t.armature.forgetSecret} checked={forget} onChange={(event) => setForget(event.target.checked)} />}
         {connection && (
           <p className="text-sm text-ink-muted" data-armature-connected>
-            {t.armature.connectedCount(connection.connected)} {connection.armatureOrgId && t.armature.orgKnown}
+            {t.armature.connectedCount(connection.connected)} {connection.installationId && t.armature.installationKnown}
           </p>
         )}
         {connection && <p className="text-xs text-ink-muted">{t.armature.movesForget}</p>}

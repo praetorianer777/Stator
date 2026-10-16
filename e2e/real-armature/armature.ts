@@ -48,8 +48,8 @@ export interface SeededIssue {
 /** What the seed made in Armature. */
 export interface Seed {
   url: string;
-  /** The slug /auth/me names, which Stator's connection checks every token against. */
-  orgSlug: string;
+  /** The installation /auth/me names, which Stator's connection learns and checks every token against. */
+  installationId: string;
   project: { key: string; name: string };
   team: { id: string; name: string };
   /** The administrator who arranges things in Armature, Mia who sees the project, Nils who does not. */
@@ -99,7 +99,7 @@ export async function connectSite(api: StatorApi, seed: Seed, withSecret = false
   await api.DELETE("/armature/connection");
   must(
     await api.PUT("/armature/connection", {
-      body: { baseUrl: seed.url, orgSlug: seed.orgSlug, ...(withSecret ? { webhookSecret: seed.webhookSecret } : {}) },
+      body: { baseUrl: seed.url, ...(withSecret ? { webhookSecret: seed.webhookSecret } : {}) },
     }),
   );
 }

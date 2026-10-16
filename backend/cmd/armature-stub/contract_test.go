@@ -190,7 +190,7 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	c.expect("DELETE", metaPrefix+"/"+host, "", nil, 204)
 
 	me := c.expect("GET", "/auth/me", alice, nil, 200)["principal"].(map[string]any)
-	if me["org"].(map[string]any)["slug"] != "acme" || me["user"].(map[string]any)["name"] != "Alice" {
+	if me["installation"].(map[string]any)["id"] != idOf("acme", "org").String() || me["org"] != nil || me["user"].(map[string]any)["name"] != "Alice" {
 		t.Errorf("a token names its tenant and person: %v", me)
 	}
 	c.expect("GET", "/auth/me", revokedToken, nil, 401)

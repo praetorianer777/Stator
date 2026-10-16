@@ -191,7 +191,7 @@ func (s *siteSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 
 func (s *siteSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
 	var a SiteArmature
-	err := tx.QueryRow(ctx, `SELECT base_url, org_slug FROM armature_connection`).Scan(&a.BaseURL, &a.OrgSlug)
+	err := tx.QueryRow(ctx, `SELECT base_url FROM armature_connection`).Scan(&a.BaseURL)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return nil

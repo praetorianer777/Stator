@@ -104,7 +104,7 @@ func TestSmartLinksShowEachViewerTheIssuesArmatureShowsThem(t *testing.T) {
 	if status, issues, _ := lookup(t, bob, "CP-1"); status != "not_configured" || len(issues) != 0 {
 		t.Errorf("before a connection the lookup is %s %v", status, issues)
 	}
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base, "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": base}), http.StatusOK, "connect Armature")
 	// In Armature the owner is its admin, who sees SEC; bob is alice, who does not.
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "bob connects")

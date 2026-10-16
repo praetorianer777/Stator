@@ -54,7 +54,7 @@ func TestAPersonFollowsTheThemeArmatureShowsThem(t *testing.T) {
 	if code := errorCode(t, want(t, owner.put(t, "/api/v1/armature/theme", nil), http.StatusConflict, "follow without a connection")); code != "armature_not_configured" {
 		t.Errorf("code %s", code)
 	}
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	if code := errorCode(t, want(t, owner.put(t, "/api/v1/armature/theme", nil), http.StatusConflict, "follow without a token")); code != "armature_not_connected" {
 		t.Errorf("code %s", code)
 	}

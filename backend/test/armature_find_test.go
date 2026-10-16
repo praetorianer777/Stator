@@ -42,7 +42,7 @@ func TestFindingIssuesByWordsShowsEachReaderWhatArmatureShowsThem(t *testing.T) 
 	if status, keys, _ := findKeys(t, bob, "onboarding"); status != "not_configured" || len(keys) != 0 {
 		t.Errorf("before a connection the find is %s %v", status, keys)
 	}
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "bob connects")
 	h.settle(t)

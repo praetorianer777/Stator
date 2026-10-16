@@ -96,9 +96,9 @@ func WebhookClears(topic string, payload json.RawMessage) (keys []string, search
 // webhookTarget is what the receiver needs of the connection.
 type webhookTarget struct {
 	// SiteID is what the secret was sealed with, and keys the cache.
-	SiteID        uuid.UUID
-	Sealed        []byte
-	ArmatureOrgID *uuid.UUID
+	SiteID         uuid.UUID
+	Sealed         []byte
+	InstallationID *uuid.UUID
 }
 
 // Webhook verifies one delivery and clears what it announces; a replay of an
@@ -113,7 +113,7 @@ func (s *Service) Webhook(ctx context.Context, body []byte, h WebhookHeaders) er
 			SELECT s.id, c.webhook_secret, c.armature_org_id
 			FROM site s CROSS JOIN armature_connection c
 			WHERE s.archived_at IS NULL AND c.webhook_secret IS NOT NULL`,
-		).Scan(&t.SiteID, &t.Sealed, &t.ArmatureOrgID)
+		).Scan(&t.SiteID, &t.Sealed, &t.InstallationID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -167,7 +167,7 @@ func (s *Service) Webhook(ctx context.Context, body []byte, h WebhookHeaders) er
 			"site_id", target.SiteID, "version", env.Version, "reads", WebhookVersion)
 		return ErrWebhookVersion
 	}
-	if target.ArmatureOrgID != nil && env.OrgID != *target.ArmatureOrgID {
+	if target.InstallationID != nil && env.OrgID != *target.InstallationID {
 		return ErrBadSignature
 	}
 	receipt := WebhookReceipt{ReceivedAt: time.Now().UTC(), Topic: env.Topic, Timestamped: timestamped}

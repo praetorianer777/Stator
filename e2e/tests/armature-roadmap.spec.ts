@@ -39,7 +39,7 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
   test.beforeEach(async ({ api, request, team }) => {
     await plan(request, team.label);
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } }));
     must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "alice") } }));
   });
 

@@ -103,7 +103,7 @@ func TestAnAdministratorMakesTheExampleSpaceOnce(t *testing.T) {
 	member := api.as(t, memberID)
 	ctx := context.Background()
 
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	h.settle(t)
 

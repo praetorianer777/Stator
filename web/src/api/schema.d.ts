@@ -4447,12 +4447,11 @@ export interface components {
             };
         };
         Connection: {
-            /** Format: uuid */
-            armatureOrgId: string | null;
             baseUrl: string;
             connected: number;
+            /** Format: uuid */
+            installationId: string | null;
             lastDelivery: components["schemas"]["WebhookReceipt"] | null;
-            orgSlug: string;
             partner: components["schemas"]["Partner"];
             /** Format: date-time */
             updatedAt: string;
@@ -4462,7 +4461,6 @@ export interface components {
         };
         ConnectionInput: {
             baseUrl: string;
-            orgSlug: string;
             webhookSecret?: string;
         };
         Contributor: {

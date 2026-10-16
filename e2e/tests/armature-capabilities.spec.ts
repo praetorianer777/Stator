@@ -40,7 +40,7 @@ test.describe("Armature capabilities", { tag: ["@auth"] }, () => {
 
   async function connect(api: StatorApi, slug: string) {
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: olderArmature().base, orgSlug: slug } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: olderArmature().base } }));
     must(await api.PUT("/armature/account/token", { body: { token: patFor(slug, "alice") } }));
   }
 

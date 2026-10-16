@@ -31,7 +31,7 @@ func TestAnIssueBlockStoresItsKeyAndEachReaderSeesTheirOwnIssue(t *testing.T) {
 	bob := api.as(t, h.addPerson(t, "member"))
 	carol := api.as(t, h.addPerson(t, "member"))
 
-	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "orgSlug": slug}), http.StatusOK, "connect Armature")
+	want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "connect Armature")
 	want(t, owner.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "admin")}), http.StatusOK, "the owner connects")
 	want(t, bob.put(t, "/api/v1/armature/account/token", map[string]any{"token": patFor(slug, "alice")}), http.StatusOK, "bob connects")
 	h.settle(t)

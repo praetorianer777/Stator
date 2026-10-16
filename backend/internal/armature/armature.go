@@ -156,11 +156,9 @@ var WebhookTopics = []string{"issue.created", "issue.updated", "issue.transition
 type Connection struct {
 	// BaseURL is the origin people open Armature at, without /api/v1.
 	BaseURL string `json:"baseUrl"`
-	// OrgSlug is the Armature organization every stored token must belong to.
-	OrgSlug string `json:"orgSlug"`
-	// ArmatureOrgID is learned from the first token that checks out; a
-	// webhook naming another organization is refused.
-	ArmatureOrgID *uuid.UUID `json:"armatureOrgId"`
+	// InstallationID is the Armature installation, learned from the first
+	// token that checks out; a token or webhook of another one is refused.
+	InstallationID *uuid.UUID `json:"installationId"`
 	// WebhookSecretSet says a secret is stored; the secret is never answered.
 	WebhookSecretSet bool `json:"webhookSecretSet"`
 	// WebhookURL is the address to enter in Armature's webhook settings.
@@ -177,11 +175,10 @@ type Connection struct {
 	Partner Partner `json:"partner"`
 }
 
-// ConnectionInput sets the instance. Changing baseUrl or orgSlug forgets
-// every stored token, so none is ever sent to another host.
+// ConnectionInput sets the instance. Changing baseUrl forgets every stored
+// token, so none is ever sent to another host.
 type ConnectionInput struct {
 	BaseURL string `json:"baseUrl"`
-	OrgSlug string `json:"orgSlug"`
 	// WebhookSecret is the secret Armature showed; absent keeps the stored
 	// one, empty removes it.
 	WebhookSecret *string `json:"webhookSecret,omitempty"`

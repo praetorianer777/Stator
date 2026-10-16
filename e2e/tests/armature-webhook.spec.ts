@@ -24,7 +24,7 @@ test.describe("Armature webhooks", { tag: ["@auth"] }, () => {
   test.beforeEach(async ({ api, team, request }) => {
     await stub(request, "DELETE", team.label);
     await api.DELETE("/armature/connection");
-    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), orgSlug: team.label, webhookSecret: SECRET } }));
+    must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL(), webhookSecret: SECRET } }));
     must(await api.PUT("/armature/account/token", { body: { token: patFor(team.label, "alice") } }));
   });
 

@@ -28,8 +28,7 @@ const REFUSED = "Armature did not accept this token. Make a new one under Tokens
 function connection(over: Partial<ArmatureConnection> = {}): ArmatureConnection {
   return {
     baseUrl: BASE,
-    orgSlug: "acme",
-    armatureOrgId: null,
+    installationId: null,
     webhookSecretSet: false,
     webhookUrl: "http://stator.test/api/v1/armature/webhook/demo",
     webhookTopics: ["issue.created", "issue.updated", "issue.transitioned", "comment.added"],
@@ -69,12 +68,12 @@ describe("connecting Armature as an administrator", () => {
     expect(document.querySelector("[data-copy-status]")).toBeNull();
 
     await user.type(screen.getByLabelText("Armature address"), `${BASE}/`);
-    await user.type(screen.getByLabelText("Armature organization"), "acme");
+    expect(screen.queryByLabelText("Armature organization")).toBeNull();
     await user.type(screen.getByLabelText("Webhook secret"), SECRET);
     await user.click(screen.getByRole("button", { name: "Connect Armature" }));
 
     expect(await screen.findByText("Saved.")).toBeInTheDocument();
-    expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ baseUrl: `${BASE}/`, orgSlug: "acme", webhookSecret: SECRET });
+    expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ baseUrl: `${BASE}/`, webhookSecret: SECRET });
     expect(screen.getByLabelText("Webhook secret")).toHaveValue("");
     expect(screen.getByLabelText("Webhook secret")).toHaveAttribute("placeholder", "Stored. Leave blank to keep it.");
     expect(screen.getByLabelText("Webhook address")).toHaveValue("http://stator.test/api/v1/armature/webhook/demo");
@@ -88,10 +87,19 @@ describe("connecting Armature as an administrator", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("says once a member's token has taught Stator which installation Armature is", async () => {
+    stubApi({
+      "GET /armature/connection": { status: 200, body: { connection: connection({ installationId: "0195f000-0000-7000-8000-0000000000a1", connected: 1 }) } },
+    });
+    await renderAt("/settings/armature");
+    expect(await screen.findByText(/confirmed its installation through a member's token/)).toBeInTheDocument();
+  });
+
   it("says when the webhook has not reached Stator yet", async () => {
     stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection() } } });
     await renderAt("/settings/armature");
     expect(await screen.findByText("Stator has not taken a delivery from Armature yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/confirmed its installation/)).toBeNull();
   });
 
   it("says in which envelope version the last delivery came, and that its time was signed", async () => {
@@ -129,12 +137,12 @@ describe("connecting Armature as an administrator", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText(/Armature did not answer at this address/)).toBeInTheDocument();
     expect(screen.getByLabelText("Armature address")).toHaveAttribute("aria-invalid", "true");
-    expect(sent.filter((r) => r.method === "PUT")[0]?.body).toEqual({ baseUrl: BASE, orgSlug: "acme" });
+    expect(sent.filter((r) => r.method === "PUT")[0]?.body).toEqual({ baseUrl: BASE });
 
     await user.click(screen.getByLabelText("Forget the stored secret"));
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(sent.filter((r) => r.method === "PUT")).toHaveLength(2));
-    expect(sent.filter((r) => r.method === "PUT")[1]?.body).toEqual({ baseUrl: BASE, orgSlug: "acme", webhookSecret: "" });
+    expect(sent.filter((r) => r.method === "PUT")[1]?.body).toEqual({ baseUrl: BASE, webhookSecret: "" });
   });
 
   it("disconnects after asking", async () => {

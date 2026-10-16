@@ -19781,18 +19781,18 @@
       "Connection": {
         "type": "object",
         "properties": {
-          "armatureOrgId": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid"
-          },
           "baseUrl": {
             "type": "string"
           },
           "connected": {
             "type": "integer"
+          },
+          "installationId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           },
           "lastDelivery": {
             "oneOf": [
@@ -19803,9 +19803,6 @@
                 "type": "null"
               }
             ]
-          },
-          "orgSlug": {
-            "type": "string"
           },
           "partner": {
             "$ref": "#/components/schemas/Partner"
@@ -19829,8 +19826,7 @@
         },
         "required": [
           "baseUrl",
-          "orgSlug",
-          "armatureOrgId",
+          "installationId",
           "webhookSecretSet",
           "webhookUrl",
           "webhookTopics",
@@ -19846,16 +19842,12 @@
           "baseUrl": {
             "type": "string"
           },
-          "orgSlug": {
-            "type": "string"
-          },
           "webhookSecret": {
             "type": "string"
           }
         },
         "required": [
-          "baseUrl",
-          "orgSlug"
+          "baseUrl"
         ]
       },
       "Contributor": {

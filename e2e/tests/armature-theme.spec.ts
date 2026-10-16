@@ -34,7 +34,7 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
     await api.DELETE("/armature/connection");
     must(
       await api.PUT("/armature/connection", {
-        body: { baseUrl: armatureURL(), orgSlug: team.label },
+        body: { baseUrl: armatureURL() },
       }),
     );
     must(
