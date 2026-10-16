@@ -98,8 +98,12 @@ describe("the Armature issue block in the read view", () => {
     stubApi({ "GET /armature/account": account(), "GET /armature/issues": lookup(["SEC-1", null]) });
     wrap(<DocView doc={blockDoc("SEC-1")} />);
     await waitFor(() => expect(block("SEC-1")).toHaveAttribute("data-state", "hidden"));
-    expect(block("SEC-1")).toHaveTextContent("SEC-1Not available");
+    expect(block("SEC-1")).toHaveTextContent(
+      "SEC-1Not visible to youYou may not see SEC-1, or it no longer exists. If you need it, ask the project's administrators in Armature for access.",
+    );
+    expect(block("SEC-1")?.querySelector("[data-armature-access]")).toHaveAttribute("data-armature-access", "unknown");
     expect(within(block("SEC-1")!).getByRole("link", { name: "SEC-1" })).toHaveAttribute("href", `${BASE}/issues/SEC-1`);
+    expect(within(block("SEC-1")!).getByRole("link", { name: "Open SEC-1 in Armature" })).toHaveAttribute("href", `${BASE}/issues/SEC-1`);
     expect(await axeViolations()).toEqual([]);
   });
 

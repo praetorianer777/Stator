@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { ArmatureIssue } from "@/api/armature";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { IssueChip, StatusLozenge, TypeIcon, useChip } from "./IssueChip";
+import { HiddenNote, IssueChip, StatusLozenge, TypeIcon, useChip } from "./IssueChip";
 import { outdatedSentence } from "./outdated";
 
 const changedAt = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
@@ -33,6 +33,7 @@ export function IssueBlock({ issueKey, links = true }: { issueKey: string; links
       <div {...frame} className="doc-block space-y-1">
         <IssueChip issueKey={issueKey} links={links} />
         {state.kind === "outdated" && <p className="text-sm text-ink-muted">{outdatedSentence("issues")}</p>}
+        {state.kind === "hidden" && <HiddenNote issueKey={issueKey} href={state.href} reason={state.reason} links={links} />}
       </div>
     );
   }

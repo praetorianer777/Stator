@@ -230,10 +230,23 @@ export const en = {
       intro: "Each issue this page names lists the page in Armature, linked by whoever last changed the page.",
       states: { synced: "Linked", pending: "Waiting for Armature", failed: "Not linked" } as Record<"synced" | "pending" | "failed", string>,
     },
+    access: {
+      short: "Not visible to you",
+      restricted: (key: string) => `You may not see ${key} in Armature.`,
+      gone: (key: string) => `${key} does not exist in Armature any more.`,
+      unknown: (key: string) => `You may not see ${key}, or it no longer exists.`,
+      ask: "Ask the project's administrators in Armature for access.",
+      askIfNeeded: "If you need it, ask the project's administrators in Armature for access.",
+      open: (key: string) => `Open ${key} in Armature`,
+      projects: (keys: string[]) =>
+        keys.length === 1
+          ? `You may not see the project ${keys[0]}, or it no longer exists. If you need it, ask its administrators in Armature for access.`
+          : `You may not see the projects ${keys.join(", ")}, or they no longer exist. If you need them, ask their administrators in Armature for access.`,
+    },
     chip: {
       connectShort: "Connect Armature",
       connectRest: " to see this issue",
-      notAvailable: "Not available",
+      replaceShort: "Paste a new Armature token",
       unreachable: "Armature did not answer",
       type: "Type",
       status: "Status",

@@ -108,7 +108,11 @@ test.describe("smart links to Armature issues", { tag: ["@auth"] }, () => {
       await openPage(page, space.key, target);
       const hidden = chip(page.locator("[data-doc]"), "SEC-1");
       await expect(hidden).toHaveAttribute("data-state", "hidden");
-      await expect(hidden).toContainText("Not available");
+      await expect(hidden).toContainText("Not visible to you");
+      await hidden.getByRole("link", { name: "SEC-1" }).focus();
+      await expect(page.getByRole("tooltip")).toHaveText(
+        "You may not see SEC-1, or it no longer exists. If you need it, ask the project's administrators in Armature for access.",
+      );
       await expect(page.locator("main")).not.toContainText("vulnerability");
       await expect(chip(page.locator("[data-doc]"), "CP-2")).toContainText("Sign-in fails with an expired session");
       await expectAccessible(page);

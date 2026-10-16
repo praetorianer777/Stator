@@ -2,6 +2,7 @@ import { lacks, useArmatureAccount, useArmatureLinks } from "@/api/armature";
 import type { Page } from "@/api/pages";
 import { SectionTitle, Tag } from "@/components/ui";
 import { t } from "@/i18n";
+import { ArmatureIssuesProvider, HiddenNote, useChip } from "./IssueChip";
 import { issueUrl } from "./issueKeys";
 import { outdatedSentence } from "./outdated";
 
@@ -24,23 +25,32 @@ export function ArmatureLinks({ page }: { page: Page }) {
       <p className="mt-1 text-sm text-ink-muted" data-armature-links-note={outdated ? "outdated" : undefined}>
         {outdated ? outdatedSentence("links") : t.armature.links.intro}
       </p>
-      <ul className="mt-2 flex flex-col gap-2" aria-labelledby="armature-links-title">
-        {rows.map((link) => (
-          <li key={link.key} className="text-sm" data-armature-link={link.key} data-state={link.state}>
-            <span className="flex flex-wrap items-center gap-2">
-              {baseUrl ? (
-                <a href={issueUrl(baseUrl, link.key)} className="font-medium text-ink hover:underline">
-                  {link.key}
-                </a>
-              ) : (
-                <span className="font-medium text-ink">{link.key}</span>
-              )}
-              <Tag>{t.armature.links.states[link.state]}</Tag>
-            </span>
-            {link.state === "failed" && link.error && !outdated && <p className="mt-0.5 text-ink-muted">{link.error}</p>}
-          </li>
-        ))}
-      </ul>
+      <ArmatureIssuesProvider keys={rows.map((link) => link.key)}>
+        <ul className="mt-2 flex flex-col gap-2" aria-labelledby="armature-links-title">
+          {rows.map((link) => (
+            <li key={link.key} className="text-sm" data-armature-link={link.key} data-state={link.state}>
+              <span className="flex flex-wrap items-center gap-2">
+                {baseUrl ? (
+                  <a href={issueUrl(baseUrl, link.key)} className="font-medium text-ink hover:underline">
+                    {link.key}
+                  </a>
+                ) : (
+                  <span className="font-medium text-ink">{link.key}</span>
+                )}
+                <Tag>{t.armature.links.states[link.state]}</Tag>
+              </span>
+              {link.state === "failed" && link.error && !outdated && <p className="mt-0.5 text-ink-muted">{link.error}</p>}
+              <LinkAccess issueKey={link.key} />
+            </li>
+          ))}
+        </ul>
+      </ArmatureIssuesProvider>
     </section>
   );
+}
+
+/** Says so when the reader sees nothing of a linked issue; otherwise nothing. */
+function LinkAccess({ issueKey }: { issueKey: string }) {
+  const state = useChip(issueKey);
+  return state.kind === "hidden" ? <HiddenNote issueKey={issueKey} href={state.href} reason={state.reason} /> : null;
 }

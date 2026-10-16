@@ -1,7 +1,7 @@
 import { localDateFormat } from "@/lib/format";
 import { useContext, useMemo, useState, type ReactNode } from "react";
 import { ApiError } from "@/api/client";
-import { useArmatureAccount, useArmatureSearch, type ArmatureIssue, lacks } from "@/api/armature";
+import { useArmatureAccount, useArmatureProjects, useArmatureSearch, type ArmatureIssue, lacks } from "@/api/armature";
 import { Button } from "@/components/ui";
 import {
   ARMATURE_COLUMNS,
@@ -18,6 +18,7 @@ import { outdatedSentence } from "./outdated";
 import { formatDue } from "./IssueBlock";
 import { StatusLozenge, TypeIcon } from "./IssueChip";
 import { ConnectArmatureLink } from "./connectLink";
+import { queryProjects } from "./issueKeys";
 
 /** What a list block stores: the query and how to show it, never its rows. */
 export interface IssueListSettings {
@@ -61,6 +62,12 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
   const rows = useMemo(() => (search.data?.pages ?? []).flatMap((p) => (p.status === "ok" ? p.issues : [])), [search.data]);
   const sorted = useMemo(() => sortRows(rows, sort), [rows, sort]);
   const first = search.data?.pages[0];
+  const named = useMemo(() => queryProjects(settings.query), [settings.query]);
+  const projects = useArmatureProjects(asks && named.length > 0 && first?.status === "ok" && rows.length === 0);
+  // Armature answers a query on a project the reader may not see with no rows,
+  // the same as one that matches nothing; the reader's own projects tell them apart.
+  const visible = projects.data?.status === "ok" ? projects.data.projects.map((project) => project.key) : null;
+  const unseen = visible !== null && named.every((key) => !visible.includes(key));
 
   let state: string;
   let body: ReactNode;
@@ -98,6 +105,9 @@ export function IssueList({ settings, inEditor = false }: { settings: IssueListS
   } else if (first?.status === "unreachable") {
     state = "unreachable";
     body = <Note>{l.unreachable}</Note>;
+  } else if (rows.length === 0 && named.length > 0 && unseen) {
+    state = "no_project";
+    body = <Note>{t.armature.access.projects(named)}</Note>;
   } else if (rows.length === 0) {
     state = "empty";
     body = (

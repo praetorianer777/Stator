@@ -8,6 +8,8 @@ import { DocDiffView, DocView } from "@/features/editor/DocView";
 import type { Doc } from "@/features/editor/schema";
 import { HINT_HREF, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
+import { applyLanguage } from "@/i18n";
+import { hiddenSentences } from "./IssueChip";
 
 afterEach(() => {
   cleanup();
@@ -92,7 +94,7 @@ describe("Armature issue chips in the read view", () => {
     expect(link.querySelector("[data-status-category='done']")).toHaveTextContent("Done");
     expect(chips().map((chip) => chip.dataset.state)).toEqual(["issue", "hidden", "issue"]);
     const hidden = chips()[1]!;
-    expect(hidden).toHaveTextContent("SEC-1Not available");
+    expect(hidden).toHaveTextContent("SEC-1Not visible to you");
     expect(hidden).not.toHaveTextContent("vulnerability");
 
     const lookups = sent.filter((request) => request.path === "/armature/issues");
@@ -106,6 +108,20 @@ describe("Armature issue chips in the read view", () => {
     await waitFor(() => expect(card).toHaveTextContent("Set up the build pipeline, renamed"));
     expect(card).toHaveTextContent("High");
     expect(card).toHaveTextContent("Alice");
+    expect(await axeViolations({ popupOpen: true })).toEqual([]);
+  });
+
+  it("say on focus that the viewer may not see an issue Armature shows them nothing of, or that it is gone", async () => {
+    stubApi({ "GET /armature/account": account({}), "GET /armature/issues": { status: 200, body: { status: "ok", issues: [{ key: "SEC-1", issue: null }] } } });
+    wrap(<DocView doc={{ type: "doc", content: [{ type: "paragraph", content: [{ type: "armatureIssue", attrs: { key: "SEC-1" } }] }] }} />);
+    await waitFor(() => expect(chips()[0]).toHaveAttribute("data-state", "hidden"));
+    expect(chips()[0]).toHaveAttribute("data-reason", "unknown");
+    const key = screen.getByRole("link", { name: "SEC-1" });
+    await userEvent.setup().tab();
+    expect(key).toHaveFocus();
+    const card = await screen.findByRole("tooltip");
+    expect(card).toHaveTextContent("You may not see SEC-1, or it no longer exists. If you need it, ask the project's administrators in Armature for access.");
+    expect(key).toHaveAttribute("aria-describedby", card.id);
     expect(await axeViolations({ popupOpen: true })).toEqual([]);
   });
 
@@ -151,6 +167,15 @@ describe("Armature issue chips in the read view", () => {
     expect(chips()[0]).toHaveTextContent("Armature did not answer");
   });
 
+  it("ask for a new token when Armature refused the stored one, and ask Armature nothing", async () => {
+    standOnHintPage();
+    const sent = stubApi({ "GET /armature/account": account({ status: "rejected" }) });
+    wrap(<DocView doc={doc} />);
+    const hints = await screen.findAllByRole("link", { name: "Paste a new Armature token to see this issue" });
+    expect(hints[0]).toHaveAttribute("href", HINT_HREF);
+    expect(sent.some((request) => request.path.startsWith("/armature/issues"))).toBe(false);
+  });
+
   it("say an Armature without issue-embed@1 needs updating, and ask it nothing", async () => {
     const sent = stubApi({ "GET /armature/account": account({ missing: [{ feature: "issues", capability: "issue-embed@1" }] }) });
     wrap(<DocView doc={doc} />);
@@ -185,5 +210,25 @@ describe("Armature issue chips in the read view", () => {
     render(<DocView doc={{ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "CP-1 as words" }] }] }} />);
     expect(chips()).toEqual([]);
     expect(sent).toEqual([]);
+  });
+});
+
+describe("what a reader is told about an issue they see nothing of", () => {
+  afterEach(() => applyLanguage("en"));
+
+  it("keeps no access, gone and cannot tell apart, in English and German", () => {
+    expect(hiddenSentences("PROJ-12", "restricted")).toEqual({
+      said: "You may not see PROJ-12 in Armature.",
+      advice: "Ask the project's administrators in Armature for access.",
+    });
+    expect(hiddenSentences("PROJ-12", "gone")).toEqual({ said: "PROJ-12 does not exist in Armature any more.", advice: null });
+    expect(hiddenSentences("PROJ-12", "unknown")).toEqual({
+      said: "You may not see PROJ-12, or it no longer exists.",
+      advice: "If you need it, ask the project's administrators in Armature for access.",
+    });
+    applyLanguage("de");
+    expect(hiddenSentences("PROJ-12", "restricted").said).toBe("Sie dürfen PROJ-12 in Armature nicht sehen.");
+    expect(hiddenSentences("PROJ-12", "gone")).toEqual({ said: "PROJ-12 gibt es in Armature nicht mehr.", advice: null });
+    expect(hiddenSentences("PROJ-12", "unknown").said).toBe("Sie dürfen PROJ-12 nicht sehen, oder es gibt den Vorgang nicht mehr.");
   });
 });

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ARMATURE_LOOKUP_MAX_KEYS } from "@/config";
 import { allowlist } from "@/test/allowlist";
-import { ISSUE_KEY_PATTERN, TYPED_KEY, issueKeysOf, issueUrl, keyFromIssueUrl, lookupBatches, normalizeKey, projectOf } from "./issueKeys";
+import { ISSUE_KEY_PATTERN, TYPED_KEY, issueKeysOf, issueUrl, keyFromIssueUrl, lookupBatches, normalizeKey, projectOf, queryProjects } from "./issueKeys";
 
 const BASE = "https://armature.example.com";
 
@@ -99,5 +99,13 @@ describe("issue keys", () => {
     expect(batches.map((batch) => batch.length)).toEqual([ARMATURE_LOOKUP_MAX_KEYS, 3]);
     expect(batches.flat()).toEqual([...keys].sort());
     expect(lookupBatches(["SEC-1", "CP-2"])).toEqual(lookupBatches(["CP-2", "SEC-1"]));
+  });
+});
+
+describe("the projects a query names", () => {
+  it("are read from project = and project in, upper case and once each", () => {
+    expect(queryProjects("project = CP ORDER BY key")).toEqual(["CP"]);
+    expect(queryProjects('Project in (cp, "OPS", cp) AND status = Done')).toEqual(["CP", "OPS"]);
+    expect(queryProjects("assignee = currentUser()")).toEqual([]);
   });
 });

@@ -83,3 +83,18 @@ export function lookupBatches(keys: readonly string[]): string[][] {
   for (let i = 0; i < sorted.length; i += ARMATURE_LOOKUP_MAX_KEYS) out.push(sorted.slice(i, i + ARMATURE_LOOKUP_MAX_KEYS));
   return out;
 }
+
+const QUERY_PROJECTS = /\bproject\s*(?:=\s*"?([A-Za-z][A-Za-z0-9]{1,9})\b|in\s*\(([^)]*)\))/gi;
+const PROJECT_KEY = /^[A-Z][A-Z0-9]{1,9}$/;
+
+/** The project keys an NQL query names with project = or project in, upper case and once each. */
+export function queryProjects(query: string): string[] {
+  const keys = new Set<string>();
+  for (const [, one, many] of query.matchAll(QUERY_PROJECTS)) {
+    for (const raw of one ? [one] : (many ?? "").split(",")) {
+      const key = raw.trim().replace(/^"|"$/g, "").toUpperCase();
+      if (PROJECT_KEY.test(key)) keys.add(key);
+    }
+  }
+  return [...keys];
+}

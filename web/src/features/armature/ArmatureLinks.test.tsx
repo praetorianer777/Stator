@@ -57,6 +57,32 @@ describe("the page's links in Armature", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
+  it("tells a reader who sees nothing of a linked issue why, and how to open it in Armature", async () => {
+    stubApi({
+      "GET /armature/account": account,
+      [`GET /pages/${PAGE}/armature-links`]: links(
+        { key: "CP-1", state: "synced", error: null, syncedAt: "2026-10-01T10:00:00Z" },
+        { key: "SEC-1", state: "synced", error: null, syncedAt: "2026-10-01T10:00:00Z" },
+      ),
+      "GET /armature/issues": {
+        status: 200,
+        // CP-1 is still being looked up, so only SEC-1 may say anything.
+        body: { status: "ok", issues: [{ key: "SEC-1", issue: null }] },
+      },
+    });
+    wrap(<ArmatureLinks page={aPage({ id: PAGE })} />);
+    const section = await screen.findByRole("region", { name: "Linked in Armature" });
+    const [seen, hidden] = within(section).getAllByRole("listitem") as [HTMLElement, HTMLElement];
+    await waitFor(() =>
+      expect(hidden).toHaveTextContent(
+        "You may not see SEC-1, or it no longer exists. If you need it, ask the project's administrators in Armature for access.",
+      ),
+    );
+    expect(within(hidden).getByRole("link", { name: "Open SEC-1 in Armature" })).toHaveAttribute("href", `${BASE}/issues/SEC-1`);
+    expect(seen.querySelector("[data-armature-access]")).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+  });
+
   it("asks again while a link waits for the worker", async () => {
     let asked = 0;
     stubApi({

@@ -173,7 +173,10 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
       await openPage(bob, space.key, target);
       await expect(block(bob, "CP-2")).toContainText("Sign-in fails with an expired session");
       await expect(block(bob, "SEC-1")).toHaveAttribute("data-state", "hidden");
-      await expect(block(bob, "SEC-1")).toContainText("Not available");
+      await expect(block(bob, "SEC-1")).toContainText(
+        "You may not see SEC-1, or it no longer exists. If you need it, ask the project's administrators in Armature for access.",
+      );
+      await expect(block(bob, "SEC-1").getByRole("link", { name: "Open SEC-1 in Armature" })).toHaveAttribute("href", /\/issues\/SEC-1$/);
       await expect(bob.locator("main")).not.toContainText("vulnerability");
       await expectAccessible(bob);
 
