@@ -24,6 +24,7 @@ export const de: Messages = {
     openDrawer: "Navigation öffnen",
     buildVersion: (version: string) => `Stator ${version}`,
     buildCommit: (commit: string) => `Commit ${commit}`,
+    buildCommitUnknown: "Commit unbekannt",
     buildBuiltAt: (when: string) => `Gebaut am ${when}`,
     closeDrawer: "Navigation schließen",
   },

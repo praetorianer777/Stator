@@ -35,7 +35,8 @@ ARG GOOSE_TAGS="no_sqlite3 no_mysql no_clickhouse no_vertica no_ydb no_libsql no
 # is VERSION+dev with no commit.
 ARG VERSION=""
 ARG COMMIT=""
-RUN PKG=github.com/praetorianer777/stator/backend/internal/version && \
+RUN if [ -z "$COMMIT" ]; then echo 'Warning: COMMIT is empty, so this build will say commit unknown. Pass --build-arg COMMIT="$(scripts/build-stamp.sh commit)" to name it.' >&2; fi && \
+    PKG=github.com/praetorianer777/stator/backend/internal/version && \
     VERSION="${VERSION:-$(cat /VERSION)+dev}" && \
     LDFLAGS="-s -w -X $PKG.Version=$VERSION -X $PKG.Commit=$COMMIT -X $PKG.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)" && \
     go build -trimpath -ldflags="$LDFLAGS" -o /out/ ./cmd/api ./cmd/worker ./cmd/seed ./cmd/armature-stub ./cmd/backup && \

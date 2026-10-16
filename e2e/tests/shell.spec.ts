@@ -36,11 +36,10 @@ test("the sidebar names the api's build, as GET /api/v1/meta does, with the stam
   expect(details).toContain("Built ");
 });
 
-// As web/src/lib/build.ts names a build: a release by its tag, anything else with its commit.
+// As web/src/lib/build.ts names a build: always with its commit, or saying that it is unknown.
 function expectedLabel({ version, commit }: { version: string; commit?: string }): string {
-  if (/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) return `v${version}`;
-  const named = `v${version.replace(/\.g[0-9a-f]+$/, "")}`;
-  return commit ? `${named} · ${commit}` : named;
+  const hash = commit || /\.g([0-9a-f]+)$/.exec(version)?.[1];
+  return `v${version.replace(/\.g[0-9a-f]+$/, "")} · ${hash ? hash.slice(0, 7) : "commit unknown"}`;
 }
 
 test("the search box and Ctrl K both open quick search", async ({ page }) => {

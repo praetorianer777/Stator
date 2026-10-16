@@ -50,6 +50,26 @@ A build that is not made from a tag says so in its version, `X.Y.Z+N.g<hash>`
 or `X.Y.Z+dev` (`scripts/build-stamp.sh`), so a development image is never
 taken for a release.
 
+## Building your own images
+
+The `backend` and `web` images take two build arguments, which say what the
+sidebar and `GET /api/v1/meta` report:
+
+- `VERSION`: the semver the build carries; empty, it is `X.Y.Z+dev` from the
+  `VERSION` file.
+- `COMMIT`: the short hash of the commit built; empty, the sidebar says
+  `commit unknown` and the image build prints a warning.
+
+The build context carries no `.git`, so pass both from a checkout:
+
+```sh
+docker build -f deploy/Dockerfile.backend \
+  --build-arg VERSION="$(scripts/build-stamp.sh version)" \
+  --build-arg COMMIT="$(scripts/build-stamp.sh commit)" .
+```
+
+The sidebar then shows `vX.Y.Z · abc1234`, a release included.
+
 ## Installing a release
 
 ```sh

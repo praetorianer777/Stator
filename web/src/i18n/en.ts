@@ -32,6 +32,7 @@ export const en = {
     openDrawer: "Open the navigation",
     buildVersion: (version: string) => `Stator ${version}`,
     buildCommit: (commit: string) => `Commit ${commit}`,
+    buildCommitUnknown: "commit unknown",
     buildBuiltAt: (when: string) => `Built ${when}`,
     closeDrawer: "Close the navigation",
   },
