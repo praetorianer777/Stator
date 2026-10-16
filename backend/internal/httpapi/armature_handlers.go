@@ -232,6 +232,24 @@ func (s *Server) handleSearchArmatureIssues(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// The picker and the inline menu (#425): issues by words of their summary or
+// description, or by key, as the caller may see them in Armature.
+func (s *Server) handleFindArmatureIssues(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	status, issues, err := s.Armature.Find(r.Context(), r.URL.Query().Get("words"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if issues == nil {
+		issues = []armature.Issue{}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "issues": issues})
+}
+
 // The chart block (#51): a count of the issues an NQL query matches, as the
 // caller may see them, drawn as a pie or as created against resolved.
 func (s *Server) handleArmatureChart(w http.ResponseWriter, r *http.Request) {

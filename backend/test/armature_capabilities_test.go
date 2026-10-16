@@ -126,6 +126,9 @@ func TestWhatArmatureOffersDecidesWhatPagesShow(t *testing.T) {
 		if r := want(t, bob.get(t, "/api/v1/armature/issues?key=CP-1"), http.StatusOK, "a chip"); r.Body["status"] != "outdated" {
 			t.Errorf("a chip from an Armature without /meta is %s", r.Raw)
 		}
+		if r := want(t, bob.get(t, "/api/v1/armature/find?words=onboarding"), http.StatusOK, "a find"); r.Body["status"] != "outdated" || len(list(t, r, "issues")) != 0 {
+			t.Errorf("a find in an Armature without /meta is %s", r.Raw)
+		}
 		docs := newTree(t, owner, "CAP", "Capabilities")
 		page := docs.add(docs.homeID, "Filed from here")
 		errorCodeIs(t, want(t, owner.post(t, "/api/v1/armature/issues", createBody(page, "CP", "Not filed")), http.StatusConflict, "create an issue"), "armature_outdated")

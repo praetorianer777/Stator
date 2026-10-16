@@ -130,12 +130,12 @@ func TestAnIssueListShowsEachReaderTheRowsArmatureShowsThem(t *testing.T) {
 	})
 
 	t.Run("a query Armature cannot read is 422 bad_query with its sentence and position", func(t *testing.T) {
-		r := want(t, bob.get(t, searchPath(`project = CP AND summary ~ "keys"`, 0, 0)), http.StatusUnprocessableEntity, "a bad query")
+		r := want(t, bob.get(t, searchPath(`project = CP AND priority = high`, 0, 0)), http.StatusUnprocessableEntity, "a bad query")
 		if code := errorCode(t, r); code != "bad_query" {
 			t.Errorf("the code is %s", code)
 		}
 		e := r.Body["error"].(map[string]any)
-		if e["position"] != float64(26) || !strings.HasSuffix(e["message"].(string), ".") {
+		if e["position"] != float64(18) || !strings.HasSuffix(e["message"].(string), ".") {
 			t.Errorf("the refusal is %s", r.Raw)
 		}
 	})

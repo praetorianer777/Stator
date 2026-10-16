@@ -253,19 +253,25 @@ export const de: Messages = {
     },
     picker: {
       title: "Armature-Vorgang einfügen",
-      field: "Vorgangsschlüssel oder Adresse",
-      hint: "Etwa CP-12 oder die Adresse des Vorgangs in Armature.",
+      field: "Vorgang finden",
+      hint: "Wörter seiner Zusammenfassung, sein Schlüssel wie CP-12 oder seine Adresse in Armature.",
       insert: "Einfügen",
       cancel: "Abbrechen",
-      looking: "Der Vorgang wird in Armature gesucht.",
-      found: (key: string, summary: string) => `Gefunden: ${key}: ${summary}`,
-      notAKey:
-        "Das ist weder ein Vorgangsschlüssel noch die Adresse eines Vorgangs Ihres Armature. Schreiben Sie den Projektschlüssel, einen Bindestrich und die Nummer, etwa CP-12.",
       notFound: (key: string) =>
         `Keinen Vorgang ${key} gefunden, den Sie in Armature sehen können. Prüfen Sie den Schlüssel, oder verbinden Sie Ihr Armature-Konto.`,
       unreachable: "Armature hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
-      connect: "Verbinden Sie Ihr Armature-Konto, um seine Vorgänge einzufügen.",
       connectLink: "Konto verbinden",
+    },
+    find: {
+      results: "Armature-Vorgänge",
+      project: "Projekt",
+      recent: "Ihre zuletzt eingefügten Vorgänge. Tippen Sie, um andere zu finden.",
+      hint: "Tippen Sie Wörter aus der Zusammenfassung des Vorgangs oder seinen Schlüssel.",
+      short: (n: number) => `Tippen Sie mindestens ${n} Zeichen, um zu suchen.`,
+      looking: "Es wird in Armature gesucht.",
+      noMatch: "Kein Vorgang, den Sie in Armature sehen können, enthält diese Wörter. Versuchen Sie andere Wörter oder den Schlüssel des Vorgangs.",
+      found: (n: number) => (n === 1 ? "1 Vorgang gefunden." : `${n} Vorgänge gefunden.`),
+      connect: "Verbinden Sie Ihr Armature-Konto, um seine Vorgänge zu finden.",
     },
     list: {
       caption: (query: string) => `Armature-Vorgänge zu ${query}`,

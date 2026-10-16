@@ -28,7 +28,7 @@ import { Decision } from "./decision";
 import { Expand } from "./expand";
 import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
-import { ArmatureIssue, type IssueSource } from "./armatureIssue";
+import { ArmatureIssue, ArmatureIssueFind, type IssueFindOptions, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { ArmatureChart } from "./armatureChart";
@@ -439,6 +439,8 @@ export interface ExtensionOptions {
   editInlineValue?: (target: InlineValueTarget) => void;
   /** Draws the emoji a colon offers; without it a colon offers none. */
   emoji?: Partial<EmojiOptions["suggestion"]>;
+  /** Draws the Armature issues two opening brackets offer; without it they offer none. */
+  issueFind?: Partial<IssueFindOptions["suggestion"]>;
   /** Opens the find bar with the selected words; without it Ctrl or Cmd+F is the browser's. */
   find?: (seed: string) => void;
   /** The shared draft the body is bound to, and who this browser is in it; without it the editor holds its own. */
@@ -480,6 +482,7 @@ export function editorExtensions({
   pageId,
   editInlineValue,
   emoji,
+  issueFind,
   find,
   collab,
   taskIds = false,
@@ -544,6 +547,7 @@ export function editorExtensions({
     Hint,
     InlineComment,
     ArmatureIssue.configure({ source: armature }),
+    ...(issueFind ? [ArmatureIssueFind.configure({ source: armature, suggestion: issueFind })] : []),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),
     ArmatureChart.configure({ pick: pickChart }),

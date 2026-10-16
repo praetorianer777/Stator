@@ -1,126 +1,92 @@
-import { useId, useState, type FormEvent } from "react";
-import { lacks, useArmatureAccount, useArmatureIssue } from "@/api/armature";
+import { useId, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button, Dialog, Input, Labelled } from "@/components/ui";
 import { describedBy } from "@/components/ui/controls";
-import { ARMATURE_PICKER_DEBOUNCE_MS } from "@/config";
 import { t } from "@/i18n";
-import { useDebounced } from "@/lib/debounce";
-import { StatusLozenge, TypeIcon } from "./IssueChip";
-import { keyFromIssueUrl, normalizeKey } from "./issueKeys";
-import { outdatedSentence } from "./outdated";
-import { ConnectArmatureLink } from "./connectLink";
+import { useFollowActive } from "@/features/editor/useFollowActive";
+import { FinderStatus, IssueOptions, useIssueFinder } from "./issueFinder";
 
-/** What the picker found for what was typed, as one state the form reads. */
-export type PickerState =
-  | { kind: "empty" }
-  | { kind: "notAKey" }
-  | { kind: "connect" }
-  | { kind: "looking" }
-  | { kind: "unreachable" }
-  | { kind: "outdated" }
-  | { kind: "notFound"; key: string }
-  | { kind: "found"; key: string; summary: string; type: { icon: string; name: string }; status: { name: string; category: string } };
-
-/** The key a person typed or pasted: a key in any case, or an issue address of the connected Armature. */
-export function pickedKey(text: string, baseUrl: string | null): string | null {
-  return normalizeKey(text) ?? keyFromIssueUrl(text, baseUrl);
-}
+export { pickedKey } from "./issueFinder";
 
 /**
- * Asks for an issue by key or address and inserts it once Armature finds it
- * for the author, so a typo never reaches the page.
+ * Finds an issue by words of its summary, its key or its address, and
+ * inserts the one picked, so only an issue Armature found for the author
+ * reaches the page.
  */
 export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => void; onClose: () => void }) {
   const p = t.armature.picker;
   const id = useId();
   const [text, setText] = useState("");
-  const [tried, setTried] = useState(false);
-  const account = useArmatureAccount();
-  const baseUrl = account.data?.configured ? (account.data.baseUrl ?? null) : null;
-  const connected = Boolean(account.data?.connected && account.data.status !== "rejected");
-  const outdated = lacks(account.data, "issues");
-  const typed = pickedKey(text, baseUrl);
-  const key = useDebounced(typed, ARMATURE_PICKER_DEBOUNCE_MS);
-  const found = useArmatureIssue(key ?? "", connected && !outdated && key !== null && key === typed);
+  const [active, setActive] = useState(0);
+  const { state, issues, remember } = useIssueFinder(text);
+  const follow = useFollowActive(active);
+  const current = issues.length > 0 ? Math.min(active, issues.length - 1) : -1;
 
-  let state: PickerState;
-  if (outdated) state = { kind: "outdated" };
-  else if (!connected) state = { kind: "connect" };
-  else if (!text.trim()) state = { kind: "empty" };
-  else if (!typed) state = { kind: "notAKey" };
-  else if (key !== typed || found.isPending) state = { kind: "looking" };
-  else if (found.isError || found.data?.status === "unreachable") state = { kind: "unreachable" };
-  else if (found.data?.status === "outdated") state = { kind: "outdated" };
-  else if (found.data?.status !== "ok") state = { kind: "connect" };
-  else if (!found.data.issue) state = { kind: "notFound", key: typed };
-  else {
-    const issue = found.data.issue;
-    state = { kind: "found", key: issue.key, summary: issue.summary, type: issue.type, status: issue.status };
+  function insert(key: string) {
+    remember(key);
+    onInsert(key);
   }
 
   function submit(event: FormEvent) {
     event.preventDefault();
     // The page's own form is this one's ancestor in React's tree.
     event.stopPropagation();
-    setTried(true);
-    if (state.kind === "found") onInsert(state.key);
+    const picked = issues[current];
+    if (picked) insert(picked.key);
+  }
+
+  function move(event: KeyboardEvent<HTMLInputElement>) {
+    if (issues.length === 0 || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;
+    event.preventDefault();
+    const delta = event.key === "ArrowDown" ? 1 : -1;
+    setActive((current + delta + issues.length) % issues.length);
   }
 
   const fieldId = `${id}-key`;
   const statusId = `${id}-status`;
-  const problem =
-    state.kind === "notAKey" && tried
-      ? p.notAKey
-      : state.kind === "notFound"
-        ? p.notFound(state.key)
-        : state.kind === "unreachable"
-          ? p.unreachable
-          : undefined;
+  const listId = `${id}-issues`;
+  const problem = state.kind === "notFound" ? p.notFound(state.key) : state.kind === "unreachable" ? p.unreachable : undefined;
   return (
     <Dialog title={p.title} onClose={onClose} data-issue-picker="">
       <form onSubmit={submit} className="space-y-3" noValidate>
         <Labelled id={fieldId} label={p.field} hint={p.hint} error={problem}>
           <Input
             id={fieldId}
+            role="combobox"
+            aria-expanded={issues.length > 0}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            aria-activedescendant={current >= 0 ? `${listId}-${current}` : undefined}
             value={text}
             autoComplete="off"
             spellCheck={false}
             invalid={Boolean(problem)}
             aria-invalid={problem ? true : undefined}
             aria-describedby={[describedBy(fieldId, p.hint, problem), statusId].filter(Boolean).join(" ")}
+            onKeyDown={move}
             onChange={(event) => {
               setText(event.target.value);
-              setTried(false);
+              setActive(0);
             }}
           />
         </Labelled>
         <div id={statusId} role="status" className="min-h-6 text-sm text-ink-muted" data-picker-state={state.kind}>
-          {state.kind === "looking" && p.looking}
-          {state.kind === "outdated" && outdatedSentence("issues")}
-          {state.kind === "connect" && (
-            <span>
-              {p.connect} <ConnectArmatureLink className="underline">{p.connectLink}</ConnectArmatureLink>
-            </span>
-          )}
-          {state.kind === "found" && (
-            <span className="inline-flex max-w-full items-center gap-1 text-ink" data-picked={state.key}>
-              <TypeIcon icon={state.type.icon} name={state.type.name} />
-              <span className="sr-only">{p.found(state.key, state.summary)}</span>
-              <span aria-hidden="true" className="font-medium">
-                {state.key}
-              </span>
-              <span aria-hidden="true" className="min-w-0 truncate">
-                {state.summary}
-              </span>
-              <StatusLozenge name={state.status.name} category={state.status.category} />
-            </span>
-          )}
+          {!problem && <FinderStatus state={state} count={issues.length} />}
         </div>
+        <IssueOptions
+          id={listId}
+          label={t.armature.find.results}
+          issues={issues}
+          active={current}
+          onPick={(issue) => insert(issue.key)}
+          onHover={setActive}
+          listRef={follow}
+          className={issues.length > 0 ? "max-h-64 overflow-y-hidden" : "hidden"}
+        />
         <div className="flex justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" onClick={onClose}>
             {p.cancel}
           </Button>
-          <Button type="submit" disabled={state.kind === "connect" || state.kind === "outdated"} data-action="insert-issue">
+          <Button type="submit" disabled={current < 0} data-action="insert-issue">
             {p.insert}
           </Button>
         </div>

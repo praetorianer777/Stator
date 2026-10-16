@@ -226,6 +226,8 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 		{"assignee = currentUser() ORDER BY key", alice, "[CP-1 CP-4]"},
 		{"project in (CP) AND statusCategory = 'in_progress'", alice, "[CP-2]"},
 		{"key = CP-3", alice, "[CP-3]"},
+		{"text ~ 'onboarding'", alice, "[CP-3]"},
+		{"summary ~ 'SIGN' ORDER BY updated DESC", alice, "[CP-4 CP-2]"},
 		{"", alice, "[CP-1 CP-2 CP-3 CP-4 CP-5]"},
 	} {
 		got := c.expect("GET", "/issues?q="+strings.ReplaceAll(tc.q, " ", "%20")+"&limit=100", tc.as, nil, 200)
@@ -237,7 +239,7 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	if fmt.Sprint(keysOf(t, paged)) != "[CP-2 CP-3]" || paged["total"].(float64) != 5 {
 		t.Errorf("a page is %v of %v", keysOf(t, paged), paged["total"])
 	}
-	bad := c.expect("GET", "/issues?q=summary%20%3D%20x", alice, nil, 400)["error"].(map[string]any)
+	bad := c.expect("GET", "/issues?q=priority%20%3D%20x", alice, nil, 400)["error"].(map[string]any)
 	if bad["code"] != "bad_query" || bad["position"].(float64) != 1 {
 		t.Errorf("a query the stub cannot read is %v", bad)
 	}

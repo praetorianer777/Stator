@@ -66,12 +66,12 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
     await page.keyboard.press("Enter");
 
     const dialog = page.getByRole("dialog", { name: "Insert an Armature issue" });
-    const field = dialog.getByRole("textbox", { name: "Issue key or address" });
+    const field = dialog.getByRole("combobox", { name: "Find an issue" });
     await expect(field).toBeFocused();
     await field.fill("CP-99");
     await expect(dialog).toContainText("No issue CP-99 that you can see in Armature.");
     await field.fill(`${armatureURL()}/issues/cp-4`);
-    await expect(dialog.locator("[data-picked]")).toContainText("Rotate the signing keys");
+    await expect(dialog.locator('[data-issue-option="CP-4"]')).toContainText("Rotate the signing keys");
     await expectAccessible(page);
     await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
@@ -98,6 +98,55 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
     await page.goto(`/s/${space.key}/p/${target.id}/page/history?from=1&to=2`);
     await expect(page.locator("[data-diff-view]")).toContainText("Armature issue CP-4");
     await expect(page.locator("[data-diff-view]")).not.toContainText("Rotate the signing keys");
+  });
+
+  test("alice finds issues by words, with two brackets in the text and in the dialog", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo);
+    const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Found by words"), blocks());
+
+    await openPage(page, space.key, target);
+    await page.locator('[data-action="edit-page"]').click();
+    const box = page.locator("#page-body");
+    await caretTo(box, "end");
+    await page.keyboard.type(" See [[sign");
+    const menu = page.locator("[data-issue-menu]");
+    const options = menu.getByRole("option");
+    await expect(options.filter({ hasText: "Rotate the signing keys" })).toHaveCount(1);
+    await expect(options.filter({ hasText: "Sign-in fails with an expired session" })).toHaveCount(1);
+    await expectAccessible(page);
+    const second = await options.nth(1).getAttribute("data-issue-option");
+    await page.keyboard.press("ArrowDown");
+    await expect(options.nth(1)).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeHidden();
+    await expect(box.locator(`[data-armature-issue="${second}"]`)).toBeVisible();
+    await expect(box).not.toContainText("[[sign");
+
+    await page.keyboard.type("and [[no such words anywhere");
+    await expect(menu).toHaveAttribute("data-issue-menu", "noMatch");
+    await expect(menu).toContainText("No issue you can see in Armature has these words.");
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(box).toContainText("and [[no such words anywhere");
+
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("/ticket");
+    await expect(page.locator('[data-slash-item="armatureIssue"]')).toBeVisible();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Insert an Armature issue" });
+    const field = dialog.getByRole("combobox", { name: "Find an issue" });
+    await expect(dialog.locator(`[data-issue-option="${second}"]`)).toBeVisible();
+    await field.fill("onboarding");
+    const found = dialog.locator('[data-issue-option="CP-3"]');
+    await expect(found).toContainText("Write the onboarding guide");
+    await expectAccessible(page);
+    await found.click();
+    await expect(dialog).toBeHidden();
+    await expect(box.locator('[data-armature-issue-block="CP-3"]')).toContainText("Write the onboarding guide");
+    await publishFromEditor(page);
+
+    await expect(page.locator(`[data-doc] [data-armature-issue="${second}"]`)).toHaveAttribute("data-state", "issue");
+    await expect(block(page, "CP-3")).toHaveAttribute("data-state", "issue");
   });
 
   for (const scheme of SCHEMES) {
