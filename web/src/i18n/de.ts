@@ -227,10 +227,23 @@ export const de: Messages = {
       intro: "Jeder Vorgang, den diese Seite nennt, führt die Seite in Armature auf, verknüpft von der Person, die die Seite zuletzt geändert hat.",
       states: { synced: "Verknüpft", pending: "Wartet auf Armature", failed: "Nicht verknüpft" } as Record<"synced" | "pending" | "failed", string>,
     },
+    access: {
+      short: "Für Sie nicht sichtbar",
+      restricted: (key: string) => `Sie dürfen ${key} in Armature nicht sehen.`,
+      gone: (key: string) => `${key} gibt es in Armature nicht mehr.`,
+      unknown: (key: string) => `Sie dürfen ${key} nicht sehen, oder es gibt den Vorgang nicht mehr.`,
+      ask: "Bitten Sie die Administratoren des Projekts in Armature um Zugriff.",
+      askIfNeeded: "Wenn Sie ihn brauchen, bitten Sie die Administratoren des Projekts in Armature um Zugriff.",
+      open: (key: string) => `${key} in Armature öffnen`,
+      projects: (keys: string[]) =>
+        keys.length === 1
+          ? `Sie dürfen das Projekt ${keys[0]} nicht sehen, oder es gibt es nicht mehr. Wenn Sie es brauchen, bitten Sie seine Administratoren in Armature um Zugriff.`
+          : `Sie dürfen die Projekte ${keys.join(", ")} nicht sehen, oder es gibt sie nicht mehr. Wenn Sie sie brauchen, bitten Sie deren Administratoren in Armature um Zugriff.`,
+    },
     chip: {
       connectShort: "Verbinden Sie Armature",
       connectRest: ", um diesen Vorgang zu sehen",
-      notAvailable: "Nicht verfügbar",
+      replaceShort: "Fügen Sie ein neues Armature-Token ein",
       unreachable: "Armature hat nicht geantwortet",
       type: "Typ",
       status: "Status",

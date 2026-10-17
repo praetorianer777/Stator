@@ -202,6 +202,27 @@ describe("the roadmap block", () => {
     const { container } = shown(<IssueRoadmap settings={{ ...byEpic, query: "project =" }} inEditor />);
     await waitFor(() => expect(container.querySelector("[data-armature-roadmap]")).toHaveAttribute("data-state", "bad_query"));
   });
+
+  it("tells a reader who may not see the project so, in words about their access", async () => {
+    stubApi({
+      "GET /armature/account": account(),
+      "GET /armature/roadmap": {
+        status: 422,
+        body: {
+          error: {
+            code: "validation_failed",
+            message: "Check the project.",
+            fields: { project: "That project was not found in Armature, or you may not see it. Check its key." },
+          },
+        },
+      },
+    });
+    const { container } = shown(<IssueRoadmap settings={byEpic} />);
+    expect(
+      await screen.findByText("You may not see the project CP, or it no longer exists. If you need it, ask its administrators in Armature for access."),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-armature-roadmap]")).toHaveAttribute("data-state", "no_project");
+  });
 });
 
 describe("the roadmap dialog", () => {

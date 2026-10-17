@@ -3,6 +3,23 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-16: An issue a reader sees nothing of is "not visible or gone" (#426)
+
+Armature answers 404 both for an issue that is gone and for one the reader
+may not see, on purpose. Stator says so in words, "You may not see PROJ-12,
+or it no longer exists.", with the way to ask for access and a link that
+lets Armature give its own answer. Naming the key adds nothing: it is on the
+page already. Stator does not try to tell the two apart yet. The issue
+existing when it was inserted says nothing about now; the per-person issue
+cache lives a minute, so another reader's answer is rarely there; and
+Stator does not subscribe to `issue.deleted`, which would need a durable
+record of deleted keys and a new subscription on every connection. The
+chip keeps a reason (`restricted`, `gone`, `unknown`) with a sentence for
+each, so a reliable signal can say more later, and Armature's
+`issue.access-requests@1` (Cloudster1/Armature#279) can put an "Ask for
+access" button in place of the advice. A list, chart or roadmap whose
+projects the reader sees none of says the same about the project.
+
 ## 2026-10-16: CI runs the integration suite in three parts (#403)
 
 The integration job took about 12 minutes, 8 of them in the tests, and set

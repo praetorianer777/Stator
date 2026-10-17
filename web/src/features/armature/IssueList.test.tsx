@@ -105,6 +105,29 @@ const list = () => document.querySelector<HTMLElement>("[data-armature-issue-lis
 const rowKeys = () => Array.from(document.querySelectorAll<HTMLElement>("[data-issue-row]")).map((row) => row.dataset.issueRow);
 
 describe("the issue list block in the read view", () => {
+  it("tells a reader who may see none of the projects the query names so, and calls a list empty otherwise", async () => {
+    const project = (key: string) => ({ key, name: key, canCreate: false });
+    stubApi({
+      "GET /armature/account": account(),
+      "GET /armature/search": searchOf([]),
+      "GET /armature/projects": { status: 200, body: { status: "ok", projects: [project("OPS")] } },
+    });
+    wrap(<DocView doc={listDoc(QUERY, ["key"], 20)} />);
+    expect(
+      await screen.findByText("You may not see the project CP, or it no longer exists. If you need it, ask its administrators in Armature for access."),
+    ).toBeInTheDocument();
+    expect(list()).toHaveAttribute("data-state", "no_project");
+    cleanup();
+
+    stubApi({
+      "GET /armature/account": account(),
+      "GET /armature/search": searchOf([]),
+      "GET /armature/projects": { status: 200, body: { status: "ok", projects: [project("CP")] } },
+    });
+    wrap(<DocView doc={listDoc(QUERY, ["key"], 20)} />);
+    await waitFor(() => expect(list()).toHaveAttribute("data-state", "empty"));
+  });
+
   it("shows the chosen columns of the rows the viewer may see, the count and a link to the query", async () => {
     stubApi({
       "GET /armature/account": account(),

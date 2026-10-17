@@ -191,7 +191,7 @@ export function IssueRoadmap({ settings, inEditor = false }: { settings: Roadmap
     );
   } else if (answer.error instanceof ApiError && answer.error.fields.project) {
     state = "no_project";
-    body = <Note>{answer.error.fields.project}</Note>;
+    body = <Note>{settings.project ? t.armature.access.projects([settings.project]) : answer.error.fields.project}</Note>;
   } else if (answer.isError) {
     state = "failed";
     body = <Note>{r.failed}</Note>;

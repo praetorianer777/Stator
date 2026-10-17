@@ -111,8 +111,15 @@ test.describe("Armature's issues on a page, from a real Armature", { tag: ["@aut
     await openShowing(bob, `/s/${space.key}/p/${target.id}/page`, "Sign-in is tracked in");
     for (const hidden of [shown(bob).locator(`[data-armature-issue="${signIn.key}"]`), shown(bob).locator(`[data-armature-issue-block="${guide.key}"]`)]) {
       await expect(hidden).toHaveAttribute("data-state", "hidden");
-      await expect(hidden).toContainText("Not available");
+      await expect(hidden).toContainText("Not visible to you");
     }
+    await expect(shown(bob).locator(`[data-armature-issue-block="${guide.key}"]`)).toContainText(
+      `You may not see ${guide.key}, or it no longer exists. If you need it, ask the project's administrators in Armature for access.`,
+    );
+    for (const figure of ['[data-armature-chart="pie"]', '[data-armature-roadmap="epic"]'])
+      await expect(shown(bob).locator(figure)).toContainText(
+        `You may not see the project ${seed.project.key}, or it no longer exists. If you need it, ask its administrators in Armature for access.`,
+      );
     await expect(shown(bob).locator("[data-armature-issue-list]")).toHaveAttribute("data-state", "empty");
     await expect(shown(bob).locator('[data-armature-chart="pie"]')).toHaveAttribute("data-state", "no_project");
     await expect(shown(bob).locator('[data-armature-roadmap="epic"]')).toHaveAttribute("data-state", "no_project");
