@@ -75,7 +75,7 @@ seed() {
   for _ in $(seq 1 "$EXAMPLE_WAIT_SECONDS"); do
     example="$(call GET /example-space)"
     [[ "$(jq -r '.job.state // empty' <<<"$example")" == failed ]] && fail "the example space was not made: $example"
-    [[ "$(jq -r '.space.key // empty' <<<"$example")" != "" && "$(jq -r '.job.state // "done"' <<<"$example")" == done ]] && break
+    [[ "$(jq -r '.space.key // empty' <<<"$example")" != "" && "$(jq -r '.job.state // "done"' <<<"$example")" == "done" ]] && break
     sleep 1
   done
   example="$(jq -r '.space.key // empty' <<<"$example")"

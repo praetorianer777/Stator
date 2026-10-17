@@ -19,6 +19,13 @@ Run the upgrade again once the cause is fixed. The Job is deleted and made
 anew by each `helm upgrade` (or Argo CD sync), so nothing else needs cleaning
 up.
 
+Every change to the chart or the migrations is upgraded this way before it
+merges: `make test-chart-cnpg` (a job of the chart install workflow)
+installs the merge base's chart and images on CloudNativePG in kind, fills
+the instance through the API, upgrades it to the change and checks that the
+data is all there. Until a chart is published, the merge base stands in for
+the release before.
+
 ## Troubleshooting
 
 ### Under CloudNativePG an upgrade fails in an early migration

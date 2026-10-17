@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # What the chart install tests share: output, a dump of what failed, the
 # cluster's lifetime, image builds and a port-forward to the web Service.
 # Sourced by scripts/chart-install-test.sh and scripts/chart-install-cnpg-test.sh,

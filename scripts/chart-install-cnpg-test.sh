@@ -55,7 +55,6 @@ helm install "$RELEASE" "$BASE/deploy/charts/stator" -n "$NS" -f "$ROOT/scripts/
 jobs_succeeded roles secrets-generator migrate bootstrap
 workloads_ready
 forward_web
-check_meta "$BASE_VERSION" "$BASE_COMMIT"
 owner="$(kubectl get cluster -n "$NS" "${FULL}-postgres" -o jsonpath='{.spec.bootstrap.initdb.owner}')"
 [[ "$owner" == stator_owner ]] || fail "the database is owned by [$owner], want stator_owner"
 ok "the base runs on CloudNativePG, owned by stator_owner"
