@@ -1,6 +1,7 @@
 # Installs the Helm chart into a throwaway kind cluster and upgrades it. Apart
 # from CI because it is slow and only a change to what the chart installs can
-# break it. See scripts/chart-install-test.sh and docs/decisions.md.
+# break it. See scripts/chart-install-test.sh, scripts/chart-install-cnpg-test.sh
+# and docs/decisions.md.
 name: Chart install
 
 on:
@@ -35,3 +36,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: make test-chart-install
+
+  cnpg:
+    name: upgrade a seeded instance on CloudNativePG
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      # The first parent of the checked out commit is what it is merged onto:
+      # main for a pull request's merge commit, the previous main for a push.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - run: make test-chart-cnpg BASE_REF=HEAD^1
