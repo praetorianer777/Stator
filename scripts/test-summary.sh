@@ -71,7 +71,16 @@ add_suite() { # title file raw? counts-filter slowest-filter
 }
 
 for f in $(find_reports go-unit.json); do add_suite "Go unit" "$f" raw "$go_counts" "$go_slowest"; done
-for f in $(find_reports integration.json); do add_suite "Go integration" "$f" raw "$go_counts" "$go_slowest"; done
+# CI splits the integration suite across jobs; its events are lines of JSON,
+# so the parts' reports join into one suite by concatenation.
+integration_files=$(find_reports integration.json)
+if [[ -n "$integration_files" ]]; then
+  integration=$(mktemp)
+  trap 'rm -f "$integration"' EXIT
+  # shellcheck disable=SC2086
+  cat $integration_files > "$integration"
+  add_suite "Go integration" "$integration" raw "$go_counts" "$go_slowest"
+fi
 for f in $(find_reports vitest.json); do add_suite "Vitest" "$f" "" "$vitest_counts" "$vitest_slowest"; done
 for f in $(find_reports e2e.json); do add_suite "Playwright" "$f" "" "$e2e_counts" "$e2e_slowest"; done
 

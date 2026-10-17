@@ -48,8 +48,20 @@ jobs:
           - name: check-web
             layers: check-web
             npm-cache: web
-          - name: test-integration
+          # Each part brings up a stack of its own and runs every third
+          # test of the sorted listing (scripts/integration-shard.sh); the
+          # backup test rides with the last part.
+          - name: test-integration 1/3
+            layers: test-integration
+            shard: 1/3
+            go-cache: integration
+          - name: test-integration 2/3
+            layers: test-integration
+            shard: 2/3
+            go-cache: integration
+          - name: test-integration 3/3
             layers: test-integration test-backup
+            shard: 3/3
             go-cache: integration
           # Each part brings up a stack of its own; Playwright splits the
           # tests between them by count.
@@ -75,8 +87,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Restored on every run, saved only from main: a pull request reads
-      # main's caches, and its own would only crowd them out.
+      # Restored on every run, saved only from main and by the first part of
+      # a split suite: a pull request reads main's caches, and its own would
+      # only crowd them out.
       - name: Restore the Go module and build cache
         if: matrix.go-cache
         uses: actions/cache/restore@v4
@@ -113,15 +126,15 @@ jobs:
         run: echo "::error title=Gate stopped::The gate was cancelled before it finished, by the job's time limit or by a newer push to this branch. No test failed; look at the run's duration, and if it reached the limit, raise timeout-minutes or make the suite faster."
 
       - name: Save the Go module and build cache
-        if: matrix.go-cache && success() && github.ref == 'refs/heads/main'
+        if: matrix.go-cache && (!matrix.shard || startsWith(matrix.shard, '1/')) && success() && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v4
         with:
           path: .cache/go
           key: go-${{ matrix.go-cache }}-${{ hashFiles('backend/go.sum') }}-${{ github.sha }}
 
-      # One job per key saves, so the browser jobs do not race to write theirs.
+      # One job per key saves, so the parts of a suite do not race to write theirs.
       - name: Save the npm cache
-        if: (matrix.name == 'check-web' || matrix.shard == '1/4') && success() && github.ref == 'refs/heads/main'
+        if: matrix.npm-cache && (!matrix.shard || startsWith(matrix.shard, '1/')) && success() && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v4
         with:
           path: .cache/npm
