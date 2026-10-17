@@ -3,6 +3,30 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-17: The chart is upgraded with data on CloudNativePG in kind (#432)
+
+#423 reached production because every upgrade test ran the migrations as a
+superuser, or against an empty database. `make test-chart-cnpg`, its own job
+in the chart install workflow, upgrades the way production does.
+
+- **The merge base stands in for the last release.** No chart is published
+  yet, so the job builds the chart and images of the commit the change is
+  merged onto (`HEAD^1` of CI's merge commit) and upgrades from there. A
+  migration of the change then runs as `stator_owner` against rows, which is
+  what #423 needed. Once releases exist, the base can be the latest one.
+- **The operator from its release manifest, pinned.** CloudNativePG 1.27.1 is
+  applied with `kubectl apply --server-side`; one instance on a 1 GiB volume
+  is enough, since replicas play no part in the migrations.
+- **Seeded through the API.** `scripts/chart-install-seed.sh` makes what a
+  team would have: a space with pages in several versions, an attachment, a
+  chosen theme, a personal token and the example space, and checks after the
+  upgrade that each is still there, the attachment byte for byte. Writing
+  rows by SQL would test the schema we think we have, not the one the base
+  made.
+- **Its own job.** It builds two pairs of images and waits for a database
+  cluster, about a quarter of an hour, so the bundled-Postgres test keeps its
+  own pace beside it.
+
 ## 2026-10-16: An issue a reader sees nothing of is "not visible or gone" (#426)
 
 Armature answers 404 both for an issue that is gone and for one the reader

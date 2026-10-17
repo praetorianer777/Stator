@@ -1,0 +1,46 @@
+# The values the CloudNativePG upgrade test installs and upgrades with: the
+# database as production runs it, owned by stator_owner, which is no superuser
+# and is bound by row level security, but one instance on a small volume. The
+# image tag is set by scripts/chart-install-cnpg-test.sh, once for the base
+# and once for the change.
+env: development
+
+ingress:
+  enabled: false
+
+# development is the one setting where this may be false, which a port-forward
+# over plain HTTP needs.
+auth:
+  secureCookies: false
+
+api:
+  replicas: 1
+web:
+  replicas: 1
+
+cnpg:
+  enabled: true
+  spec:
+    instances: 1
+    storage:
+      size: 1Gi
+
+valkey:
+  bundled: true
+seaweedfs:
+  enabled: true
+
+render:
+  enabled: false
+
+jobs:
+  bootstrap:
+    enabled: true
+bootstrap:
+  org: { name: Trial }
+  admin: { email: admin@chart-test.example }
+
+images:
+  pullPolicy: IfNotPresent
+  backend: { repository: stator-test/backend }
+  web: { repository: stator-test/web }
