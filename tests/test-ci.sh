@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests that CI's jobs between them run the whole gate: every layer
-# run-tests.sh knows, and every part of the browser suite once. CI splits the
+# run-tests.sh knows, and every part of the browser and integration suites
+# once. CI splits the
 # gate across parallel jobs, so a layer left out of the matrix would otherwise
 # stop gating pull requests without anything turning red. Also that the
 # browser specs keep apart by people and spaces of their own rather than by
@@ -33,23 +34,33 @@ for layer in $(sort -u <<< "$ci_layers"); do
     || fail "ci.yml names $layer, which run-tests.sh does not know"
 done
 
-dupes=$(uniq -d <<< "$(grep -vx test-e2e <<< "$ci_layers")")
-[[ -z "$dupes" ]] && pass "no layer but the browser suite runs twice" \
+# A matrix job with a shard runs one part of the suite its first layer names.
+sharded=$(awk '/^ *- name:/ { layer = "" } /^ *layers:/ { layer = $2 } /^ *shard:/ { print layer, $2 }' "$CI")
+split_layers=$(cut -d' ' -f1 <<< "$sharded" | sort -u)
+
+dupes=$(uniq -d <<< "$(grep -vxF "$split_layers" <<< "$ci_layers")")
+[[ -z "$dupes" ]] && pass "no layer but the split suites runs twice" \
   || fail "these layers run in more than one job: $dupes"
 
-shards=$(sed -n 's/^ *shard: *//p' "$CI")
-e2e_jobs=$(grep -cx test-e2e <<< "$ci_layers")
-totals=$(cut -d/ -f2 <<< "$shards" | sort -u)
-if [[ $(wc -l <<< "$totals") -ne 1 ]]; then
-  fail "the browser jobs disagree on how many parts there are: $(paste -sd' ' <<< "$totals")"
-elif [[ "$e2e_jobs" -ne "$totals" || $(wc -l <<< "$shards") -ne "$totals" ]]; then
-  fail "$e2e_jobs browser jobs and $(wc -l <<< "$shards") shards for $totals parts; each part needs one job"
-else
-  missing=""
-  for i in $(seq "$totals"); do grep -qx "$i/$totals" <<< "$shards" || missing+=" $i/$totals"; done
-  [[ -z "$missing" ]] && pass "the $totals browser jobs run each part once" \
-    || fail "no browser job runs part$missing"
-fi
+for layer in test-e2e test-integration; do
+  grep -qx "$layer" <<< "$split_layers" || fail "no job runs a part of $layer; CI splits it across jobs with shard: <i>/<n>"
+done
+
+for layer in $split_layers; do
+  shards=$(awk -v l="$layer" '$1 == l { print $2 }' <<< "$sharded")
+  jobs=$(grep -cx "$layer" <<< "$ci_layers")
+  totals=$(cut -d/ -f2 <<< "$shards" | sort -u)
+  if [[ $(wc -l <<< "$totals") -ne 1 ]]; then
+    fail "the $layer jobs disagree on how many parts there are: $(paste -sd' ' <<< "$totals")"
+  elif [[ "$jobs" -ne "$totals" || $(wc -l <<< "$shards") -ne "$totals" ]]; then
+    fail "$jobs $layer jobs and $(wc -l <<< "$shards") shards for $totals parts; each part needs one job"
+  else
+    missing=""
+    for i in $(seq "$totals"); do grep -qx "$i/$totals" <<< "$shards" || missing+=" $i/$totals"; done
+    [[ -z "$missing" ]] && pass "the $totals $layer jobs run each part once" \
+      || fail "no $layer job runs part$missing"
+  fi
+done
 
 echo "🧪 the browser specs share the one organization"
 

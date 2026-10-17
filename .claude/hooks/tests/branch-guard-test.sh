@@ -320,7 +320,9 @@ echo "== the gate is given those layers, and says what it skipped"
 W3=$(mktemp -d)
 trap 'rm -rf "$W" "$W2" "$W3"' EXIT
 git clone -q "$SRC" "$W3/r" && cd "$W3/r"
-fixture_main && copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -qm fixture
+# A clone of a worktree checks out the main checkout's branch, so the copied
+# files may differ from it; main takes them in, or they would count as changed.
+copy_claude && cp "$SRC/run-tests.sh" . && git add -A && git commit -q --allow-empty -m fixture && fixture_main
 export CLAUDE_PROJECT_DIR="$W3/r"
 git switch -qc fix/7-gate-layers
 mkdir -p backend && printf 'words\n' > NOTES.md && printf 'package x\n' > backend/x.go && git add NOTES.md backend && git commit -qm "words and a backend file"
