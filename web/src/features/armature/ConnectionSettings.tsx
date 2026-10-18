@@ -2,17 +2,20 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import {
   useArmatureAccount,
+  useArmatureAddressCheck,
   useArmatureConnection,
   useRemoveArmatureConnection,
   useSaveArmatureConnection,
   type ArmatureConnection,
+  type ArmatureConnectionCheck,
   type ArmatureConnectionInput,
   type ArmaturePartner,
 } from "@/api/armature";
 import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { ARMATURE_WEBHOOK_SECRET_PREFIX, COPY_FEEDBACK_MS } from "@/config";
+import { ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS, ARMATURE_WEBHOOK_SECRET_PREFIX, COPY_FEEDBACK_MS } from "@/config";
 import { t } from "@/i18n";
+import { useDebounced } from "@/lib/debounce";
 import { localDateFormat } from "@/lib/format";
 import { ConnectArmatureLink } from "./connectLink";
 
@@ -40,6 +43,7 @@ export function ConnectionSettings() {
         {notice}
       </p>
       <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
+      {connection && save.isSuccess && !connection.lastDelivery && <WebhookPending connection={connection} />}
       {connection && <MembersNext />}
       {connection && <Capabilities partner={connection.partner} />}
       {connection && <Webhook connection={connection} />}
@@ -73,6 +77,20 @@ function ConnectionForm({
   const [forget, setForget] = useState(false);
   const fields = save.error instanceof ApiError ? save.error.fields : {};
   const formError = save.error && Object.keys(fields).length === 0 ? save.error.message : null;
+  const typed = baseUrl.trim();
+  const settled = useDebounced(typed, ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS);
+  // The button asks at once what typing asks once the field rests.
+  const [pressed, setPressed] = useState("");
+  const target = pressed === typed ? typed : settled;
+  const asking = target !== "" && (target === pressed || (ADDRESS_SHAPE.test(target) && target.replace(/\/$/, "").toLowerCase() !== connection?.baseUrl));
+  const check = useArmatureAddressCheck(target, asking);
+  const current = asking && target === typed;
+  const checkError = current && check.error ? addressRefusal(check.error) : undefined;
+
+  function checkNow() {
+    if (pressed === typed && target === typed) void check.refetch();
+    setPressed(typed);
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -93,9 +111,28 @@ function ConnectionForm({
           type="url"
           placeholder="https://armature.example.com"
           hint={t.armature.baseUrlHint}
-          error={fields.baseUrl}
+          error={fields.baseUrl ?? checkError}
           onChange={(event) => setBaseUrl(event.target.value)}
         />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={checkNow}
+            disabled={typed === ""}
+            loading={current && check.isFetching}
+            data-action="check-armature-address"
+          >
+            {t.armature.check}
+          </Button>
+          <p
+            role="status"
+            className="text-sm text-ink-muted empty:hidden"
+            data-armature-check={current && check.data && !check.isFetching ? "found" : undefined}
+          >
+            {current && check.isFetching ? t.armature.checking : current && check.data && !fields.baseUrl ? foundSentence(check.data) : ""}
+          </p>
+        </div>
         <Field
           label={t.armature.webhookSecret}
           type="password"
@@ -118,6 +155,41 @@ function ConnectionForm({
         </Button>
       </Card>
     </form>
+  );
+}
+
+// Typing asks only what reads as an address; the button asks whatever is typed.
+const ADDRESS_SHAPE = /^https?:\/\/[^/\s?#]+\/?$/i;
+
+/** The sentence by the address field for a check that was refused. */
+function addressRefusal(error: Error): string {
+  if (error instanceof ApiError) return error.fields.baseUrl ?? (error.status >= 500 ? t.armature.checkFailed : error.message);
+  return t.armature.checkFailed;
+}
+
+/** What the check found at the address, in the words the capabilities section uses once saved. */
+function foundSentence(found: ArmatureConnectionCheck): string {
+  const p = found.partner;
+  if (!p.meta) return t.armature.checkNoMeta;
+  const answers = p.version ? t.armature.checkFound(p.version) : t.armature.checkFoundUnversioned;
+  return p.missing.length > 0 ? `${answers} ${t.armature.checkMissing(p.missing.length)}` : answers;
+}
+
+/** After a save, while Armature has never delivered, the webhook steps once more in the order that works. */
+function WebhookPending({ connection }: { connection: ArmatureConnection }) {
+  const w = t.armature.webhookPending;
+  return (
+    <section aria-labelledby="armature-webhook-pending" className="space-y-2 rounded-control border border-border p-4" data-armature-webhook-pending="">
+      <SectionTitle id="armature-webhook-pending">{w.title}</SectionTitle>
+      <p className="text-sm text-ink-muted">{w.intro}</p>
+      <ol className="list-decimal space-y-1 pl-5 text-sm text-ink">
+        <li>{w.add(connection.webhookUrl)}</li>
+        <li>{w.topics(connection.webhookTopics.join(", "))}</li>
+        <li>{w.secret(ARMATURE_WEBHOOK_SECRET_PREFIX)}</li>
+        <li>{w.paste}</li>
+      </ol>
+      {connection.webhookSecretSet && <p className="text-sm text-ink-muted">{w.stored}</p>}
+    </section>
   );
 }
 

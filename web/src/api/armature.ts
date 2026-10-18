@@ -46,6 +46,20 @@ export function useSaveArmatureConnection() {
   });
 }
 
+/** What answers at an address before it is saved; a refusal is an ApiError with a sentence on baseUrl. */
+export type ArmatureConnectionCheck = Wire["ConnectionCheck"];
+
+// Its own key rather than one under the connection's, so saving the
+// connection does not ask every address typed so far again.
+export function useArmatureAddressCheck(baseUrl: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["armature", "addressCheck", baseUrl],
+    enabled,
+    retry: false,
+    queryFn: async (): Promise<ArmatureConnectionCheck> => (await api.POST("/armature/connection/check", { body: { baseUrl } })).data!.check,
+  });
+}
+
 export function useRemoveArmatureConnection() {
   const queryClient = useQueryClient();
   return useMutation({

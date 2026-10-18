@@ -171,6 +171,28 @@ export const de: Messages = {
     disconnect: "Armature trennen",
     confirmDisconnect: "Armature trennen? Die Tokens aller Mitglieder werden verworfen, und Seiten zeigen nur noch Vorgangsschlüssel.",
     disconnected: "Armature ist getrennt.",
+    check: "Prüfen",
+    checking: "Diese Adresse wird gefragt...",
+    checkFound: (version: string) => `Unter dieser Adresse antwortet Armature ${version}.`,
+    checkFoundUnversioned: "Unter dieser Adresse antwortet Armature.",
+    checkNoMeta:
+      "Unter dieser Adresse antwortet Armature, aber es ist zu alt, um zu sagen, was es anbietet. Aktualisieren Sie Armature auf eine aktuelle Version; bis dahin bleibt alles abgeschaltet, was es braucht.",
+    checkMissing: (count: number) =>
+      count === 1
+        ? "Ihm fehlt 1 Funktion, die Stator nutzt; sie bleibt abgeschaltet. Diese Seite nennt sie nach dem Speichern."
+        : `Ihm fehlen ${count} Funktionen, die Stator nutzt; sie bleiben abgeschaltet. Diese Seite nennt sie nach dem Speichern.`,
+    checkFailed: "Die Adresse ließ sich gerade nicht prüfen. Prüfen Sie sie gleich noch einmal.",
+    webhookPending: {
+      title: "Armature hat Stator noch nichts zugestellt",
+      intro: "Bis dahin zeigen Seiten eine Änderung an einem Vorgang erst innerhalb einer Minute. Richten Sie den Webhook in dieser Reihenfolge ein:",
+      add: (url: string) => `Öffnen Sie in Armature Settings, dann Webhooks, und legen Sie einen Endpunkt mit der Adresse ${url} an.`,
+      topics: (topics: string) => `Abonnieren Sie ${topics}.`,
+      secret: (prefix: string) =>
+        `Speichern Sie ihn zuerst in Armature. Armature zeigt dann einmal das Geheimnis des Endpunkts; es beginnt mit ${prefix}. Kopieren Sie es.`,
+      paste: "Fügen Sie das Geheimnis oben unter Webhook-Geheimnis ein und speichern Sie hier.",
+      stored:
+        "Ein Geheimnis ist gespeichert. Kommt nach der nächsten Änderung an einem Vorgang nichts an, prüfen Sie in Armature, ob der Endpunkt eingeschaltet ist, die Adresse oben nutzt und mit dem hier gespeicherten Geheimnis angelegt wurde.",
+    },
     members: {
       title: "Was die Mitglieder jetzt tun",
       intro:

@@ -175,6 +175,27 @@ export const en = {
     disconnect: "Disconnect Armature",
     confirmDisconnect: "Disconnect Armature? Every member's token is forgotten, and pages show issue keys only.",
     disconnected: "Armature is disconnected.",
+    check: "Check",
+    checking: "Asking this address...",
+    checkFound: (version: string) => `Armature ${version} answers at this address.`,
+    checkFoundUnversioned: "Armature answers at this address.",
+    checkNoMeta:
+      "Armature answers at this address, but it is too old to say what it offers. Update Armature to a current release; until then everything that needs it stays off.",
+    checkMissing: (count: number) =>
+      count === 1
+        ? "It lacks 1 feature Stator uses, which stays off; this page names it once saved."
+        : `It lacks ${count} features Stator uses, which stay off; this page names them once saved.`,
+    checkFailed: "The address could not be checked just now. Check it again in a moment.",
+    webhookPending: {
+      title: "Armature has not delivered to Stator yet",
+      intro: "Until it does, pages show a change to an issue only within a minute. Set up the webhook in this order:",
+      add: (url: string) => `In Armature, open Settings, then Webhooks, and add an endpoint with the address ${url}.`,
+      topics: (topics: string) => `Subscribe it to ${topics}.`,
+      secret: (prefix: string) => `Save it in Armature first. Armature then shows the endpoint's secret once; it starts with ${prefix}. Copy it.`,
+      paste: "Paste the secret into Webhook secret above, then save here.",
+      stored:
+        "A secret is stored. If nothing arrives after the next change to an issue, check in Armature that the endpoint is on, uses the address above, and was made with the secret stored here.",
+    },
     members: {
       title: "What members do next",
       intro:

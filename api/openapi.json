@@ -653,6 +653,65 @@
         }
       }
     },
+    "/armature/connection/check": {
+      "post": {
+        "operationId": "checkArmatureConnection",
+        "summary": "Ask an address what answers there before saving it: the Armature version and what it offers, or a sentence on baseUrl saying what is wrong. Stores nothing. For administrators.",
+        "tags": [
+          "armature"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionCheckInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "check": {
+                      "$ref": "#/components/schemas/ConnectionCheck"
+                    }
+                  },
+                  "required": [
+                    "check"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/armature/find": {
       "get": {
         "operationId": "findArmatureIssues",
@@ -19834,6 +19893,32 @@
           "connected",
           "updatedAt",
           "partner"
+        ]
+      },
+      "ConnectionCheck": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/Partner"
+          }
+        },
+        "required": [
+          "baseUrl",
+          "partner"
+        ]
+      },
+      "ConnectionCheckInput": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseUrl"
         ]
       },
       "ConnectionInput": {

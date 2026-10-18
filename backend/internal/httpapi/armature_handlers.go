@@ -54,6 +54,24 @@ func (s *Server) handleSaveArmatureConnection(w http.ResponseWriter, r *http.Req
 	respondJSON(w, r, http.StatusOK, map[string]any{"connection": connection})
 }
 
+func (s *Server) handleCheckArmatureConnection(w http.ResponseWriter, r *http.Request) {
+	if s.Armature == nil {
+		respondError(w, r, errArmatureOff)
+		return
+	}
+	var req armature.ConnectionCheckInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	check, err := s.Armature.CheckConnection(r.Context(), req)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"check": check})
+}
+
 func (s *Server) handleRemoveArmatureConnection(w http.ResponseWriter, r *http.Request) {
 	if s.Armature == nil {
 		respondError(w, r, errArmatureOff)

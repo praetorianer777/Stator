@@ -9,6 +9,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Settings, Armature asks the address an administrator types what answers
+  there before it is saved, as they type or on Check, through
+  `POST /api/v1/armature/connection/check` and Armature's `/api/v1/meta`
+  (#429): "Armature 1.4.0 answers at this address", or what is wrong. When
+  the outbound guard refuses the host, the sentence names the exact value to
+  set, such as adding armature.example.com to `network.outboundAllow` in the
+  chart values (`STATOR_OUTBOUND_ALLOW`), and says when the name resolves to a
+  private address on the server, without naming the address. After a save,
+  while Armature has never delivered, the page repeats the webhook steps in
+  the order that works: add the endpoint in Armature, then paste its
+  `armature_whs_` secret here. In English and German.
 - Every hint to connect one's Armature account, on chips, issue blocks, lists,
   charts, roadmaps, calendars, the issue and project pickers, Create Armature
   issue and the theme follow, opens the token form on the profile with the
