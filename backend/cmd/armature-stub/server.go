@@ -55,6 +55,10 @@ type route struct {
 var routes = []route{
 	{Method: "GET", Path: "/openapi.json", Public: true, handler: (*stub).openAPI},
 	{Method: "GET", Path: "/meta", Public: true, handler: (*stub).meta},
+	{Method: "GET", Path: wellKnownPath, Public: true, handler: (*stub).serverMetadata},
+	{Method: "POST", Path: "/oauth/register", Public: true, handler: (*stub).register},
+	{Method: "POST", Path: "/oauth/token", Public: true, handler: (*stub).token},
+	{Method: "POST", Path: "/oauth/revoke", Public: true, handler: (*stub).revoke},
 	{Method: "GET", Path: "/auth/me", handler: (*stub).me},
 	{Method: "GET", Path: "/access/me", handler: (*stub).access},
 	{Method: "GET", Path: "/projects", handler: (*stub).projects},
@@ -78,6 +82,7 @@ type stub struct {
 	client  *http.Client
 	hooks   *bins
 	metas   *metas
+	oauth   *oauthServer
 }
 
 // call is one request as a person of a tenant.
@@ -89,7 +94,7 @@ type call struct {
 }
 
 func newStub(openapi []byte) *stub {
-	return &stub{world: newWorld(), openapi: openapi, client: &http.Client{Timeout: webhookTimeout}, hooks: newBins(), metas: &metas{byHost: map[string]metaOverride{}}}
+	return &stub{world: newWorld(), openapi: openapi, client: &http.Client{Timeout: webhookTimeout}, hooks: newBins(), metas: &metas{byHost: map[string]metaOverride{}}, oauth: newOAuth()}
 }
 
 // handler routes Armature's operations and the /_stub/ controls.
@@ -125,6 +130,12 @@ func (s *stub) handler() http.Handler {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	s.hooks.routes(mux)
+	// Armature serves its metadata at the root of its issuer, and the
+	// consent page is a page of its web app.
+	mux.HandleFunc("GET "+wellKnownPath, s.serveMetadata)
+	mux.HandleFunc("GET "+authorizePath, s.authorizePage)
+	mux.HandleFunc("POST "+authorizePath, s.authorizeDecision)
+	s.oauthControls(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		refuse(w, http.StatusNotFound, "not_found", "The stub does not serve this. Add it to cmd/armature-stub when Stator starts calling it.")
 	})
@@ -147,7 +158,7 @@ func (s *stub) serve(rt route) http.HandlerFunc {
 			}
 			s.world.mu.Lock()
 			defer s.world.mu.Unlock()
-			t, p, ok := s.world.caller(strings.TrimSpace(token))
+			t, p, ok := s.caller(strings.TrimSpace(token))
 			if !found || !ok {
 				refuse(w, http.StatusUnauthorized, "unauthorized", "Sign in to continue.")
 				return
