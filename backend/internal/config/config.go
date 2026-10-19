@@ -225,6 +225,9 @@ type Armature struct {
 	// WebhookURL is where Armature posts its events to Stator, when Stator
 	// makes its webhook itself; empty is STATOR_APP_URL's receiver.
 	WebhookURL string
+	// TokenExchange connects a person to Armature at their sign-in through
+	// the shared identity provider, where Armature offers the exchange.
+	TokenExchange bool
 }
 
 // Exciter is how this process reaches the Exciter installation the instance
@@ -402,6 +405,7 @@ func Load() (Config, error) {
 	c.Armature.OutboundAllow = l.str("STATOR_OUTBOUND_ALLOW", "")
 	c.Armature.Backchannel = l.rewrites("STATOR_ARMATURE_BACKCHANNEL")
 	c.Armature.WebhookURL = strings.TrimSuffix(l.str("STATOR_ARMATURE_WEBHOOK_URL", ""), "/")
+	c.Armature.TokenExchange = l.boolean("STATOR_ARMATURE_TOKEN_EXCHANGE", false)
 	c.Exciter.Backchannel = l.rewrites("STATOR_EXCITER_BACKCHANNEL")
 	c.SecretKey = l.secretKey("STATOR_SECRET_KEY", c.Env)
 

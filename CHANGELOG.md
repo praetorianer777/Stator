@@ -9,6 +9,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Connecting people to Armature at sign-in (#430): where Stator and Armature
+  sign in through the same Keycloak realm, the operator turns on
+  `STATOR_ARMATURE_TOKEN_EXCHANGE` (chart value `armature.tokenExchange`),
+  and Armature reports `oauth.token-exchange@1`, a person who signs in
+  through the identity provider is connected to Armature at once: Stator
+  exchanges their access token at Armature's token endpoint as its connected
+  app and keeps the grant sealed, renewed as one from Connect Armature is.
+  Nobody clicks or pastes a token. A grant or token a person made is kept;
+  a missing or dead one is filled in. When Armature refuses, the sign-in goes
+  on and the profile says why, in Armature's own words, above Connect
+  Armature. In English and German.
 - Connecting Armature as an administrator in one step (#429): where Armature
   lists `webhooks.partner@1` beside `oauth.partner-tokens@1`, Settings,
   Armature offers Connect. The administrator allows Stator once on

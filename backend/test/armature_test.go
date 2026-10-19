@@ -68,6 +68,12 @@ func (h *harness) valkey(t *testing.T) *redis.Client {
 // armature is the service as cmd/api builds it, over the stack's stub.
 func (h *harness) armature(t *testing.T) *armature.Service {
 	t.Helper()
+	return h.armatureWith(t, armature.Options{})
+}
+
+// armatureWith is armature with the settings opts turns on besides.
+func (h *harness) armatureWith(t *testing.T, opts armature.Options) *armature.Service {
+	t.Helper()
 	box, err := secret.New(testSecretKey(t))
 	if err != nil {
 		t.Fatal(err)
@@ -75,8 +81,8 @@ func (h *harness) armature(t *testing.T) *armature.Service {
 	allow := netguard.ParseAllow(armatureStubHost)
 	client := armature.NewClient(allow, map[string]string{armatureURL(t): os.Getenv(envArmatureStub), olderArmatureURL(h): os.Getenv(envArmatureStub),
 		connectedAppURL(h): os.Getenv(envArmatureStub)})
-	return armature.NewService(h.cluster, box, client, armature.NewCache(h.valkey(t), discard()),
-		armature.Options{AppURL: armatureAppURL, Allow: allow, Development: true, Log: discard()})
+	opts.AppURL, opts.Allow, opts.Development, opts.Log = armatureAppURL, allow, true, discard()
+	return armature.NewService(h.cluster, box, client, armature.NewCache(h.valkey(t), discard()), opts)
 }
 
 // olderArmatureURL is the stub under a host of the harness's own, which a

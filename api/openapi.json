@@ -19854,13 +19854,20 @@
             "items": {
               "type": "string"
             }
+          },
+          "signInRefusal": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
           "offered",
           "pending",
           "refusal",
-          "scopes"
+          "scopes",
+          "signInRefusal"
         ]
       },
       "AccountUser": {

@@ -43,6 +43,7 @@ New settings, in compose and the chart:
 | `STATOR_OUTBOUND_ALLOW` | Host names and CIDRs, comma separated, that the SSRF guard lets through although they are inside the network, as Armature's `ARMATURE_OUTBOUND_ALLOW`. Empty by default. |
 | `STATOR_ARMATURE_BACKCHANNEL` | `public-origin=reachable-origin` pairs, as `STATOR_OIDC_BACKCHANNEL`: where this process reaches an Armature whose base URL people open under another name. |
 | `STATOR_ARMATURE_WEBHOOK_URL` | Where Armature posts its events to Stator when Stator makes its webhook in Armature itself (#429), for an Armature that reaches Stator under another name; empty is `STATOR_APP_URL` with `/api/v1/armature/webhook`. Chart value `armature.webhookUrl`. |
+| `STATOR_ARMATURE_TOKEN_EXCHANGE` | `true` connects each person to Armature at their sign-in through the shared identity provider, by token exchange, where Armature reports `oauth.token-exchange@1` (#430, `docs/integration.md`). Off by default. Chart value `armature.tokenExchange`. |
 
 ## Rules for every Armature call
 

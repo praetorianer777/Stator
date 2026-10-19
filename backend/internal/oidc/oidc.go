@@ -58,6 +58,10 @@ type Identity struct {
 	// Groups are the values of the configured claim, trimmed and without
 	// repeats. They are matched against a group's external reference.
 	Groups []string
+	// AccessToken is the provider's access token of the sign-in, which a
+	// partner tool of the same realm exchanges for a grant of its own; it is
+	// never stored.
+	AccessToken string
 }
 
 // ValidationError is a provider setting that cannot be saved as given.

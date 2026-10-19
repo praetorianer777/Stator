@@ -165,7 +165,8 @@ func run() error {
 	}
 	armatures := armature.NewService(cluster, box,
 		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Armature.Backchannel), cache,
-		armature.Options{AppURL: cfg.AppBaseURL, WebhookURL: cfg.Armature.WebhookURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
+		armature.Options{AppURL: cfg.AppBaseURL, WebhookURL: cfg.Armature.WebhookURL, TokenExchange: cfg.Armature.TokenExchange,
+			Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
 	var exciterCache *armature.Cache
 	if valkey != nil {
 		exciterCache = exciter.NewCache(valkey, log)

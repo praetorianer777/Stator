@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
@@ -41,6 +43,12 @@ const (
 	unknownSentence = "This app is not connected to Armature. Ask an Armature administrator to connect it."
 	adminSentence   = "Sending Armature's events to Stator needs an Armature administrator. Sign in as one, or ask one to connect Stator."
 	webhooksScope   = "webhooks.partner"
+
+	grantTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
+	tokenTypeAccess    = "urn:ietf:params:oauth:token-type:access_token"
+	// defaultAudience is the client id of Armature's own sign-in in the
+	// suite's realm dynamo.
+	defaultAudience = "armature"
 )
 
 type oauthClient struct {
@@ -48,6 +56,22 @@ type oauthClient struct {
 	RedirectURIs     []string
 	Scope            string
 	Pending          bool
+	// Exchange is what an administrator named for the identity provider's
+	// tokens of the app, nil where the app exchanges none.
+	Exchange *exchangeSetting
+}
+
+// exchangeSetting is an app's Keycloak client, as Armature's administrator
+// names it, and who in the stub's tenant each verified address is.
+type exchangeSetting struct {
+	KeycloakClientID string `json:"keycloakClientId"`
+	// Audience is the client id Armature's own OIDC sign-in uses, which a
+	// token to exchange must name in aud.
+	Audience string `json:"audience"`
+	Tenant   string `json:"tenant"`
+	// People maps a verified address to the person of Tenant who has it;
+	// anybody else has no Armature account.
+	People map[string]string `json:"people"`
 }
 
 type oauthCode struct {
@@ -60,6 +84,8 @@ type oauthGrant struct {
 	access, refresh               string
 	refreshes                     int
 	ended                         bool
+	// exchanged says the grant came from an identity provider's token.
+	exchanged bool
 }
 
 type oauthServer struct {
@@ -418,9 +444,132 @@ func (s *stub) token(c *call) {
 		}
 		g.refreshes++
 		s.oauth.issue(c.w, g)
+	case grantTokenExchange:
+		s.oauth.exchange(c.w, client, form)
 	default:
-		oauthRefuse(c.w, http.StatusBadRequest, "unsupported_grant_type", "The stub trades codes and refresh tokens.")
+		oauthRefuse(c.w, http.StatusBadRequest, "unsupported_grant_type", "The stub trades codes, refresh tokens and identity provider tokens.")
 	}
+}
+
+// exchange trades a person's token from the shared identity provider for a
+// grant, as Armature does for an app whose Keycloak client is named.
+// Narrowing a grant's own access token, the other exchange, is not stood in for.
+func (o *oauthServer) exchange(w http.ResponseWriter, client *oauthClient, form url.Values) {
+	if form.Get("subject_token") == "" || form.Get("subject_token_type") == "" {
+		oauthRefuse(w, http.StatusBadRequest, "invalid_request", "Send subject_token and subject_token_type.")
+		return
+	}
+	if form.Get("subject_token_type") != tokenTypeAccess {
+		oauthRefuse(w, http.StatusBadRequest, "invalid_request", "Armature exchanges access tokens only: subject_token_type is "+tokenTypeAccess+".")
+		return
+	}
+	if client.Exchange == nil || client.Exchange.KeycloakClientID == "" {
+		oauthRefuse(w, http.StatusBadRequest, "unauthorized_client",
+			client.Name+" may not exchange identity provider tokens. An Armature administrator names its Keycloak client under Settings, Connected apps.")
+		return
+	}
+	asked := strings.Fields(form.Get("scope"))
+	if slices.Contains(asked, webhooksScope) {
+		oauthRefuse(w, http.StatusBadRequest, "invalid_scope", "webhooks.partner is given on the consent page only. Connect as an administrator there.")
+		return
+	}
+	if len(asked) == 0 {
+		asked = slices.DeleteFunc(strings.Fields(client.Scope), func(scope string) bool { return scope == webhooksScope })
+	}
+	if !slices.Contains(asked, "read") || !within(strings.Join(asked, " "), client.Scope) {
+		oauthRefuse(w, http.StatusBadRequest, "invalid_scope", "Ask for read and at most what the app may have.")
+		return
+	}
+	claims, err := providerClaims(form.Get("subject_token"))
+	if err == nil {
+		err = claims.heldTo(client.Exchange)
+	}
+	if err != nil {
+		oauthRefuse(w, http.StatusBadRequest, "invalid_grant", "The identity provider's token was refused: "+err.Error()+".")
+		return
+	}
+	person := client.Exchange.People[strings.ToLower(claims.Email)]
+	if person == "" {
+		oauthRefuse(w, http.StatusBadRequest, "invalid_grant", claims.Name+" has no Armature account yet. Sign in to Armature once, or ask an administrator to let them in.")
+		return
+	}
+	var g *oauthGrant
+	for _, each := range o.grants {
+		if !each.ended && each.client == client.ID && each.tenant == client.Exchange.Tenant && each.person == person {
+			g = each
+		}
+	}
+	if g == nil {
+		g = &oauthGrant{client: client.ID, tenant: client.Exchange.Tenant, person: person}
+		o.grants = append(o.grants, g)
+	}
+	// A grant gains the scopes asked and keeps what it held (Cloudster1/Armature#298).
+	held := strings.Fields(g.scope)
+	for _, scope := range asked {
+		if !slices.Contains(held, scope) {
+			held = append(held, scope)
+		}
+	}
+	g.scope = strings.Join(held, " ")
+	g.exchanged = true
+	o.issue(w, g)
+}
+
+// tokenClaims are what Armature reads of an identity provider's access token.
+type tokenClaims struct {
+	Issuer        string          `json:"iss"`
+	AuthorizedBy  string          `json:"azp"`
+	Audience      json.RawMessage `json:"aud"`
+	Expires       int64           `json:"exp"`
+	Email         string          `json:"email"`
+	EmailVerified bool            `json:"email_verified"`
+	Name          string          `json:"name"`
+}
+
+// providerClaims reads a token's claims without checking its signature:
+// the stub stands in for Armature's answers, and Armature checks the
+// signature against its provider's keys, which the stub's network may not
+// even reach under the token's issuer.
+func providerClaims(token string) (*tokenClaims, error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return nil, errors.New("it is not a JSON web token")
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, errors.New("its claims are not base64url")
+	}
+	var claims tokenClaims
+	if err := json.Unmarshal(raw, &claims); err != nil {
+		return nil, errors.New("its claims are not JSON")
+	}
+	return &claims, nil
+}
+
+// heldTo checks the claims as Armature does: unexpired, issued to the app's
+// Keycloak client, meant for Armature, and naming a verified address.
+func (c *tokenClaims) heldTo(e *exchangeSetting) error {
+	var audience []string
+	if json.Unmarshal(c.Audience, &audience) != nil {
+		var one string
+		_ = json.Unmarshal(c.Audience, &one)
+		audience = []string{one}
+	}
+	want := e.Audience
+	if want == "" {
+		want = defaultAudience
+	}
+	switch {
+	case time.Now().Unix() >= c.Expires:
+		return errors.New("it has expired")
+	case c.AuthorizedBy != e.KeycloakClientID:
+		return fmt.Errorf("it was issued to %s, not to %s", c.AuthorizedBy, e.KeycloakClientID)
+	case !slices.Contains(audience, want):
+		return fmt.Errorf("its audience does not hold %s", want)
+	case c.Email == "" || !c.EmailVerified:
+		return errors.New("it names no verified address")
+	}
+	return nil
 }
 
 func (s *stub) revoke(c *call) {
@@ -473,6 +622,36 @@ func (s *stub) oauthControls(mux *http.ServeMux) {
 			w.WriteHeader(http.StatusNoContent)
 		}
 	}
+	// An app an Armature administrator registered under Settings, Connected
+	// apps: active at once, with its Keycloak client named or not.
+	mux.HandleFunc("POST "+oauthPrefix+"/clients", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name         string           `json:"name"`
+			RedirectURIs []string         `json:"redirectUris"`
+			Scope        string           `json:"scope"`
+			Exchange     *exchangeSetting `json:"exchange"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, maxBody)).Decode(&body); err != nil || body.Name == "" || len(body.RedirectURIs) == 0 {
+			refuse(w, http.StatusBadRequest, "bad_request", "Send the app's name, its redirect URIs, its scope and how it exchanges tokens.")
+			return
+		}
+		if body.Scope == "" {
+			body.Scope = "read"
+		}
+		if body.Exchange != nil {
+			people := map[string]string{}
+			for email, person := range body.Exchange.People {
+				people[strings.ToLower(email)] = person
+			}
+			body.Exchange.People = people
+		}
+		client := &oauthClient{ID: uuid.NewString(), Secret: secretWith(clientSecretOf), Name: body.Name, RedirectURIs: body.RedirectURIs,
+			Scope: body.Scope, Exchange: body.Exchange}
+		s.oauth.mu.Lock()
+		s.oauth.clients[client.ID] = client
+		s.oauth.mu.Unlock()
+		respond(w, http.StatusCreated, map[string]any{"clientId": client.ID, "clientSecret": client.Secret})
+	})
 	mux.HandleFunc("POST "+oauthPrefix+"/{tenant}/people/{person}/expire", each(func(g *oauthGrant) { delete(s.oauth.access, g.access) }))
 	mux.HandleFunc("POST "+oauthPrefix+"/{tenant}/people/{person}/end", each(s.oauth.end))
 	mux.HandleFunc("GET "+oauthPrefix+"/{tenant}/grants", func(w http.ResponseWriter, r *http.Request) {
@@ -481,7 +660,8 @@ func (s *stub) oauthControls(mux *http.ServeMux) {
 		out := []map[string]any{}
 		for _, g := range s.oauth.grants {
 			if g.tenant == r.PathValue("tenant") {
-				out = append(out, map[string]any{"person": g.person, "clientId": g.client, "scope": g.scope, "refreshes": g.refreshes, "ended": g.ended})
+				out = append(out, map[string]any{"person": g.person, "clientId": g.client, "scope": g.scope, "refreshes": g.refreshes, "ended": g.ended,
+					"exchanged": g.exchanged})
 			}
 		}
 		respond(w, http.StatusOK, map[string]any{"grants": out})

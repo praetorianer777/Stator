@@ -63,6 +63,9 @@ x-armature-env: &armature-env
   STATOR_OUTBOUND_ALLOW: armature-stub,web,armature-api,exciter-stub
   STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://older-armature.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://connected-app.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://partner-webhook.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://localhost:${ARMATURE_PORT:-8191}=http://armature-api:8080
   STATOR_ARMATURE_WEBHOOK_URL: http://api:8080/api/v1/armature/webhook
+  # Acts only where an Armature reports oauth.token-exchange@1: the stub does
+  # for the hosts a suite names, and a real Armature once it offers it.
+  STATOR_ARMATURE_TOKEN_EXCHANGE: "true"
   STATOR_EXCITER_BACKCHANNEL: http://localhost:${EXCITER_STUB_PORT:-8192}=http://exciter-stub:8080
 
 # Who the stack's organization is made with: the realm's people, let in ahead
