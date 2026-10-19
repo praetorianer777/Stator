@@ -63,7 +63,7 @@ func (s *Service) probe(ctx context.Context, base string) (Partner, error) {
 		if described := s.client.Describe(ctx, base); described != nil {
 			err = described
 		}
-	case errors.As(err, &refused), errors.Is(err, ErrRejected), errors.Is(err, errUnreadable):
+	case errors.As(err, &refused), errors.Is(err, ErrRejected), errors.Is(err, ErrUnreadable):
 		err = ErrNotArmature
 	}
 	if err != nil && !errors.Is(err, ErrNoMeta) {
@@ -79,8 +79,8 @@ func (s *Service) addressError(ctx context.Context, base string, err error) erro
 	switch {
 	case errors.Is(err, netguard.ErrBlocked):
 		s.opts.Log.Info("the SSRF guard refused an Armature address", "base_url", base, "error", err)
-		host := hostOf(base)
-		return &FieldError{Field: "baseUrl", Message: BlockedSentence(host, resolve(ctx, host))}
+		host := HostOf(base)
+		return &FieldError{Field: "baseUrl", Message: BlockedSentence(host, Resolve(ctx, host))}
 	case errors.Is(err, ErrNotArmature):
 		return &FieldError{Field: "baseUrl", Message: "Something answers at this address, but it is not Armature. Check the address, and leave out any path such as /api/v1."}
 	default:
@@ -89,7 +89,9 @@ func (s *Service) addressError(ctx context.Context, base string, err error) erro
 	}
 }
 
-func hostOf(base string) string {
+// HostOf is the lower case host name of an origin, or the origin itself when
+// it does not parse.
+func HostOf(base string) string {
 	u, err := url.Parse(base)
 	if err != nil {
 		return base
@@ -97,9 +99,9 @@ func hostOf(base string) string {
 	return strings.ToLower(u.Hostname())
 }
 
-// resolve is what host itself resolves to here, and nothing a redirect led
+// Resolve is what host itself resolves to here, and nothing a redirect led
 // to, so the sentence tells no more of the network than the name typed.
-func resolve(ctx context.Context, host string) []netip.Addr {
+func Resolve(ctx context.Context, host string) []netip.Addr {
 	if addr, err := netip.ParseAddr(host); err == nil {
 		return []netip.Addr{addr}
 	}
@@ -115,7 +117,13 @@ func resolve(ctx context.Context, host string) []netip.Addr {
 // BlockedSentence says why the outbound guard refused host and the exact
 // value that lets it through; resolved is what host itself resolves to.
 func BlockedSentence(host string, resolved []netip.Addr) string {
-	allow := "Use Armature's public address, or add " + host + " to " + OutboundAllowValue +
+	return BlockedSentenceFor("Armature", host, resolved)
+}
+
+// BlockedSentenceFor is BlockedSentence for the partner named product, so
+// every partner Stator connects is refused in the same words.
+func BlockedSentenceFor(product, host string, resolved []netip.Addr) string {
+	allow := "Use " + product + "'s public address, or add " + host + " to " + OutboundAllowValue +
 		" in the chart values (" + OutboundAllowEnv + "), or ask the operator to."
 	if _, err := netip.ParseAddr(host); err == nil {
 		return "Stator may not reach " + host + ", because it is an address inside the server's own network. " + allow

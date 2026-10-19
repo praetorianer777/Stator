@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/example"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
@@ -976,6 +977,42 @@ var operations = append([]operation{
 		summary:   "Stop following the Armature theme and return to the organization's default.",
 		responses: none()},
 
+	// Connecting Exciter (#440), as Armature is connected; see docs/integration.md.
+	{method: "GET", path: "/exciter/connection", handler: "handleGetExciterConnection", wholeInstance: true, tag: "exciter",
+		summary:   "The Exciter installation Stator is connected to and what to enter in Exciter's webhook settings, or null. For administrators.",
+		responses: ok(env{"connection": (*exciter.Connection)(nil)})},
+	{method: "PUT", path: "/exciter/connection", handler: "handleSaveExciterConnection", wholeInstance: true, tag: "exciter",
+		summary: "Connect an Exciter installation, which answers product exciter at /meta; a new address forgets every stored token. For administrators.",
+		request: exciter.ConnectionInput{}, responses: map[int]any{200: env{"connection": exciter.Connection{}}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/exciter/connection/check", handler: "handleCheckExciterConnection", wholeInstance: true, tag: "exciter",
+		summary: "Ask an address what answers there before saving it: the Exciter version and what it offers, or a sentence on baseUrl saying what is wrong. Stores nothing. For administrators.",
+		request: exciter.ConnectionCheckInput{}, responses: map[int]any{200: env{"check": exciter.ConnectionCheck{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/exciter/connection", handler: "handleRemoveExciterConnection", wholeInstance: true, tag: "exciter",
+		summary:   "Disconnect Exciter, forgetting every stored token and the webhook secret. For administrators.",
+		responses: none()},
+	{method: "GET", path: "/exciter/account", handler: "handleGetExciterAccount", tag: "exciter",
+		summary:   "Whether the caller connected their Exciter token, whom it acts as, and what the connected Exciter does not offer.",
+		responses: ok(env{"account": exciter.Account{}})},
+	{method: "PUT", path: "/exciter/account/token", handler: "handleConnectExciterAccount", tag: "exciter",
+		summary: "Store the caller's Exciter personal access token, once Exciter accepts it; it is never answered again.",
+		request: exciter.TokenInput{}, responses: map[int]any{200: env{"account": exciter.Account{}}, 409: errorEnvelope{}, 422: errorEnvelope{}, 502: errorEnvelope{}}},
+	{method: "POST", path: "/exciter/account/check", handler: "handleCheckExciterAccount", tag: "exciter",
+		summary:   "Ask Exciter now whether the caller's stored token still works.",
+		responses: ok(env{"account": exciter.Account{}})},
+	{method: "DELETE", path: "/exciter/account/token", handler: "handleDisconnectExciterAccount", tag: "exciter",
+		summary:   "Forget the caller's Exciter token.",
+		responses: none()},
+	{method: "GET", path: "/exciter/requirements", handler: "handleLookupExciterRequirements", tag: "exciter",
+		summary:   "Requirements by key for chips, read with the caller's own token and kept at most " + strconv.Itoa(int(exciter.RequirementCacheTTL.Seconds())) + " seconds; a former key answers the requirement under its current key, and status says why there are none.",
+		query:     []param{{name: "key", repeated: true, schema: &openapi.Schema{Type: "string"}, description: "Requirement keys such as CHK-R42, 1 to " + strconv.Itoa(exciter.MaxLookupKeys) + "."}},
+		responses: map[int]any{200: env{"status": exciter.Status(""), "requirements": []exciter.RequirementResult{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/exciter/requirements/{reqKey}", handler: "handleGetExciterRequirement", tag: "exciter",
+		summary:   "One requirement by key, as the caller may see it; null when they may not.",
+		responses: map[int]any{200: env{"status": exciter.Status(""), "requirement": (*exciter.Requirement)(nil)}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/exciter/webhook", handler: "handleExciterWebhook", tag: "exciter", public: true,
+		summary: "Where Exciter posts requirement events, signed with the webhook secret saved in Stator, the time within " + strconv.Itoa(int(armature.WebhookTimestampTolerance.Minutes())) + " minutes of Stator's clock; envelope version " + strconv.Itoa(exciter.WebhookVersion) + " with source exciter only. Clears the cached requirements they name, by key and by id, and ignores fields and topics it does not know.",
+		request: exciter.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
+
 	{method: "POST", path: "/mcp", handler: "handleMCP", id: "mcp", tag: "mcp", summary: "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
 		raw: true, rawNote: "A JSON-RPC 2.0 request as the Model Context Protocol defines it.", responses: map[int]any{200: rpcResponse{}, 202: nil}},
 }, oldPublicOperations()...)
@@ -1068,6 +1105,15 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(template.CreateInput{})] = "TemplateCreateInput"
 	b.Names[reflect.TypeOf(template.Input{})] = "TemplateInput"
 	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
+	b.Names[reflect.TypeOf(exciter.Connection{})] = "ExciterConnection"
+	b.Names[reflect.TypeOf(exciter.ConnectionInput{})] = "ExciterConnectionInput"
+	b.Names[reflect.TypeOf(exciter.ConnectionCheckInput{})] = "ExciterConnectionCheckInput"
+	b.Names[reflect.TypeOf(exciter.ConnectionCheck{})] = "ExciterConnectionCheck"
+	b.Names[reflect.TypeOf(exciter.Account{})] = "ExciterAccount"
+	b.Names[reflect.TypeOf(exciter.TokenInput{})] = "ExciterTokenInput"
+	b.Names[reflect.TypeOf(exciter.Partner{})] = "ExciterPartner"
+	b.Names[reflect.TypeOf(exciter.MissingFeature{})] = "ExciterMissingFeature"
+	b.Names[reflect.TypeOf(exciter.WebhookEnvelope{})] = "ExciterWebhookEnvelope"
 	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
 	b.Names[reflect.TypeOf(task.Report{})] = "TaskReport"
 	b.Names[reflect.TypeOf(page.FromTemplateInput{})] = "PageFromTemplateInput"
@@ -1178,6 +1224,9 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(armature.LinkState(""))] = enumStrings(armature.LinkStates)
 	b.FieldOverrides["Issue.priority"] = &openapi.Schema{Type: "string", Enum: armature.Priorities}
 	b.FieldOverrides["IssueStatus.category"] = &openapi.Schema{Type: "string", Enum: armature.StatusCategories}
+	b.Enums[reflect.TypeOf(exciter.Feature(""))] = enumStrings(exciter.Features)
+	b.FieldOverrides["RequirementStatus.category"] = &openapi.Schema{Type: "string", Enum: exciter.StatusCategories}
+	b.FieldOverrides["ExciterWebhookEnvelope.source"] = &openapi.Schema{Type: "string", Enum: []string{exciter.WebhookSource}}
 	// A group grants member or admin; owner is never the provider's to give.
 	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
 	b.FieldOverrides["AuditEntry.action"] = &openapi.Schema{Type: "string", Enum: audit.Actions}

@@ -71,6 +71,8 @@ const (
 	ActionOrgBrandSet               = "org.brand_set"
 	ActionArmatureConnectionSaved   = "armature.connection_saved"
 	ActionArmatureConnectionRemoved = "armature.connection_removed"
+	ActionExciterConnectionSaved    = "exciter.connection_saved"
+	ActionExciterConnectionRemoved  = "exciter.connection_removed"
 	// Exports: what left the wiki as a file, and the record itself.
 	ActionPageExported  = "page.exported"
 	ActionAuditExported = "audit.exported"
@@ -132,6 +134,7 @@ var Actions = []string{
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
 	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet, ActionOrgBrandSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
+	ActionExciterConnectionSaved, ActionExciterConnectionRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
@@ -153,7 +156,7 @@ const Redacted = "[redacted]"
 
 // SecretPrefixes start every credential Stator issues or stores, so a value
 // that starts with one never reaches the record whatever key it hides under.
-var SecretPrefixes = []string{"stator_pat_", "stator_whs_", "armature_pat_", "armature_whs_"}
+var SecretPrefixes = []string{"stator_pat_", "stator_whs_", "armature_pat_", "armature_whs_", "exciter_pat_", "exciter_whs_"}
 
 // secretWords mark a key whose value would be a credential if it were text.
 var secretWords = []string{"secret", "password", "token", "credential"}

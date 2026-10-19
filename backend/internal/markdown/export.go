@@ -13,6 +13,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 )
 
 // Links says where the files and pages a document names are written. A
@@ -745,6 +746,8 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 		return span(kindMention, [][2]string{{"data-id", stringAttr(n, "id")}}, r.escape("@"+stringAttr(n, "label"), esc, false))
 	case armature.NodeIssue:
 		return span(kindIssue, nil, r.escape(stringAttr(n, "key"), esc, false))
+	case exciter.NodeRequirement:
+		return span(kindRequirement, nil, r.escape(stringAttr(n, "key"), esc, false))
 	case document.NodeStatus:
 		return span(kindStatus, [][2]string{{"data-color", stringAttr(n, "color")}}, r.escape(stringAttr(n, "label"), esc, false))
 	case document.NodeDate:

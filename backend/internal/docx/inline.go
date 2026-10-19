@@ -5,6 +5,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 )
 
 type inlineWriter func(w *writer, n document.Node, rp runProps)
@@ -54,6 +55,10 @@ func init() {
 			})
 		},
 		armature.NodeIssue: func(w *writer, n document.Node, rp runProps) {
+			rp.bold = true
+			w.text(stringAttr(n, "key"), rp)
+		},
+		exciter.NodeRequirement: func(w *writer, n document.Node, rp runProps) {
 			rp.bold = true
 			w.text(stringAttr(n, "key"), rp)
 		},

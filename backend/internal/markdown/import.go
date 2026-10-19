@@ -23,6 +23,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 )
 
 // TargetKind is what a relative link or image in a file points at.
@@ -1285,6 +1286,8 @@ func spanNode(kind string, attrs map[string]string, words string) (document.Node
 		}}, true
 	case kindIssue:
 		return document.Node{Type: armature.NodeIssue, Attrs: map[string]any{"key": words}}, true
+	case kindRequirement:
+		return document.Node{Type: exciter.NodeRequirement, Attrs: map[string]any{"key": words}}, true
 	case kindStatus:
 		return document.Node{Type: document.NodeStatus, Attrs: map[string]any{"label": words, "color": attrs["data-color"]}}, true
 	case kindDate:

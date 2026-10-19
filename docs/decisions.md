@@ -3,6 +3,34 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-19: Exciter is reached the way Armature is, through Armature's code (#440)
+
+Exciter's requirements on pages repeat what Stator does for Armature's issues,
+so `internal/exciter` keeps only what differs and takes the rest from
+`internal/armature`.
+
+- **One outbound client, cache and signature.** Calls go through
+  `armature.Client` (the SSRF guard, the backchannel, the bounds), answers
+  through `armature.Cache` under the prefix `stator:exciter:`, and deliveries
+  are checked with `armature.Sign` and `VerifyTimestamp`. The guard's
+  sentence names the partner (`BlockedSentenceFor`), and the status words
+  are Armature's, so a client reads both alike.
+- **Its own tables and tokens.** The connection and the tokens are tables of
+  their own (00810), not a column on Armature's: each partner is connected,
+  moved and forgotten on its own, and a token is sealed with a context that
+  names its partner.
+- **The signed time is required.** Exciter signs the time of every attempt,
+  so unlike Armature before #242 a delivery without it is refused.
+- **A typed key becomes a chip only for a connected author.** Requirement keys
+  carry `-R`, so they are rarely written by chance, and the project list
+  that would narrow them is `specifications@1`, which the list block of the
+  second part brings. Until then the author's own connection decides.
+- **Lookups are one read per key.** Exciter answers a former key at
+  `GET /requirements/{reqKey}` and no search does, so the keys a page names
+  are read at most eight at a time; the cache remembers under each
+  requirement's id the keys it was read by, so a webhook naming the current
+  key clears a chip that names a former one.
+
 ## 2026-10-19: Exciter's theme file is vendored and travels through Stator unchanged (#443)
 
 Stator, Armature and Exciter share the `armature-theme/1` format, so a theme

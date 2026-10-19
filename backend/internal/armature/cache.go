@@ -28,17 +28,25 @@ type Cache struct {
 	log   *slog.Logger
 	// now is the clock the ages of entries are judged by.
 	now func() time.Time
+	// prefix starts every key, and product names the partner in the log.
+	prefix, product string
 }
 
 // NewCache returns a cache over store, or nil for a nil store.
 func NewCache(store redis.UniversalClient, log *slog.Logger) *Cache {
+	return NewCacheFor(store, log, CachePrefix, "Armature")
+}
+
+// NewCacheFor is NewCache for another partner's answers, kept under prefix,
+// such as Exciter's requirements; nil for a nil store.
+func NewCacheFor(store redis.UniversalClient, log *slog.Logger, prefix, product string) *Cache {
 	if store == nil {
 		return nil
 	}
 	if log == nil {
 		log = slog.Default()
 	}
-	return &Cache{store: store, log: log, now: time.Now}
+	return &Cache{store: store, log: log, now: time.Now, prefix: prefix, product: product}
 }
 
 // entry is what every field and key holds: when it was stored, and the value.
@@ -77,10 +85,22 @@ func EventKey(site, eventID uuid.UUID) string { return siteKey(site, "event:"+ev
 // ReceiptKey holds the last webhook delivery the receiver took.
 func ReceiptKey(site uuid.UUID) string { return siteKey(site, "webhook:last") }
 
+// Key is rest under the cache's prefix and the site; NewCache's keys are the
+// ones the functions above name.
+func (c *Cache) Key(site uuid.UUID, rest string) string {
+	if c == nil {
+		return ""
+	}
+	return c.prefix + site.String() + ":" + rest
+}
+
 // Receipt reads the last webhook delivery taken; false when none is remembered.
 func (c *Cache) Receipt(ctx context.Context, site uuid.UUID) (*WebhookReceipt, bool) {
+	if c == nil {
+		return nil, false
+	}
 	var out WebhookReceipt
-	if !c.get(ctx, ReceiptKey(site), WebhookReceiptTTL, &out) {
+	if !c.get(ctx, c.Key(site, "webhook:last"), WebhookReceiptTTL, &out) {
 		return nil, false
 	}
 	return &out, true
@@ -88,7 +108,51 @@ func (c *Cache) Receipt(ctx context.Context, site uuid.UUID) (*WebhookReceipt, b
 
 // PutReceipt remembers a webhook delivery as the last one taken.
 func (c *Cache) PutReceipt(ctx context.Context, site uuid.UUID, receipt WebhookReceipt) {
-	c.put(ctx, ReceiptKey(site), WebhookReceiptTTL, receipt)
+	if c == nil {
+		return
+	}
+	c.put(ctx, c.Key(site, "webhook:last"), WebhookReceiptTTL, receipt)
+}
+
+// Field reads the field of the hash at key into out when it is younger than
+// ttl; false is a miss.
+func (c *Cache) Field(ctx context.Context, key, field string, ttl time.Duration, out any) bool {
+	return c.getField(ctx, key, field, ttl, out)
+}
+
+// PutField stores value as the field of the hash at key, for ttl.
+func (c *Cache) PutField(ctx context.Context, key, field string, ttl time.Duration, value any) {
+	c.putField(ctx, key, field, ttl, value)
+}
+
+// Remember adds member to the set at key and keeps the set for ttl after it.
+func (c *Cache) Remember(ctx context.Context, key, member string, ttl time.Duration) {
+	if c == nil {
+		return
+	}
+	pipe := c.store.TxPipeline()
+	pipe.SAdd(ctx, key, member)
+	pipe.Expire(ctx, key, ttl)
+	_, err := pipe.Exec(ctx)
+	c.warn(err, "remember")
+}
+
+// Members is the set at key, empty when there is none.
+func (c *Cache) Members(ctx context.Context, key string) []string {
+	if c == nil {
+		return nil
+	}
+	members, err := c.store.SMembers(ctx, key).Result()
+	c.warn(err, "read a set")
+	return members
+}
+
+// Forget deletes the keys.
+func (c *Cache) Forget(ctx context.Context, keys ...string) {
+	if c == nil || len(keys) == 0 {
+		return
+	}
+	c.warn(c.store.Del(ctx, keys...).Err(), "forget")
 }
 
 // Issue reads the owner of tokenID's answer for issueKey into out, null for
@@ -160,7 +224,7 @@ func (c *Cache) FirstDelivery(ctx context.Context, site, eventID uuid.UUID) bool
 	if c == nil {
 		return true
 	}
-	first, err := c.store.SetNX(ctx, EventKey(site, eventID), "1", WebhookReplayWindow).Result()
+	first, err := c.store.SetNX(ctx, c.Key(site, "event:"+eventID.String()), "1", WebhookReplayWindow).Result()
 	if err != nil {
 		c.warn(err, "remember a webhook event")
 		return true
@@ -249,6 +313,6 @@ func (c *Cache) put(ctx context.Context, key string, ttl time.Duration, value an
 
 func (c *Cache) warn(err error, what string) {
 	if err != nil {
-		c.log.Warn("the Armature cache failed; Armature is asked instead", "step", what, "error", err)
+		c.log.Warn("the "+c.product+" cache failed; "+c.product+" is asked instead", "step", what, "error", err)
 	}
 }

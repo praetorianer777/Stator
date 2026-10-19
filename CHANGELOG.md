@@ -9,6 +9,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Exciter requirements as chips on pages (#440, first part): an administrator
+  connects Exciter under Settings, Exciter, checked at its `/api/v1/meta`,
+  and each member stores their own `exciter_pat_` token under Your profile,
+  Exciter. A requirement key such as CHK-R42, typed or inserted from the
+  slash menu, shows each reader the title, status and revision Exciter shows
+  them, links to the requirement in Exciter, follows a former key to the
+  current one, and says when the reader may not see it or should connect.
+  Answers are kept per reader for at most a minute, and Exciter's signed
+  webhooks end them sooner. The exciter-stub stands in for Exciter in the
+  test suites, held to Exciter's API document. In English and German.
+
 - Settings, Armature asks the address an administrator types what answers
   there before it is saved, as they type or on Check, through
   `POST /api/v1/armature/connection/check` and Armature's `/api/v1/meta`

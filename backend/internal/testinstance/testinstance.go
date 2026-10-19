@@ -224,6 +224,7 @@ var resetStatements = []string{
 	`DELETE FROM brand`,
 	`DELETE FROM oidc_group_role`,
 	`DELETE FROM armature_connection`,
+	`DELETE FROM exciter_connection`,
 	`DELETE FROM webhook_endpoint`,
 	`DELETE FROM page_template WHERE space_id IS NULL`,
 	`DELETE FROM example_job`,

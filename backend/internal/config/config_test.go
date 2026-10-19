@@ -26,7 +26,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_BOOTSTRAP_ORG_SLUG", "STATOR_BOOTSTRAP_ORG_NAME", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
-		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL",
+		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL", "STATOR_EXCITER_BACKCHANNEL",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
 		"STATOR_EXAMPLE_CHECK_INTERVAL", "STATOR_WORD_IMPORT_CHECK_INTERVAL",
@@ -568,6 +568,24 @@ func TestArmatureIsReachedAsTheOperatorSays(t *testing.T) {
 	clean(t)
 	t.Setenv("STATOR_ARMATURE_BACKCHANNEL", "armature-stub")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_ARMATURE_BACKCHANNEL") {
+		t.Errorf("an unreadable pair was not refused by name: %v", err)
+	}
+}
+
+func TestExciterIsReachedAsTheOperatorSays(t *testing.T) {
+	clean(t)
+	t.Setenv("STATOR_EXCITER_BACKCHANNEL", "http://localhost:20010/=http://exciter-stub:8080")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Exciter.Backchannel["http://localhost:20010"] != "http://exciter-stub:8080" || len(cfg.Armature.Backchannel) != 0 {
+		t.Errorf("settings read as %+v and %+v", cfg.Exciter, cfg.Armature)
+	}
+
+	clean(t)
+	t.Setenv("STATOR_EXCITER_BACKCHANNEL", "exciter-stub")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_EXCITER_BACKCHANNEL") {
 		t.Errorf("an unreadable pair was not refused by name: %v", err)
 	}
 }

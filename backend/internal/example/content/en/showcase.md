@@ -324,3 +324,7 @@ An **Armature roadmap** lays a query's issues out on a timeline by epic or by te
 %%armature-roadmap%%
 {{else}}This organization has no Armature connected that showed whoever made this space a project, so there are no Armature blocks here. Once an administrator connects Armature under **Armature** in the account menu and you connect your own token in your profile, typing an issue key turns it into a chip, and the slash menu offers an **Armature issue**, an **Armature issue list**, an **Armature chart** and an **Armature roadmap**. See [Armature](armature.md).
 {{end}}
+
+## Exciter
+
+With Exciter connected, a requirement key such as <span data-stator="requirement">CHK-R1</span> becomes a chip that shows the title, the status and the revision of the requirement to each reader as Exciter shows it to them. Type the key and a space, or choose **Exciter requirement** in the slash menu and enter the key. Without Exciter, or without your own Exciter token, the chip is the key alone and says how to connect.

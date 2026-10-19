@@ -329,6 +329,7 @@
         "mention",
         "attachment",
         "armatureIssue",
+        "exciterRequirement",
         "status",
         "date",
         "mathInline"
@@ -439,6 +440,16 @@
         "armatureRoadmap"
       ]
     },
+    "exciterRequirement": {
+      "attrs": {
+        "key": {
+          "kind": "string",
+          "maxLength": 30,
+          "pattern": "^([A-Z][A-Z0-9]{1,9})-R([1-9][0-9]*)$"
+        }
+      },
+      "inline": true
+    },
     "expand": {
       "attrs": {
         "title": {
@@ -537,6 +548,7 @@
         "mention",
         "attachment",
         "armatureIssue",
+        "exciterRequirement",
         "status",
         "date",
         "mathInline"
@@ -792,6 +804,7 @@
         "mention",
         "attachment",
         "armatureIssue",
+        "exciterRequirement",
         "status",
         "date",
         "mathInline"
@@ -838,6 +851,7 @@
         "mention",
         "attachment",
         "armatureIssue",
+        "exciterRequirement",
         "status",
         "date",
         "mathInline"
