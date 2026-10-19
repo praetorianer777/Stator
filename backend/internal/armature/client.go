@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -126,15 +127,55 @@ func (c *Client) As(baseURL, token string) *Caller {
 	return &Caller{client: c, baseURL: strings.TrimSuffix(baseURL, "/"), token: token}
 }
 
+// Renewer trades a token Armature answered 401 for a fresh one, or says why
+// it cannot: ErrRejected when the grant has ended.
+type Renewer func(ctx context.Context, rejected string) (string, error)
+
+// Renewing is As for a grant's access token: a call answered 401 is renewed
+// once and sent again.
+func (c *Client) Renewing(baseURL, token string, renew Renewer) *Caller {
+	a := c.As(baseURL, token)
+	a.renew = renew
+	return a
+}
+
 // Caller makes calls to one Armature as one person, with their own token.
 type Caller struct {
 	client  *Client
 	baseURL string
-	token   string
+	renew   Renewer
+
+	mu    sync.Mutex
+	token string
 }
 
 // BaseURL is where the caller's Armature is opened.
 func (a *Caller) BaseURL() string { return a.baseURL }
+
+func (a *Caller) current() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.token
+}
+
+// call sends with the current token and, for a grant, once more with a
+// renewed one after a 401. A renewal Armature could not be asked for is
+// unreachable rather than rejected, so the person's grant is not given up.
+func (a *Caller) call(ctx context.Context, send func(token string) error) error {
+	token := a.current()
+	err := send(token)
+	if a.renew == nil || !errors.Is(err, ErrRejected) {
+		return err
+	}
+	fresh, renewErr := a.renew(ctx, token)
+	if renewErr != nil {
+		return renewErr
+	}
+	a.mu.Lock()
+	a.token = fresh
+	a.mu.Unlock()
+	return send(fresh)
+}
 
 // Get calls GET path, relative to /api/v1, with query, into out.
 func (a *Caller) Get(ctx context.Context, path string, query url.Values, out any) error {
@@ -142,19 +183,21 @@ func (a *Caller) Get(ctx context.Context, path string, query url.Values, out any
 	if len(query) > 0 {
 		target += "?" + query.Encode()
 	}
-	return a.client.do(ctx, http.MethodGet, target, a.token, nil, out)
+	return a.call(ctx, func(token string) error { return a.client.do(ctx, http.MethodGet, target, token, nil, out) })
 }
 
 // GetWithin is Get for an answer that may be larger than MaxResponseBytes,
 // such as a theme file, up to limit.
 func (a *Caller) GetWithin(ctx context.Context, path string, limit int64, out any) error {
-	return a.client.doWithin(ctx, http.MethodGet, a.baseURL+APIPath+path, a.token, nil, out, limit)
+	return a.call(ctx, func(token string) error {
+		return a.client.doWithin(ctx, http.MethodGet, a.baseURL+APIPath+path, token, nil, out, limit)
+	})
 }
 
 // Send calls method on path, relative to /api/v1, with body as JSON, into
 // out; a nil out ignores the answer.
 func (a *Caller) Send(ctx context.Context, method, path string, body, out any) error {
-	return a.client.do(ctx, method, a.baseURL+APIPath+path, a.token, body, out)
+	return a.call(ctx, func(token string) error { return a.client.do(ctx, method, a.baseURL+APIPath+path, token, body, out) })
 }
 
 // Me is who a token acts as, from Armature's GET /auth/me.

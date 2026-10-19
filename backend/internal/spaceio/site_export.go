@@ -374,7 +374,7 @@ func (s *siteSnapshot) readSpaces(ctx context.Context, tx db.DBTX) error {
 func (s *siteSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
 	counts := map[string]string{
 		"tokens":           `SELECT count(*) FROM api_token WHERE NOT for_render`,
-		"armatureAccounts": `SELECT count(*) FROM armature_token`,
+		"armatureAccounts": `SELECT (SELECT count(*) FROM armature_token) + (SELECT count(*) FROM armature_grant)`,
 		"webhookSecrets":   `SELECT count(*) FROM webhook_endpoint`,
 		"joinRequests":     `SELECT count(*) FROM join_request`,
 		"links":            `SELECT (SELECT count(*) FROM page_share) + (SELECT count(*) FROM page_link)`,

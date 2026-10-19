@@ -68,6 +68,7 @@ type Service struct {
 	opts   Options
 	// partners keeps what each Armature said at /meta; see Partner.
 	partners *partners
+	metadata *metadataCache
 }
 
 // NewService returns the service. A nil box refuses to store a token or a
@@ -77,7 +78,8 @@ func NewService(cluster *db.Cluster, box *secret.Box, client *Client, cache *Cac
 		opts.Log = slog.Default()
 	}
 	return &Service{db: cluster, box: box, client: client, cache: cache, opts: opts,
-		partners: &partners{entries: map[string]partnerEntry{}, now: time.Now}}
+		partners: &partners{entries: map[string]partnerEntry{}, now: time.Now},
+		metadata: &metadataCache{entries: map[string]metadataEntry{}}}
 }
 
 // Cache is the per-person answer cache, nil without Valkey.
@@ -122,6 +124,7 @@ func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 	})
 	if out != nil && err == nil {
 		out.Partner = s.Partner(ctx, out.BaseURL, true)
+		out.App.Offered = out.Partner.OffersApp()
 		out.LastDelivery, _ = s.cache.Receipt(ctx, site)
 	}
 	return out, err
@@ -142,6 +145,9 @@ func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, 
 	}
 	if connected != nil {
 		c.Connected = *connected
+	}
+	if c.App, err = s.connectionApp(ctx, tx); err != nil {
+		return nil, err
 	}
 	return &c, nil
 }
@@ -223,6 +229,7 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 		return nil, lsn, err
 	}
 	out.Partner = s.Partner(ctx, base, !moved)
+	out.App.Offered = out.Partner.OffersApp()
 	// The page says after a save whether Armature ever delivered, so the
 	// answer carries it as the read does.
 	out.LastDelivery, _ = s.cache.Receipt(ctx, siteID)
@@ -286,7 +293,9 @@ func (s *Service) noteMissing(ctx context.Context, a *Account, fresh bool) {
 	if a == nil || a.BaseURL == nil {
 		return
 	}
-	a.Missing = s.Partner(ctx, *a.BaseURL, fresh).Missing
+	p := s.Partner(ctx, *a.BaseURL, fresh)
+	a.Missing = p.Missing
+	s.noteApp(ctx, a, p)
 }
 
 func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
@@ -295,14 +304,24 @@ func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
 		return nil, err
 	}
 	if e == nil {
-		return &Account{Status: StatusNotConfigured, Missing: []MissingFeature{}}, nil
+		return &Account{Status: StatusNotConfigured, Missing: []MissingFeature{}, App: AccountApp{Scopes: []string{}}}, nil
 	}
-	a := &Account{Configured: true, BaseURL: &e.BaseURL, Status: StatusNotConnected, Missing: []MissingFeature{}}
+	a := &Account{Configured: true, BaseURL: &e.BaseURL, Status: StatusNotConnected, Missing: []MissingFeature{}, App: AccountApp{Scopes: []string{}}}
+	grant, err := s.ownGrant(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	if grant != nil {
+		via := ViaApp
+		a.Connected, a.Via, a.Status, a.User, a.CheckedAt, a.App.Scopes = true, &via, grant.Status, grant.User, &grant.CheckedAt, grant.Scopes
+		return a, nil
+	}
 	row, err := s.ownToken(ctx, tx)
 	if err != nil || row == nil {
 		return a, err
 	}
-	a.Connected, a.Status, a.User, a.CheckedAt = true, row.Status, row.User, &row.CheckedAt
+	via := ViaToken
+	a.Connected, a.Via, a.Status, a.User, a.CheckedAt = true, &via, row.Status, row.User, &row.CheckedAt
 	return a, nil
 }
 
@@ -384,8 +403,17 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 		return nil, 0, err
 	}
 
-	var out *Account
+	var (
+		out    *Account
+		revoke func(context.Context)
+	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		// A token replaces a grant the person had, so their calls are made
+		// with what they stored last.
+		if revoke, err = s.endGrant(ctx, tx, user); err != nil {
+			return err
+		}
 		// A new row rather than an update, so the row id that keys the
 		// person's cache is new with the token.
 		if _, err := tx.Exec(ctx, `DELETE FROM armature_token WHERE user_id = $1`, user); err != nil {
@@ -403,27 +431,35 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 	if err != nil {
 		return nil, lsn, err
 	}
+	revoke(ctx)
 	s.learnInstallation(ctx, e, me)
 	s.noteMissing(ctx, out, false)
 	return out, lsn, nil
 }
 
-// Check asks Armature now whether the caller's stored token still works, and
-// records what it said; ok clears a rejected mark.
+// Check asks Armature now whether the caller's stored token or grant still
+// works, and records what it said; ok clears a rejected mark.
 func (s *Service) Check(ctx context.Context) (*Account, db.LSN, error) {
 	var (
-		e   *endpoint
-		row *tokenRow
+		e     *endpoint
+		row   *tokenRow
+		grant *grantRow
 	)
 	if err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		if e, err = s.endpoint(ctx, tx); err != nil || e == nil {
 			return err
 		}
+		if grant, err = s.ownGrant(ctx, tx); err != nil || grant != nil {
+			return err
+		}
 		row, err = s.ownToken(ctx, tx)
 		return err
 	}); err != nil {
 		return nil, 0, err
+	}
+	if e != nil && grant != nil {
+		return s.checkGrant(ctx, e, grant)
 	}
 	if e == nil || row == nil {
 		out, err := s.Account(db.PinPrimary(ctx))
@@ -465,25 +501,77 @@ func (s *Service) Check(ctx context.Context) (*Account, db.LSN, error) {
 	return out, lsn, err
 }
 
-// Disconnect forgets the caller's token; forgetting none is not an error.
+// checkGrant is Check for a grant: renewed first when it runs out, as any
+// call with it is.
+func (s *Service) checkGrant(ctx context.Context, e *endpoint, grant *grantRow) (*Account, db.LSN, error) {
+	status, user := StatusRejected, grant.User
+	caller, err := s.grantCaller(ctx, e.BaseURL, grant)
+	var me *Me
+	if err == nil {
+		call, cancel := context.WithTimeout(ctx, CallTimeout)
+		me, err = caller.Me(call)
+		cancel()
+	}
+	switch {
+	case err == nil && e.owns(me):
+		status, user = StatusOK, &me.User
+		s.learnInstallation(ctx, e, me)
+	case err != nil && !errors.Is(err, ErrRejected):
+		status = StatusUnreachable
+	}
+	var out *Account
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var id, name, email any
+		if user != nil {
+			id, name, email = user.ID, user.Name, user.Email
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE armature_grant SET status = $2, checked_at = now(),
+			    armature_user_id = coalesce($3, armature_user_id),
+			    armature_user_name = coalesce($4, armature_user_name),
+			    armature_user_email = coalesce($5, armature_user_email)
+			WHERE id = $1`, grant.ID, status, id, name, email); err != nil {
+			return fmt.Errorf("record the Armature check: %w", err)
+		}
+		var err error
+		out, err = s.account(ctx, tx)
+		return err
+	})
+	s.noteMissing(ctx, out, true)
+	return out, lsn, err
+}
+
+// Disconnect forgets the caller's token or grant, and revokes a grant at
+// Armature so it ends there too; forgetting none is not an error.
 func (s *Service) Disconnect(ctx context.Context) (db.LSN, error) {
 	user, ok := db.UserFrom(ctx)
 	if !ok {
 		return 0, ErrNotConnected
 	}
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `DELETE FROM armature_token WHERE user_id = $1`, user)
+	var revoke func(context.Context)
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		if revoke, err = s.endGrant(ctx, tx, user); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `DELETE FROM armature_token WHERE user_id = $1`, user)
 		return err
 	})
+	if err == nil {
+		revoke(ctx)
+	}
+	return lsn, err
 }
 
 // Viewer is the caller as Armature knows them. TokenID keys their entries in
-// the Cache, and Caller makes every call with their own token.
+// the Cache, and Caller makes every call with their own token or grant.
 type Viewer struct {
 	SiteID  uuid.UUID
 	UserID  uuid.UUID
 	TokenID uuid.UUID
 	Caller  *Caller
+	// Grant says Caller carries the person's grant rather than their token.
+	Grant bool
 }
 
 // Viewer returns the person ctx acts for, ready to call Armature, or the
@@ -494,12 +582,16 @@ func (s *Service) Viewer(ctx context.Context) (*Viewer, Status, error) {
 		return nil, StatusNotConnected, nil
 	}
 	var (
-		e   *endpoint
-		row *tokenRow
+		e     *endpoint
+		row   *tokenRow
+		grant *grantRow
 	)
 	if err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
 		if e, err = s.endpoint(ctx, tx); err != nil || e == nil {
+			return err
+		}
+		if grant, err = s.ownGrant(ctx, tx); err != nil || grant != nil {
 			return err
 		}
 		row, err = s.ownToken(ctx, tx)
@@ -510,6 +602,14 @@ func (s *Service) Viewer(ctx context.Context) (*Viewer, Status, error) {
 	switch {
 	case e == nil:
 		return nil, StatusNotConfigured, nil
+	case grant != nil && grant.Status == StatusRejected:
+		return nil, StatusRejected, nil
+	case grant != nil:
+		caller, err := s.grantCaller(ctx, e.BaseURL, grant)
+		if err != nil {
+			return nil, StatusOf(err), nil
+		}
+		return &Viewer{SiteID: grant.SiteID, UserID: user, TokenID: grant.ID, Caller: caller, Grant: true}, StatusOK, nil
 	case row == nil:
 		return nil, StatusNotConnected, nil
 	case row.Status == StatusRejected:
@@ -522,11 +622,16 @@ func (s *Service) Viewer(ctx context.Context) (*Viewer, Status, error) {
 	return &Viewer{SiteID: row.SiteID, UserID: user, TokenID: row.ID, Caller: s.client.As(e.BaseURL, token)}, StatusOK, nil
 }
 
-// NoteRejected marks the viewer's token rejected after Armature answered it
-// 401, so it is not sent again until its owner stores a new one or checks it.
+// NoteRejected marks the viewer's token or grant rejected after Armature
+// answered it 401, and a grant also could not be renewed, so it is not sent
+// again until its owner connects again or checks it.
 func (s *Service) NoteRejected(ctx context.Context, v *Viewer) error {
+	table := "armature_token"
+	if v.Grant {
+		table = "armature_grant"
+	}
 	_, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `UPDATE armature_token SET status = $2, checked_at = now() WHERE id = $1`, v.TokenID, StatusRejected)
+		_, err := tx.Exec(ctx, `UPDATE `+table+` SET status = $2, checked_at = now() WHERE id = $1`, v.TokenID, StatusRejected)
 		return err
 	})
 	return err

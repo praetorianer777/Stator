@@ -73,7 +73,8 @@ func (h *harness) armature(t *testing.T) *armature.Service {
 		t.Fatal(err)
 	}
 	allow := netguard.ParseAllow(armatureStubHost)
-	client := armature.NewClient(allow, map[string]string{armatureURL(t): os.Getenv(envArmatureStub), olderArmatureURL(h): os.Getenv(envArmatureStub)})
+	client := armature.NewClient(allow, map[string]string{armatureURL(t): os.Getenv(envArmatureStub), olderArmatureURL(h): os.Getenv(envArmatureStub),
+		connectedAppURL(h): os.Getenv(envArmatureStub)})
 	return armature.NewService(h.cluster, box, client, armature.NewCache(h.valkey(t), discard()),
 		armature.Options{AppURL: armatureAppURL, Allow: allow, Development: true, Log: discard()})
 }
