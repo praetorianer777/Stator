@@ -3,6 +3,7 @@ import { t } from "@/i18n";
 // The colour tokens a theme may redefine, grouped the way the editor shows
 // them, in Armature's order. A test keeps this list equal to the --color-*
 // names in the stylesheet, and the labels live in the i18n catalogue.
+// Exciter vendors these names, so a renamed token needs a note to Exciter.
 
 export interface TokenGroup {
   id: keyof typeof t.themes.groups;
