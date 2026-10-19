@@ -395,6 +395,8 @@ func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo 
 	q.Set("response_type", "code")
 	q.Set("client_id", creds.ClientID)
 	q.Set("redirect_uri", s.RedirectURI())
+	// Always the full set: a person's new consent replaces their grant's
+	// scopes (Cloudster1/Armature#298), so asking for fewer would drop some.
 	q.Set("scope", AppScopes)
 	q.Set("state", state)
 	q.Set("code_challenge", oauth2.S256ChallengeFromVerifier(verifier))
@@ -667,6 +669,7 @@ func (s *Service) refreshGrant(ctx context.Context, base, rejected string) (stri
 		}
 		call, cancel := context.WithTimeout(ctx, CallTimeout)
 		defer cancel()
+		// No scope: a refresh that names fewer narrows the grant for good.
 		set, err := s.client.Token(call, meta.TokenEndpoint, *creds, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refresh}})
 		if isOAuth(err, oauthInvalidGrant) || isOAuth(err, oauthInvalidClient) {
 			// The grant ended in Armature: it was disconnected there, the app

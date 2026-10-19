@@ -30,8 +30,8 @@ const (
 	OAuthCallbackPath = "/api/v1/armature/oauth/callback"
 	// AppName is what Armature's consent page and token list call Stator.
 	AppName = "Stator"
-	// AppScopes are what Stator asks for: linking a page to an issue takes
-	// issue.write, and Armature wants read beside every other scope.
+	// AppScopes are every scope Stator needs, asked for at once in each consent:
+	// a narrower consent or exchange replaces the grant (Cloudster1/Armature#298).
 	AppScopes = "read issue.write"
 	// ClientSecretPrefix starts every secret Armature shows for an app.
 	ClientSecretPrefix = "armature_ocs_"

@@ -43,7 +43,7 @@ ARMATURE_URL = http://localhost:$(ARMATURE_PORT)
 # Builds the images one after another: the first compiles Armature, the
 # others find every layer but their last in the cache, where side by side all
 # three would compile it under the classic builder.
-ARMATURE_BUILD = for service in api migrate worker; do \
+ARMATURE_BUILD = for service in api migrate worker web; do \
 		docker image inspect stator-armature-$$service:$(ARMATURE_REF) >/dev/null 2>&1 \
 			|| $(ARMATURE_COMPOSE) build --quiet armature-$$service || exit 1; \
 	done
