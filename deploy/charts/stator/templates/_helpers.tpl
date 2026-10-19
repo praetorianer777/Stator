@@ -212,6 +212,9 @@ STATOR_OUTBOUND_ALLOW: {{ join "," . | quote }}
 {{- end }}
 STATOR_ARMATURE_BACKCHANNEL: {{ join "," $pairs | quote }}
 {{- end }}
+{{- with .Values.armature.webhookUrl }}
+STATOR_ARMATURE_WEBHOOK_URL: {{ . | quote }}
+{{- end }}
 {{- with .Values.exciter.backchannel }}
 {{- $pairs := list }}
 {{- range $public, $reachable := . }}

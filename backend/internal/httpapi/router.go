@@ -338,6 +338,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/exciter/connection", s.handleRemoveExciterConnection)
 			r.Put("/armature/connection/app", s.handleSaveArmatureApp)
 			r.Delete("/armature/connection/app", s.handleRemoveArmatureApp)
+			// A browser navigation, which carries the session the state is bound to.
+			r.With(requireSession).Get("/armature/connection/webhook/connect", s.handleStartArmatureWebhookConnect)
+			r.Post("/armature/connection/webhook/rotate-secret", s.handleRotateArmatureWebhook)
+			r.Post("/armature/connection/webhook/test", s.handleTestArmatureWebhook)
 			r.Get("/audit", s.handleListAudit)
 			r.Get("/audit/facets", s.handleAuditFacets)
 			r.Get("/audit/export", s.handleExportAudit)

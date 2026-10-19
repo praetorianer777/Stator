@@ -128,7 +128,7 @@ func run() error {
 	}
 	allow := netguard.ParseAllow(cfg.Armature.OutboundAllow)
 	armatures := armature.NewService(cluster, box, armature.NewClient(allow, cfg.Armature.Backchannel), nil,
-		armature.Options{AppURL: cfg.AppBaseURL, Allow: allow, Development: cfg.Env == config.EnvDevelopment, Log: log})
+		armature.Options{AppURL: cfg.AppBaseURL, WebhookURL: cfg.Armature.WebhookURL, Allow: allow, Development: cfg.Env == config.EnvDevelopment, Log: log})
 	// Queuing a webhook delivery is idempotent, so it goes before the fan-out,
 	// which a failed queue would otherwise run twice.
 	hooks := webhook.NewService(cluster, box, webhook.Options{AppURL: cfg.AppBaseURL, Allow: allow, Log: log})

@@ -399,6 +399,7 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 	}
 
 	c.connectedApp(server.URL)
+	c.partnerWebhook(server.URL)
 
 	for _, rt := range routes {
 		if !c.served[rt.Method+" "+rt.Path] {
@@ -547,6 +548,89 @@ func (c *contract) connectedApp(base string) {
 		t.Errorf("a closed registration answered %v", refused)
 	}
 	c.expect("PUT", oauthPrefix+"/hosts/"+strings.TrimPrefix(base, "http://"), "", map[string]any{"registration": "approve"}, 204)
+}
+
+// grantFor runs a consent as person of tenant for scope and answers the
+// access token redeemed.
+func (c *contract) grantFor(base, id, secret, scope, person string) string {
+	t := c.t
+	verifier := strings.Repeat("w", 43)
+	sum := sha256.Sum256([]byte(verifier))
+	redirect := "https://stator.example/api/v1/armature/oauth/callback"
+	authorize := url.Values{"response_type": {"code"}, "client_id": {id}, "redirect_uri": {redirect}, "scope": {scope}, "state": {"p1"},
+		"code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}}
+	back := consent(t, base, authorize, "acme", person, "allow")
+	status, set := c.form("/oauth/token", id, secret, url.Values{"grant_type": {"authorization_code"}, "code": {back.Query().Get("code")},
+		"redirect_uri": {redirect}, "code_verifier": {verifier}})
+	if status != 200 {
+		t.Fatalf("redeeming %s's consent answered %d %v", person, status, set)
+	}
+	return set["access_token"].(string)
+}
+
+// partnerWebhook manages an app's own webhook as Stator does (#429): made
+// with an administrator's grant holding webhooks.partner, found again when
+// it exists, rotated, tested, refused by the outbound guard, and removed.
+func (c *contract) partnerWebhook(base string) {
+	t := c.t
+	got := make(chan []byte, 1)
+	receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		got <- body
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer receiver.Close()
+
+	reg := c.expect("POST", "/oauth/register", "", armature.Registration{ClientName: armature.AppName, RedirectURIs: []string{"https://stator.example/api/v1/armature/oauth/callback"},
+		Scope: armature.AdminScopes, TokenEndpointAuthMethod: "client_secret_basic", GrantTypes: []string{"authorization_code", "refresh_token"}, ResponseTypes: []string{"code"}}, 201)
+	id, secret := reg["client_id"].(string), reg["client_secret"].(string)
+	admin := c.grantFor(base, id, secret, armature.AdminScopes, adminName)
+	member := c.grantFor(base, id, secret, armature.AppScopes, "alice")
+
+	in := map[string]any{"url": receiver.URL + "/api/v1/armature/webhook", "topics": armature.WebhookTopics, "version": armature.WebhookVersion}
+	if refused := c.expect("POST", armature.PartnerWebhookPath, member, in, 403)["error"].(map[string]any); refused["code"] != "insufficient_scope" {
+		t.Errorf("a grant without webhooks.partner is refused with %v", refused)
+	}
+	if got := c.expect("GET", armature.PartnerWebhookPath, admin, nil, 200); got["webhook"] != nil {
+		t.Errorf("an app without a webhook has %v", got)
+	}
+	made := c.expect("POST", armature.PartnerWebhookPath, admin, in, 201)["webhook"].(map[string]any)
+	if !strings.HasPrefix(fmt.Sprint(made["secret"]), armature.WebhookSecretPrefix) || made["partner"].(map[string]any)["clientId"] != id {
+		t.Errorf("the webhook made is %v", made)
+	}
+	if again := c.expect("POST", armature.PartnerWebhookPath, admin, in, 409)["error"].(map[string]any); again["code"] != "partner_webhook_exists" {
+		t.Errorf("a second webhook is refused with %v", again)
+	}
+	if found := c.expect("GET", armature.PartnerWebhookPath, admin, nil, 200)["webhook"].(map[string]any); found["secret"] != nil || found["id"] != made["id"] {
+		t.Errorf("the webhook found is %v", found)
+	}
+	c.expect("PATCH", armature.PartnerWebhookPath, admin, map[string]any{"topics": []string{"*"}}, 422)
+	c.expect("PATCH", armature.PartnerWebhookPath, admin, map[string]any{"url": in["url"], "topics": in["topics"], "version": 1, "enabled": true}, 200)
+	rotated := c.expect("POST", armature.PartnerWebhookPath+"/rotate-secret", admin, nil, 200)["webhook"].(map[string]any)
+	if rotated["secret"] == made["secret"] || !strings.HasPrefix(fmt.Sprint(rotated["secret"]), armature.WebhookSecretPrefix) {
+		t.Errorf("the rotated secret is %v", rotated["secret"])
+	}
+	delivery := c.expect("POST", armature.PartnerWebhookPath+"/test", admin, nil, 200)["delivery"].(map[string]any)
+	if delivery["topic"] != "ping" || delivery["status"] != float64(204) {
+		t.Errorf("the test delivery is %v", delivery)
+	}
+	if body := <-got; !bytes.Contains(body, []byte(`"topic":"ping"`)) {
+		t.Errorf("the receiver took %s", body)
+	}
+
+	host := strings.TrimPrefix(base, "http://")
+	c.expect("PUT", oauthPrefix+"/hosts/"+host+"/outbound", "", map[string]any{"refuse": "outbound_refused"}, 204)
+	moved := map[string]any{"url": "http://stator.internal/api/v1/armature/webhook"}
+	guard := c.expect("PATCH", armature.PartnerWebhookPath, admin, moved, 422)["error"].(map[string]any)
+	if guard["code"] != "outbound_refused" || !strings.Contains(fmt.Sprint(guard["message"]), "Add stator.internal to network.outboundAllow (ARMATURE_OUTBOUND_ALLOW)") {
+		t.Errorf("the outbound guard refuses with %v", guard)
+	}
+	c.expect("PUT", oauthPrefix+"/hosts/"+host+"/outbound", "", map[string]any{"refuse": ""}, 204)
+
+	c.expect("DELETE", armature.PartnerWebhookPath, admin, nil, 204)
+	c.expect("DELETE", armature.PartnerWebhookPath, admin, nil, 204)
+	c.expect("PATCH", armature.PartnerWebhookPath, admin, map[string]any{"enabled": true}, 404)
+	c.expect("POST", armature.PartnerWebhookPath+"/rotate-secret", admin, nil, 404)
 }
 
 // A webhook from the stub is one Armature's receiver code would accept: the

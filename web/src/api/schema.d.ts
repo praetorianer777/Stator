@@ -161,6 +161,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/connection/webhook/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Connect Armature in one step: send the browser to Armature's consent page for every scope Stator needs, webhooks.partner among them, and on the way back make Stator's own webhook in Armature and store its secret. Needs a session and webhooks.partner@1; lands on Settings, Armature with armature naming the outcome. For administrators. */
+        get: operations["startArmatureWebhookConnect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/connection/webhook/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give Stator's own webhook in Armature a new secret and store it; one Armature no longer has is made again. Needs the caller's own grant to hold webhooks.partner. For administrators. */
+        post: operations["rotateArmatureWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/connection/webhook/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Have Armature post a ping to Stator's webhook receiver now, and answer what the receiver said. Needs the caller's own grant to hold webhooks.partner. For administrators. */
+        post: operations["testArmatureWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/find": {
         parameters: {
             query?: never;
@@ -237,7 +288,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome. */
+        /** Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome; an administrator's connect makes Stator's webhook too and lands on Settings, Armature. */
         get: operations["finishArmatureConnect"];
         put?: never;
         post?: never;
@@ -4743,6 +4794,7 @@ export interface components {
             installationId: string | null;
             lastDelivery: components["schemas"]["WebhookReceipt"] | null;
             partner: components["schemas"]["Partner"];
+            partnerWebhook: components["schemas"]["PartnerWebhook"];
             /** Format: date-time */
             updatedAt: string;
             webhookSecretSet: boolean;
@@ -5818,6 +5870,19 @@ export interface components {
             /** @enum {string} */
             status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
             version: string | null;
+        };
+        PartnerWebhook: {
+            connected: boolean;
+            manageable: boolean;
+            offered: boolean;
+            refusal: string | null;
+            url: string;
+        };
+        PartnerWebhookTest: {
+            /** Format: date-time */
+            deliveredAt: string | null;
+            error: string | null;
+            status: number | null;
         };
         PermissionCopyInput: {
             fingerprint?: string;
@@ -7586,6 +7651,131 @@ export interface operations {
                     "application/json": {
                         check: components["schemas"]["ConnectionCheck"];
                     };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startArmatureWebhookConnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found: the browser is sent on. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rotateArmatureWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connection: components["schemas"]["Connection"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    testArmatureWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        test: components["schemas"]["PartnerWebhookTest"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Unprocessable Entity */

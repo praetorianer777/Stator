@@ -56,6 +56,7 @@ const (
 	oauthAccessDenied  = "access_denied"
 	oauthInvalidGrant  = "invalid_grant"
 	oauthInvalidClient = "invalid_client"
+	oauthInvalidScope  = "invalid_scope"
 )
 
 // ServerMetadata is what Stator reads of Armature's RFC 8414 document.

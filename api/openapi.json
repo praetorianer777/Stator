@@ -796,6 +796,148 @@
         }
       }
     },
+    "/armature/connection/webhook/connect": {
+      "get": {
+        "operationId": "startArmatureWebhookConnect",
+        "summary": "Connect Armature in one step: send the browser to Armature's consent page for every scope Stator needs, webhooks.partner among them, and on the way back make Stator's own webhook in Armature and store its secret. Needs a session and webhooks.partner@1; lands on Settings, Armature with armature naming the outcome. For administrators.",
+        "tags": [
+          "armature"
+        ],
+        "responses": {
+          "302": {
+            "description": "Found: the browser is sent on."
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/connection/webhook/rotate-secret": {
+      "post": {
+        "operationId": "rotateArmatureWebhook",
+        "summary": "Give Stator's own webhook in Armature a new secret and store it; one Armature no longer has is made again. Needs the caller's own grant to hold webhooks.partner. For administrators.",
+        "tags": [
+          "armature"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/Connection"
+                    }
+                  },
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/connection/webhook/test": {
+      "post": {
+        "operationId": "testArmatureWebhook",
+        "summary": "Have Armature post a ping to Stator's webhook receiver now, and answer what the receiver said. Needs the caller's own grant to hold webhooks.partner. For administrators.",
+        "tags": [
+          "armature"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "test": {
+                      "$ref": "#/components/schemas/PartnerWebhookTest"
+                    }
+                  },
+                  "required": [
+                    "test"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/armature/find": {
       "get": {
         "operationId": "findArmatureIssues",
@@ -1163,7 +1305,7 @@
     "/armature/oauth/callback": {
       "get": {
         "operationId": "finishArmatureConnect",
-        "summary": "Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome.",
+        "summary": "Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome; an administrator's connect makes Stator's webhook too and lands on Settings, Armature.",
         "tags": [
           "armature"
         ],
@@ -21041,6 +21183,9 @@
           "partner": {
             "$ref": "#/components/schemas/Partner"
           },
+          "partnerWebhook": {
+            "$ref": "#/components/schemas/PartnerWebhook"
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
@@ -21068,7 +21213,8 @@
           "connected",
           "updatedAt",
           "partner",
-          "app"
+          "app",
+          "partnerWebhook"
         ]
       },
       "ConnectionApp": {
@@ -25272,6 +25418,65 @@
           "version",
           "capabilities",
           "missing"
+        ]
+      },
+      "PartnerWebhook": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "manageable": {
+            "type": "boolean"
+          },
+          "offered": {
+            "type": "boolean"
+          },
+          "refusal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "offered",
+          "connected",
+          "url",
+          "refusal",
+          "manageable"
+        ]
+      },
+      "PartnerWebhookTest": {
+        "type": "object",
+        "properties": {
+          "deliveredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "error",
+          "deliveredAt"
         ]
       },
       "PermissionCopyInput": {

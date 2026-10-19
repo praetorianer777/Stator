@@ -207,6 +207,32 @@ export const en = {
         "Each member now connects their own Armature account with one click: Connect Armature under Your profile, Armature, or any hint to connect on a page, and they allow Stator in Armature.",
       own: "Connect your own account",
     },
+    oneStep: {
+      title: "Connect in one step",
+      intro:
+        "Armature can make Stator's webhook itself, so no secret is copied by hand. Connect sends you to Armature, where you allow Stator once as an Armature administrator; your own account is connected on the way.",
+      connect: "Connect",
+      connectAgain: "Connect again",
+      made: (url: string) => `Stator made its own webhook in Armature, which posts every change to ${url}.`,
+      notManageable: "To test the webhook or give it a new secret, connect again as an Armature administrator yourself.",
+      refused: "Armature cannot reach Stator, so it would not make the webhook. Armature said:",
+      test: "Test",
+      rotate: "New secret",
+      confirmRotate: "Give the webhook a new secret? Armature stops signing with the old one at once, and Stator stores the new one.",
+      rotated: "The webhook has a new secret, which Stator stored.",
+      tested: (status: number) => `Armature reached Stator, which answered ${status}.`,
+      testFailed: (error: string) => `Armature could not deliver to Stator: ${error}`,
+      manual: "Paste a webhook secret instead",
+      outcomes: {
+        connected: "Armature is connected: Stator made its webhook there, and your own account is connected.",
+        webhook_refused: "Your account is connected, but Armature would not make the webhook. What it said is below.",
+        webhook_admin:
+          "Armature did not let this connection manage Stator's webhook. An Armature administrator must connect again: sign in to Armature as one, then choose Connect.",
+        scope_refused:
+          "Armature's app for Stator may not ask to send its events. In Armature, allow the scope webhooks.partner for Stator under Settings, Connected apps, then connect again.",
+        unavailable: "This Armature does not let Stator make its own webhook. Paste the secret of a webhook made in Armature instead.",
+      } as Partial<Record<ArmatureOutcome, string>>,
+    },
     capabilities: {
       title: "What Armature offers",
       intro: "Stator asks Armature which integration features it offers, and turns off the ones it lacks instead of failing later.",
@@ -271,6 +297,9 @@ export const en = {
           "That Armature account belongs to another Armature installation than the one connected. Sign in to the right one and connect again.",
         not_configured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",
         failed: "Armature did not connect your account. Try again, or paste a token instead.",
+        webhook_refused: "Your Armature account is connected, but Armature would not make Stator's webhook. Settings, Armature says why.",
+        webhook_admin: "Armature did not let this connection manage Stator's webhook. An Armature administrator must connect again.",
+        scope_refused: "Armature's app for Stator may not ask to send its events. Allow webhooks.partner for Stator in Armature, then connect again.",
       } as Record<ArmatureOutcome, string>,
     },
     app: {

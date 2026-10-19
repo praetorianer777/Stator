@@ -39,6 +39,8 @@ const (
 	endedSentence   = "This connection has ended. Connect Armature again."
 	pendingSentence = "Stator is not connected to Armature yet. An Armature administrator connects it first."
 	unknownSentence = "This app is not connected to Armature. Ask an Armature administrator to connect it."
+	adminSentence   = "Sending Armature's events to Stator needs an Armature administrator. Sign in as one, or ask one to connect Stator."
+	webhooksScope   = "webhooks.partner"
 )
 
 type oauthClient struct {
@@ -72,11 +74,17 @@ type oauthServer struct {
 	grants  []*oauthGrant
 	// closed are the hosts registration is closed for.
 	closed map[string]bool
+	// hooks are each app's own webhook, by client id.
+	hooks map[string]*partnerHook
+	// outbound says how the Armature reached by a host refuses every
+	// webhook address, as its outbound guard would one inside its network.
+	outbound map[string]string
 }
 
 func newOAuth() *oauthServer {
 	return &oauthServer{clients: map[string]*oauthClient{}, codes: map[string]*oauthCode{}, access: map[string]*oauthGrant{},
-		refresh: map[string]*oauthGrant{}, rotated: map[string]*oauthGrant{}, closed: map[string]bool{}}
+		refresh: map[string]*oauthGrant{}, rotated: map[string]*oauthGrant{}, closed: map[string]bool{},
+		hooks: map[string]*partnerHook{}, outbound: map[string]string{}}
 }
 
 func secretWith(prefix string) string {
@@ -263,6 +271,9 @@ func (s *stub) authorizePage(w http.ResponseWriter, r *http.Request) {
 	case q.Get("state") == "" || q.Get("code_challenge") == "" || q.Get("code_challenge_method") != "S256":
 		backTo(w, r, redirect, url.Values{"error": {"invalid_request"}, "error_description": {"Armature requires PKCE with S256."}, "state": {q.Get("state")}})
 		return
+	case !within(q.Get("scope"), client.Scope):
+		backTo(w, r, redirect, url.Values{"error": {"invalid_scope"}, "error_description": {client.Name + " may not ask for that."}, "state": {q.Get("state")}})
+		return
 	}
 	consentAnswer(w, http.StatusOK, consentView{App: client.Name, Query: r.URL.RawQuery, Scopes: q.Get("scope"), Form: true})
 }
@@ -298,6 +309,11 @@ func (s *stub) authorizeDecision(w http.ResponseWriter, r *http.Request) {
 	if client.Pending && person != adminName {
 		s.oauth.mu.Unlock()
 		consentAnswer(w, http.StatusOK, consentView{App: client.Name, Refusal: pendingSentence})
+		return
+	}
+	if slices.Contains(strings.Fields(q.Get("scope")), webhooksScope) && person != adminName {
+		s.oauth.mu.Unlock()
+		consentAnswer(w, http.StatusOK, consentView{App: client.Name, Refusal: adminSentence})
 		return
 	}
 	client.Pending = false

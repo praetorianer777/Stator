@@ -11,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -46,8 +47,11 @@ const (
 type route struct {
 	Method, Path string
 	// Public routes need no token.
-	Public  bool
-	handler func(*stub, *call)
+	Public bool
+	// Unlocked routes run without the world's lock once the caller is
+	// known, so a delivery they post does not hold up every other suite.
+	Unlocked bool
+	handler  func(*stub, *call)
 }
 
 // routes are the part of Armature's API Stator calls; see
@@ -74,6 +78,12 @@ var routes = []route{
 	{Method: "GET", Path: "/projects/{projectKey}/calendar", handler: (*stub).calendar},
 	{Method: "GET", Path: "/themes/active", handler: (*stub).activeTheme},
 	{Method: "GET", Path: "/themes/{themeID}/export", handler: (*stub).exportTheme},
+	{Method: "GET", Path: "/webhooks/partner", handler: (*stub).getPartnerWebhook},
+	{Method: "POST", Path: "/webhooks/partner", handler: (*stub).createPartnerWebhook},
+	{Method: "PATCH", Path: "/webhooks/partner", handler: (*stub).updatePartnerWebhook},
+	{Method: "DELETE", Path: "/webhooks/partner", handler: (*stub).deletePartnerWebhook},
+	{Method: "POST", Path: "/webhooks/partner/rotate-secret", handler: (*stub).rotatePartnerWebhook},
+	{Method: "POST", Path: "/webhooks/partner/test", Unlocked: true, handler: (*stub).testPartnerWebhook},
 }
 
 type stub struct {
@@ -136,6 +146,7 @@ func (s *stub) handler() http.Handler {
 	mux.HandleFunc("GET "+authorizePath, s.authorizePage)
 	mux.HandleFunc("POST "+authorizePath, s.authorizeDecision)
 	s.oauthControls(mux)
+	s.partnerControls(mux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		refuse(w, http.StatusNotFound, "not_found", "The stub does not serve this. Add it to cmd/armature-stub when Stator starts calling it.")
 	})
@@ -157,13 +168,18 @@ func (s *stub) serve(rt route) http.HandlerFunc {
 				}
 			}
 			s.world.mu.Lock()
-			defer s.world.mu.Unlock()
 			t, p, ok := s.caller(strings.TrimSpace(token))
 			if !found || !ok {
+				s.world.mu.Unlock()
 				refuse(w, http.StatusUnauthorized, "unauthorized", "Sign in to continue.")
 				return
 			}
 			c.tenant, c.person = t, p
+			if rt.Unlocked {
+				s.world.mu.Unlock()
+			} else {
+				defer s.world.mu.Unlock()
+			}
 		}
 		rt.handler(s, c)
 	}
@@ -925,6 +941,21 @@ func (s *stub) sendWebhook(c *call) {
 	if req.ID != nil {
 		id = *req.ID
 	}
+	if _, err := url.ParseRequestURI(req.URL); err != nil {
+		refuseField(c.w, "url", "Name the address to deliver to.")
+		return
+	}
+	status, err := s.deliver(c.r.Context(), req, id, c.tenant.OrgID)
+	if err != nil {
+		refuse(c.w, http.StatusBadGateway, "delivery_failed", err.Error())
+		return
+	}
+	respond(c.w, http.StatusOK, map[string]any{"id": id, "status": status})
+}
+
+// deliver posts one event as Armature's webhook service does, answering the
+// receiver's status.
+func (s *stub) deliver(ctx context.Context, req webhookRequest, id, orgID uuid.UUID) (int, error) {
 	payload := req.Payload
 	if len(payload) == 0 {
 		payload = json.RawMessage("{}")
@@ -934,19 +965,17 @@ func (s *stub) sendWebhook(c *call) {
 		"version": version, "id": id, "topic": req.Topic, "occurredAt": time.Now().UTC(), "payload": payload,
 	}
 	if version == 1 {
-		envelope["orgId"] = c.tenant.OrgID
+		envelope["orgId"] = orgID
 	}
 	body, err := json.Marshal(envelope)
 	if err != nil {
-		refuse(c.w, http.StatusBadRequest, "bad_request", err.Error())
-		return
+		return 0, err
 	}
-	ctx, cancel := context.WithTimeout(c.r.Context(), webhookTimeout)
+	ctx, cancel := context.WithTimeout(ctx, webhookTimeout)
 	defer cancel()
 	out, err := http.NewRequestWithContext(ctx, http.MethodPost, req.URL, bytes.NewReader(body))
 	if err != nil {
-		refuseField(c.w, "url", "Name the address to deliver to.")
-		return
+		return 0, err
 	}
 	out.Header.Set("Content-Type", "application/json")
 	out.Header.Set("User-Agent", "Armature-Webhook")
@@ -959,10 +988,9 @@ func (s *stub) sendWebhook(c *call) {
 	out.Header.Set("X-Armature-Signature-Timestamped-256", sign(append([]byte(sent+"."), body...), req.Secret))
 	resp, err := s.client.Do(out)
 	if err != nil {
-		refuse(c.w, http.StatusBadGateway, "delivery_failed", err.Error())
-		return
+		return 0, err
 	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxBody))
-	respond(c.w, http.StatusOK, map[string]any{"id": id, "status": resp.StatusCode})
+	return resp.StatusCode, nil
 }

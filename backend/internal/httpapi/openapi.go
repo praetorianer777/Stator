@@ -855,6 +855,15 @@ var operations = append([]operation{
 	{method: "DELETE", path: "/armature/connection/app", handler: "handleRemoveArmatureApp", wholeInstance: true, tag: "armature",
 		summary:   "Forget the connected app and every member's grant of it; the next member to connect registers Stator again. For administrators.",
 		responses: none()},
+	{method: "GET", path: "/armature/connection/webhook/connect", handler: "handleStartArmatureWebhookConnect", wholeInstance: true, tag: "armature", redirect: true,
+		summary:   "Connect Armature in one step: send the browser to Armature's consent page for every scope Stator needs, webhooks.partner among them, and on the way back make Stator's own webhook in Armature and store its secret. Needs a session and webhooks.partner@1; lands on Settings, Armature with armature naming the outcome. For administrators.",
+		responses: map[int]any{}},
+	{method: "POST", path: "/armature/connection/webhook/rotate-secret", handler: "handleRotateArmatureWebhook", wholeInstance: true, tag: "armature",
+		summary:   "Give Stator's own webhook in Armature a new secret and store it; one Armature no longer has is made again. Needs the caller's own grant to hold webhooks.partner. For administrators.",
+		responses: map[int]any{200: env{"connection": armature.Connection{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "POST", path: "/armature/connection/webhook/test", handler: "handleTestArmatureWebhook", wholeInstance: true, tag: "armature",
+		summary:   "Have Armature post a ping to Stator's webhook receiver now, and answer what the receiver said. Needs the caller's own grant to hold webhooks.partner. For administrators.",
+		responses: map[int]any{200: env{"test": armature.PartnerWebhookTest{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 
 	// The audit log (#107), as Armature's administrators read theirs.
 	{method: "GET", path: "/audit", handler: "handleListAudit", wholeInstance: true, tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
@@ -910,7 +919,7 @@ var operations = append([]operation{
 		summary: "Send the browser to Armature's consent page to connect the caller's account, registering Stator first when it is not yet. Needs a session; a refusal lands on the profile page with armature naming why.",
 		query:   []param{{name: "return", description: "A path of this application to go back to once connected."}}, responses: map[int]any{}},
 	{method: "GET", path: "/armature/oauth/callback", handler: "handleFinishArmatureConnect", tag: "armature", redirect: true,
-		summary: "Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome.",
+		summary: "Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome; an administrator's connect makes Stator's webhook too and lands on Settings, Armature.",
 		query:   []param{{name: "code"}, {name: "state"}, {name: "iss"}, {name: "error"}, {name: "error_description"}}, responses: map[int]any{}},
 
 	// Issues in pages (#28, #29, #30, #31), each call made as the caller.

@@ -202,6 +202,33 @@ export const de: Messages = {
         "Jedes Mitglied verbindet jetzt sein eigenes Armature-Konto mit einem Klick: Armature verbinden unter Ihr Profil, Armature, oder ein Hinweis zum Verbinden auf einer Seite, und es erlaubt Stator in Armature.",
       own: "Eigenes Konto verbinden",
     },
+    oneStep: {
+      title: "In einem Schritt verbinden",
+      intro:
+        "Armature kann den Webhook für Stator selbst anlegen, sodass kein Geheimnis von Hand kopiert wird. Verbinden führt Sie zu Armature, wo Sie Stator einmal als Armature-Administrator erlauben; Ihr eigenes Konto wird dabei mit verbunden.",
+      connect: "Verbinden",
+      connectAgain: "Erneut verbinden",
+      made: (url: string) => `Stator hat seinen eigenen Webhook in Armature angelegt, der jede Änderung an ${url} sendet.`,
+      notManageable: "Um den Webhook zu testen oder ihm ein neues Geheimnis zu geben, verbinden Sie selbst erneut als Armature-Administrator.",
+      refused: "Armature kann Stator nicht erreichen und hat den Webhook deshalb nicht angelegt. Armature sagt:",
+      test: "Testen",
+      rotate: "Neues Geheimnis",
+      confirmRotate: "Dem Webhook ein neues Geheimnis geben? Armature signiert sofort nicht mehr mit dem alten, und Stator speichert das neue.",
+      rotated: "Der Webhook hat ein neues Geheimnis, das Stator gespeichert hat.",
+      tested: (status: number) => `Armature hat Stator erreicht, und Stator hat mit ${status} geantwortet.`,
+      testFailed: (error: string) => `Armature konnte nicht an Stator zustellen: ${error}`,
+      manual: "Stattdessen ein Webhook-Geheimnis einfügen",
+      outcomes: {
+        connected: "Armature ist verbunden: Stator hat dort seinen Webhook angelegt, und Ihr eigenes Konto ist verbunden.",
+        webhook_refused: "Ihr Konto ist verbunden, aber Armature hat den Webhook nicht angelegt. Was es sagt, steht unten.",
+        webhook_admin:
+          "Armature hat dieser Verbindung nicht erlaubt, den Webhook von Stator zu verwalten. Ein Armature-Administrator muss erneut verbinden: Melden Sie sich in Armature als einer an und wählen Sie dann Verbinden.",
+        scope_refused:
+          "Die App für Stator in Armature darf nicht darum bitten, Ereignisse zu senden. Erlauben Sie in Armature unter Einstellungen, Connected apps den Scope webhooks.partner für Stator und verbinden Sie dann erneut.",
+        unavailable:
+          "Dieses Armature lässt Stator keinen eigenen Webhook anlegen. Fügen Sie stattdessen das Geheimnis eines in Armature angelegten Webhooks ein.",
+      },
+    },
     capabilities: {
       title: "Was Armature anbietet",
       intro: "Stator fragt Armature, welche Integrationsfunktionen es anbietet, und schaltet die fehlenden ab, statt später zu scheitern.",
@@ -269,6 +296,11 @@ export const de: Messages = {
           "Dieses Armature-Konto gehört zu einer anderen Armature-Installation als der verbundenen. Melden Sie sich bei der richtigen an und verbinden Sie erneut.",
         not_configured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",
         failed: "Armature hat Ihr Konto nicht verbunden. Versuchen Sie es erneut, oder fügen Sie stattdessen ein Token ein.",
+        webhook_refused:
+          "Ihr Armature-Konto ist verbunden, aber Armature hat den Webhook für Stator nicht angelegt. Unter Einstellungen, Armature steht, warum.",
+        webhook_admin: "Armature hat dieser Verbindung nicht erlaubt, den Webhook von Stator zu verwalten. Ein Armature-Administrator muss erneut verbinden.",
+        scope_refused:
+          "Die App für Stator in Armature darf nicht darum bitten, Ereignisse zu senden. Erlauben Sie webhooks.partner für Stator in Armature und verbinden Sie dann erneut.",
       },
     },
     app: {

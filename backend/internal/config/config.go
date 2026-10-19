@@ -222,6 +222,9 @@ type Armature struct {
 	// Backchannel maps an Armature's public origin to the one this process
 	// reaches it at, for a stack where the two differ.
 	Backchannel map[string]string
+	// WebhookURL is where Armature posts its events to Stator, when Stator
+	// makes its webhook itself; empty is STATOR_APP_URL's receiver.
+	WebhookURL string
 }
 
 // Exciter is how this process reaches the Exciter installation the instance
@@ -398,6 +401,7 @@ func Load() (Config, error) {
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
 	c.Armature.OutboundAllow = l.str("STATOR_OUTBOUND_ALLOW", "")
 	c.Armature.Backchannel = l.rewrites("STATOR_ARMATURE_BACKCHANNEL")
+	c.Armature.WebhookURL = strings.TrimSuffix(l.str("STATOR_ARMATURE_WEBHOOK_URL", ""), "/")
 	c.Exciter.Backchannel = l.rewrites("STATOR_EXCITER_BACKCHANNEL")
 	c.SecretKey = l.secretKey("STATOR_SECRET_KEY", c.Env)
 
@@ -438,6 +442,11 @@ func Load() (Config, error) {
 	}
 	if u, err := url.Parse(c.Auth.OIDCRedirectURL); err != nil || u.Scheme == "" || u.Host == "" {
 		l.problem(fmt.Sprintf("STATOR_OIDC_REDIRECT_URL is %q; set it to an absolute URL ending in %s.", c.Auth.OIDCRedirectURL, OIDCCallbackPath))
+	}
+	if w := c.Armature.WebhookURL; w != "" {
+		if u, err := url.Parse(w); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			l.problem(fmt.Sprintf("STATOR_ARMATURE_WEBHOOK_URL is %q; set it to the absolute address Armature reaches Stator's webhook receiver at, ending in /api/v1/armature/webhook.", w))
+		}
 	}
 	if strings.TrimSpace(os.Getenv(retiredBootstrapSlug)) != "" {
 		l.problem(retiredBootstrapSlug + " is no longer read, since an instance serves one organization and no address names it. Remove the setting; STATOR_BOOTSTRAP_ORG_NAME still names the organization.")
