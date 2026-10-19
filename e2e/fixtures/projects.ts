@@ -3,7 +3,7 @@
 // a whole, which every other spec would see, so they run one at a time after
 // all the others, each file from the organization's settings as the bootstrap
 // left them: its permissions, hub, brand, anonymous access and public links,
-// themes, templates, sign-in provider, members, Armature connection, webhooks,
+// themes, templates, sign-in provider, members, Armature and Exciter connections, webhooks,
 // audit log and example space.
 export const INSTANCE_SPECS = [
   "add-member",
@@ -17,6 +17,7 @@ export const INSTANCE_SPECS = [
   "audit",
   "create-issues",
   "example-space",
+  "exciter",
   "export-brand",
   "gallery",
   "guests",

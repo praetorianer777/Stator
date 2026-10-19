@@ -5,11 +5,12 @@ import { useSetShowInReaders } from "@/api/pageviews";
 import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
 import { announceReturn, safeReturn } from "@/features/armature/connectLink";
-import { ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
+import { ExciterAccountSection } from "@/features/exciter/AccountSection";
+import { ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, EXCITER_SECTION_ID, PROFILE_PATH } from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
 import { appRoute } from "./app";
 
-/** The caller's profile: who they are here, and their Armature account. */
+/** The caller's profile: who they are here, and their Armature and Exciter accounts. */
 export const profileRoute = createRoute({
   getParentRoute: () => appRoute,
   path: PROFILE_PATH,
@@ -31,6 +32,12 @@ function ProfilePage() {
         router.history.push(back);
       }
     : undefined;
+  const goBackFromExciter = back
+    ? () => {
+        announceReturn(back, t.exciter.account.returned);
+        router.history.push(back);
+      }
+    : undefined;
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader crumb={t.settings.title} title={t.profile.title} />
@@ -49,6 +56,7 @@ function ProfilePage() {
       {me && <LanguageSection choice={me.user.locale} />}
       {me && <PrivacySection shown={me.user.showInReaders} />}
       <AccountSection focusToken={hash === ARMATURE_SECTION_ID} onReturn={goBack} />
+      <ExciterAccountSection focusToken={hash === EXCITER_SECTION_ID} onReturn={goBackFromExciter} />
     </div>
   );
 }

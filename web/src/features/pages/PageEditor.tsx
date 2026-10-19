@@ -23,6 +23,9 @@ import { useEditorAttachments } from "@/features/attachments/hooks";
 import { ArmatureIssuesProvider } from "@/features/armature/IssueChip";
 import { issueKeysOf } from "@/features/armature/issueKeys";
 import { useIssueSource } from "@/features/armature/useIssueSource";
+import { ExciterRequirementsProvider } from "@/features/exciter/RequirementChip";
+import { requirementKeysOf } from "@/features/exciter/requirementKeys";
+import { useRequirementSource } from "@/features/exciter/useRequirementSource";
 import { Presence } from "@/features/collab/Presence";
 import type { CollabSession, CollabSnapshot, CollabUser, SeedContent } from "@/features/collab/session";
 import { colorFor, setSharedTitle, titleOf } from "@/features/collab/shared";
@@ -135,6 +138,8 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const mentionSource = useMentionSource(page.id);
   const armature = useIssueSource(page.id);
   const issueKeys = useMemo(() => issueKeysOf(body), [body]);
+  const exciter = useRequirementSource();
+  const requirementKeys = useMemo(() => requirementKeysOf(body), [body]);
   const [dialog, setDialog] = useState(false);
   const [conflict, setConflict] = useState<{ latest: number; options: PublishOptions } | null>(null);
   const editorHandle = useRef<EditorHandle | null>(null);
@@ -508,28 +513,31 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
       ))}
       <DocPageContext value={{ id: page.id, spaceKey: space.key }}>
         <ArmatureIssuesProvider keys={issueKeys}>
-          {together && !(together.snapshot.ready && doc && together.snapshot.awareness) ? (
-            <Skeleton rows={6} />
-          ) : (
-            <Editor
-              key={together?.snapshot.room ?? "alone"}
-              id="page-body"
-              value={together ? null : initialBody}
-              collab={together && doc && together.snapshot.awareness ? { doc, awareness: together.snapshot.awareness, user: together.user } : undefined}
-              readOnly={stopped !== null}
-              taskIds={liveMode}
-              handle={keepHandle}
-              onChange={(next, remote) => {
-                setBody(next);
-                if (!remote) changed();
-              }}
-              onSubmit={() => openPublish()}
-              upload={files.upload}
-              attachments={files.index}
-              mentionSource={mentionSource}
-              armature={armature}
-            />
-          )}
+          <ExciterRequirementsProvider keys={requirementKeys}>
+            {together && !(together.snapshot.ready && doc && together.snapshot.awareness) ? (
+              <Skeleton rows={6} />
+            ) : (
+              <Editor
+                key={together?.snapshot.room ?? "alone"}
+                id="page-body"
+                value={together ? null : initialBody}
+                collab={together && doc && together.snapshot.awareness ? { doc, awareness: together.snapshot.awareness, user: together.user } : undefined}
+                readOnly={stopped !== null}
+                taskIds={liveMode}
+                handle={keepHandle}
+                onChange={(next, remote) => {
+                  setBody(next);
+                  if (!remote) changed();
+                }}
+                onSubmit={() => openPublish()}
+                upload={files.upload}
+                attachments={files.index}
+                mentionSource={mentionSource}
+                armature={armature}
+                exciter={exciter}
+              />
+            )}
+          </ExciterRequirementsProvider>
         </ArmatureIssuesProvider>
       </DocPageContext>
       {dialog && (

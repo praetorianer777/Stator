@@ -106,6 +106,7 @@ describe("the account menu", () => {
       transfer,
       exampleSpace,
       armature,
+      exciter,
       audit,
       webhooks,
       templates,
@@ -138,6 +139,8 @@ describe("the account menu", () => {
     expect(exampleSpace).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(armature).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(exciter).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(audit).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
