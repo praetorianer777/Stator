@@ -30,6 +30,7 @@ import { Hint } from "./hint";
 import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, ArmatureIssueFind, type IssueFindOptions, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
+import { ExciterRequirement, type RequirementSource } from "./exciterRequirement";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { ArmatureChart } from "./armatureChart";
 import { ArmatureRoadmap } from "./armatureRoadmap";
@@ -409,6 +410,10 @@ export interface ExtensionOptions {
   armature?: IssueSource;
   /** Opens the picker the slash menu's Armature issue asks which issue with. */
   pickIssue?: () => void;
+  /** What turns typed requirement keys into Exciter chips; without it nothing does. */
+  exciter?: RequirementSource;
+  /** Opens the dialog the slash menu's Exciter requirement asks for a key with. */
+  pickRequirement?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
   /** Opens the settings dialog the slash menu's Armature chart starts with. */
@@ -467,6 +472,8 @@ export function editorExtensions({
   attachments,
   armature,
   pickIssue,
+  exciter,
+  pickRequirement,
   pickIssueList,
   pickLinkCard,
   pickChart,
@@ -547,6 +554,7 @@ export function editorExtensions({
     Hint,
     InlineComment,
     ArmatureIssue.configure({ source: armature }),
+    ExciterRequirement.configure({ source: exciter, pick: pickRequirement }),
     ...(issueFind ? [ArmatureIssueFind.configure({ source: armature, suggestion: issueFind })] : []),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),

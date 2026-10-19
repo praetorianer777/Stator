@@ -221,7 +221,7 @@ func (c *Client) oauth(ctx context.Context, endpoint, kind string, body io.Reade
 		return nil
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
-		return fmt.Errorf("%w: %w: %w", ErrUnreachable, errUnreadable, err)
+		return fmt.Errorf("%w: %w: %w", ErrUnreachable, ErrUnreadable, err)
 	}
 	return nil
 }

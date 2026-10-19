@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui";
 import { LOGIN_PATH } from "@/config";
 import { appRoute } from "./app";
 import { armatureSettingsRoute } from "./armature";
+import { exciterSettingsRoute } from "./exciter";
 import { auditRoute } from "./audit";
 import { devEditorRoute } from "./dev-editor";
 import { exampleSpaceRoute } from "./example-space";
@@ -82,6 +83,7 @@ const routeTree = rootRoute.addChildren([
     siteTransferRoute,
     exampleSpaceRoute,
     armatureSettingsRoute,
+    exciterSettingsRoute,
     auditRoute,
     webhooksRoute,
     templatesRoute,

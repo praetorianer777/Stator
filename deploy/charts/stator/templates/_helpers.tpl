@@ -212,6 +212,13 @@ STATOR_OUTBOUND_ALLOW: {{ join "," . | quote }}
 {{- end }}
 STATOR_ARMATURE_BACKCHANNEL: {{ join "," $pairs | quote }}
 {{- end }}
+{{- with .Values.exciter.backchannel }}
+{{- $pairs := list }}
+{{- range $public, $reachable := . }}
+{{- $pairs = append $pairs (printf "%s=%s" $public $reachable) }}
+{{- end }}
+STATOR_EXCITER_BACKCHANNEL: {{ join "," $pairs | quote }}
+{{- end }}
 STATOR_SESSION_COOKIE: {{ .Values.auth.sessionCookie | quote }}
 STATOR_SECURE_COOKIES: {{ .Values.auth.secureCookies | quote }}
 

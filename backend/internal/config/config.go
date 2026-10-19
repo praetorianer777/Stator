@@ -121,6 +121,7 @@ type Config struct {
 	TestEndpoints TestEndpoints
 	Mail          Mail
 	Armature      Armature
+	Exciter       Exciter
 	// RetainAudit is how long the worker keeps an audit entry; zero keeps
 	// every one forever.
 	RetainAudit time.Duration
@@ -219,6 +220,14 @@ type Armature struct {
 	// the SSRF guard lets through, as STATOR_OUTBOUND_ALLOW names them.
 	OutboundAllow string
 	// Backchannel maps an Armature's public origin to the one this process
+	// reaches it at, for a stack where the two differ.
+	Backchannel map[string]string
+}
+
+// Exciter is how this process reaches the Exciter installation the instance
+// connects; the outbound guard is Armature's OutboundAllow.
+type Exciter struct {
+	// Backchannel maps an Exciter's public origin to the one this process
 	// reaches it at, for a stack where the two differ.
 	Backchannel map[string]string
 }
@@ -389,6 +398,7 @@ func Load() (Config, error) {
 	c.Auth.OIDCBackchannel = l.rewrites("STATOR_OIDC_BACKCHANNEL")
 	c.Armature.OutboundAllow = l.str("STATOR_OUTBOUND_ALLOW", "")
 	c.Armature.Backchannel = l.rewrites("STATOR_ARMATURE_BACKCHANNEL")
+	c.Exciter.Backchannel = l.rewrites("STATOR_EXCITER_BACKCHANNEL")
 	c.SecretKey = l.secretKey("STATOR_SECRET_KEY", c.Env)
 
 	if c.DB.PrimaryURL == "" {

@@ -20,6 +20,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/example"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
 	"github.com/praetorianer777/stator/backend/internal/hub"
@@ -149,6 +150,9 @@ type Server struct {
 	// Armature keeps the organization's connection and the members' tokens;
 	// nil answers that Armature is out of reach.
 	Armature *armature.Service
+	// Exciter keeps the Exciter connection and the members' tokens, as
+	// Armature does; nil answers that Exciter is out of reach.
+	Exciter *exciter.Service
 	// Audit reads the record for administrators and keeps exports; nil refuses
 	// both. AuditRetention is how long the worker keeps an entry, zero forever.
 	Audit          *audit.Service
@@ -218,6 +222,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		r.Post("/armature/webhook", s.handleArmatureWebhook)
 		// The address before #380, which receivers set up in Armature still use.
 		r.Post("/armature/webhook/{siteSlug}", s.handleArmatureWebhook)
+		r.Post("/exciter/webhook", s.handleExciterWebhook)
 		r.Group(func(r chi.Router) {
 			r.Use(s.anonymousReader)
 			r.Get("/public", s.handlePublicSite)
@@ -327,6 +332,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/armature/connection", s.handleSaveArmatureConnection)
 			r.Post("/armature/connection/check", s.handleCheckArmatureConnection)
 			r.Delete("/armature/connection", s.handleRemoveArmatureConnection)
+			r.Get("/exciter/connection", s.handleGetExciterConnection)
+			r.Put("/exciter/connection", s.handleSaveExciterConnection)
+			r.Post("/exciter/connection/check", s.handleCheckExciterConnection)
+			r.Delete("/exciter/connection", s.handleRemoveExciterConnection)
 			r.Put("/armature/connection/app", s.handleSaveArmatureApp)
 			r.Delete("/armature/connection/app", s.handleRemoveArmatureApp)
 			r.Get("/audit", s.handleListAudit)
@@ -364,6 +373,12 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/armature/theme", s.handleArmatureThemeFollow)
 			r.Put("/armature/theme", s.handleFollowArmatureTheme)
 			r.Delete("/armature/theme", s.handleUnfollowArmatureTheme)
+			r.Get("/exciter/account", s.handleGetExciterAccount)
+			r.Put("/exciter/account/token", s.handleConnectExciterAccount)
+			r.Post("/exciter/account/check", s.handleCheckExciterAccount)
+			r.Delete("/exciter/account/token", s.handleDisconnectExciterAccount)
+			r.Get("/exciter/requirements", s.handleLookupExciterRequirements)
+			r.Get("/exciter/requirements/{reqKey}", s.handleGetExciterRequirement)
 		})
 
 		if s.TestInstance != nil {

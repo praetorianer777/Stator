@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/docx"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/hub"
 	"github.com/praetorianer777/stator/backend/internal/instance"
@@ -432,6 +433,15 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, oidc.ErrNotConfigured):
 		return &APIError{Status: http.StatusNotFound, Code: "sso_not_configured",
 			Message: "Signing in through an identity provider is not set up here. Sign in with a password, or ask an administrator to set up the provider."}
+	case errors.Is(err, exciter.ErrNotConfigured):
+		return &APIError{Status: http.StatusConflict, Code: "exciter_not_configured",
+			Message: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Settings, Exciter."}
+	case errors.Is(err, exciter.ErrNotConnected):
+		return &APIError{Status: http.StatusConflict, Code: "exciter_not_connected",
+			Message: "You have not connected your Exciter account. Paste an Exciter token under Your profile, Exciter, then try again."}
+	case errors.Is(err, exciter.ErrUnreachable):
+		return &APIError{Status: http.StatusBadGateway, Code: "exciter_unreachable",
+			Message: "Exciter did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
 	case errors.Is(err, armature.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_configured",
 			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature."}

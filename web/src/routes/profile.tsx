@@ -5,11 +5,20 @@ import { useSetShowInReaders } from "@/api/pageviews";
 import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
 import { announceReturn, safeReturn } from "@/features/armature/connectLink";
-import { ARMATURE_OUTCOME_PARAM, ARMATURE_OUTCOMES, ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, PROFILE_PATH, type ArmatureOutcome } from "@/config";
+import { ExciterAccountSection } from "@/features/exciter/AccountSection";
+import {
+  ARMATURE_OUTCOME_PARAM,
+  ARMATURE_OUTCOMES,
+  ARMATURE_RETURN_PARAM,
+  ARMATURE_SECTION_ID,
+  EXCITER_SECTION_ID,
+  PROFILE_PATH,
+  type ArmatureOutcome,
+} from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
 import { appRoute } from "./app";
 
-/** The caller's profile: who they are here, and their Armature account. */
+/** The caller's profile: who they are here, and their Armature and Exciter accounts. */
 export const profileRoute = createRoute({
   getParentRoute: () => appRoute,
   path: PROFILE_PATH,
@@ -32,6 +41,12 @@ function ProfilePage() {
   const goBack = back
     ? () => {
         announceReturn(back);
+        router.history.push(back);
+      }
+    : undefined;
+  const goBackFromExciter = back
+    ? () => {
+        announceReturn(back, t.exciter.account.returned);
         router.history.push(back);
       }
     : undefined;
@@ -60,6 +75,7 @@ function ProfilePage() {
       {me && <LanguageSection choice={me.user.locale} />}
       {me && <PrivacySection shown={me.user.showInReaders} />}
       <AccountSection focusToken={hash === ARMATURE_SECTION_ID && !outcome} onReturn={goBack} returnTo={back} outcome={outcome} />
+      <ExciterAccountSection focusToken={hash === EXCITER_SECTION_ID} onReturn={goBackFromExciter} />
     </div>
   );
 }

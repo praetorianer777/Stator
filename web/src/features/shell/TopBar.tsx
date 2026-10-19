@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { administers, guestSpaceOf, useJoinRequests, useLogout, useMe } from "@/api/auth";
 import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { AUDIT_PATH, STALE_PATH, TEMPLATES_PATH, WEBHOOKS_PATH } from "@/config";
+import { AUDIT_PATH, EXCITER_SETTINGS_PATH, STALE_PATH, TEMPLATES_PATH, WEBHOOKS_PATH } from "@/config";
 import { WaitingReviewsButton } from "@/features/reviews/WaitingReviews";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { useCanAdministerSite } from "@/features/permissions/access";
@@ -115,6 +115,12 @@ export function TopBar({
       icon: <Icon.Link />,
       onSelect: () => navigate({ to: "/settings/armature" }),
       attrs: { "data-action": "armature-settings" },
+    });
+    items.push({
+      label: t.account.exciter,
+      icon: <Icon.Link />,
+      onSelect: () => navigate({ to: EXCITER_SETTINGS_PATH }),
+      attrs: { "data-action": "exciter-settings" },
     });
     items.push({
       label: t.account.audit,

@@ -2,6 +2,7 @@ import type { WordImport } from "@/api/word";
 import type { AuditAction } from "@/api/audit";
 import type { DeliveryState, WebhookTopic } from "@/api/webhooks";
 import type { ArmatureFeature } from "@/api/armature";
+import type { ExciterFeature } from "@/api/exciter";
 import type { ArmatureOutcome } from "@/config";
 
 /** The events a webhook may name besides everything. */
@@ -109,6 +110,7 @@ export const en = {
     sso: "Single sign-on",
     permissions: "Permissions",
     armature: "Armature",
+    exciter: "Exciter",
     audit: "Audit log",
     webhooks: "Webhooks",
     templates: "Templates",
@@ -522,6 +524,114 @@ export const en = {
       limitRange: (n: number) => `Enter a whole number from 1 to ${n}.`,
       insert: "Insert",
       save: "Save",
+      cancel: "Cancel",
+    },
+  },
+  exciter: {
+    title: "Exciter",
+    intro:
+      "Connect the Exciter installation your teams keep their requirements in. Pages then show its requirements, each person seeing what Exciter shows them.",
+    notAdmin: "Only an administrator can connect Exciter.",
+    baseUrl: "Exciter address",
+    baseUrlHint: "Where people open Exciter, such as https://exciter.example.com.",
+    movesForget: "Changing the address forgets every member's token. They connect again under their profile.",
+    connect: "Connect Exciter",
+    save: "Save",
+    saved: "Saved.",
+    connectedCount: (count: number) => (count === 1 ? "1 member has connected their account." : `${count} members have connected their accounts.`),
+    check: "Check",
+    checkFound: (version: string) => `Exciter ${version} answers at this address.`,
+    checkFoundUnversioned: "Exciter answers at this address.",
+    checkMissing: (count: number) =>
+      count === 1
+        ? "It lacks 1 feature Stator uses, which stays off; this page names it once saved."
+        : `It lacks ${count} features Stator uses, which stay off; this page names them once saved.`,
+    webhookTitle: "Webhook",
+    webhookIntro: "Exciter tells Stator when requirements change, so pages show a change at once instead of within a minute.",
+    webhookSteps: [
+      "In Exciter, open Settings, then Webhooks, as an administrator.",
+      "Add a webhook with the address below, envelope version 1, and the topics listed.",
+      "Paste the secret Exciter shows once into the field above, then save.",
+    ],
+    webhookUrl: "Webhook address",
+    topics: "Topics",
+    lastDelivery: {
+      none: "Stator has not taken a delivery from Exciter yet.",
+      taken: (topic: string, when: string) => `Stator last took a delivery, ${topic}, on ${when}.`,
+    },
+    copy: "Copy address",
+    copied: "Copied the address.",
+    copyFailed: "Copying did not work. Select the address and copy it yourself.",
+    webhookSecret: "Webhook secret",
+    secretStored: "Stored. Leave blank to keep it.",
+    forgetSecret: "Forget the stored secret",
+    disconnectTitle: "Disconnect",
+    disconnectIntro: "Disconnecting forgets the address, the webhook secret and every member's token. Pages show requirement keys only.",
+    disconnect: "Disconnect Exciter",
+    confirmDisconnect: "Disconnect Exciter? Every member's token is forgotten, and pages show requirement keys only.",
+    disconnected: "Exciter is disconnected.",
+    members: {
+      title: "What members do next",
+      intro:
+        "Each member now connects their own Exciter account: in Exciter they open Your account, Access tokens, make a token, a read-only one is enough, and paste it under Your profile, Exciter. Every hint to connect on a page takes them straight there.",
+      own: "Connect your own account",
+    },
+    capabilities: {
+      title: "What Exciter offers",
+      intro: "Stator asks Exciter which integration features it offers, and turns off the ones it lacks instead of failing later.",
+      version: (version: string) => `Exciter ${version} answers at this address.`,
+      all: "Exciter offers everything Stator uses.",
+      unreachable: "Exciter did not say what it offers just now. Reload this page in a moment.",
+      missing: (feature: string, capability: string) =>
+        `Stator turns off ${feature}, because Exciter does not offer ${capability}. Update Exciter to a release that does.`,
+      outdated: (feature: string, capability: string) =>
+        `The connected Exciter does not offer ${capability}, which Stator needs for ${feature}. Ask an administrator to update Exciter.`,
+      short: "Needs a newer Exciter",
+      features: {
+        requirements: "requirement chips and blocks",
+        lists: "requirement lists",
+        projects: "choosing a project for a list",
+        webhooks: "the webhook",
+      } as Record<ExciterFeature, string>,
+    },
+    account: {
+      intro: "Connect your Exciter account so pages show you the requirements you may see in Exciter.",
+      notConfigured: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Settings, Exciter.",
+      steps: "In Exciter, open Your account, then Access tokens, and make a token; a read-only one is enough. Then paste it here.",
+      openTokens: "Open Exciter's access tokens",
+      returns: "Once Exciter accepts the token, you go back to the page you came from.",
+      returned: "Your Exciter account is connected, and here is the page you came from.",
+      token: "Exciter token",
+      connect: "Connect",
+      replace: "Paste a new token",
+      connectedAs: (name: string, email: string) => `Connected as ${name} (${email}).`,
+      checkedAt: (when: string) => `Last checked ${when}.`,
+      check: "Check again",
+      checked: "Exciter accepts your token.",
+      disconnect: "Disconnect",
+      confirmDisconnect: "Disconnect your Exciter account? Pages show requirement keys only until you connect again.",
+      disconnected: "Your Exciter account is disconnected.",
+      rejected: "Exciter no longer accepts your token. Make a new one under Your account, Access tokens in Exciter and paste it here.",
+      unreachable: "Exciter did not answer the last check. Check again in a moment.",
+    },
+    chip: {
+      connectShort: "Connect Exciter",
+      connectRest: " to see this requirement",
+      replaceShort: "Paste a new Exciter token",
+      unreachable: "Exciter did not answer",
+      hidden: "Not visible to you",
+      hiddenSaid: (key: string) => `You may not see ${key} in Exciter, or it no longer exists. If you need it, ask the project's administrators in Exciter.`,
+      trashed: "In the trash",
+      status: "Status",
+      revision: (revision: number) => `Revision ${revision}`,
+      revisionShort: (revision: number) => `r${revision}`,
+    },
+    picker: {
+      title: "Insert an Exciter requirement",
+      field: "Requirement key",
+      hint: "The project key, -R and the number, such as CHK-R42.",
+      invalid: "That is not a requirement key. Write the project key, -R and the number, such as CHK-R42.",
+      insert: "Insert",
       cancel: "Cancel",
     },
   },
@@ -2539,6 +2649,10 @@ export const en = {
       tableOfContents: { label: "Table of contents", description: "Links to the headings on this page, kept up to date." },
       childPages: { label: "Child pages", description: "Links to the pages below this one." },
       armatureIssue: { label: "Armature issue", description: "One issue with its status, assignee and due date, as each reader may see it." },
+      exciterRequirement: {
+        label: "Exciter requirement",
+        description: "A requirement by its key, with its title, status and revision as each reader may see it.",
+      },
       armatureChart: {
         label: "Armature chart",
         description: "A pie chart, or created against resolved, of the issues a query finds, as each reader may see them.",
@@ -3177,6 +3291,8 @@ export const en = {
       "theme.default_set": "Default theme changed",
       "armature.connection_saved": "Armature connected",
       "armature.connection_removed": "Armature disconnected",
+      "exciter.connection_saved": "Exciter connected",
+      "exciter.connection_removed": "Exciter disconnected",
       "armature.app_saved": "Armature app saved",
       "armature.app_removed": "Armature app removed",
       "page.exported": "Page exported",

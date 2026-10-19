@@ -46,6 +46,9 @@
       "name": "drafts"
     },
     {
+      "name": "exciter"
+    },
+    {
       "name": "health"
     },
     {
@@ -2158,6 +2161,8 @@
                 "armature.connection_removed",
                 "armature.app_saved",
                 "armature.app_removed",
+                "exciter.connection_saved",
+                "exciter.connection_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -2343,6 +2348,8 @@
                 "armature.connection_removed",
                 "armature.app_saved",
                 "armature.app_removed",
+                "exciter.connection_saved",
+                "exciter.connection_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -3664,6 +3671,588 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/account": {
+      "get": {
+        "operationId": "getExciterAccount",
+        "summary": "Whether the caller connected their Exciter token, whom it acts as, and what the connected Exciter does not offer.",
+        "tags": [
+          "exciter"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "$ref": "#/components/schemas/ExciterAccount"
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/account/check": {
+      "post": {
+        "operationId": "checkExciterAccount",
+        "summary": "Ask Exciter now whether the caller's stored token still works.",
+        "tags": [
+          "exciter"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "$ref": "#/components/schemas/ExciterAccount"
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/account/token": {
+      "delete": {
+        "operationId": "disconnectExciterAccount",
+        "summary": "Forget the caller's Exciter token.",
+        "tags": [
+          "exciter"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "connectExciterAccount",
+        "summary": "Store the caller's Exciter personal access token, once Exciter accepts it; it is never answered again.",
+        "tags": [
+          "exciter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExciterTokenInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "$ref": "#/components/schemas/ExciterAccount"
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/connection": {
+      "delete": {
+        "operationId": "removeExciterConnection",
+        "summary": "Disconnect Exciter, forgetting every stored token and the webhook secret. For administrators.",
+        "tags": [
+          "exciter"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getExciterConnection",
+        "summary": "The Exciter installation Stator is connected to and what to enter in Exciter's webhook settings, or null. For administrators.",
+        "tags": [
+          "exciter"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/ExciterConnection"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveExciterConnection",
+        "summary": "Connect an Exciter installation, which answers product exciter at /meta; a new address forgets every stored token. For administrators.",
+        "tags": [
+          "exciter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExciterConnectionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/ExciterConnection"
+                    }
+                  },
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/connection/check": {
+      "post": {
+        "operationId": "checkExciterConnection",
+        "summary": "Ask an address what answers there before saving it: the Exciter version and what it offers, or a sentence on baseUrl saying what is wrong. Stores nothing. For administrators.",
+        "tags": [
+          "exciter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExciterConnectionCheckInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "check": {
+                      "$ref": "#/components/schemas/ExciterConnectionCheck"
+                    }
+                  },
+                  "required": [
+                    "check"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/requirements": {
+      "get": {
+        "operationId": "lookupExciterRequirements",
+        "summary": "Requirements by key for chips, read with the caller's own token and kept at most 60 seconds; a former key answers the requirement under its current key, and status says why there are none.",
+        "tags": [
+          "exciter"
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "description": "Requirement keys such as CHK-R42, 1 to 50.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requirements": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RequirementResult"
+                      }
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable",
+                        "outdated"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "requirements",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/requirements/{reqKey}": {
+      "get": {
+        "operationId": "getExciterRequirement",
+        "summary": "One requirement by key, as the caller may see it; null when they may not.",
+        "tags": [
+          "exciter"
+        ],
+        "parameters": [
+          {
+            "name": "reqKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "requirement": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/Requirement"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok",
+                        "not_configured",
+                        "not_connected",
+                        "rejected",
+                        "unreachable",
+                        "outdated"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "requirement",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/webhook": {
+      "post": {
+        "operationId": "exciterWebhook",
+        "summary": "Where Exciter posts requirement events, signed with the webhook secret saved in Stator, the time within 5 minutes of Stator's clock; envelope version 1 with source exciter only. Clears the cached requirements they name, by key and by id, and ignores fields and topics it does not know.",
+        "tags": [
+          "exciter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExciterWebhookEnvelope"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request Entity Too Large",
             "content": {
               "application/json": {
                 "schema": {
@@ -19219,6 +19808,8 @@
               "armature.connection_removed",
               "armature.app_saved",
               "armature.app_removed",
+              "exciter.connection_saved",
+              "exciter.connection_removed",
               "page.exported",
               "audit.exported",
               "page.owner_set",
@@ -19342,6 +19933,8 @@
                 "armature.connection_removed",
                 "armature.app_saved",
                 "armature.app_removed",
+                "exciter.connection_saved",
+                "exciter.connection_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -21330,6 +21923,264 @@
           "id",
           "name",
           "text"
+        ]
+      },
+      "ExciterAccount": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "checkedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "configured": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExciterMissingFeature"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not_configured",
+              "not_connected",
+              "rejected",
+              "unreachable",
+              "outdated"
+            ]
+          },
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AccountUser"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "configured",
+          "baseUrl",
+          "connected",
+          "status",
+          "user",
+          "checkedAt",
+          "missing"
+        ]
+      },
+      "ExciterConnection": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "connected": {
+            "type": "integer"
+          },
+          "lastDelivery": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/WebhookReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "partner": {
+            "$ref": "#/components/schemas/ExciterPartner"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "webhookSecretSet": {
+            "type": "boolean"
+          },
+          "webhookTopics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "webhookUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseUrl",
+          "webhookSecretSet",
+          "webhookUrl",
+          "webhookTopics",
+          "lastDelivery",
+          "connected",
+          "updatedAt",
+          "partner"
+        ]
+      },
+      "ExciterConnectionCheck": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "partner": {
+            "$ref": "#/components/schemas/ExciterPartner"
+          }
+        },
+        "required": [
+          "baseUrl",
+          "partner"
+        ]
+      },
+      "ExciterConnectionCheckInput": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseUrl"
+        ]
+      },
+      "ExciterConnectionInput": {
+        "type": "object",
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "webhookSecret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "baseUrl"
+        ]
+      },
+      "ExciterMissingFeature": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "type": "string"
+          },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "requirements",
+              "lists",
+              "projects",
+              "webhooks"
+            ]
+          }
+        },
+        "required": [
+          "feature",
+          "capability"
+        ]
+      },
+      "ExciterPartner": {
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExciterMissingFeature"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "not_configured",
+              "not_connected",
+              "rejected",
+              "unreachable",
+              "outdated"
+            ]
+          },
+          "version": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "capabilities",
+          "missing"
+        ]
+      },
+      "ExciterTokenInput": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "ExciterWebhookEnvelope": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "description": "A JSON value."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "exciter"
+            ]
+          },
+          "topic": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "id",
+          "source",
+          "topic",
+          "occurredAt",
+          "payload"
         ]
       },
       "ExportRequest": {
@@ -24851,6 +25702,101 @@
         },
         "required": [
           "content"
+        ]
+      },
+      "Requirement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "projectKey": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RequirementStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "trashedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "url",
+          "projectKey",
+          "title",
+          "status",
+          "revision",
+          "trashedAt"
+        ]
+      },
+      "RequirementResult": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "requirement": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Requirement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "requirement"
+        ]
+      },
+      "RequirementStatus": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "review",
+              "approved",
+              "done",
+              "closed"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "category"
         ]
       },
       "Response": {

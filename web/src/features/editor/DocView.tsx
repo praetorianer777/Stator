@@ -29,6 +29,8 @@ import { INCLUDE_NODE, IncludeBlock, IncludeChain, includeId } from "./IncludeVi
 import { PassagesContext } from "./passages";
 import { publicHref, publicPagePath, usePublicReading } from "./publicReading";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
+import { ExciterRequirementsProvider, RequirementChip } from "@/features/exciter/RequirementChip";
+import { EXCITER_REQUIREMENT_NODE, normalizeRequirementKey, requirementKeysOf } from "@/features/exciter/requirementKeys";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
 import { DueChip } from "@/features/tasks/DueChip";
@@ -87,6 +89,7 @@ export function DocView({
   // Somebody who is not signed in has no Armature account to ask with.
   const reading = usePublicReading();
   const keys = useMemo(() => (reading ? [] : issueKeysOf(doc)), [doc, reading]);
+  const requirements = useMemo(() => (reading ? [] : requirementKeysOf(doc)), [doc, reading]);
   const root = useRef<HTMLDivElement>(null);
   const shown = Boolean(doc);
   const [taskGone, setTaskGone] = useState(false);
@@ -110,7 +113,7 @@ export function DocView({
       <IncludeChain value={pageId && chain.length === 0 ? [pageId] : chain}>
         <HeadingsContext value={headings}>
           <HeadingAnchorsContext value={anchorOf}>
-            <WithIssues keys={keys}>
+            <WithIssues keys={keys} requirements={requirements}>
               <Blocks nodes={doc.content} copy={anchors ? copy : null} path={[]} />
             </WithIssues>
           </HeadingAnchorsContext>
@@ -139,9 +142,11 @@ function drawIncluded(doc: Doc) {
   );
 }
 
-// A view that names no Armature issue asks nothing about Armature.
-function WithIssues({ keys, children }: { keys: string[]; children: ReactNode }) {
-  return keys.length > 0 ? <ArmatureIssuesProvider keys={keys}>{children}</ArmatureIssuesProvider> : children;
+// A view that names no Armature issue asks nothing about Armature, and one
+// that names no Exciter requirement nothing about Exciter.
+function WithIssues({ keys, requirements = [], children }: { keys: string[]; requirements?: string[]; children: ReactNode }) {
+  const inner = requirements.length > 0 ? <ExciterRequirementsProvider keys={requirements}>{children}</ExciterRequirementsProvider> : children;
+  return keys.length > 0 ? <ArmatureIssuesProvider keys={keys}>{inner}</ArmatureIssuesProvider> : inner;
 }
 
 function anchorOfLocation(): string {
@@ -200,9 +205,10 @@ function DocToc({ node }: { node: DocNode }) {
 export function DocDiffView({ blocks }: { blocks: { change: "equal" | "inserted" | "deleted" | "modified"; node: DocNode }[] }) {
   const labels = { inserted: t.history.added, deleted: t.history.removed, modified: t.history.changed };
   const keys = useMemo(() => issueKeysOf(blocks.map((block) => block.node)), [blocks]);
+  const requirements = useMemo(() => requirementKeysOf(blocks.map((block) => block.node)), [blocks]);
   return (
     <div className="doc-content text-base text-ink" data-doc data-diff-view>
-      <WithIssues keys={keys}>
+      <WithIssues keys={keys} requirements={requirements}>
         {blocks.map((block, i) => (
           <div key={i} className="doc-diff-block" data-diff-block={block.change}>
             {block.change !== "equal" && <span className="doc-diff-label">{labels[block.change]}</span>}
@@ -665,6 +671,16 @@ function inlineNode(node: DocNode): ReactNode {
       return key
         ? marked(
             <IssueChip issueKey={key} />,
+            node.marks?.filter((mark) => mark.type !== "link"),
+          )
+        : null;
+    }
+    case EXCITER_REQUIREMENT_NODE: {
+      const key = normalizeRequirementKey(node.attrs?.key);
+      // The chip is a link of its own, and a link inside a link is neither.
+      return key
+        ? marked(
+            <RequirementChip requirementKey={key} />,
             node.marks?.filter((mark) => mark.type !== "link"),
           )
         : null;

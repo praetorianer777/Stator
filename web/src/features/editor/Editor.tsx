@@ -21,6 +21,8 @@ import type { FoundKey, IssueSource } from "./armatureIssue";
 import type { ArmatureIssue } from "@/api/armature";
 import { IssueMenu } from "./IssueMenu";
 import { IssuePicker } from "@/features/armature/IssuePicker";
+import { RequirementKeyDialog } from "@/features/exciter/RequirementKeyDialog";
+import type { RequirementSource } from "./exciterRequirement";
 import { settleSketches } from "@/features/sketch/settle";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
 import { IssueChartDialog } from "@/features/armature/IssueChartDialog";
@@ -102,6 +104,8 @@ export interface EditorProps {
   variant?: EditorVariant;
   /** What turns typed keys and pasted issue addresses into Armature chips. */
   armature?: IssueSource;
+  /** What turns typed requirement keys into Exciter chips, and offers the slash menu's entry. */
+  exciter?: RequirementSource;
   /** The shared draft the body is bound to, in place of value. */
   collab?: CollabBinding;
   /** Shows the document without letting anybody change it. */
@@ -130,6 +134,7 @@ export function Editor({
   attachments,
   variant = "page",
   armature,
+  exciter,
   collab,
   readOnly = false,
   taskIds = false,
@@ -151,6 +156,9 @@ export function Editor({
   onChangeRef.current = onChange;
   const armatureRef = useRef(armature);
   armatureRef.current = armature;
+  const exciterRef = useRef(exciter);
+  exciterRef.current = exciter;
+  const [pickingRequirement, setPickingRequirement] = useState(false);
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
   const [makingChart, setMakingChart] = useState(false);
@@ -207,6 +215,8 @@ export function Editor({
       attachments,
       armature,
       pickIssue: () => setPickingIssue(true),
+      exciter,
+      pickRequirement: () => setPickingRequirement(true),
       pickIssueList: () => setMakingList(true),
       pickChart: () => setMakingChart(true),
       pickRoadmap: () => setMakingRoadmap(true),
@@ -226,7 +236,10 @@ export function Editor({
       find: openFind,
       collab,
       taskIds,
-      slash: { items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()))), render: slash.renderer },
+      slash: {
+        items: ({ query }) => filterSlashItems(query, slashItemsFor(Boolean(armatureRef.current?.baseUrl()), Boolean(exciterRef.current?.baseUrl()))),
+        render: slash.renderer,
+      },
       mention: {
         items: ({ query }) => mentionMatches(searchesRef.current ? foundRef.current : peopleRef.current, query).slice(0, MENTION_MAX_SUGGESTIONS),
         render: mention.renderer,
@@ -430,6 +443,15 @@ export function Editor({
           onInsert={(key) => {
             setPickingIssue(false);
             editor.chain().focus().insertArmatureIssueBlock(key).run();
+          }}
+        />
+      )}
+      {pickingRequirement && editor && (
+        <RequirementKeyDialog
+          onClose={() => setPickingRequirement(false)}
+          onInsert={(key) => {
+            setPickingRequirement(false);
+            editor.chain().focus().insertExciterRequirement(key).run();
           }}
         />
       )}

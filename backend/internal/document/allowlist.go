@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 )
 
 // AttrKind is the JSON type an attribute's value has.
@@ -363,7 +364,7 @@ const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+
 
 var (
 	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeSketch, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", NodeGallery, "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
-	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, NodeStatus, NodeDate, NodeMathInline}
+	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, exciter.NodeRequirement, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
 		"colspan":    {Kind: KindInteger, Min: 1, Max: MaxTableSpan},
@@ -505,6 +506,11 @@ var Allowed = Allowlist{
 		},
 		armature.NodeIssueBlock: {
 			Attrs: map[string]Attr{"key": {Kind: KindString, Pattern: armature.KeyPattern}},
+		},
+		// An Exciter requirement by key alone, as an Armature issue is kept.
+		exciter.NodeRequirement: {
+			Inline: true,
+			Attrs:  map[string]Attr{"key": {Kind: KindString, Pattern: exciter.KeyPattern, MaxLength: exciter.MaxKeyLength}},
 		},
 		// The query and how to show it, never its rows: each reader's view
 		// asks Armature for the rows that reader may see.

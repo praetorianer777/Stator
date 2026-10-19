@@ -268,6 +268,67 @@ in Dynamo's list. The map is `armature.FeatureCapabilities`, and
 - **Not answering is not missing.** An Armature that did not answer `/meta`
   turns nothing off; the read itself says Armature did not answer.
 
+## Exciter requirements on pages
+
+Stator shows Exciter's requirements on its pages as it shows Armature's
+issues (#440), as agreed in Exciter's `docs/api-contract-backlog.md`, section
+"#43 Exciter requirements in Stator pages". Package `internal/exciter`
+follows `internal/armature` and goes through its outbound client, cache and
+signatures; the routes are under `/exciter`.
+
+- **Connecting.** An administrator saves Exciter's origin under Settings,
+  Exciter (`PUT /exciter/connection`); it must answer `product` `exciter` at
+  `GET /api/v1/meta`, and `POST /exciter/connection/check` asks before
+  saving. The outbound guard refuses an address inside the network in the
+  same sentence as Armature's, naming the value to allow. Each member stores
+  their own personal access token (`exciter_pat_`, a read-only one serves)
+  under Your profile, Exciter, checked at Exciter's `GET /auth/me`, sealed
+  with `STATOR_SECRET_KEY` and bound to the site and the person. A new
+  address forgets every token, in the database (00820).
+- **What Stator needs of Exciter**, by exact name at `/meta`:
+
+  | Feature | Capability |
+  | --- | --- |
+  | requirement chips and blocks | `requirement-embed@1` |
+  | list blocks | `requirement-list@1` |
+  | the projects a list block offers | `specifications@1` |
+  | the webhook from Exciter | `webhooks@1` |
+
+  A missing one answers `outdated` and the chip says so, without asking
+  Exciter; `exciter.FeatureCapabilities` and `EXCITER_FEATURE_CAPABILITIES`
+  hold the map.
+- **Chips.** A key such as `CHK-R42` (`^([A-Z][A-Z0-9]{1,9})-R([1-9][0-9]*)$`)
+  is stored as an `exciterRequirement` node holding the key alone. It is
+  typed, by an author whose Exciter account is connected, or inserted from
+  the slash menu's Exciter requirement, which is offered only while Stator is
+  connected to Exciter. `GET /exciter/requirements?key=` reads each key with
+  the viewer's token at Exciter's `GET /requirements/{reqKey}` and answers the
+  title, the status, the revision and `trashedAt`, linking to
+  `{exciter}/p/{projectKey}/r/{key}`. A former key answers the requirement
+  under its current key, which the chip shows. Exciter's 404 is a requirement
+  the reader does not see: the chip shows the key and says so. Without a
+  token the key is a link to Exciter beside a hint that opens the token form.
+- **Cache.** Each answer is kept per viewer's token row for at most
+  `exciter.RequirementCacheTTL`, 60 seconds, in Valkey, with the keys each
+  requirement was read by under its id.
+- **Webhooks.** An Exciter administrator adds a webhook for
+  `POST /api/v1/exciter/webhook`, envelope version 1, with the topics
+  `requirement.created`, `requirement.revised`, `requirement.changed`,
+  `requirement.trashed`, `requirement.restored`, `requirement.moved` and
+  `review.decided`, and the administrator pastes its `exciter_whs_` secret
+  into Settings, Exciter. A delivery must carry `X-Exciter-Signature-256`,
+  `X-Exciter-Timestamp` and `X-Exciter-Signature-Timestamped-256` over the
+  body, within five minutes of Stator's clock (401 `bad_signature` or
+  `stale_delivery`), and `X-Exciter-Webhook-Version` and `version` 1 (422
+  `unsupported_version`). A body whose `source` is not `exciter`, and a topic
+  or field Stator does not know, is answered 204 and changes nothing. A
+  delivery only clears the cache: the keys it names, `fromKey` and `toKey`,
+  and every key the requirement of its `id` was read by. Its payload, read as
+  the webhook's owner, is never shown.
+- **The stand-in.** `cmd/exciter-stub` serves `/meta`, `/auth/me` and
+  `/requirements/{reqKey}` in Exciter's shapes and posts signed deliveries; a
+  contract test holds both to `api/exciter/openapi.json`, which
+  `make exciter-openapi REF=<sha>` vendors and `api/exciter/SOURCE` pins.
 ## Connecting an account with one click
 
 Where Armature lists `oauth.partner-tokens@1` at `/meta`, a person connects

@@ -26,6 +26,7 @@ const (
 	whyBrowser      = "furniture of the browser client: typeahead, badges, pickers, visits, drafts and live saves"
 	whyFiles        = "moves files rather than words; get_page_markdown and replace_page_markdown carry a page's words"
 	whyArmature     = "Armature's own MCP endpoint serves its issues as the person, without Stator in between"
+	whyExciter      = "Exciter's own MCP endpoint serves its requirements as the person, without Stator in between"
 	whyAttention    = "reaches other people or a page's standing: shares, reactions, watches, stars, owners and verification"
 	whyReorganize   = "moves, copies, restores, publishes or schedules a draft; a person does that in the tree, the trash, the history or the editor"
 	whyThreads      = "an inline thread needs the body with a passage marked, and threads are rewritten or resolved where they are read"
@@ -60,6 +61,7 @@ var notTools = map[string]string{
 	"GET /auth/oidc/callback":                                      whyEdge,
 	"POST /armature/webhook":                                       whyEdge,
 	"POST /armature/webhook/{siteSlug}":                            whyEdge,
+	"POST /exciter/webhook":                                        whyEdge,
 	"POST /mcp":                                                    whyEdge,
 	"GET /pages/{pageID}/collab":                                   whyLive,
 	"POST /auth/logout":                                            whySelf,
@@ -93,6 +95,10 @@ var notTools = map[string]string{
 	"GET /armature/theme":                                          whySelf,
 	"PUT /armature/theme":                                          whySelf,
 	"DELETE /armature/theme":                                       whySelf,
+	"GET /exciter/account":                                         whySelf,
+	"PUT /exciter/account/token":                                   whySelf,
+	"POST /exciter/account/check":                                  whySelf,
+	"DELETE /exciter/account/token":                                whySelf,
 	"GET /oidc-provider":                                           whyAdmin,
 	"PUT /oidc-provider":                                           whyAdmin,
 	"GET /oidc-provider/group-roles":                               whyAdmin,
@@ -182,6 +188,10 @@ var notTools = map[string]string{
 	"PUT /armature/connection":                                     whyAdmin,
 	"POST /armature/connection/check":                              whyAdmin,
 	"DELETE /armature/connection":                                  whyAdmin,
+	"GET /exciter/connection":                                      whyAdmin,
+	"PUT /exciter/connection":                                      whyAdmin,
+	"POST /exciter/connection/check":                               whyAdmin,
+	"DELETE /exciter/connection":                                   whyAdmin,
 	"PUT /armature/connection/app":                                 whyAdmin,
 	"DELETE /armature/connection/app":                              whyAdmin,
 	"PUT /spaces/{spaceKey}/archive":                               whyAdmin,
@@ -243,6 +253,8 @@ var notTools = map[string]string{
 	"GET /armature/issue-types":                                    whyArmature,
 	"POST /armature/issues":                                        whyArmature,
 	"GET /pages/{pageID}/armature-links":                           whyArmature,
+	"GET /exciter/requirements":                                    whyExciter,
+	"GET /exciter/requirements/{reqKey}":                           whyExciter,
 	"POST /pages/{pageID}/reactions":                               whyAttention,
 	"DELETE /pages/{pageID}/reactions":                             whyAttention,
 	"POST /comments/{commentID}/reactions":                         whyAttention,

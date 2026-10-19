@@ -33,11 +33,14 @@ export function safeReturn(value: unknown): string | undefined {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-/** The Armature section of the profile, with the token field focused and the way back to where the person was. */
-export function connectHref(from: string | undefined): string {
+/**
+ * A partner's section of the profile, Armature's unless section names another, with the
+ * token field focused and the way back to where the person was.
+ */
+export function connectHref(from: string | undefined, section: string = ARMATURE_SECTION_ID): string {
   const back = safeReturn(from);
   const query = back ? `?${new URLSearchParams({ [ARMATURE_RETURN_PARAM]: back })}` : "";
-  return `${PROFILE_PATH}${query}#${ARMATURE_SECTION_ID}`;
+  return `${PROFILE_PATH}${query}#${section}`;
 }
 
 /** The server's start of a one-click connect, which comes back to the profile and from there to where the person was. */
@@ -56,7 +59,7 @@ type Router = ReturnType<typeof useRouter> | undefined;
 
 // Hints are also drawn inside the editor's node views and in tests without a
 // router, where the browser's address is the only one there is.
-function here(router: Router): string {
+export function here(router: Router): string {
   if (router) return router.state.location.href;
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
@@ -94,6 +97,7 @@ export function ConnectArmatureLink({ onClick, children, ...rest }: LinkProps) {
 // The notice outlives the profile page that raises it and is drawn by the shell
 // on the page the person returns to, so it is kept outside any component.
 let returnedTo: string | null = null;
+let returnedSaying: string | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -107,9 +111,10 @@ function subscribe(listener: () => void) {
   };
 }
 
-/** Says, on the page at path, that the account is now connected. */
-export function announceReturn(path: string) {
+/** Says, on the page at path, that the account is now connected; saying names which, Armature's when left out. */
+export function announceReturn(path: string, saying?: string) {
   returnedTo = new URL(path, window.location.origin).pathname;
+  returnedSaying = saying ?? null;
   emit();
 }
 
@@ -135,7 +140,7 @@ export function ReturnNotice({ pathname }: { pathname: string }) {
       className="mb-4 flex items-center justify-between gap-3 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink"
       data-armature-returned
     >
-      <span>{t.armature.account.returned}</span>
+      <span>{returnedSaying ?? t.armature.account.returned}</span>
       <button type="button" className="text-ink-muted underline hover:text-ink" onClick={dismissReturn}>
         {t.common.close}
       </button>

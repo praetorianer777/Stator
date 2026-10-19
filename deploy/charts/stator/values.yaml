@@ -263,6 +263,11 @@ armature:
   # The reachable host must then be in network.outboundAllow as well.
   backchannel: {}
 
+exciter:
+  # public-origin: reachable-origin, for an Exciter this release reaches at
+  # another address than the one people open it at, as for armature above.
+  backchannel: {}
+
 telemetry:
   # /metrics has no authentication. Keep it on the cluster network.
   metricsPort: 9090

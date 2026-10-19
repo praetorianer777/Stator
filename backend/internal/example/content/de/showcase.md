@@ -324,3 +324,7 @@ Eine **Armature-Roadmap** legt die Vorgänge einer Abfrage auf eine Zeitleiste, 
 %%armature-roadmap%%
 {{else}}Diese Organisation hat kein verbundenes Armature, das der Person, die diesen Bereich angelegt hat, ein Projekt gezeigt hat, deshalb stehen hier keine Armature-Blöcke. Sobald eine Administratorin oder ein Administrator Armature unter **Armature** im Kontomenü verbindet und Sie Ihr eigenes Token in Ihrem Profil hinterlegen, wird ein getippter Vorgangsschlüssel zum Chip, und das Menü bietet **Armature-Vorgang**, **Armature-Vorgangsliste**, **Armature-Diagramm** und **Armature-Roadmap**. Siehe [Armature](armature.md).
 {{end}}
+
+## Exciter
+
+Mit verbundenem Exciter wird ein Anforderungsschlüssel wie <span data-stator="requirement">CHK-R1</span> zu einem Chip, der jeder Leserin und jedem Leser Titel, Status und Revision der Anforderung so zeigt, wie Exciter sie ihnen zeigt. Tippen Sie den Schlüssel und ein Leerzeichen, oder wählen Sie im Menü **Exciter-Anforderung** und geben Sie den Schlüssel ein. Ohne Exciter oder ohne Ihr eigenes Exciter-Token zeigt der Chip nur den Schlüssel und sagt, wie Sie sich verbinden.

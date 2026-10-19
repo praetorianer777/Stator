@@ -25,6 +25,7 @@ S3_PORT               := $(call stack_port,7)
 ARMATURE_STUB_PORT    := $(call stack_port,8)
 # The real Armature of make test-armature (mk/armature.mk), when it runs.
 ARMATURE_PORT         := $(call stack_port,9)
+EXCITER_STUB_PORT     := $(call stack_port,10)
 
 # Credentials for the throwaway development stack; override in the environment
 # for anything else. The compose file carries the same defaults.
@@ -47,7 +48,7 @@ STACK_TEST_BUCKET := stator-test
 
 export COMPOSE_FILE := $(ROOT)/deploy/docker-compose.yml
 export COMPOSE_PROJECT_NAME := $(STACK_PROJECT)
-export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT ARMATURE_STUB_PORT ARMATURE_PORT
+export WEB_PORT API_PORT KEYCLOAK_PORT MAILPIT_PORT POSTGRES_PORT POSTGRES_REPLICA_PORT VALKEY_PORT S3_PORT ARMATURE_STUB_PORT ARMATURE_PORT EXCITER_STUB_PORT
 export POSTGRES_PASSWORD APP_DB_PASSWORD ADMIN_DB_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY VALKEY_PASSWORD STATOR_SECRET_KEY STATOR_TEST_ENDPOINTS_TOKEN
 
 # What the stack publishes, for the browser suite and for people: a shell can
@@ -78,6 +79,8 @@ DOCKER_GO_STACK = $(call go_run,--network $(STACK_NET) \
 	-e STATOR_TEST_MAILPIT_URL=http://mailpit:8025 \
 	-e STATOR_TEST_ARMATURE_URL=http://localhost:$(ARMATURE_STUB_PORT) \
 	-e STATOR_TEST_ARMATURE_STUB_URL=http://armature-stub:8080 \
+	-e STATOR_TEST_EXCITER_URL=http://localhost:$(EXCITER_STUB_PORT) \
+	-e STATOR_TEST_EXCITER_STUB_URL=http://exciter-stub:8080 \
 	-e STATOR_TEST_SECRET_KEY='$(STATOR_SECRET_KEY)' \
 	-e STATOR_TEST_APP_URL=http://localhost:$(WEB_PORT) \
 	-e STATOR_TEST_BUILD_VERSION='$(STATOR_BUILD_VERSION)' \
@@ -102,6 +105,8 @@ stack-env:
 		'STATOR_ARMATURE_URL=http://localhost:$(ARMATURE_STUB_PORT)' \
 		'ARMATURE_PORT=$(ARMATURE_PORT)' \
 		'STATOR_REAL_ARMATURE_URL=http://localhost:$(ARMATURE_PORT)' \
+		'EXCITER_STUB_PORT=$(EXCITER_STUB_PORT)' \
+		'STATOR_EXCITER_URL=http://localhost:$(EXCITER_STUB_PORT)' \
 		'STATOR_WEB_URL=http://localhost:$(WEB_PORT)' \
 		'STATOR_KEYCLOAK_URL=http://localhost:$(KEYCLOAK_PORT)' \
 		'STATOR_MAILPIT_URL=http://localhost:$(MAILPIT_PORT)' \
@@ -119,6 +124,7 @@ up: stack-env ## Build and start the whole stack in the background, and say wher
 	@echo "Keycloak   http://localhost:$(KEYCLOAK_PORT) (admin / admin; realm dynamo)"
 	@echo "Mailpit    http://localhost:$(MAILPIT_PORT)"
 	@echo "Armature   http://localhost:$(ARMATURE_STUB_PORT) (the stub; tokens are armature_pat_<org slug>_<person>)"
+	@echo "Exciter    http://localhost:$(EXCITER_STUB_PORT) (the stub; tokens are exciter_pat_<name>_<person>)"
 	@echo "Postgres   127.0.0.1:$(POSTGRES_PORT) (replica $(POSTGRES_REPLICA_PORT))"
 	@echo "Ports and project name are in $(STACK_ENV_FILE)."
 

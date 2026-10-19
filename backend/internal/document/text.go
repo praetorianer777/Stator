@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 )
 
 // PlainText is the words of a document, one block per line and table cells
@@ -98,7 +99,7 @@ func InlineText(n Node) string {
 		case "attachment":
 			name, _ := c.Attrs["fileName"].(string)
 			b.WriteString(name)
-		case armature.NodeIssue:
+		case armature.NodeIssue, exciter.NodeRequirement:
 			key, _ := c.Attrs["key"].(string)
 			b.WriteString(key)
 		case NodeStatus:

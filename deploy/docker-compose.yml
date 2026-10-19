@@ -54,10 +54,12 @@ x-auth-env: &auth-env
 # oauth.partner-tokens@1; a host of each keeps what the api learns of it
 # apart from the stub's own address. armature-api is the real Armature make test-armature starts on
 # this network (deploy/armature), reached the same way; for a real Armature
-# on the host, see docs/api-contract-m3.md.
+# on the host, see docs/api-contract-m3.md. Exciter is stood in for the same
+# way by the exciter-stub at http://localhost:${EXCITER_STUB_PORT}.
 x-armature-env: &armature-env
-  STATOR_OUTBOUND_ALLOW: armature-stub,web,armature-api
+  STATOR_OUTBOUND_ALLOW: armature-stub,web,armature-api,exciter-stub
   STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://older-armature.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://connected-app.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://localhost:${ARMATURE_PORT:-8191}=http://armature-api:8080
+  STATOR_EXCITER_BACKCHANNEL: http://localhost:${EXCITER_STUB_PORT:-8192}=http://exciter-stub:8080
 
 # Who the stack's organization is made with: the realm's people, let in ahead
 # of time, and the realm as its provider. The seed gives them to demo, and the
@@ -357,6 +359,8 @@ services:
         condition: service_healthy
       armature-stub:
         condition: service_healthy
+      exciter-stub:
+        condition: service_healthy
       # After the seed rather than beside it: a stack that answers is one a
       # browser test can sign in to, and `up --wait` accepts a one-shot
       # container only when something waits for it.
@@ -433,6 +437,21 @@ services:
       - "127.0.0.1:${ARMATURE_STUB_PORT:-8190}:8080"
     healthcheck:
       test: ["CMD", "/app/armature-stub", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
+
+  # Stands in for Exciter the same way, held to Exciter's document. Never in
+  # the chart.
+  exciter-stub:
+    <<: *backend
+    command: ["/app/exciter-stub"]
+    ports:
+      - "127.0.0.1:${EXCITER_STUB_PORT:-8192}:8080"
+    healthcheck:
+      test: ["CMD", "/app/exciter-stub", "-healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 5

@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/example"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
 	"github.com/praetorianer777/stator/backend/internal/guest"
 	"github.com/praetorianer777/stator/backend/internal/home"
@@ -165,6 +166,13 @@ func run() error {
 	armatures := armature.NewService(cluster, box,
 		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Armature.Backchannel), cache,
 		armature.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
+	var exciterCache *armature.Cache
+	if valkey != nil {
+		exciterCache = exciter.NewCache(valkey, log)
+	}
+	exciters := exciter.NewService(cluster, box,
+		armature.NewClient(netguard.ParseAllow(cfg.Armature.OutboundAllow), cfg.Exciter.Backchannel), exciterCache,
+		exciter.Options{AppURL: cfg.AppBaseURL, Allow: netguard.ParseAllow(cfg.Armature.OutboundAllow), Development: cfg.Env == config.EnvDevelopment, Log: log})
 	files := attachment.NewService(cluster, store, pages).WithMaxSize(cfg.UploadLimit).WithLogger(log)
 	if cfg.ConverterURL != "" {
 		files.WithConverter(convert.New(cfg.ConverterURL, attachment.MaxPreviewSize))
@@ -222,6 +230,7 @@ func run() error {
 		PageViews:         pageview.NewService(cluster),
 		PageViewRetention: cfg.RetainPageViews,
 		Armature:          armatures,
+		Exciter:           exciters,
 		Audit:             audit.NewService(cluster),
 		AuditRetention:    cfg.RetainAudit,
 		Renderer:          renderer(cfg.Render, log),

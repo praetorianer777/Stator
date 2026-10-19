@@ -17,6 +17,8 @@ export interface SlashItem {
   run: (chain: ChainedCommands) => void;
   /** Offered only while the organization has an Armature to ask. */
   armature?: boolean;
+  /** Offered only while Stator is connected to an Exciter. */
+  exciter?: boolean;
 }
 
 function item(key: BlockKey, icon: ComponentType<IconProps>, keywords: string[], run: (chain: ChainedCommands) => ChainedCommands): SlashItem {
@@ -59,6 +61,7 @@ export const SLASH_ITEMS: SlashItem[] = [
   { ...item("armatureChart", Icon.Chart, ["armature", "chart", "pie", "report", "created", "resolved"], (c) => c.pickArmatureChart()), armature: true },
   { ...item("armatureRoadmap", Icon.Roadmap, ["armature", "roadmap", "timeline", "epics", "plan", "gantt"], (c) => c.pickArmatureRoadmap()), armature: true },
   { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
+  { ...item("exciterRequirement", Icon.Task, ["exciter", "requirement", "spec", "specification"], (c) => c.pickExciterRequirement()), exciter: true },
   item("status", Icon.Label, ["status", "state", "badge", "label", "tag"], (c) => c.insertStatus()),
   item("date", Icon.Calendar, ["date", "day", "today", "deadline", "when"], (c) => c.insertDate()),
   item("labelledPages", Icon.Label, ["content by label", "labels", "tagged", "list", "pages"], (c) => c.pickLabelledPages()),
@@ -82,9 +85,9 @@ export const SLASH_ITEMS: SlashItem[] = [
   item("emoji", Icon.Smile, ["emoji", "smiley", "reaction"], (c) => c.insertContent(":")),
 ];
 
-/** The blocks this editor offers: the Armature ones only where there is an Armature. */
-export function slashItemsFor(armature: boolean): SlashItem[] {
-  return armature ? SLASH_ITEMS : SLASH_ITEMS.filter((it) => !it.armature);
+/** The blocks this editor offers: the Armature and Exciter ones only where Stator is connected to them. */
+export function slashItemsFor(armature: boolean, exciter = false): SlashItem[] {
+  return SLASH_ITEMS.filter((it) => (armature || !it.armature) && (exciter || !it.exciter));
 }
 
 /** The blocks whose name or keywords contain what was typed after the slash. */

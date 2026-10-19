@@ -47,7 +47,12 @@ export function armatureURL(): string {
   return setting("STATOR_ARMATURE_URL");
 }
 
-/** The api as the armature-stub reaches it on the stack's network, where its webhooks go. */
+/** The exciter-stub as a browser opens it, which is the address an administrator connects; read when first needed. */
+export function exciterURL(): string {
+  return setting("STATOR_EXCITER_URL");
+}
+
+/** The api as the armature-stub and the exciter-stub reach it on the stack's network, where their webhooks go. */
 export function apiFromStubURL(): string {
   return process.env.STATOR_API_FROM_STUB_URL ?? "http://api:8080";
 }

@@ -33,8 +33,8 @@ var (
 	ErrUnreachable = errors.New("Armature could not be reached")
 	// ErrNotArmature is an address that answers, but not as an Armature.
 	ErrNotArmature = errors.New("the address does not answer as an Armature")
-	// errUnreadable is an answer that is not the JSON asked for.
-	errUnreadable = errors.New("the answer is not the JSON expected")
+	// ErrUnreadable is an answer that is not the JSON asked for.
+	ErrUnreadable = errors.New("the answer is not the JSON expected")
 )
 
 // RefusedError is any other refusal from Armature, with its own words, so a
@@ -116,7 +116,7 @@ func (c *Client) Describe(ctx context.Context, baseURL string) error {
 	switch {
 	case err == nil && doc.Info.Title == DocumentTitle:
 		return nil
-	case err == nil, errors.As(err, &refused), errors.Is(err, ErrRejected), errors.Is(err, errUnreadable):
+	case err == nil, errors.As(err, &refused), errors.Is(err, ErrRejected), errors.Is(err, ErrUnreadable):
 		return ErrNotArmature
 	}
 	return err
@@ -287,7 +287,7 @@ func (c *Client) doWithin(ctx context.Context, method, target, token string, bod
 		return nil
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
-		return fmt.Errorf("%w: %w: %w", ErrUnreachable, errUnreadable, err)
+		return fmt.Errorf("%w: %w: %w", ErrUnreachable, ErrUnreadable, err)
 	}
 	return nil
 }

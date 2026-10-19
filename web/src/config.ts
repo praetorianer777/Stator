@@ -514,6 +514,25 @@ export const ARMATURE_FEATURE_CAPABILITIES = {
   theme: "theme-export@1",
   webhooks: "webhooks@1",
 } as const;
+/** Where an administrator connects Exciter, and the anchor of a person's Exciter section in their profile. */
+export const EXCITER_SETTINGS_PATH = "/settings/exciter";
+export const EXCITER_SECTION_ID = "exciter";
+/** Exciter's own page for making tokens, under the connected Exciter's address. */
+export const EXCITER_TOKENS_PATH = "/settings/tokens";
+/** How every Exciter personal access token and webhook secret starts, as Exciter makes them. */
+export const EXCITER_TOKEN_PREFIX = "exciter_pat_";
+export const EXCITER_WEBHOOK_SECRET_PREFIX = "exciter_whs_";
+/** The capability each part of Stator needs Exciter to report at /meta, as exciter.FeatureCapabilities. */
+export const EXCITER_FEATURE_CAPABILITIES = {
+  requirements: "requirement-embed@1",
+  lists: "requirement-list@1",
+  projects: "specifications@1",
+  webhooks: "webhooks@1",
+} as const;
+/** The most requirement keys one lookup asks for, as the API takes them; a page naming more asks in batches. */
+export const EXCITER_LOOKUP_MAX_KEYS = 50;
+/** The longest requirement key Stator stores, as exciter.MaxKeyLength. */
+export const EXCITER_KEY_MAX_LENGTH = 30;
 /** The most issue keys one lookup asks for, as the API takes them; a page naming more asks in batches. */
 export const ARMATURE_LOOKUP_MAX_KEYS = 50;
 /** How long an issue chip's card waits before it shows, so a pointer passing over shows nothing. */

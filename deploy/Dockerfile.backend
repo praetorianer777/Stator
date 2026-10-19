@@ -24,8 +24,9 @@ RUN go build -trimpath $(cat /deps.txt)
 
 COPY backend/ ./
 COPY VERSION /VERSION
-# The stub serves Armature's own document, as Armature does.
+# The stubs serve Armature's and Exciter's own documents, as they do.
 COPY api/armature/openapi.json /out/armature-openapi.json
+COPY api/exciter/openapi.json /out/exciter-openapi.json
 
 # goose drops the database drivers Stator never uses under these tags; without
 # them the migrate binary carries sqlite, mysql and clickhouse along.
@@ -39,7 +40,7 @@ RUN if [ -z "$COMMIT" ]; then echo 'Warning: COMMIT is empty, so this build will
     PKG=github.com/praetorianer777/stator/backend/internal/version && \
     VERSION="${VERSION:-$(cat /VERSION)+dev}" && \
     LDFLAGS="-s -w -X $PKG.Version=$VERSION -X $PKG.Commit=$COMMIT -X $PKG.BuiltAt=$(date -u +%Y-%m-%dT%H:%M:%SZ)" && \
-    go build -trimpath -ldflags="$LDFLAGS" -o /out/ ./cmd/api ./cmd/worker ./cmd/seed ./cmd/armature-stub ./cmd/backup && \
+    go build -trimpath -ldflags="$LDFLAGS" -o /out/ ./cmd/api ./cmd/worker ./cmd/seed ./cmd/armature-stub ./cmd/exciter-stub ./cmd/backup && \
     go build -trimpath -ldflags="$LDFLAGS" -tags "$GOOSE_TAGS" -o /out/migrate ./cmd/migrate
 
 # The backup command drives pg_dump and psql, which must be the server's major

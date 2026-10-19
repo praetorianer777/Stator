@@ -121,7 +121,7 @@ func newAPIServer(t *testing.T, h *harness, tweaks ...func(*httpapi.Server)) *ap
 		DB: h.cluster, Instance: instance.NewResolver(h.cluster), Log: discard(), Auth: accounts, Accounts: accounts, Themes: a.themes,
 		Spaces: space.NewService(h.cluster), Pages: pages, Attachments: a.attachments, Perms: perm.NewService(h.cluster), Search: search.NewService(h.cluster),
 		Labels: label.NewService(h.cluster, pages), RemoteLinks: remotelink.NewService(h.cluster), Comments: comment.NewService(h.cluster), Reactions: reaction.NewService(h.cluster), Watches: watch.NewService(h.cluster), Notifications: notify.NewService(h.cluster), Stars: star.NewService(h.cluster), Home: home.NewService(h.cluster), Stale: stale.NewService(h.cluster), Tasks: task.NewService(h.cluster), Shares: share.NewService(h.cluster), Shortcuts: shortcut.NewService(h.cluster), Calendars: calendar.NewService(h.cluster), Guests: guest.NewService(h.cluster), Public: public.NewService(h.cluster), Hub: hub.NewService(h.cluster), Brand: brand.NewService(h.cluster, h.appStore(t)), Templates: template.NewService(h.cluster), ExampleJobs: example.NewJobs(h.cluster), Word: wordio.NewService(h.cluster, pages, a.attachments, store), SpaceTransfers: spaceio.NewJobs(h.cluster, h.appStore(t)),
-		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t),
+		Fresh: h.freshness(t), CookieName: h.cfg.Auth.SessionCookie, Armature: h.armature(t), Exciter: h.exciter(t),
 		Audit: audit.NewService(h.cluster), AuditRetention: config.DefaultRetainAudit, Webhooks: h.webhooks(t),
 		PageViews: pageview.NewService(h.cluster), PageViewRetention: config.DefaultRetainPageViews,
 		Unfurl: h.unfurl(t, netguard.ParseAllow(armatureStubHost)),
