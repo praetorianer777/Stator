@@ -16,7 +16,7 @@ so `internal/exciter` keeps only what differs and takes the rest from
   sentence names the partner (`BlockedSentenceFor`), and the status words
   are Armature's, so a client reads both alike.
 - **Its own tables and tokens.** The connection and the tokens are tables of
-  their own (00810), not a column on Armature's: each partner is connected,
+  their own (00820), not a column on Armature's: each partner is connected,
   moved and forgotten on its own, and a token is sealed with a context that
   names its partner.
 - **The signed time is required.** Exciter signs the time of every attempt,

@@ -283,7 +283,7 @@ signatures; the routes are under `/exciter`.
   their own personal access token (`exciter_pat_`, a read-only one serves)
   under Your profile, Exciter, checked at Exciter's `GET /auth/me`, sealed
   with `STATOR_SECRET_KEY` and bound to the site and the person. A new
-  address forgets every token, in the database (00810).
+  address forgets every token, in the database (00820).
 - **What Stator needs of Exciter**, by exact name at `/meta`:
 
   | Feature | Capability |
