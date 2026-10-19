@@ -10,6 +10,10 @@ import { answered, armatureAs, armatureSignedIn, passwordOf, readSeed, realArmat
 
 /** Armature's worker picks a delivery up within seconds, not at once. */
 const WORKER_DELIVERS = { timeout: 30_000 };
+/** The consent, the webhook and two deliveries by Armature's worker take longer than a spec's default. */
+const ONE_STEP_TIMEOUT_MS = 90_000;
+/** How far the api's clock may be behind the browser's when it stamps a delivery. */
+const CLOCK_SLACK_MS = 1_000;
 
 interface Endpoint {
   id: string;
@@ -37,6 +41,7 @@ test.describe("connecting a real Armature in one step", { tag: ["@auth"] }, () =
   });
 
   test("an administrator allows Stator once, Armature makes its webhook, and an issue change reaches Stator", async ({ api, page }) => {
+    test.setTimeout(ONE_STEP_TIMEOUT_MS);
     const seed = readSeed();
     const { admin } = seed.people;
     expect((await api.PUT("/armature/connection", { body: { baseUrl: seed.url } })).response.status).toBe(200);
@@ -94,10 +99,12 @@ test.describe("connecting a real Armature in one step", { tag: ["@auth"] }, () =
           return deliveries.filter((each) => each.topic === "issue.updated").map((each) => each.status);
         }, WORKER_DELIVERS)
         .toContain(204);
+      // The issue's creation may be delivered after its change, so the last
+      // delivery taken is either, and newer than the change.
       await expect
         .poll(async () => {
           const last = (await api.GET("/armature/connection")).data?.connection?.lastDelivery;
-          return last && last.topic === "issue.updated" && Date.parse(last.receivedAt) >= startedAt - 1000;
+          return Boolean(last && connection.webhookTopics.includes(last.topic) && Date.parse(last.receivedAt) >= startedAt - CLOCK_SLACK_MS);
         }, WORKER_DELIVERS)
         .toBe(true);
 
