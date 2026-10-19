@@ -278,6 +278,17 @@ exciter:
   # public-origin: reachable-origin, for an Exciter this release reaches at
   # another address than the one people open it at, as for armature above.
   backchannel: {}
+  # The receiver address Stator names for Exciter's webhook; empty is the
+  # public address's /api/v1/exciter/webhook. Set it where Exciter reaches
+  # Stator under another name, such as http://stator-api.stator.svc:8080/api/v1/exciter/webhook.
+  webhookUrl: ""
+  # Connect each person to Exciter when they sign in through the identity
+  # provider Exciter shares, by exchanging their access token, where Exciter
+  # reports oauth.token-exchange@1. Needs Stator registered in Exciter as a
+  # partner app with its Keycloak client, its client id and secret stored
+  # under Settings, Exciter, and an audience mapper adding Exciter's client
+  # to Stator's tokens (docs/integration.md).
+  tokenExchange: false
 
 telemetry:
   # /metrics has no authentication. Keep it on the cluster network.

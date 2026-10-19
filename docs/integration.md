@@ -633,6 +633,52 @@ for one answers the other.
   with raw SQL, and the database holds that a grant has both tokens and an
   end. The audit log records `oauth.client_created`, `oauth.client_updated`,
   `oauth.client_removed` and `oauth.grant_created`.
+## Connecting people to Exciter at sign-in
+
+As toward Armature above, Stator connects each person to Exciter when they
+sign in through the shared Keycloak realm, so nobody pastes an
+`exciter_pat_` (#462). Exciter's side is Cloudster1/Exciter#273.
+
+- **When.** Only where the operator turns it on, with
+  `STATOR_EXCITER_TOKEN_EXCHANGE=true` (chart `exciter.tokenExchange`), only
+  where Exciter lists `oauth.token-exchange@1` at `/meta`, and only once a
+  Stator administrator stored the partner app.
+- **The app.** An Exciter administrator registers Stator as a partner app
+  with its Keycloak client, `stator` in the realm; a Stator administrator
+  stores its client id and secret (`exciter_ocs_`) under Settings, Exciter,
+  Connecting at sign-in: `PUT /exciter/connection/app` with
+  `{clientId, clientSecret}`, `DELETE /exciter/connection/app`. The secret is
+  sealed and never answered; `GET /exciter/connection` says under `app`
+  whether one is stored, whether Exciter offers the exchange and whether
+  people are connected at sign-in. A new client id, removing the app, a new
+  address or Disconnect end every grant of it.
+- **The exchange.** After a sign-in, the api posts the person's Keycloak
+  access token to `{exciter}/api/v1/oauth/token` as the app, by HTTP Basic:
+  `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
+  `subject_token=<the access token>`,
+  `subject_token_type=urn:ietf:params:oauth:token-type:access_token`, no
+  scope, so the app's own. The answer's access and refresh tokens are kept
+  sealed in the person's `exciter_token` row, which `GET /exciter/account`
+  then answers with `via: "sign_in"`. Every read as the person uses it,
+  renewed before it runs out and once after a 401, under a lock on the row,
+  since a refresh token presented twice ends the grant in Exciter;
+  `invalid_grant` marks it `rejected`. Disconnect revokes it at
+  `{exciter}/api/v1/oauth/revoke`.
+- **Who is asked for.** A member, not a guest, without a token Exciter has
+  not refused: a pasted token is kept, and a missing or refused one is
+  filled in. A pasted token replaces a grant.
+- **Never in the way.** The sign-in goes on whatever Exciter answers,
+  within ten seconds at most. A refusal is kept in `exciter_sign_in`, in
+  Exciter's own words where it gave some, answered as `signInRefusal`, and
+  said on the profile above the token form, which stays the fallback.
+- **In Keycloak,** an audience mapper on Stator's client adds Exciter's
+  client id (`exciter`) to Stator's access tokens.
+- **The webhook address.** `STATOR_EXCITER_WEBHOOK_URL` (chart
+  `exciter.webhookUrl`) is the receiver address the settings page names for
+  Exciter's webhook, as `STATOR_ARMATURE_WEBHOOK_URL` is for Armature's, so a
+  cluster can give Exciter an in-network address such as
+  `http://stator-api.stator.svc:8080/api/v1/exciter/webhook`; empty is
+  `STATOR_APP_URL` with `/api/v1/exciter/webhook`.
 
 ## The rules
 

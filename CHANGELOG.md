@@ -9,6 +9,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Connecting people to Exciter at sign-in (#462), as to Armature: where the
+  operator turns on `STATOR_EXCITER_TOKEN_EXCHANGE` (chart value
+  `exciter.tokenExchange`), Exciter reports `oauth.token-exchange@1` and an
+  administrator stored the partner app Exciter registered for Stator under
+  Settings, Exciter, a person who signs in through the shared identity
+  provider is connected to Exciter at once. Stator keeps the grant sealed
+  and renews it; a pasted token is kept and stays the fallback, and the
+  profile says why Exciter did not connect somebody. Also
+  `STATOR_EXCITER_WEBHOOK_URL` (chart value `exciter.webhookUrl`), the
+  receiver address Stator names for Exciter's webhook, so a cluster can give
+  Exciter an in-network address. In English and German.
 - Connecting people to Armature at sign-in (#430): where Stator and Armature
   sign in through the same Keycloak realm, the operator turns on
   `STATOR_ARMATURE_TOKEN_EXCHANGE` (chart value `armature.tokenExchange`),

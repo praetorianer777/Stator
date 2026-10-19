@@ -67,6 +67,9 @@ x-armature-env: &armature-env
   # for the hosts a suite names, and a real Armature once it offers it.
   STATOR_ARMATURE_TOKEN_EXCHANGE: "true"
   STATOR_EXCITER_BACKCHANNEL: http://localhost:${EXCITER_STUB_PORT:-8192}=http://exciter-stub:8080
+  STATOR_EXCITER_WEBHOOK_URL: http://api:8080/api/v1/exciter/webhook
+  # As for Armature: acts only where an Exciter reports oauth.token-exchange@1.
+  STATOR_EXCITER_TOKEN_EXCHANGE: "true"
 
 # Who the stack's organization is made with: the realm's people, let in ahead
 # of time, and the realm as its provider. The seed gives them to demo, and the

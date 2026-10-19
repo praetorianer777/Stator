@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 )
@@ -202,10 +205,112 @@ func TestEveryAnswerFitsExcitersDocument(t *testing.T) {
 		t.Errorf("a caret past the end answers %d", status)
 	}
 
+	tokenExchange(t, doc, server.URL, served)
+
 	for _, rt := range routes {
 		if !served[rt.Method+" "+rt.Path] {
 			t.Errorf("the scenario never had %s %s answer with a success", rt.Method, rt.Path)
 		}
+	}
+}
+
+// form posts a form to an OAuth endpoint as the app, checking the form and
+// the answer against Exciter's document.
+func form(t *testing.T, doc *openapi.Document, base, path, id, secret string, values url.Values, served map[string]bool) (int, map[string]any) {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodPost, base+apiPrefix+path, strings.NewReader(values.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(url.QueryEscape(id), url.QueryEscape(secret))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	op := doc.Paths[path]["post"]
+	fields := map[string]string{}
+	for k := range values {
+		fields[k] = values.Get(k)
+	}
+	sent, _ := json.Marshal(fields)
+	if err := doc.ValidateJSON(op.RequestBody.Content["application/x-www-form-urlencoded"].Schema, sent); err != nil {
+		t.Errorf("POST %s: Exciter would refuse the form %s: %v", path, sent, err)
+	}
+	answer, ok := op.Responses[strconv.Itoa(resp.StatusCode)]
+	if !ok {
+		t.Fatalf("POST %s answered %d, which Exciter never does: %s", path, resp.StatusCode, raw)
+	}
+	body := map[string]any{}
+	if media, isJSON := answer.Content["application/json"]; isJSON {
+		if err := doc.ValidateJSON(media.Schema, raw); err != nil {
+			t.Errorf("POST %s answered %d in a shape Exciter does not: %v\n%s", path, resp.StatusCode, err, raw)
+		}
+		_ = json.Unmarshal(raw, &body)
+	}
+	if resp.StatusCode < http.StatusBadRequest {
+		served["POST "+path] = true
+	}
+	return resp.StatusCode, body
+}
+
+// providerToken is an access token as the realm's Keycloak issues it to azp
+// for the person at email, its signature left out as the stub reads none.
+func providerToken(azp, email string, audience ...string) string {
+	claims, _ := json.Marshal(map[string]any{"iss": "http://keycloak.test/realms/dynamo", "azp": azp, "aud": audience,
+		"exp": time.Now().Add(time.Minute).Unix(), "email": email, "email_verified": true, "name": "Alice Admin"})
+	return "eyJhbGciOiJSUzI1NiJ9." + base64.RawURLEncoding.EncodeToString(claims) + ".c2ln"
+}
+
+// tokenExchange connects a person at sign-in as Stator does (#462): an app
+// whose Keycloak client an administrator named trades the person's token
+// from the shared realm for a grant, which refreshes with rotation and acts
+// as the person.
+func tokenExchange(t *testing.T, doc *openapi.Document, base string, served map[string]bool) {
+	t.Helper()
+	register := func(exchange any) (string, string) {
+		raw, _ := json.Marshal(map[string]any{"name": "Stator", "exchange": exchange})
+		resp, err := http.Post(base+oauthPrefix+"/clients", "application/json", bytes.NewReader(raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var app struct{ ClientID, ClientSecret string }
+		_ = json.NewDecoder(resp.Body).Decode(&app)
+		return app.ClientID, app.ClientSecret
+	}
+	id, secret := register(map[string]any{"keycloakClientId": "stator", "tenant": "acme", "people": map[string]string{"alice@suite.test": "alice"}})
+	exchange := func(token string) url.Values {
+		return url.Values{"grant_type": {grantTokenExchange}, "subject_token": {token}, "subject_token_type": {tokenTypeAccess}}
+	}
+	status, set := form(t, doc, base, "/oauth/token", id, secret, exchange(providerToken("stator", "alice@suite.test", "exciter")), served)
+	if status != http.StatusOK || !strings.HasPrefix(fmt.Sprint(set["refresh_token"]), refreshPrefix) {
+		t.Fatalf("the exchange answered %d %v", status, set)
+	}
+	if status, body := get(t, doc, base, "/auth/me", "/auth/me", set["access_token"].(string), served); status != http.StatusOK || body["user"].(map[string]any)["name"] != "Alice" {
+		t.Errorf("the exchanged grant acts as %d %v", status, body)
+	}
+	for why, token := range map[string]string{
+		"somebody without an account":   providerToken("stator", "bob@suite.test", "exciter"),
+		"a token of another client":     providerToken("armature", "alice@suite.test", "exciter"),
+		"a token not meant for Exciter": providerToken("stator", "alice@suite.test", "armature"),
+	} {
+		if status, refused := form(t, doc, base, "/oauth/token", id, secret, exchange(token), served); status != http.StatusBadRequest || refused["error"] != "invalid_grant" {
+			t.Errorf("%s answered %d %v", why, status, refused)
+		}
+	}
+	status, renewed := form(t, doc, base, "/oauth/token", id, secret, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {set["refresh_token"].(string)}}, served)
+	if status != http.StatusOK || renewed["refresh_token"] == set["refresh_token"] {
+		t.Fatalf("a refresh answered %d %v", status, renewed)
+	}
+	if status, _ := form(t, doc, base, "/oauth/token", id, secret, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {set["refresh_token"].(string)}}, served); status != http.StatusBadRequest {
+		t.Errorf("a rotated refresh token answered %d", status)
+	}
+	if status, _ := form(t, doc, base, "/oauth/revoke", id, secret, url.Values{"token": {"exciter_ort_unknown"}}, served); status != http.StatusOK {
+		t.Errorf("a revocation answered %d", status)
+	}
+	plain, plainSecret := register(nil)
+	if status, refused := form(t, doc, base, "/oauth/token", plain, plainSecret, exchange(providerToken("stator", "alice@suite.test", "exciter")), served); status != http.StatusBadRequest || refused["error"] != "unauthorized_client" {
+		t.Errorf("an app without a Keycloak client exchanged with %d %v", status, refused)
 	}
 }
 

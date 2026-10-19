@@ -119,7 +119,43 @@ type Connection struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	// Partner is what Exciter said of itself at /meta, asked afresh.
 	Partner Partner `json:"partner"`
+	// App is Stator as a partner app of Exciter, which connects people at
+	// sign-in by token exchange (#462).
+	App ConnectionApp `json:"app"`
 }
+
+// ConnectionApp is the partner app an Exciter administrator registered for
+// Stator, as a Stator administrator stored it; the secret is never answered.
+type ConnectionApp struct {
+	// ClientID is null until one is stored.
+	ClientID  *string `json:"clientId"`
+	SecretSet bool    `json:"secretSet"`
+	// Offered says Exciter reports oauth.token-exchange@1.
+	Offered bool `json:"offered"`
+	// Exchanging says people are connected at sign-in: the operator turned
+	// it on, Exciter offers it and the app is stored.
+	Exchanging bool `json:"exchanging"`
+}
+
+// AppInput is the partner app Exciter's administrator registered for
+// Stator with Stator's Keycloak client: its client id and secret.
+type AppInput struct {
+	ClientID     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+}
+
+// AccountVia says how the caller's account is connected.
+type AccountVia string
+
+const (
+	// ViaToken is a pasted personal access token.
+	ViaToken AccountVia = "token"
+	// ViaSignIn is a grant Exciter answered for the caller's sign-in.
+	ViaSignIn AccountVia = "sign_in"
+)
+
+// AccountVias lists every AccountVia, for the API document.
+var AccountVias = []AccountVia{ViaToken, ViaSignIn}
 
 // ConnectionInput sets the installation. Changing baseUrl forgets every
 // stored token, so none is ever sent to another host.
@@ -149,9 +185,14 @@ type Account struct {
 	Configured bool `json:"configured"`
 	// BaseURL is where requirements open, null until configured.
 	BaseURL *string `json:"baseUrl"`
-	// Connected says the caller stored a token.
-	Connected bool   `json:"connected"`
-	Status    Status `json:"status"`
+	// Connected says the caller stored a token or was connected at sign-in.
+	Connected bool `json:"connected"`
+	// Via is how, null while not connected.
+	Via    *AccountVia `json:"via"`
+	Status Status      `json:"status"`
+	// SignInRefusal says why Exciter did not connect the caller when they
+	// last signed in through the shared identity provider, null otherwise.
+	SignInRefusal *string `json:"signInRefusal"`
 	// User is who the token acts as in Exciter, as the last check found.
 	User      *armature.AccountUser `json:"user"`
 	CheckedAt *time.Time            `json:"checkedAt"`

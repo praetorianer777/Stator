@@ -66,9 +66,12 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	loggerFrom(r.Context()).Info("signed in through an identity provider", "user_id", session.UserID, "role", session.Role,
 		"groups_joined", session.Joined, "groups_left", session.Left)
 	lsn := session.LSN
-	// A guest cannot use Armature in Stator, so a grant for one would be kept for nothing.
+	// A guest cannot use Armature or Exciter in Stator, so a grant for one would be kept for nothing.
 	if s.Armature != nil && session.Role != auth.RoleGuest {
 		lsn = max(lsn, s.Armature.ConnectAtSignIn(db.WithUser(r.Context(), session.UserID), identity.AccessToken))
+	}
+	if s.Exciter != nil && session.Role != auth.RoleGuest {
+		lsn = max(lsn, s.Exciter.ConnectAtSignIn(db.WithUser(r.Context(), session.UserID), identity.AccessToken))
 	}
 	s.noteSession(r.Context(), session.SessionID, lsn)
 	s.setSessionCookie(w, session.Secret, session.ExpiresAt)

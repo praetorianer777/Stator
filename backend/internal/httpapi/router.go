@@ -349,6 +349,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/oauth/clients", s.handleCreateOAuthClient)
 			r.Patch("/oauth/clients/{clientID}", s.handleUpdateOAuthClient)
 			r.Delete("/oauth/clients/{clientID}", s.handleDeleteOAuthClient)
+			r.Put("/exciter/connection/app", s.handleSaveExciterApp)
+			r.Delete("/exciter/connection/app", s.handleRemoveExciterApp)
 			r.Put("/armature/connection/app", s.handleSaveArmatureApp)
 			r.Delete("/armature/connection/app", s.handleRemoveArmatureApp)
 			// A browser navigation, which carries the session the state is bound to.

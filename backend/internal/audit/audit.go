@@ -77,6 +77,10 @@ const (
 	ActionArmatureAppRemoved       = "armature.app_removed"
 	ActionExciterConnectionSaved   = "exciter.connection_saved"
 	ActionExciterConnectionRemoved = "exciter.connection_removed"
+	// ActionExciterAppSaved and ActionExciterAppRemoved are the partner app
+	// Exciter registered for Stator, stored or forgotten by an administrator.
+	ActionExciterAppSaved   = "exciter.app_saved"
+	ActionExciterAppRemoved = "exciter.app_removed"
 	// Exports: what left the wiki as a file, and the record itself.
 	ActionPageExported  = "page.exported"
 	ActionAuditExported = "audit.exported"
@@ -144,7 +148,7 @@ var Actions = []string{
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
 	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet, ActionOrgBrandSet,
 	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved, ActionArmatureAppSaved, ActionArmatureAppRemoved,
-	ActionExciterConnectionSaved, ActionExciterConnectionRemoved,
+	ActionExciterConnectionSaved, ActionExciterConnectionRemoved, ActionExciterAppSaved, ActionExciterAppRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,
