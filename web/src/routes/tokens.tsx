@@ -100,6 +100,7 @@ function TokensPage() {
                   <Td>
                     <span className="font-medium text-ink">{token.name}</span>
                     {token.scopes.includes(TOKEN_READ_SCOPE) && <Tag className="ml-2">{t.tokens.tagReadOnly}</Tag>}
+                    {token.clientId && <Tag className="ml-2">{t.tokens.tagConnectedApp}</Tag>}
                     {expired(token, now) && <Tag className="ml-2">{t.tokens.tagExpired}</Tag>}
                     <p className="text-xs text-ink-muted" data-token-spaces={token.allSpaces ? "" : token.spaces.join(",")}>
                       {reachOf(token)}

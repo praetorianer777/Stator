@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/.well-known/oauth-authorization-server": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** RFC 8414's metadata: the issuer, the token and revocation endpoints, the scopes and grants. Lives at the origin, outside /api/v1; partners may keep it for five minutes. */
+        get: operations["oAuthMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/access/me": {
         parameters: {
             query?: never;
@@ -1245,6 +1262,76 @@ export interface paths {
         get: operations["unreadCount"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The partner apps that may exchange people's identity provider tokens here, by name. For administrators. */
+        get: operations["listOAuthClients"];
+        put?: never;
+        /** Register a partner app with the Keycloak client it signs people in with; its secret, stator_ocs_..., is in this answer and never again. For administrators. */
+        post: operations["createOAuthClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/clients/{clientID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a partner app; every grant of it ends. For administrators. */
+        delete: operations["deleteOAuthClient"];
+        options?: never;
+        head?: never;
+        /** Change a partner app; what is left out keeps its value. A new name follows into its grants, narrower scopes narrow them at once. For administrators. */
+        patch: operations["updateOAuthClient"];
+        trace?: never;
+    };
+    "/oauth/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike. */
+        post: operations["oAuthRevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The token endpoint, for a partner app with its client id and secret, by HTTP Basic or in the form. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to the app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, unauthorized_client, unsupported_grant_type. */
+        post: operations["oAuthToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4415,6 +4502,8 @@ export interface components {
         };
         APIToken: {
             allSpaces: boolean;
+            /** Format: uuid */
+            clientId: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -4582,7 +4671,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -4598,7 +4687,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped")[];
+            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -4740,6 +4829,29 @@ export interface components {
             builtIn?: boolean;
             /** Format: uuid */
             themeId: string | null;
+        };
+        Client: {
+            /** Format: date-time */
+            createdAt: string;
+            grants: number;
+            /** Format: uuid */
+            id: string;
+            keycloakClientId: string;
+            name: string;
+            scopes: string[];
+            secret?: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ClientChanges: {
+            keycloakClientId?: string;
+            name?: string;
+            scopes?: string[];
+        };
+        ClientInput: {
+            keycloakClientId: string;
+            name: string;
+            scopes: string[];
         };
         Comment: {
             /** Format: uuid */
@@ -5042,6 +5154,10 @@ export interface components {
             topic: string;
             /** @description The envelope version, 1 here; the version header says the same. */
             version: number;
+        };
+        Error: {
+            error: string;
+            error_description: string;
         };
         ErrorEnvelope: {
             error: components["schemas"]["APIError"];
@@ -5520,6 +5636,17 @@ export interface components {
             build: components["schemas"]["BuildInfo"];
             capabilities: string[];
             product: string;
+        };
+        Metadata: {
+            grant_types_supported: string[];
+            issuer: string;
+            response_types_supported: string[];
+            revocation_endpoint: string;
+            revocation_endpoint_auth_methods_supported: string[];
+            scopes_supported: string[];
+            service_documentation: string;
+            token_endpoint: string;
+            token_endpoint_auth_methods_supported: string[];
         };
         MissingFeature: {
             capability: string;
@@ -6250,6 +6377,12 @@ export interface components {
             comment?: string;
             notifyWatchers?: boolean;
         };
+        RevokeRequest: {
+            client_id?: string;
+            client_secret?: string;
+            token: string;
+            token_type_hint?: string;
+        };
         Roadmap: {
             from: string | null;
             /** @enum {string} */
@@ -6386,6 +6519,8 @@ export interface components {
         };
         SiteAPIToken: {
             allSpaces: boolean;
+            /** Format: uuid */
+            clientId: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -6831,6 +6966,24 @@ export interface components {
         TokenInput: {
             token: string;
         };
+        TokenRequest: {
+            client_id?: string;
+            client_secret?: string;
+            grant_type: string;
+            refresh_token?: string;
+            requested_token_type?: string;
+            scope?: string;
+            subject_token?: string;
+            subject_token_type?: string;
+        };
+        TokenResponse: {
+            access_token: string;
+            expires_in: number;
+            issued_token_type?: string;
+            refresh_token: string;
+            scope: string;
+            token_type: string;
+        };
         TrashItem: {
             /** Format: uuid */
             id: string;
@@ -7211,6 +7364,35 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    oAuthMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Metadata"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     myAccess: {
         parameters: {
             query?: never;
@@ -8698,7 +8880,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -8747,7 +8929,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -10844,6 +11026,265 @@ export interface operations {
                     "application/json": {
                         unread: number;
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listOAuthClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        clients: components["schemas"]["Client"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        client: components["schemas"]["Client"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clientID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientChanges"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        client: components["schemas"]["Client"];
+                    };
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    oAuthRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["RevokeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    oAuthToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["TokenRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
