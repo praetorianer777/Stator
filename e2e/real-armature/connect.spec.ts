@@ -9,8 +9,8 @@ import { answered, armatureSignedIn, passwordOf, readSeed, realArmatureURL, type
 // page, and tokens Armature made.
 
 const REFUSED = "Armature did not accept this token. Make a new one under Tokens in Armature and paste it here.";
-// What the real Armature offers beyond the stub's default: connected apps,
-// which the stub offers by host, and the partner webhook, which waits for #429.
+// What the real Armature offers beyond the stub's default: connected apps and
+// the partner webhook, which the stub offers by host.
 const BEYOND_THE_STUB = ["oauth.partner-tokens@1", "webhooks.partner@1"];
 
 /** Pastes a token, opening the form behind Connect Armature where Armature offers connected apps. */

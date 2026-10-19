@@ -52,6 +52,7 @@ function connection(app: Partial<ArmatureConnection["app"]> = {}): ArmatureConne
     connected: 0,
     updatedAt: "2026-10-01T08:00:00Z",
     partner: { status: "ok", meta: true, version: "1.4.0", capabilities: ["issue-embed@1", "oauth.partner-tokens@1"], missing: [] },
+    partnerWebhook: { offered: false, connected: false, url: "http://stator.test/api/v1/armature/webhook", refusal: null, manageable: false },
     app: {
       offered: true,
       status: "none",

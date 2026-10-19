@@ -463,7 +463,12 @@ export const ARMATURE_OUTCOMES = [
   "other_installation",
   "not_configured",
   "failed",
+  "webhook_refused",
+  "webhook_admin",
+  "scope_refused",
 ] as const;
+/** Where an administrator connects Armature in one step; the server sends the browser on to Armature's consent page. */
+export const ARMATURE_WEBHOOK_CONNECT_PATH = `${API_BASE}/armature/connection/webhook/connect`;
 export type ArmatureOutcome = (typeof ARMATURE_OUTCOMES)[number];
 /** How every client secret Armature shows for a connected app starts. */
 export const ARMATURE_CLIENT_SECRET_PREFIX = "armature_ocs_";

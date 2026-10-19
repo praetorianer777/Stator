@@ -5,32 +5,49 @@ import {
   useArmatureAddressCheck,
   useArmatureConnection,
   useRemoveArmatureConnection,
+  useRotateArmatureWebhook,
   useSaveArmatureConnection,
+  useTestArmatureWebhook,
   type ArmatureConnection,
   type ArmatureConnectionCheck,
   type ArmatureConnectionInput,
   type ArmaturePartner,
+  type ArmatureWebhookTest,
 } from "@/api/armature";
-import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS, ARMATURE_WEBHOOK_SECRET_PREFIX, COPY_FEEDBACK_MS } from "@/config";
+import {
+  ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS,
+  ARMATURE_WEBHOOK_CONNECT_PATH,
+  ARMATURE_WEBHOOK_SECRET_PREFIX,
+  COPY_FEEDBACK_MS,
+  type ArmatureOutcome,
+} from "@/config";
 import { t } from "@/i18n";
 import { useDebounced } from "@/lib/debounce";
 import { localDateFormat } from "@/lib/format";
 import { ConnectedApp } from "./ConnectedApp";
 import { ConnectArmatureLink } from "./connectLink";
 
-/** The organization's Armature instance and its webhook, for administrators. */
-export function ConnectionSettings() {
+/**
+ * The organization's Armature instance and its webhook, for administrators; outcome is how a connect in one step
+ * ended, as the server lands back here.
+ */
+export function ConnectionSettings({ outcome }: { outcome?: ArmatureOutcome }) {
   const { data, isLoading, error } = useArmatureConnection();
   // Held here rather than in the form: a save remounts the form, and what it
   // says about that save has to outlive the remount.
   const save = useSaveArmatureConnection();
   const remove = useRemoveArmatureConnection();
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(outcome === "connected" ? (t.armature.oneStep.outcomes.connected ?? "") : "");
+  const [manualSecret, setManualSecret] = useState(false);
   if (isLoading) return <Skeleton />;
   if (error) return <ErrorBanner>{error instanceof ApiError && error.status === 403 ? t.armature.notAdmin : error.message}</ErrorBanner>;
   const connection = data ?? null;
+  // Where Armature makes Stator's webhook itself, the pasted secret is the
+  // way for somebody who chose it, behind a disclosure.
+  const oneStep = Boolean(connection?.partnerWebhook.offered) && !manualSecret;
+  const failed = outcome && outcome !== "connected" ? outcome : undefined;
 
   function disconnect() {
     if (!window.confirm(t.armature.confirmDisconnect)) return;
@@ -43,12 +60,26 @@ export function ConnectionSettings() {
       <p role="status" className="text-sm text-ink-muted empty:hidden" data-armature-notice>
         {notice}
       </p>
-      <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
-      {connection && save.isSuccess && !connection.lastDelivery && <WebhookPending connection={connection} />}
+      {failed && (
+        <div data-armature-outcome={failed}>
+          <ErrorBanner>{t.armature.oneStep.outcomes[failed] ?? t.armature.account.outcomes[failed]}</ErrorBanner>
+        </div>
+      )}
+      <ConnectionForm
+        key={connection?.updatedAt ?? "new"}
+        connection={connection}
+        save={save}
+        onSaved={setNotice}
+        withSecret={!oneStep}
+        onManualSecret={connection?.partnerWebhook.offered ? () => setManualSecret((open) => !open) : undefined}
+        manualSecret={manualSecret}
+      />
+      {connection && oneStep && <OneStep connection={connection} />}
+      {connection && !oneStep && save.isSuccess && !connection.lastDelivery && <WebhookPending connection={connection} />}
       {connection && <MembersNext />}
       {connection && <ConnectedApp connection={connection} />}
       {connection && <Capabilities partner={connection.partner} />}
-      {connection && <Webhook connection={connection} />}
+      {connection && <Webhook connection={connection} manual={!oneStep} />}
       {connection && (
         <section aria-labelledby="armature-disconnect" className="space-y-2">
           <SectionTitle id="armature-disconnect">{t.armature.disconnectTitle}</SectionTitle>
@@ -69,10 +100,16 @@ function ConnectionForm({
   connection,
   save,
   onSaved,
+  withSecret,
+  onManualSecret,
+  manualSecret,
 }: {
   connection: ArmatureConnection | null;
   save: ReturnType<typeof useSaveArmatureConnection>;
   onSaved: (notice: string) => void;
+  withSecret: boolean;
+  onManualSecret?: () => void;
+  manualSecret: boolean;
 }) {
   const [baseUrl, setBaseUrl] = useState(connection?.baseUrl ?? "");
   const [secret, setSecret] = useState("");
@@ -135,16 +172,27 @@ function ConnectionForm({
             {current && check.isFetching ? t.armature.checking : current && check.data && !fields.baseUrl ? foundSentence(check.data) : ""}
           </p>
         </div>
-        <Field
-          label={t.armature.webhookSecret}
-          type="password"
-          autoComplete="off"
-          value={secret}
-          placeholder={connection?.webhookSecretSet ? t.armature.secretStored : `${ARMATURE_WEBHOOK_SECRET_PREFIX}...`}
-          error={fields.webhookSecret}
-          onChange={(event) => setSecret(event.target.value)}
-        />
-        {connection?.webhookSecretSet && <Checkbox label={t.armature.forgetSecret} checked={forget} onChange={(event) => setForget(event.target.checked)} />}
+        {onManualSecret && (
+          <div>
+            <Button variant="link" aria-expanded={manualSecret} onClick={onManualSecret} data-action="use-armature-webhook-secret">
+              {t.armature.oneStep.manual}
+            </Button>
+          </div>
+        )}
+        {withSecret && (
+          <Field
+            label={t.armature.webhookSecret}
+            type="password"
+            autoComplete="off"
+            value={secret}
+            placeholder={connection?.webhookSecretSet ? t.armature.secretStored : `${ARMATURE_WEBHOOK_SECRET_PREFIX}...`}
+            error={fields.webhookSecret}
+            onChange={(event) => setSecret(event.target.value)}
+          />
+        )}
+        {withSecret && connection?.webhookSecretSet && (
+          <Checkbox label={t.armature.forgetSecret} checked={forget} onChange={(event) => setForget(event.target.checked)} />
+        )}
         {connection && (
           <p className="text-sm text-ink-muted" data-armature-connected>
             {t.armature.connectedCount(connection.connected)} {connection.installationId && t.armature.installationKnown}
@@ -191,6 +239,84 @@ function WebhookPending({ connection }: { connection: ArmatureConnection }) {
         <li>{w.paste}</li>
       </ol>
       {connection.webhookSecretSet && <p className="text-sm text-ink-muted">{w.stored}</p>}
+    </section>
+  );
+}
+
+/** What a test delivery came to, in a sentence. */
+function testSentence(test: ArmatureWebhookTest): string {
+  if (test.status != null) return t.armature.oneStep.tested(test.status);
+  return t.armature.oneStep.testFailed(test.error ?? t.armature.capabilities.unreachable);
+}
+
+/**
+ * Connect in one step, where Armature makes Stator's webhook itself: the button to Armature's consent, Armature's
+ * sentence when it would not make the webhook, and once made, a test and a new secret.
+ */
+function OneStep({ connection }: { connection: ArmatureConnection }) {
+  const hook = connection.partnerWebhook;
+  const o = t.armature.oneStep;
+  const rotate = useRotateArmatureWebhook();
+  const test = useTestArmatureWebhook();
+  const [said, setSaid] = useState("");
+
+  function renew() {
+    if (!window.confirm(o.confirmRotate)) return;
+    setSaid("");
+    test.reset();
+    rotate.mutate(undefined, { onSuccess: () => setSaid(o.rotated) });
+  }
+
+  function ping() {
+    setSaid("");
+    rotate.reset();
+    test.mutate(undefined, { onSuccess: (done) => setSaid(testSentence(done)) });
+  }
+
+  const failure = rotate.error ?? test.error;
+  return (
+    <section
+      aria-labelledby="armature-one-step"
+      className="space-y-3 rounded-control border border-border p-4"
+      data-armature-one-step={hook.connected ? "connected" : hook.refusal ? "refused" : "offered"}
+    >
+      <SectionTitle id="armature-one-step">{o.title}</SectionTitle>
+      {!hook.connected && <p className="text-sm text-ink-muted">{o.intro}</p>}
+      {hook.connected && (
+        <p className="text-sm text-ink" data-armature-webhook-made>
+          {o.made(hook.url)}
+        </p>
+      )}
+      {hook.refusal && (
+        <div className="space-y-1 text-sm">
+          <p className="text-ink">{o.refused}</p>
+          <blockquote className="border-l-2 border-border pl-3 text-ink-muted" data-armature-webhook-refusal>
+            {hook.refusal}
+          </blockquote>
+        </div>
+      )}
+      {hook.connected && !hook.manageable && <p className="text-sm text-ink-muted">{o.notManageable}</p>}
+      <p role="status" className="text-sm text-ink-muted empty:hidden" data-armature-webhook-said>
+        {said}
+      </p>
+      {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
+      <div className="flex flex-wrap gap-2">
+        {(!hook.connected || !hook.manageable) && (
+          <ButtonLink variant="primary" href={ARMATURE_WEBHOOK_CONNECT_PATH} data-action="connect-armature-webhook">
+            {hook.connected || hook.refusal ? o.connectAgain : o.connect}
+          </ButtonLink>
+        )}
+        {hook.connected && hook.manageable && (
+          <>
+            <Button variant="secondary" size="sm" onClick={ping} loading={test.isPending} data-action="test-armature-webhook">
+              {o.test}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={renew} loading={rotate.isPending} data-action="rotate-armature-webhook">
+              {o.rotate}
+            </Button>
+          </>
+        )}
+      </div>
     </section>
   );
 }
@@ -255,7 +381,9 @@ function lastDeliverySentence(last: ArmatureConnection["lastDelivery"]): string 
   return `${t.armature.lastDelivery.taken(last.topic, when)} ${shape} ${last.timestamped ? t.armature.lastDelivery.timestamped : t.armature.lastDelivery.untimed}`;
 }
 
-function Webhook({ connection }: { connection: ArmatureConnection }) {
+// Where Stator made the webhook itself, the steps to set one up by hand are
+// left out, and so is the copy button they ask for.
+function Webhook({ connection, manual }: { connection: ArmatureConnection; manual: boolean }) {
   const [said, setSaid] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
@@ -276,27 +404,31 @@ function Webhook({ connection }: { connection: ArmatureConnection }) {
     <section aria-labelledby="armature-webhook" className="space-y-3">
       <SectionTitle id="armature-webhook">{t.armature.webhookTitle}</SectionTitle>
       <p className="text-sm text-ink-muted">{t.armature.webhookIntro}</p>
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-ink">
-        {t.armature.webhookSteps.map((step) => (
-          <li key={step}>{step}</li>
-        ))}
-      </ol>
+      {manual && (
+        <ol className="list-decimal space-y-1 pl-5 text-sm text-ink">
+          {t.armature.webhookSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      )}
       <Field
         label={t.armature.webhookUrl}
         value={connection.webhookUrl}
         readOnly
         className="font-mono text-xs"
-        hint={t.armature.webhookUrlHint}
+        hint={manual ? t.armature.webhookUrlHint : undefined}
         onFocus={(event) => event.target.select()}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" size="sm" icon={<Icon.Copy />} onClick={copy} data-action="copy-webhook-url">
-          {t.armature.copy}
-        </Button>
-        <p role="status" className="text-xs text-ink-muted" data-copy-status>
-          {said}
-        </p>
-      </div>
+      {manual && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" size="sm" icon={<Icon.Copy />} onClick={copy} data-action="copy-webhook-url">
+            {t.armature.copy}
+          </Button>
+          <p role="status" className="text-xs text-ink-muted" data-copy-status>
+            {said}
+          </p>
+        </div>
+      )}
       <p className="text-sm text-ink-muted" data-last-delivery>
         {lastDeliverySentence(connection.lastDelivery)}
       </p>

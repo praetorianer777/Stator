@@ -11,6 +11,7 @@ export const INSTANCE_SPECS = [
   "armature",
   "armature-capabilities",
   "armature-connected-app",
+  "armature-one-step",
   "armature-charts",
   "armature-roadmap",
   "armature-theme",

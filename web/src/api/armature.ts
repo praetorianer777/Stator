@@ -105,6 +105,29 @@ export function useRemoveArmatureApp() {
   });
 }
 
+/** The webhook Stator makes in Armature itself, where Armature lets it; its secret never comes back. */
+export type ArmaturePartnerWebhook = ArmatureConnection["partnerWebhook"];
+/** A ping Armature posted to Stator's receiver just now. */
+export type ArmatureWebhookTest = Wire["PartnerWebhookTest"];
+
+export function useRotateArmatureWebhook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<ArmatureConnection> => (await api.POST("/armature/connection/webhook/rotate-secret")).data!.connection,
+    onSuccess: (connection) => queryClient.setQueryData(armatureConnectionQueryKey, connection),
+  });
+}
+
+// A test that had to make the webhook again stored a new secret, so the
+// connection is asked again either way.
+export function useTestArmatureWebhook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<ArmatureWebhookTest> => (await api.POST("/armature/connection/webhook/test")).data!.test,
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: armatureConnectionQueryKey }),
+  });
+}
+
 export function useArmatureAccount() {
   return useQuery({
     queryKey: armatureAccountQueryKey,
