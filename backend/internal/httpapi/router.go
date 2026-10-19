@@ -327,6 +327,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/armature/connection", s.handleSaveArmatureConnection)
 			r.Post("/armature/connection/check", s.handleCheckArmatureConnection)
 			r.Delete("/armature/connection", s.handleRemoveArmatureConnection)
+			r.Put("/armature/connection/app", s.handleSaveArmatureApp)
+			r.Delete("/armature/connection/app", s.handleRemoveArmatureApp)
 			r.Get("/audit", s.handleListAudit)
 			r.Get("/audit/facets", s.handleAuditFacets)
 			r.Get("/audit/export", s.handleExportAudit)
@@ -345,6 +347,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/armature/account/token", s.handleConnectArmatureAccount)
 			r.Post("/armature/account/check", s.handleCheckArmatureAccount)
 			r.Delete("/armature/account/token", s.handleDisconnectArmatureAccount)
+			// Browser navigations, which carry the session the state is bound to.
+			r.With(requireSession).Get("/armature/oauth/start", s.handleStartArmatureConnect)
+			r.With(requireSession).Get("/armature/oauth/callback", s.handleFinishArmatureConnect)
 			r.Get("/armature/issues", s.handleLookupArmatureIssues)
 			r.Get("/armature/issues/{issueKey}", s.handleGetArmatureIssue)
 			r.Get("/armature/projects", s.handleListArmatureProjects)

@@ -848,6 +848,12 @@ var operations = append([]operation{
 	{method: "DELETE", path: "/armature/connection", handler: "handleRemoveArmatureConnection", wholeInstance: true, tag: "armature",
 		summary:   "Disconnect Armature, forgetting every stored token and the webhook secret. For administrators.",
 		responses: none()},
+	{method: "PUT", path: "/armature/connection/app", handler: "handleSaveArmatureApp", wholeInstance: true, tag: "armature",
+		summary: "Store the connected app an Armature administrator registered for Stator by hand, where Armature registers none itself; a new client id forgets every member's grant of the old one. The secret is never answered. For administrators.",
+		request: armature.AppInput{}, responses: map[int]any{200: env{"connection": armature.Connection{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/armature/connection/app", handler: "handleRemoveArmatureApp", wholeInstance: true, tag: "armature",
+		summary:   "Forget the connected app and every member's grant of it; the next member to connect registers Stator again. For administrators.",
+		responses: none()},
 
 	// The audit log (#107), as Armature's administrators read theirs.
 	{method: "GET", path: "/audit", handler: "handleListAudit", wholeInstance: true, tool: "list_audit_log", toolHelp: "Who did what in the organization, newest first. For administrators.", tag: "audit",
@@ -897,8 +903,14 @@ var operations = append([]operation{
 		summary:   "Ask Armature now whether the caller's stored token still works.",
 		responses: ok(env{"account": armature.Account{}})},
 	{method: "DELETE", path: "/armature/account/token", handler: "handleDisconnectArmatureAccount", tag: "armature",
-		summary:   "Forget the caller's Armature token.",
+		summary:   "Forget the caller's Armature token, or end their connected app's grant, in Armature too.",
 		responses: none()},
+	{method: "GET", path: "/armature/oauth/start", handler: "handleStartArmatureConnect", tag: "armature", redirect: true,
+		summary: "Send the browser to Armature's consent page to connect the caller's account, registering Stator first when it is not yet. Needs a session; a refusal lands on the profile page with armature naming why.",
+		query:   []param{{name: "return", description: "A path of this application to go back to once connected."}}, responses: map[int]any{}},
+	{method: "GET", path: "/armature/oauth/callback", handler: "handleFinishArmatureConnect", tag: "armature", redirect: true,
+		summary: "Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome.",
+		query:   []param{{name: "code"}, {name: "state"}, {name: "iss"}, {name: "error"}, {name: "error_description"}}, responses: map[int]any{}},
 
 	// Issues in pages (#28, #29, #30, #31), each call made as the caller.
 	{method: "GET", path: "/armature/issues", handler: "handleLookupArmatureIssues", tag: "armature",
@@ -1171,6 +1183,9 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(notify.Kind(""))] = enumStrings(notify.Kinds)
 	b.Enums[reflect.TypeOf(notify.Digest(""))] = enumStrings(notify.Digests)
 	b.Enums[reflect.TypeOf(armature.Status(""))] = enumStrings(armature.Statuses)
+	b.Enums[reflect.TypeOf(armature.AppStatus(""))] = enumStrings(armature.AppStatuses)
+	b.Enums[reflect.TypeOf(armature.AppRegistrar(""))] = enumStrings(armature.AppRegistrars)
+	b.Enums[reflect.TypeOf(armature.AccountVia(""))] = enumStrings(armature.AccountVias)
 	b.Enums[reflect.TypeOf(armature.Feature(""))] = enumStrings(armature.Features)
 	b.Enums[reflect.TypeOf(armature.ChartKind(""))] = enumStrings(armature.ChartKinds)
 	b.Enums[reflect.TypeOf(armature.RoadmapGrouping(""))] = enumStrings(armature.RoadmapGroupings)

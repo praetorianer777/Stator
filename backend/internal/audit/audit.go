@@ -71,6 +71,10 @@ const (
 	ActionOrgBrandSet               = "org.brand_set"
 	ActionArmatureConnectionSaved   = "armature.connection_saved"
 	ActionArmatureConnectionRemoved = "armature.connection_removed"
+	// ActionArmatureAppSaved and ActionArmatureAppRemoved are the connected app
+	// an administrator pasted, or forgot, by hand.
+	ActionArmatureAppSaved   = "armature.app_saved"
+	ActionArmatureAppRemoved = "armature.app_removed"
 	// Exports: what left the wiki as a file, and the record itself.
 	ActionPageExported  = "page.exported"
 	ActionAuditExported = "audit.exported"
@@ -131,7 +135,7 @@ var Actions = []string{
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,
 	ActionOrgPermissionSet, ActionSpacePermissionsSet, ActionPageRestrictionsSet,
 	ActionCommentDeleted, ActionThemeDefaultSet, ActionOrgHubSet, ActionOrgBrandSet,
-	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved,
+	ActionArmatureConnectionSaved, ActionArmatureConnectionRemoved, ActionArmatureAppSaved, ActionArmatureAppRemoved,
 	ActionPageExported, ActionAuditExported,
 	ActionPageOwnerSet, ActionPageOwnerRemoved, ActionPageVerified, ActionPageUnverified,
 	ActionPageArchived, ActionPageUnarchived, ActionSpaceArchived, ActionSpaceUnarchived,

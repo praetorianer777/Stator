@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -395,11 +398,155 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 		t.Error("an issue made in one tenant is seen in another")
 	}
 
+	c.connectedApp(server.URL)
+
 	for _, rt := range routes {
 		if !c.served[rt.Method+" "+rt.Path] {
 			t.Errorf("the scenario never had %s %s answer with a success", rt.Method, rt.Path)
 		}
 	}
+}
+
+// form posts a form to an OAuth endpoint as the app id and secret (none for
+// empty id), checking the form and the answer against Armature's document.
+func (c *contract) form(path, id, secret string, form url.Values) (int, map[string]any) {
+	c.t.Helper()
+	req, _ := http.NewRequest(http.MethodPost, c.base+apiPrefix+path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if id != "" {
+		req.SetBasicAuth(url.QueryEscape(id), url.QueryEscape(secret))
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		c.t.Fatalf("POST %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	op := c.doc.Paths[path]["post"]
+	fields := map[string]string{}
+	for k := range form {
+		fields[k] = form.Get(k)
+	}
+	sent, _ := json.Marshal(fields)
+	if err := c.doc.ValidateJSON(op.RequestBody.Content["application/x-www-form-urlencoded"].Schema, sent); err != nil {
+		c.t.Errorf("POST %s: Armature would refuse the form %s: %v", path, sent, err)
+	}
+	answer, ok := op.Responses[strconv.Itoa(resp.StatusCode)]
+	if !ok {
+		c.t.Fatalf("POST %s answered %d, which Armature never does: %s", path, resp.StatusCode, raw)
+	}
+	out := map[string]any{}
+	if media, isJSON := answer.Content["application/json"]; isJSON {
+		if err := c.doc.ValidateJSON(media.Schema, raw); err != nil {
+			c.t.Errorf("POST %s answered %d in a shape Armature does not: %v\n%s", path, resp.StatusCode, err, raw)
+		}
+		_ = json.Unmarshal(raw, &out)
+	} else if len(raw) > 0 {
+		c.t.Errorf("POST %s answered %d with a body, where Armature has none", path, resp.StatusCode)
+	}
+	if resp.StatusCode < http.StatusBadRequest {
+		c.served["POST "+path] = true
+	}
+	return resp.StatusCode, out
+}
+
+// consent fills in the stub's consent page as person of tenant, answering
+// where it sends the browser back to.
+func consent(t *testing.T, base string, authorize url.Values, tenant, person, decision string) *url.URL {
+	t.Helper()
+	noFollow := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	shown, err := noFollow.Get(base + "/oauth/authorize?" + authorize.Encode())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = shown.Body.Close()
+	if shown.StatusCode != http.StatusOK {
+		t.Fatalf("the consent page answered %d", shown.StatusCode)
+	}
+	resp, err := noFollow.PostForm(base+"/oauth/authorize", url.Values{"query": {authorize.Encode()}, "tenant": {tenant}, "person": {person}, "decision": {decision}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusFound {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("the consent page answered %d: %s", resp.StatusCode, body)
+	}
+	back, _ := url.Parse(resp.Header.Get("Location"))
+	return back
+}
+
+// connectedApp runs a connect as Stator makes it (#428): metadata, a
+// registration pending until the administrator allows it, a code with PKCE,
+// rotating refresh tokens of which a reused one ends the grant, revocation.
+func (c *contract) connectedApp(base string) {
+	t := c.t
+	meta := c.expect("GET", wellKnownPath, "", nil, 200)
+	if meta["issuer"] != base || meta["registration_endpoint"] != base+apiPrefix+"/oauth/register" {
+		t.Errorf("the metadata is %v", meta)
+	}
+	reg := c.expect("POST", "/oauth/register", "", armature.Registration{ClientName: armature.AppName, RedirectURIs: []string{"https://stator.example/api/v1/armature/oauth/callback"},
+		Scope: armature.AppScopes, TokenEndpointAuthMethod: "client_secret_basic", GrantTypes: []string{"authorization_code", "refresh_token"}, ResponseTypes: []string{"code"}}, 201)
+	id, secret := reg["client_id"].(string), reg["client_secret"].(string)
+	if !strings.HasPrefix(secret, armature.ClientSecretPrefix) {
+		t.Errorf("a client secret is %q", secret)
+	}
+	verifier := strings.Repeat("v", 43)
+	sum := sha256.Sum256([]byte(verifier))
+	authorize := url.Values{"response_type": {"code"}, "client_id": {id}, "redirect_uri": {"https://stator.example/api/v1/armature/oauth/callback"},
+		"scope": {armature.AppScopes}, "state": {"s1"}, "code_challenge": {base64.RawURLEncoding.EncodeToString(sum[:])}, "code_challenge_method": {"S256"}}
+
+	if status, _ := c.form("/oauth/token", id, secret, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {"armature_ort_none"}}); status != 401 {
+		t.Errorf("a pending app redeems with %d, want 401", status)
+	}
+	back := consent(t, base, authorize, "acme", adminName, "allow")
+	if back.Query().Get("state") != "s1" || back.Query().Get("iss") != base || back.Query().Get("code") == "" {
+		t.Fatalf("the administrator's allow came back as %s", back)
+	}
+	code := back.Query().Get("code")
+	redeem := url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {authorize.Get("redirect_uri")}, "code_verifier": {verifier}}
+	status, set := c.form("/oauth/token", id, secret, redeem)
+	if status != 200 || !strings.HasPrefix(fmt.Sprint(set["access_token"]), "armature_oat_") {
+		t.Fatalf("redeeming answered %d %v", status, set)
+	}
+	if status, _ := c.form("/oauth/token", id, secret, redeem); status != 400 {
+		t.Errorf("a code redeemed twice answered %d", status)
+	}
+	if who := c.expect("GET", "/auth/me", set["access_token"].(string), nil, 200)["principal"].(map[string]any)["user"].(map[string]any); who["name"] != "Admin" {
+		t.Errorf("the grant acts as %v", who)
+	}
+
+	status, renewed := c.form("/oauth/token", id, secret, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {set["refresh_token"].(string)}})
+	if status != 200 || renewed["refresh_token"] == set["refresh_token"] {
+		t.Fatalf("a refresh answered %d %v", status, renewed)
+	}
+	c.expect("GET", "/auth/me", set["access_token"].(string), nil, 401)
+	if status, _ := c.form("/oauth/token", id, secret, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {set["refresh_token"].(string)}}); status != 400 {
+		t.Errorf("a rotated refresh token answered %d", status)
+	}
+	c.expect("GET", "/auth/me", renewed["access_token"].(string), nil, 401)
+
+	authorize.Set("state", "s2")
+	if denied := consent(t, base, authorize, "acme", "alice", "deny"); denied.Query().Get("error") != "access_denied" {
+		t.Errorf("a cancel came back as %s", denied)
+	}
+	back = consent(t, base, authorize, "acme", "alice", "allow")
+	redeem.Set("code", back.Query().Get("code"))
+	_, alice := c.form("/oauth/token", id, secret, redeem)
+	if status, _ := c.form("/oauth/revoke", id, secret, url.Values{"token": {alice["refresh_token"].(string)}, "token_type_hint": {"refresh_token"}}); status != 200 {
+		t.Errorf("a revocation answered %d", status)
+	}
+	c.expect("GET", "/auth/me", alice["access_token"].(string), nil, 401)
+
+	c.expect("PUT", oauthPrefix+"/hosts/"+strings.TrimPrefix(base, "http://"), "", map[string]any{"registration": "closed"}, 204)
+	if _, ok := c.expect("GET", wellKnownPath, "", nil, 200)["registration_endpoint"]; ok {
+		t.Error("closed registration still names its endpoint")
+	}
+	refused := c.expect("POST", "/oauth/register", "", armature.Registration{ClientName: armature.AppName, RedirectURIs: []string{"https://stator.example/cb"}}, 403)
+	if refused["error"] != "access_denied" || !strings.Contains(fmt.Sprint(refused["error_description"]), "only by hand") {
+		t.Errorf("a closed registration answered %v", refused)
+	}
+	c.expect("PUT", oauthPrefix+"/hosts/"+strings.TrimPrefix(base, "http://"), "", map[string]any{"registration": "approve"}, 204)
 }
 
 // A webhook from the stub is one Armature's receiver code would accept: the

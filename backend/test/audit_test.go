@@ -180,6 +180,13 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	if data := once(audit.ActionArmatureConnectionSaved, me, nil); strings.Contains(data, webhookSecret) || !strings.Contains(data, `"webhookSecret": "set"`) {
 		t.Errorf("the connection's record reads %s", data)
 	}
+	const appSecret = "armature_ocs_abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"
+	want(t, owner.put(t, "/api/v1/armature/connection/app", map[string]any{"clientId": "audited-app", "clientSecret": appSecret}), http.StatusOK, "paste the connected app")
+	if data := once(audit.ActionArmatureAppSaved, me, nil); strings.Contains(data, appSecret) || !strings.Contains(data, "audited-app") {
+		t.Errorf("the app's record reads %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/armature/connection/app"), http.StatusNoContent, "forget the connected app")
+	once(audit.ActionArmatureAppRemoved, me, nil)
 	want(t, owner.delete(t, "/api/v1/armature/connection"), http.StatusNoContent, "disconnect Armature")
 	once(audit.ActionArmatureConnectionRemoved, me, nil)
 

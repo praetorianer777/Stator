@@ -70,6 +70,8 @@ type harness struct {
 	stack bool
 	// olderArmature is the test's own address of the stub; see olderArmatureURL.
 	olderArmature string
+	// connectedApp is another, which offers connected apps; see connectedAppURL.
+	connectedApp string
 }
 
 // newHarness connects to a database of the test's own, cloned from the

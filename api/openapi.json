@@ -263,7 +263,7 @@
     "/armature/account/token": {
       "delete": {
         "operationId": "disconnectArmatureAccount",
-        "summary": "Forget the caller's Armature token.",
+        "summary": "Forget the caller's Armature token, or end their connected app's grant, in Armature too.",
         "tags": [
           "armature"
         ],
@@ -636,6 +636,87 @@
                   "required": [
                     "connection"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/connection/app": {
+      "delete": {
+        "operationId": "removeArmatureApp",
+        "summary": "Forget the connected app and every member's grant of it; the next member to connect registers Stator again. For administrators.",
+        "tags": [
+          "armature"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveArmatureApp",
+        "summary": "Store the connected app an Armature administrator registered for Stator by hand, where Armature registers none itself; a new client id forgets every member's grant of the old one. The secret is never answered. For administrators.",
+        "tags": [
+          "armature"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/Connection"
+                    }
+                  },
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -1062,6 +1143,101 @@
                 }
               }
             }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/oauth/callback": {
+      "get": {
+        "operationId": "finishArmatureConnect",
+        "summary": "Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "iss",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found: the browser is sent on."
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/armature/oauth/start": {
+      "get": {
+        "operationId": "startArmatureConnect",
+        "summary": "Send the browser to Armature's consent page to connect the caller's account, registering Stator first when it is not yet. Needs a session; a refusal lands on the profile page with armature naming why.",
+        "tags": [
+          "armature"
+        ],
+        "parameters": [
+          {
+            "name": "return",
+            "in": "query",
+            "description": "A path of this application to go back to once connected.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found: the browser is sent on."
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -1980,6 +2156,8 @@
                 "org.brand_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
+                "armature.app_saved",
+                "armature.app_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -2163,6 +2341,8 @@
                 "org.brand_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
+                "armature.app_saved",
+                "armature.app_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -18515,6 +18695,9 @@
       "Account": {
         "type": "object",
         "properties": {
+          "app": {
+            "$ref": "#/components/schemas/AccountApp"
+          },
           "baseUrl": {
             "type": [
               "string",
@@ -18560,16 +18743,57 @@
                 "type": "null"
               }
             ]
+          },
+          "via": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "app",
+              "token"
+            ]
           }
         },
         "required": [
           "configured",
           "baseUrl",
           "connected",
+          "via",
           "status",
+          "app",
           "user",
           "checkedAt",
           "missing"
+        ]
+      },
+      "AccountApp": {
+        "type": "object",
+        "properties": {
+          "offered": {
+            "type": "boolean"
+          },
+          "pending": {
+            "type": "boolean"
+          },
+          "refusal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "offered",
+          "pending",
+          "refusal",
+          "scopes"
         ]
       },
       "AccountUser": {
@@ -18686,6 +18910,21 @@
           "page",
           "title",
           "snippet"
+        ]
+      },
+      "AppInput": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "clientSecret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "clientSecret"
         ]
       },
       "Appearance": {
@@ -18978,6 +19217,8 @@
               "org.brand_set",
               "armature.connection_saved",
               "armature.connection_removed",
+              "armature.app_saved",
+              "armature.app_removed",
               "page.exported",
               "audit.exported",
               "page.owner_set",
@@ -19099,6 +19340,8 @@
                 "org.brand_set",
                 "armature.connection_saved",
                 "armature.connection_removed",
+                "armature.app_saved",
+                "armature.app_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -19840,6 +20083,9 @@
       "Connection": {
         "type": "object",
         "properties": {
+          "app": {
+            "$ref": "#/components/schemas/ConnectionApp"
+          },
           "baseUrl": {
             "type": "string"
           },
@@ -19892,7 +20138,65 @@
           "lastDelivery",
           "connected",
           "updatedAt",
-          "partner"
+          "partner",
+          "app"
+        ]
+      },
+      "ConnectionApp": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "offered": {
+            "type": "boolean"
+          },
+          "redirectUri": {
+            "type": "string"
+          },
+          "refusal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registeredBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "stator",
+              "admin"
+            ]
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "none",
+              "pending",
+              "active",
+              "refused"
+            ]
+          }
+        },
+        "required": [
+          "offered",
+          "status",
+          "clientId",
+          "registeredBy",
+          "refusal",
+          "redirectUri",
+          "scopes"
         ]
       },
       "ConnectionCheck": {

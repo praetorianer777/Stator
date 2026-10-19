@@ -5,7 +5,7 @@ import { useSetShowInReaders } from "@/api/pageviews";
 import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
 import { announceReturn, safeReturn } from "@/features/armature/connectLink";
-import { ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, PROFILE_PATH } from "@/config";
+import { ARMATURE_OUTCOME_PARAM, ARMATURE_OUTCOMES, ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, PROFILE_PATH, type ArmatureOutcome } from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
 import { appRoute } from "./app";
 
@@ -13,16 +13,20 @@ import { appRoute } from "./app";
 export const profileRoute = createRoute({
   getParentRoute: () => appRoute,
   path: PROFILE_PATH,
-  validateSearch: (search: Record<string, unknown>): { [ARMATURE_RETURN_PARAM]?: string } => {
+  validateSearch: (search: Record<string, unknown>): { [ARMATURE_RETURN_PARAM]?: string; [ARMATURE_OUTCOME_PARAM]?: ArmatureOutcome } => {
     const back = safeReturn(search[ARMATURE_RETURN_PARAM]);
-    return back ? { [ARMATURE_RETURN_PARAM]: back } : {};
+    const outcome = ARMATURE_OUTCOMES.find((known) => known === search[ARMATURE_OUTCOME_PARAM]);
+    return { ...(back ? { [ARMATURE_RETURN_PARAM]: back } : {}), ...(outcome ? { [ARMATURE_OUTCOME_PARAM]: outcome } : {}) };
   },
   component: ProfilePage,
 });
 
 function ProfilePage() {
   const { data: me } = useMe();
-  const back = safeReturn(profileRoute.useSearch()[ARMATURE_RETURN_PARAM]);
+  const search = profileRoute.useSearch();
+  const back = safeReturn(search[ARMATURE_RETURN_PARAM]);
+  // The root route hands its search down unchecked, so this one is checked again where it is read, as the way back is.
+  const outcome = ARMATURE_OUTCOMES.find((known) => known === search[ARMATURE_OUTCOME_PARAM]);
   const hash = useRouterState({ select: (s) => s.location.hash });
   const router = useRouter();
   const goBack = back
@@ -31,6 +35,13 @@ function ProfilePage() {
         router.history.push(back);
       }
     : undefined;
+  // Back from Armature's consent page, connected: on to where the person was,
+  // replacing the landing so the browser's back button skips it.
+  useEffect(() => {
+    if (outcome !== "connected" || !back) return;
+    announceReturn(back);
+    router.history.replace(back);
+  }, [outcome, back, router]);
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader crumb={t.settings.title} title={t.profile.title} />
@@ -48,7 +59,7 @@ function ProfilePage() {
       )}
       {me && <LanguageSection choice={me.user.locale} />}
       {me && <PrivacySection shown={me.user.showInReaders} />}
-      <AccountSection focusToken={hash === ARMATURE_SECTION_ID} onReturn={goBack} />
+      <AccountSection focusToken={hash === ARMATURE_SECTION_ID && !outcome} onReturn={goBack} returnTo={back} outcome={outcome} />
     </div>
   );
 }
