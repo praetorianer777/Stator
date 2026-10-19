@@ -51,14 +51,18 @@ x-auth-env: &auth-env
 # the network. older-armature.localhost reaches the stub too, which the
 # capability spec tells to answer /meta as an older Armature, and so does
 # connected-app.localhost, which the connected app spec tells to offer
-# oauth.partner-tokens@1; a host of each keeps what the api learns of it
-# apart from the stub's own address. armature-api is the real Armature make test-armature starts on
-# this network (deploy/armature), reached the same way; for a real Armature
-# on the host, see docs/api-contract-m3.md. Exciter is stood in for the same
-# way by the exciter-stub at http://localhost:${EXCITER_STUB_PORT}.
+# oauth.partner-tokens@1, and partner-webhook.localhost, which the one-step
+# connect spec tells to offer webhooks.partner@1 too; a host of each keeps
+# what the api learns of it apart from the stub's own address. armature-api
+# is the real Armature make test-armature starts on this network
+# (deploy/armature), reached the same way; for a real Armature on the host,
+# see docs/api-contract-m3.md. Either posts its events to the api as api,
+# since the browser's address is not one they reach. Exciter is stood in for
+# the same way by the exciter-stub at http://localhost:${EXCITER_STUB_PORT}.
 x-armature-env: &armature-env
   STATOR_OUTBOUND_ALLOW: armature-stub,web,armature-api,exciter-stub
-  STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://older-armature.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://connected-app.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://localhost:${ARMATURE_PORT:-8191}=http://armature-api:8080
+  STATOR_ARMATURE_BACKCHANNEL: http://localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://older-armature.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://connected-app.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://partner-webhook.localhost:${ARMATURE_STUB_PORT:-8190}=http://armature-stub:8080,http://localhost:${ARMATURE_PORT:-8191}=http://armature-api:8080
+  STATOR_ARMATURE_WEBHOOK_URL: http://api:8080/api/v1/armature/webhook
   STATOR_EXCITER_BACKCHANNEL: http://localhost:${EXCITER_STUB_PORT:-8192}=http://exciter-stub:8080
 
 # Who the stack's organization is made with: the realm's people, let in ahead

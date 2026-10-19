@@ -17,9 +17,9 @@ const metaPrefix = "/_stub-meta"
 
 // armatureCapabilities are what Armature reports at /meta at the commit
 // api/armature/SOURCE pins (backend/internal/httpapi/capabilities.go there),
-// short of connected apps: oauth.partner-tokens@1 is offered by host, so the
-// suites meet an Armature without it too, and webhooks.partner@1 waits for
-// #429. The real-Armature suite checks Stator reads the rest from Armature itself.
+// short of connected apps: oauth.partner-tokens@1 and webhooks.partner@1 are
+// offered by host, so the suites meet an Armature without them too. The
+// real-Armature suite checks Stator reads the rest from Armature itself.
 var armatureCapabilities = []string{
 	"calendar@1",
 	"issue-embed@1",

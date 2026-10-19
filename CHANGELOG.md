@@ -9,6 +9,22 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Connecting Armature as an administrator in one step (#429): where Armature
+  lists `webhooks.partner@1` beside `oauth.partner-tokens@1`, Settings,
+  Armature offers Connect. The administrator allows Stator once on
+  Armature's consent page with every scope Stator needs, and Stator makes
+  its own webhook there through `POST /webhooks/partner`, with its receiver's
+  address, the topics it acts on and version 1, and stores the secret
+  Armature answers sealed. No secret is copied by hand. A webhook Armature
+  has already is brought up to date and given a new secret, and one that is
+  gone is made again. When Armature's outbound guard refuses Stator's
+  address, the page shows Armature's own sentence with the value to allow;
+  a grant that may not manage the webhook asks for an Armature administrator
+  to connect again. The page tests the webhook and gives it a new secret, a
+  new address or Disconnect removes it from Armature, and the pasted secret
+  stays for an Armature without the capability. `STATOR_ARMATURE_WEBHOOK_URL`
+  (chart value `armature.webhookUrl`) names the address where Armature
+  reaches Stator under another name. In English and German.
 - Exciter requirement blocks and lists on pages (#440): the slash menu's
   Exciter requirement block shows one requirement with its statement and
   rationale, drawn from Exciter's documents with what Stator does not know

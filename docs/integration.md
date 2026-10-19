@@ -245,6 +245,7 @@ whose capability it does not list:
 | following the Armature theme | `theme-export@1` |
 | the webhook from Armature | `webhooks@1` |
 | connecting an account with one click, below | `oauth.partner-tokens@1` |
+| connecting Armature in one step, below | `webhooks.partner@1` beside `oauth.partner-tokens@1` |
 
 Armature names no capability for filing issues, so creating them rests on
 `issue-embed@1`, which the chips they leave behind need; a name for it belongs
@@ -438,12 +439,67 @@ instead", and is all an Armature without the capability is offered.
   (Cloudster1/Armature#298). So every consent asks for `armature.AppScopes`
   whole (`read`, and `issue.write`, which linking a page to an issue takes),
   a refresh names no scope, and an exchange of a Keycloak token (#430) is for
-  a person who holds no grant yet. When an administrator's grant is to carry
-  more, such as `webhooks.partner` for #429, Stator asks that administrator
-  for every scope it needs in one consent, and never sends them through a
-  narrower one afterwards.
-- **Not here yet.** `webhooks.partner` is not asked for; managing the
-  partner webhook is #429.
+  a person who holds no grant yet. An administrator's grant carries
+  `webhooks.partner` as well, below: their consent asks for
+  `armature.AdminScopes` whole, and so does every later connect of a person
+  whose grant holds it, so it is never narrowed away.
+
+## Connecting Armature in one step
+
+Where Armature lists `webhooks.partner@1` beside `oauth.partner-tokens@1`,
+an administrator connects Armature with **Connect** under Settings, Armature,
+and Armature makes the webhook to Stator itself (#429), as Armature's
+`docs/oauth.md` sets out under "The partner's own webhook". No secret is
+copied by hand. The pasted secret stays, under "Paste a webhook secret
+instead", and is all an Armature without the capability is offered.
+
+- **One consent.** `GET /api/v1/armature/connection/webhook/connect` is for
+  administrators with a session. It is the trip above with the purpose
+  `webhook` in `armature_oauth_attempt`, which only an administrator may
+  store, and it asks for `read issue.write webhooks.partner` at once. Stator
+  registers itself with those scopes where Armature offers the partner
+  webhook. Armature's consent page refuses `webhooks.partner` to somebody who
+  does not administer Armature; an app registered by hand without it comes
+  back `invalid_scope`, said as `scope_refused`. The grant is the
+  administrator's own, so their account is connected on the way.
+- **The webhook.** With that grant Stator posts `POST /webhooks/partner` with
+  its receiver's address, the topics the receiver acts on
+  (`armature.WebhookTopics`) and version 1, and stores the secret Armature
+  answers sealed, as a pasted one is. A webhook Armature has already (409
+  `partner_webhook_exists`) is read, brought to that address, those topics
+  and version and turned on with `PATCH`, and given a new secret, since the
+  old one is not known to be the one stored. One that is gone between two
+  calls (null on `GET`, 404 on `PATCH` or on rotating) is made again.
+- **The address Armature posts to** is `{STATOR_APP_URL}/api/v1/armature/webhook`,
+  or `STATOR_ARMATURE_WEBHOOK_URL` where Armature reaches Stator under
+  another name, such as the stack's `http://api:8080/api/v1/armature/webhook`.
+  It is what the settings page shows under Webhook address either way.
+- **Armature refusing.** Its outbound guard (422 `outbound_refused`), an
+  address that does not resolve there (422 `invalid`) and a name taken by an
+  administrator's webhook (409 `conflict`) are kept in
+  `armature_connection.webhook_refusal` and said on the settings page in
+  Armature's own words, below "Armature cannot reach Stator": the value to
+  allow is in the sentence, such as adding stator.example.com to
+  `network.outboundAllow` (`ARMATURE_OUTBOUND_ALLOW`). 403
+  `insufficient_scope` or `forbidden`, and a grant that ended, are said as
+  `webhook_admin`: an Armature administrator must connect again.
+- **Afterwards.** `POST /armature/connection/webhook/test` has Armature post a
+  ping now and answers what the receiver said; `POST
+  /armature/connection/webhook/rotate-secret` gives the webhook a new secret
+  and stores it. Both use the caller's own grant, which must hold
+  `webhooks.partner` (409 `armature_webhook_admin` otherwise), and make a
+  webhook Armature lost again. `partnerWebhook` in `GET /armature/connection`
+  says whether Armature offers it, whether the stored secret is of Stator's
+  own webhook, Armature's last refusal and whether the caller may manage it.
+- **Leaving.** A new address or Disconnect removes the webhook with
+  `DELETE /webhooks/partner` first, with the caller's grant; where that
+  cannot be done it is logged and stays in Armature, where an Armature
+  administrator removes it under Settings, Webhooks. The secret is forgotten
+  here either way: the database drops it with the address
+  (`armature_connection_moved`), and holds that a webhook marked as Stator's
+  has a secret.
+- **The page** says what members do next once connected, with Connect
+  Armature for the administrator's own account where it is not connected yet.
 
 ## The rules
 

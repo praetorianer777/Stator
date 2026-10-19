@@ -262,6 +262,11 @@ armature:
   # {"https://armature.example.com": "http://armature-api.armature.svc:8080"}.
   # The reachable host must then be in network.outboundAllow as well.
   backchannel: {}
+  # Where Armature posts its events to Stator, when Stator makes its webhook
+  # in Armature itself; empty is the public address's
+  # /api/v1/armature/webhook. Set it where Armature reaches Stator under
+  # another name, such as http://stator-api.stator.svc:8080/api/v1/armature/webhook.
+  webhookUrl: ""
 
 exciter:
   # public-origin: reachable-origin, for an Exciter this release reaches at

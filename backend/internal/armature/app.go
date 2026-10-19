@@ -152,7 +152,7 @@ func (s *Service) appCredentials(ctx context.Context) (*AppCredentials, error) {
 
 // ensureApp is the app, registered now when there is none. A refusal is
 // kept with Armature's sentence, so members and administrators read it.
-func (s *Service) ensureApp(ctx context.Context, meta *ServerMetadata) (*AppCredentials, error) {
+func (s *Service) ensureApp(ctx context.Context, meta *ServerMetadata, scopes string) (*AppCredentials, error) {
 	var (
 		creds   *AppCredentials
 		refusal string
@@ -175,12 +175,12 @@ func (s *Service) ensureApp(ctx context.Context, meta *ServerMetadata) (*AppCred
 		}
 		if meta.RegistrationEndpoint == "" {
 			refusal = registrationClosed
-			return s.storeApp(ctx, tx, AppRefused, nil, nil, RegisteredByStator, &refusal, uuid.Nil)
+			return s.storeApp(ctx, tx, AppRefused, nil, nil, RegisteredByStator, scopes, &refusal, uuid.Nil)
 		}
 		call, cancel := context.WithTimeout(ctx, CallTimeout)
 		defer cancel()
 		reg, err := s.client.Register(call, meta.RegistrationEndpoint, Registration{
-			ClientName: AppName, ClientURI: s.opts.AppURL, RedirectURIs: []string{s.RedirectURI()}, Scope: AppScopes,
+			ClientName: AppName, ClientURI: s.opts.AppURL, RedirectURIs: []string{s.RedirectURI()}, Scope: scopes,
 			TokenEndpointAuthMethod: "client_secret_basic",
 			GrantTypes:              []string{"authorization_code", "refresh_token"}, ResponseTypes: []string{"code"},
 		})
@@ -191,7 +191,7 @@ func (s *Service) ensureApp(ctx context.Context, meta *ServerMetadata) (*AppCred
 				refusal = registrationClosed
 			}
 			s.opts.Log.Info("Armature would not register Stator", "error", refused.Code, "description", refused.Description)
-			return s.storeApp(ctx, tx, AppRefused, nil, nil, RegisteredByStator, &refusal, uuid.Nil)
+			return s.storeApp(ctx, tx, AppRefused, nil, nil, RegisteredByStator, scopes, &refusal, uuid.Nil)
 		}
 		if err != nil {
 			return err
@@ -202,7 +202,7 @@ func (s *Service) ensureApp(ctx context.Context, meta *ServerMetadata) (*AppCred
 				return err
 			}
 		}
-		if err := s.storeApp(ctx, tx, AppPending, &reg.ClientID, sealed, RegisteredByStator, nil, uuid.Nil); err != nil {
+		if err := s.storeApp(ctx, tx, AppPending, &reg.ClientID, sealed, RegisteredByStator, scopes, nil, uuid.Nil); err != nil {
 			return err
 		}
 		creds = &AppCredentials{ClientID: reg.ClientID, ClientSecret: reg.ClientSecret}
@@ -217,7 +217,7 @@ func (s *Service) ensureApp(ctx context.Context, meta *ServerMetadata) (*AppCred
 	return creds, nil
 }
 
-func (s *Service) storeApp(ctx context.Context, tx db.DBTX, status AppStatus, clientID *string, secret []byte, by AppRegistrar, refusal *string, actor uuid.UUID) error {
+func (s *Service) storeApp(ctx context.Context, tx db.DBTX, status AppStatus, clientID *string, secret []byte, by AppRegistrar, scopes string, refusal *string, actor uuid.UUID) error {
 	_, err := tx.Exec(ctx, `
 		INSERT INTO armature_app (status, client_id, client_secret, registered_by, scopes, refusal, updated_by)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -225,7 +225,7 @@ func (s *Service) storeApp(ctx context.Context, tx db.DBTX, status AppStatus, cl
 		    status = EXCLUDED.status, client_id = EXCLUDED.client_id, client_secret = EXCLUDED.client_secret,
 		    registered_by = EXCLUDED.registered_by, scopes = EXCLUDED.scopes, refusal = EXCLUDED.refusal,
 		    updated_by = EXCLUDED.updated_by`,
-		status, clientID, secret, by, appScopes(), refusal, nullable(actor))
+		status, clientID, secret, by, strings.Fields(scopes), refusal, nullable(actor))
 	if err != nil {
 		return fmt.Errorf("store the Armature app: %w", err)
 	}
@@ -266,7 +266,7 @@ func (s *Service) SaveApp(ctx context.Context, in AppInput, ip string) (*Connect
 		if _, err := tx.Exec(ctx, `DELETE FROM armature_app WHERE client_id IS DISTINCT FROM $1`, clientID); err != nil {
 			return fmt.Errorf("forget the old Armature app: %w", err)
 		}
-		if err := s.storeApp(ctx, tx, AppActive, &clientID, sealed, RegisteredByAdmin, nil, actor); err != nil {
+		if err := s.storeApp(ctx, tx, AppActive, &clientID, sealed, RegisteredByAdmin, AppScopes, nil, actor); err != nil {
 			return err
 		}
 		if err := audit.Write(ctx, tx, audit.Entry{
@@ -283,6 +283,7 @@ func (s *Service) SaveApp(ctx context.Context, in AppInput, ip string) (*Connect
 	}
 	out.Partner = s.Partner(ctx, out.BaseURL, false)
 	out.App.Offered = out.Partner.OffersApp()
+	out.Webhook.Offered = out.Partner.OffersPartnerWebhook()
 	return out, lsn, nil
 }
 
@@ -339,18 +340,35 @@ func (s *Service) noteApp(ctx context.Context, a *Account, p Partner) {
 	}
 }
 
+// ConnectPurpose is what a trip to Armature's consent page is for.
+type ConnectPurpose string
+
+const (
+	// PurposeAccount connects the caller's own account.
+	PurposeAccount ConnectPurpose = "account"
+	// PurposeWebhook is an administrator connecting Armature in one step:
+	// their account, and Stator's own webhook made with the same grant.
+	PurposeWebhook ConnectPurpose = "webhook"
+)
+
 // StartConnect begins a connect for the caller's session: it registers
 // Stator when it is not yet, and answers the consent page's address. The
 // state and the verifier stay behind, bound to the session.
-func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo string) (string, error) {
+func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo string, purpose ConnectPurpose) (string, error) {
 	user, ok := db.UserFrom(ctx)
 	if !ok || session == uuid.Nil {
 		return "", ErrNotConnected
 	}
-	var e *endpoint
+	var (
+		e     *endpoint
+		grant *grantRow
+	)
 	if err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		e, err = s.endpoint(ctx, tx)
+		if e, err = s.endpoint(ctx, tx); err != nil || e == nil {
+			return err
+		}
+		grant, err = s.ownGrant(ctx, tx)
 		return err
 	}); err != nil {
 		return "", err
@@ -358,14 +376,29 @@ func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo 
 	if e == nil {
 		return "", ErrNotConfigured
 	}
-	if p := s.Partner(ctx, e.BaseURL, false); !p.OffersApp() {
+	p := s.Partner(ctx, e.BaseURL, false)
+	if !p.OffersApp() {
 		return "", ErrAppUnavailable
+	}
+	if purpose == PurposeWebhook && !p.OffersPartnerWebhook() {
+		return "", ErrWebhookUnavailable
+	}
+	// Always the full set the person may hold: a new consent replaces their
+	// grant's scopes (Cloudster1/Armature#298), so an administrator who made
+	// the webhook is never asked for less when connecting their account.
+	scopes := AppScopes
+	if purpose == PurposeWebhook || (grant != nil && slices.Contains(grant.Scopes, ScopeWebhooks)) {
+		scopes = AdminScopes
+	}
+	registered := AppScopes
+	if p.OffersPartnerWebhook() {
+		registered = AdminScopes
 	}
 	meta, err := s.serverMetadata(ctx, e.BaseURL)
 	if err != nil {
 		return "", err
 	}
-	creds, err := s.ensureApp(ctx, meta)
+	creds, err := s.ensureApp(ctx, meta, registered)
 	if err != nil {
 		return "", err
 	}
@@ -380,9 +413,9 @@ func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo 
 			return err
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO armature_oauth_attempt (state_digest, user_id, session_id, code_verifier, return_to, expires_at)
-			VALUES ($1, $2, $3, $4, $5, $6)`,
-			digest(state), user, session, verifier, returnTo, time.Now().Add(OAuthAttemptTTL))
+			INSERT INTO armature_oauth_attempt (state_digest, user_id, session_id, code_verifier, return_to, expires_at, purpose)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			digest(state), user, session, verifier, returnTo, time.Now().Add(OAuthAttemptTTL), purpose)
 		return err
 	}); err != nil {
 		return "", fmt.Errorf("remember the connect: %w", err)
@@ -395,9 +428,7 @@ func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo 
 	q.Set("response_type", "code")
 	q.Set("client_id", creds.ClientID)
 	q.Set("redirect_uri", s.RedirectURI())
-	// Always the full set: a person's new consent replaces their grant's
-	// scopes (Cloudster1/Armature#298), so asking for fewer would drop some.
-	q.Set("scope", AppScopes)
+	q.Set("scope", scopes)
 	q.Set("state", state)
 	q.Set("code_challenge", oauth2.S256ChallengeFromVerifier(verifier))
 	q.Set("code_challenge_method", pkceMethod)
@@ -405,38 +436,57 @@ func (s *Service) StartConnect(ctx context.Context, session uuid.UUID, returnTo 
 	return target.String(), nil
 }
 
+// Finished is where a connect leaves the person: the path they were headed
+// for, and what the trip was for.
+type Finished struct {
+	Back    string
+	Purpose ConnectPurpose
+}
+
 // FinishConnect takes Armature's answer for the caller's session: it checks
-// the state and the issuer, redeems the code and stores the grant. It
-// answers where the person was headed, also when it fails.
-func (s *Service) FinishConnect(ctx context.Context, session uuid.UUID, answer url.Values) (string, db.LSN, error) {
+// the state and the issuer, redeems the code and stores the grant, and for an
+// administrator's connect makes Stator's webhook with it. It answers where
+// the person was headed, also when it fails.
+func (s *Service) FinishConnect(ctx context.Context, session uuid.UUID, answer url.Values, ip string) (Finished, db.LSN, error) {
 	user, ok := db.UserFrom(ctx)
 	if !ok || session == uuid.Nil {
-		return "", 0, ErrNotConnected
+		return Finished{}, 0, ErrNotConnected
 	}
 	state := answer.Get("state")
 	if state == "" {
-		return "", 0, ErrOAuthAttempt
+		return Finished{}, 0, ErrOAuthAttempt
 	}
-	var verifier, back string
+	var (
+		verifier string
+		out      Finished
+	)
 	// Consumed as it is read, so a replayed return finds nothing.
 	if _, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		err := tx.QueryRow(ctx, `
 			DELETE FROM armature_oauth_attempt
 			WHERE state_digest = $1 AND user_id = $2 AND session_id = $3 AND expires_at > now()
-			RETURNING code_verifier, return_to`, digest(state), user, session).Scan(&verifier, &back)
+			RETURNING code_verifier, return_to, purpose`, digest(state), user, session).Scan(&verifier, &out.Back, &out.Purpose)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrOAuthAttempt
 		}
 		return err
 	}); err != nil {
-		return "", 0, err
+		return Finished{}, 0, err
 	}
+	lsn, err := s.finishConnect(ctx, user, out.Purpose, verifier, answer, ip)
+	return out, lsn, err
+}
+
+func (s *Service) finishConnect(ctx context.Context, user uuid.UUID, purpose ConnectPurpose, verifier string, answer url.Values, ip string) (db.LSN, error) {
 	if refused := answer.Get("error"); refused != "" {
-		if refused == oauthAccessDenied {
-			return back, 0, ErrConnectDenied
+		switch {
+		case refused == oauthAccessDenied:
+			return 0, ErrConnectDenied
+		case refused == oauthInvalidScope && purpose == PurposeWebhook:
+			return 0, ErrScopeRefused
 		}
 		s.opts.Log.Info("Armature refused a connect", "error", refused, "description", answer.Get("error_description"))
-		return back, 0, ErrConnectFailed
+		return 0, ErrConnectFailed
 	}
 
 	var (
@@ -451,23 +501,23 @@ func (s *Service) FinishConnect(ctx context.Context, session uuid.UUID, answer u
 		e, err = s.endpoint(ctx, tx)
 		return err
 	}); err != nil {
-		return back, 0, err
+		return 0, err
 	}
 	if e == nil {
-		return back, 0, ErrNotConfigured
+		return 0, ErrNotConfigured
 	}
 	meta, err := s.serverMetadata(ctx, e.BaseURL)
 	if err != nil {
-		return back, 0, err
+		return 0, err
 	}
 	// RFC 9207: a code from another authorization server is never redeemed here.
 	if iss := answer.Get("iss"); (meta.ISSParameter || iss != "") && strings.TrimSuffix(iss, "/") != strings.TrimSuffix(meta.Issuer, "/") {
 		s.opts.Log.Warn("a connect came back from another issuer", "iss", iss, "issuer", meta.Issuer)
-		return back, 0, ErrConnectFailed
+		return 0, ErrConnectFailed
 	}
 	creds, err := s.appCredentials(ctx)
 	if err != nil {
-		return back, 0, err
+		return 0, err
 	}
 	call, cancel := context.WithTimeout(ctx, CallTimeout)
 	defer cancel()
@@ -477,26 +527,26 @@ func (s *Service) FinishConnect(ctx context.Context, session uuid.UUID, answer u
 	})
 	switch {
 	case isOAuth(err, oauthInvalidGrant):
-		return back, 0, ErrConnectEnded
+		return 0, ErrConnectEnded
 	case errors.Is(err, ErrUnreachable):
-		return back, 0, err
+		return 0, err
 	case err != nil:
 		s.opts.Log.Warn("Armature did not redeem a code", "error", err)
-		return back, 0, ErrConnectFailed
+		return 0, ErrConnectFailed
 	}
 	me, err := s.me(ctx, e.BaseURL, set.AccessToken)
 	switch {
 	case errors.Is(err, ErrUnreachable):
-		return back, 0, err
+		return 0, err
 	case err != nil:
-		return back, 0, ErrConnectFailed
+		return 0, ErrConnectFailed
 	case !e.owns(me):
 		s.revoke(ctx, meta, creds, set.RefreshToken)
-		return back, 0, ErrOtherInstallation
+		return 0, ErrOtherInstallation
 	}
 	lsn, err := s.storeGrant(ctx, site, user, set, me)
 	if err != nil {
-		return back, lsn, err
+		return lsn, err
 	}
 	// The later of the two writes is what the person's next read waits for,
 	// so the settings page they come back to says the app is allowed.
@@ -510,7 +560,11 @@ func (s *Service) FinishConnect(ctx context.Context, session uuid.UUID, answer u
 		lsn = allowed
 	}
 	s.learnInstallation(ctx, e, me)
-	return back, lsn, nil
+	if purpose != PurposeWebhook {
+		return lsn, nil
+	}
+	made, err := s.setUpWebhook(ctx, ip)
+	return max(lsn, made), err
 }
 
 // storeGrant replaces whatever the person had stored with the new grant, as

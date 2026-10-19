@@ -68,6 +68,9 @@ func StatusOf(err error) Status {
 // the process; each call names the instance and the token it is made with.
 type Client struct {
 	http *http.Client
+	// patient is http for a call Armature answers only after it has posted
+	// to Stator, bounded by PartnerTimeout instead.
+	patient *http.Client
 }
 
 // NewClient returns the client every Armature call goes through: netguard
@@ -77,7 +80,21 @@ func NewClient(allow netguard.Allow, backchannel map[string]string) *Client {
 	if len(backchannel) > 0 {
 		transport = &rewriting{rewrites: backchannel, next: transport}
 	}
-	return &Client{http: netguard.WithTransport(CallTimeout, transport)}
+	return &Client{http: netguard.WithTransport(CallTimeout, transport), patient: netguard.WithTransport(PartnerTimeout, transport)}
+}
+
+type patienceKey struct{}
+
+// patiently lets the calls made with ctx wait PartnerTimeout for their answer.
+func patiently(ctx context.Context) context.Context {
+	return context.WithValue(ctx, patienceKey{}, true)
+}
+
+func (c *Client) httpFor(ctx context.Context) *http.Client {
+	if ctx.Value(patienceKey{}) != nil && c.patient != nil {
+		return c.patient
+	}
+	return c.http
 }
 
 // rewriting sends a request for a public origin to where this process reaches
@@ -260,7 +277,7 @@ func (c *Client) doWithin(ctx context.Context, method, target, token string, bod
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	resp, err := c.http.Do(req)
+	resp, err := c.httpFor(ctx).Do(req)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}

@@ -175,6 +175,9 @@ type Connection struct {
 	Partner Partner `json:"partner"`
 	// App is Stator as a connected app of this Armature.
 	App ConnectionApp `json:"app"`
+	// Webhook is the webhook Stator makes in Armature itself, where
+	// Armature lets it, instead of a pasted secret.
+	Webhook PartnerWebhook `json:"partnerWebhook"`
 }
 
 // AppStatus is where Stator stands as a connected app of Armature.

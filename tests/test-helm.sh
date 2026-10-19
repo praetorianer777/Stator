@@ -130,6 +130,10 @@ check "mail is off until a relay is named, then goes from the sender set" \
     '0 STATOR_SMTP_ADDR:"smtp.example:25" STATOR_MAIL_FROM:"Wiki<wiki@example.com>"'
 
 check "nothing inside the network is reached until named" "$(grep -cE 'STATOR_(OUTBOUND_ALLOW|ARMATURE_BACKCHANNEL)' <<<"${RENDERED}")" "0"
+check "Armature posts to the public address until another is named" \
+    "$(grep -c 'STATOR_ARMATURE_WEBHOOK_URL' <<<"${RENDERED}") $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" \
+        --set armature.webhookUrl=http://stator-api.stator.svc:8080/api/v1/armature/webhook 2>&1 | grep 'STATOR_ARMATURE_WEBHOOK_URL' | tr -d ' ')" \
+    '0 STATOR_ARMATURE_WEBHOOK_URL:"http://stator-api.stator.svc:8080/api/v1/armature/webhook"'
 check "the guard lets through what is named, and Armature is reached where it is mapped" \
     "$(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set 'network.outboundAllow={armature-api.armature.svc,10.40.0.0/16}' \
         --set 'armature.backchannel.https://armature\.example\.com=http://armature-api.armature.svc:8080' 2>&1 \

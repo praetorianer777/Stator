@@ -329,6 +329,11 @@ func toAPIError(err error) *APIError {
 	if errors.As(err, &outdated) {
 		return &APIError{Status: http.StatusConflict, Code: "armature_outdated", Message: outdated.Error()}
 	}
+	var webhookRefused *armature.WebhookRefusedError
+	if errors.As(err, &webhookRefused) {
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "armature_webhook_refused",
+			Message: "Armature cannot reach Stator, so it would not make Stator's webhook. Armature says: " + sentence(webhookRefused.Message)}
+	}
 	var armatureRefused *armature.RefusedError
 	if errors.As(err, &armatureRefused) {
 		return &APIError{Status: armatureRefused.Status, Code: armatureRefused.Code, Message: sentence(armatureRefused.Message),
@@ -442,6 +447,12 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, exciter.ErrUnreachable):
 		return &APIError{Status: http.StatusBadGateway, Code: "exciter_unreachable",
 			Message: "Exciter did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
+	case errors.Is(err, armature.ErrWebhookAdmin):
+		return &APIError{Status: http.StatusConflict, Code: "armature_webhook_admin",
+			Message: "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Settings, Armature, and allow it in Armature as an Armature administrator."}
+	case errors.Is(err, armature.ErrWebhookUnavailable):
+		return &APIError{Status: http.StatusConflict, Code: "armature_outdated",
+			Message: "The connected Armature does not let Stator make its own webhook. Add the webhook in Armature and paste its secret under Settings, Armature instead."}
 	case errors.Is(err, armature.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_configured",
 			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature."}

@@ -51,6 +51,9 @@ func (e *FieldError) Error() string { return e.Message }
 type Options struct {
 	// AppURL is Stator's own origin, for the webhook address.
 	AppURL string
+	// WebhookURL is where Armature reaches Stator's webhook receiver, when
+	// that is not under AppURL; empty is AppURL's.
+	WebhookURL string
 	// Allow is what STATOR_OUTBOUND_ALLOW names; such a host may be plain http.
 	Allow netguard.Allow
 	// Development lets any base URL be plain http.
@@ -125,18 +128,23 @@ func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 	if out != nil && err == nil {
 		out.Partner = s.Partner(ctx, out.BaseURL, true)
 		out.App.Offered = out.Partner.OffersApp()
+		out.Webhook.Offered = out.Partner.OffersPartnerWebhook()
 		out.LastDelivery, _ = s.cache.Receipt(ctx, site)
 	}
 	return out, err
 }
 
 func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, error) {
-	c := Connection{WebhookURL: s.opts.AppURL + WebhookPath, WebhookTopics: WebhookTopics}
-	var connected *int
+	c := Connection{WebhookURL: s.webhookURL(), WebhookTopics: WebhookTopics}
+	var (
+		connected *int
+		partner   bool
+		refusal   *string
+	)
 	err := tx.QueryRow(ctx, `
-		SELECT base_url, armature_org_id, webhook_secret IS NOT NULL, updated_at, armature_connected_count()
+		SELECT base_url, armature_org_id, webhook_secret IS NOT NULL, updated_at, armature_connected_count(), webhook_partner, webhook_refusal
 		FROM armature_connection`,
-	).Scan(&c.BaseURL, &c.InstallationID, &c.WebhookSecretSet, &c.UpdatedAt, &connected)
+	).Scan(&c.BaseURL, &c.InstallationID, &c.WebhookSecretSet, &c.UpdatedAt, &connected, &partner, &refusal)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -147,6 +155,9 @@ func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, 
 		c.Connected = *connected
 	}
 	if c.App, err = s.connectionApp(ctx, tx); err != nil {
+		return nil, err
+	}
+	if c.Webhook, err = s.partnerWebhook(ctx, tx, partner, refusal); err != nil {
 		return nil, err
 	}
 	return &c, nil
@@ -195,6 +206,11 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 		if _, err := s.probe(ctx, base); err != nil {
 			return nil, 0, err
 		}
+		// Asked of the Armature being left, while the grant is still kept:
+		// the move forgets both.
+		if before != nil && before.Webhook.Connected {
+			s.removePartnerWebhook(ctx)
+		}
 	}
 
 	var out *Connection
@@ -211,6 +227,7 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 			ON CONFLICT (singleton) DO UPDATE SET
 			    base_url = EXCLUDED.base_url,
 			    webhook_secret = CASE WHEN $4 THEN armature_connection.webhook_secret ELSE EXCLUDED.webhook_secret END,
+			    webhook_partner = $4 AND armature_connection.webhook_partner,
 			    updated_by = EXCLUDED.updated_by`,
 			base, sealed, nullable(actor), in.WebhookSecret == nil)
 		if err != nil {
@@ -230,15 +247,30 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	}
 	out.Partner = s.Partner(ctx, base, !moved)
 	out.App.Offered = out.Partner.OffersApp()
+	out.Webhook.Offered = out.Partner.OffersPartnerWebhook()
 	// The page says after a save whether Armature ever delivered, so the
 	// answer carries it as the read does.
 	out.LastDelivery, _ = s.cache.Receipt(ctx, siteID)
 	return out, lsn, nil
 }
 
-// RemoveConnection disconnects Armature; every stored token goes with it.
+// RemoveConnection disconnects Armature; every stored token goes with it,
+// and Stator's own webhook there is removed first where the caller may.
 func (s *Service) RemoveConnection(ctx context.Context, ip string) (db.LSN, error) {
 	actor, _ := db.UserFrom(ctx)
+	var partner bool
+	if err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
+		err := tx.QueryRow(ctx, `SELECT webhook_partner FROM armature_connection`).Scan(&partner)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		return err
+	}); err != nil {
+		return 0, err
+	}
+	if partner {
+		s.removePartnerWebhook(ctx)
+	}
 	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var forgotten int
 		if err := tx.QueryRow(ctx, `SELECT coalesce(armature_connected_count(), 0)`).Scan(&forgotten); err != nil {
