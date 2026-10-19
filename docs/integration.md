@@ -12,7 +12,7 @@ promise features, not data.
   "product": "stator",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"]
+  "capabilities": ["oauth.token-exchange@1", "page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"]
 }
 ```
 
@@ -70,6 +70,22 @@ delivery and a new secret, each delivery a signed, numbered envelope as
 - `POST /webhooks/{webhookID}/test`, `POST /webhooks/{webhookID}/rotate-secret`
 - topics `page.published`, `page.moved`, `page.deleted`, `comment.created`
   and `page.remote_link.removed`
+
+### `oauth.token-exchange@1`
+
+A partner tool that signed a person in through the shared Keycloak realm
+trades their access token for a Stator token of theirs, with no consent page
+and no pasted `stator_pat_` (#461), as Armature does since
+Cloudster1/Armature#280: `POST /oauth/token` with `grant_type`
+`urn:ietf:params:oauth:grant-type:token-exchange`, `subject_token` an access
+token of Stator's identity provider whose `azp` is the partner app's
+Keycloak client id and whose `aud` holds Stator's own client, the app
+authenticating with its client id and secret. The answer is an access and a
+refresh token within the person's rights. See
+[Handing partner tools a person's token](#handing-partner-tools-a-persons-token).
+
+- `GET /.well-known/oauth-authorization-server`, at the origin
+- `POST /oauth/token`, `POST /oauth/revoke`
 
 ### `theme-export@1`
 
@@ -544,6 +560,79 @@ no click and no token (#430), as Armature's `docs/oauth.md` sets out under
   Armature's client id (`armature`) to Stator's access tokens, since Armature
   takes only a token whose `aud` holds its own client. Keycloak's own token
   exchange is not switched on.
+
+## Handing partner tools a person's token
+
+Stator is the authorization server a partner tool of the same Keycloak realm
+(`dynamo`) exchanges a person's sign-in at, so the person is connected to
+Stator in the partner without a click (#461). It follows Armature's
+`docs/oauth.md`, "A signed-in person, with no click", so a partner written
+for one answers the other.
+
+- **Partner apps** are registered by an administrator:
+  `GET /oauth/clients` (`{clients}`), `POST /oauth/clients` with
+  `{name, scopes, keycloakClientId}` (201 `{client}` with `secret`,
+  `stator_ocs_` and 43 characters, shown this once; 422 on each field),
+  `PATCH /oauth/clients/{clientID}` (what is left out keeps its value; a new
+  name follows into the grants' names, narrower scopes narrow every grant at
+  once) and `DELETE /oauth/clients/{clientID}` (204; every grant ends). The
+  scopes are `read`, which every app holds, and `write`: a grant holding
+  `read` alone may only read, one holding `write` may do whatever its person
+  may. One app per Keycloak client. The secret is kept as its SHA-256 only.
+- **The exchange.** `POST /api/v1/oauth/token`, a form, the app
+  authenticating by HTTP Basic (id and secret form-encoded first) or with
+  `client_id` and `client_secret` in the form, never both:
+  `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
+  `subject_token=<the access token>`,
+  `subject_token_type=urn:ietf:params:oauth:token-type:access_token`, and
+  optionally `scope`, at most the app's, `read` among them. Stator verifies
+  the token against its identity provider's keys: its issuer, its expiry,
+  Stator's client id in `aud` (an audience mapper on the partner's Keycloak
+  client adds it) and the app's `keycloakClientId` as `azp`. Keycloak's own
+  token exchange is not switched on.
+- **The person** is found by the token's subject or its verified address, as
+  a sign-in finds them, and their groups are kept as the token says. A
+  member is answered; somebody who is not a member yet is let in only by the
+  group mapping under Settings, Single sign-on, as at sign-in, which lets a
+  mapped group's people in already. Anybody else, a guest or somebody
+  switched off is `invalid_grant`: "Ada Lovelace has no Stator account yet.
+  Sign in to Stator once, or ask an administrator to let them in.", and
+  nothing about them is kept.
+- **The answer** is `{access_token, token_type: "Bearer", expires_in: 3600,
+  refresh_token, scope, issued_token_type}`, with `Cache-Control: no-store`.
+  The access token, `stator_oat_`, lives an hour and is a bearer for every
+  operation the person's own personal access token may call; the refresh
+  token, `stator_ort_`, lives 90 days from its last use. One grant per
+  person and app: a new exchange replaces its tokens and adds the scopes
+  asked to the ones it held.
+- **Refreshing** is `grant_type=refresh_token&refresh_token=...[&scope=...]`.
+  Both tokens rotate on each use; a narrower `scope` narrows the grant for
+  good. A rotated refresh token presented again ends the grant (RFC 9700
+  section 4.14.2), so a partner refreshes one grant in one place at a time.
+- **The person's token list** shows each grant as "Exciter (connected
+  app)", with `clientId` naming the app and `expiresAt` when its refresh
+  token runs out unless used, marked as a connected app on the tokens page.
+  Revoking it there, or an administrator under the organization's tokens,
+  ends it and its refresh token. `POST /api/v1/oauth/revoke` with
+  `token=...` (RFC 7009) is the partner's own Disconnect: 200 for every
+  token, known or not.
+- **Refusals** are OAuth's shape, `{"error", "error_description"}`:
+  `invalid_request`, `invalid_client` (401, with `WWW-Authenticate: Basic`
+  when Basic was used), `invalid_grant` ("This connection has ended. Connect
+  Stator again." for a refresh token that is no more), `invalid_scope`,
+  `unauthorized_client` (single sign-on not set up), `unsupported_grant_type`.
+- **Discovery.** `GET /.well-known/oauth-authorization-server` at the origin
+  (RFC 8414), cacheable for five minutes, names `STATOR_APP_URL` as the
+  issuer, the token and revocation endpoints, the scopes, the two grants and
+  the two ways to authenticate. nginx, the chart's nginx and its Ingress send
+  it to the api.
+- **The database.** `oauth_client` is the administrators' alone; the token
+  endpoint reads it as `stator_admin`. A grant is the person's `api_token`
+  row with `client_id`, `refresh_hash` and `access_expires_at`; only
+  `stator_admin` may make or change one, so a member cannot forge a grant
+  with raw SQL, and the database holds that a grant has both tokens and an
+  end. The audit log records `oauth.client_created`, `oauth.client_updated`,
+  `oauth.client_removed` and `oauth.grant_created`.
 
 ## The rules
 

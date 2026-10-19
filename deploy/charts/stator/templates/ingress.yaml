@@ -34,6 +34,13 @@ spec:
                 name: {{ include "stator.fullname" . }}-api
                 port:
                   name: http
+          - path: /.well-known/oauth-authorization-server
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "stator.fullname" . }}-api
+                port:
+                  name: http
           - path: /
             pathType: Prefix
             backend:

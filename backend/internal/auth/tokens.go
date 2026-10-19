@@ -43,7 +43,10 @@ type APIToken struct {
 	// ExpiresAt is null for a token that lasts until it is revoked.
 	ExpiresAt *time.Time `json:"expiresAt"`
 	CreatedAt time.Time  `json:"createdAt"`
-	Secret    string     `json:"secret,omitempty"`
+	// ClientID is the connected app a grant was issued to (#461), null for a
+	// token its person made; revoking a grant ends its refresh token too.
+	ClientID *uuid.UUID `json:"clientId"`
+	Secret   string     `json:"secret,omitempty"`
 }
 
 // SiteAPIToken is a token as an administrator sees it: with whose it is.
@@ -159,11 +162,11 @@ func (s *Service) CreateAPIToken(ctx context.Context, userID uuid.UUID, in NewAP
 // tokenColumns name a token's spaces through the reader's own permissions, so
 // a list never spells the key of a space its reader may not see.
 const tokenColumns = `t.id, t.name, t.scopes, t.last_used_at, t.expires_at, t.created_at, NOT t.spaces_only,
-	ARRAY(SELECT s.key FROM api_token_space ts JOIN space s ON s.id = ts.space_id WHERE ts.token_id = t.id ORDER BY s.key)`
+	ARRAY(SELECT s.key FROM api_token_space ts JOIN space s ON s.id = ts.space_id WHERE ts.token_id = t.id ORDER BY s.key), t.client_id`
 
 func scanToken(row pgx.Row, extra ...any) (APIToken, error) {
 	var t APIToken
-	err := row.Scan(append([]any{&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.AllSpaces, &t.Spaces}, extra...)...)
+	err := row.Scan(append([]any{&t.ID, &t.Name, &t.Scopes, &t.LastUsedAt, &t.ExpiresAt, &t.CreatedAt, &t.AllSpaces, &t.Spaces, &t.ClientID}, extra...)...)
 	return t, err
 }
 
@@ -254,7 +257,8 @@ JOIN app_user u ON u.id = t.user_id
 JOIN site o ON o.archived_at IS NULL
 JOIN member m ON m.user_id = t.user_id
 LEFT JOIN space gs ON gs.id = m.guest_space_id
-WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())`
+WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())
+  AND (t.client_id IS NOT NULL) = $2 AND (t.client_id IS NULL OR t.access_expires_at > now())`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
 	if err := ParseAPIToken(secret); err != nil {
@@ -268,7 +272,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		guest    guestSpaceColumns
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret)).Scan(
+		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret), IsAccessToken(secret)).Scan(
 			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.TokenSpaces,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
 			&p.SiteName, &p.Role, &guest.id, &guest.key, &guest.name,

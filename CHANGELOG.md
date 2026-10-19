@@ -20,6 +20,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   a missing or dead one is filled in. When Armature refuses, the sign-in goes
   on and the profile says why, in Armature's own words, above Connect
   Armature. In English and German.
+
+- Handing partner tools a person's token by token exchange (#461): a tool
+  of the same Keycloak realm, such as Exciter, trades the access token of a
+  person it signed in for a Stator token of theirs at
+  `POST /api/v1/oauth/token` (RFC 8693), so nobody pastes a `stator_pat_`
+  into it. Administrators register such apps with the Keycloak client they
+  sign in with (`/api/v1/oauth/clients`), their secret shown once. The token
+  never exceeds the person's rights, refreshes with rotation, and shows in
+  the person's token list as "<app> (connected app)", revocable there. A
+  person not yet in Stator is let in only by the group mapping. Discovery at
+  `/.well-known/oauth-authorization-server`, and `oauth.token-exchange@1` in
+  `GET /api/v1/meta`.
+
 - Connecting Armature as an administrator in one step (#429): where Armature
   lists `webhooks.partner@1` beside `oauth.partner-tokens@1`, Settings,
   Armature offers Connect. The administrator allows Stator once on

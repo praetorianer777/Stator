@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -324,6 +325,13 @@ func toAPIError(err error) *APIError {
 	var armatureField *armature.FieldError
 	if errors.As(err, &armatureField) {
 		return ErrValidation(map[string]string{armatureField.Field: armatureField.Message})
+	}
+	var oauthField *oauth.FieldError
+	if errors.As(err, &oauthField) {
+		return ErrValidation(map[string]string{oauthField.Field: oauthField.Message})
+	}
+	if errors.Is(err, oauth.ErrNoSuchClient) {
+		return ErrNotFound("That connected app is not registered. It may have been removed already; reload the list.")
 	}
 	var outdated *armature.OutdatedError
 	if errors.As(err, &outdated) {

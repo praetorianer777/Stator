@@ -24,6 +24,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -80,6 +81,9 @@ type operation struct {
 	// body is a file upload in a part named file instead.
 	request   any
 	multipart bool
+	// form says the request is the same fields form-encoded, as OAuth's
+	// endpoints take them.
+	form bool
 	// responses maps a status to its envelope or bare type; nil is no body.
 	responses map[int]any
 	// public routes need no session; binary ones answer with a file.
@@ -1055,6 +1059,31 @@ var operations = append([]operation{
 		summary: "Where Exciter posts requirement events, signed with the webhook secret saved in Stator, the time within " + strconv.Itoa(int(armature.WebhookTimestampTolerance.Minutes())) + " minutes of Stator's clock; envelope version " + strconv.Itoa(exciter.WebhookVersion) + " with source exciter only. Clears the cached requirements they name, by key and by id, and ignores fields and topics it does not know.",
 		request: exciter.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
 
+	// Partner tools exchange a person's identity provider token for theirs (#461).
+	{method: "GET", path: oauth.MetadataPath, handler: "handleOAuthMetadata", tag: "oauth", public: true,
+		summary:   "RFC 8414's metadata: the issuer, the token and revocation endpoints, the scopes and grants. Lives at the origin, outside " + APIPrefix + "; partners may keep it for five minutes.",
+		responses: ok(oauth.Metadata{})},
+	{method: "POST", path: "/oauth/token", handler: "handleOAuthToken", tag: "oauth", public: true, form: true,
+		summary: "The token endpoint, for a partner app with its client id and secret, by HTTP Basic or in the form. " +
+			"grant_type " + oauth.GrantTokenExchange + " trades a person's access token of the instance's identity provider, issued to the app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; " +
+			"refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, unauthorized_client, unsupported_grant_type.",
+		request: oauth.TokenRequest{}, responses: map[int]any{200: oauth.TokenResponse{}, 400: oauth.Error{}, 401: oauth.Error{}}},
+	{method: "POST", path: "/oauth/revoke", handler: "handleOAuthRevoke", tag: "oauth", public: true, form: true,
+		summary: "RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike.",
+		request: oauth.RevokeRequest{}, responses: map[int]any{200: nil, 400: oauth.Error{}, 401: oauth.Error{}}},
+	{method: "GET", path: "/oauth/clients", handler: "handleListOAuthClients", wholeInstance: true, tag: "oauth",
+		summary:   "The partner apps that may exchange people's identity provider tokens here, by name. For administrators.",
+		responses: ok(env{"clients": []oauth.Client{}})},
+	{method: "POST", path: "/oauth/clients", handler: "handleCreateOAuthClient", wholeInstance: true, tag: "oauth",
+		summary: "Register a partner app with the Keycloak client it signs people in with; its secret, " + auth.ClientSecretPrefix + "..., is in this answer and never again. For administrators.",
+		request: oauth.ClientInput{}, responses: map[int]any{201: env{"client": oauth.Client{}}, 422: errorEnvelope{}}},
+	{method: "PATCH", path: "/oauth/clients/{clientID}", handler: "handleUpdateOAuthClient", wholeInstance: true, tag: "oauth",
+		summary: "Change a partner app; what is left out keeps its value. A new name follows into its grants, narrower scopes narrow them at once. For administrators.",
+		request: oauth.ClientChanges{}, responses: map[int]any{200: env{"client": oauth.Client{}}, 404: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/oauth/clients/{clientID}", handler: "handleDeleteOAuthClient", wholeInstance: true, tag: "oauth",
+		summary:   "Remove a partner app; every grant of it ends. For administrators.",
+		responses: none()},
+
 	{method: "POST", path: "/mcp", handler: "handleMCP", id: "mcp", tag: "mcp", summary: "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
 		raw: true, rawNote: "A JSON-RPC 2.0 request as the Model Context Protocol defines it.", responses: map[int]any{200: rpcResponse{}, 202: nil}},
 }, oldPublicOperations()...)
@@ -1378,6 +1407,10 @@ func Spec() *openapi.Document {
 		case op.raw:
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
 				"application/json": {Schema: &openapi.Schema{Description: op.rawNote}},
+			}}
+		case op.request != nil && op.form:
+			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
+				"application/x-www-form-urlencoded": {Schema: b.SchemaOf(op.request)},
 			}}
 		case op.request != nil:
 			o.RequestBody = &openapi.RequestBody{Required: true, Content: map[string]openapi.MediaType{
