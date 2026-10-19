@@ -84,8 +84,11 @@ export function RequirementListDialog({
   const check = useExciterQueryCheck(projectKey, settled, asks && [...settled].length <= EXCITER_QUERY_MAX_LENGTH);
   const bad = check.error instanceof ApiError && check.error.code === "bad_query" ? check.error : null;
 
-  const at = useDebounced(caret === null ? null : { q: query, at: caret }, EXCITER_SUGGEST_DEBOUNCE_MS);
-  const current = at !== null && caret !== null && at.q === query && at.at === caret;
+  // A string, so the debounce settles: an object would be new every render.
+  const typed = caret === null ? "" : `${caret} ${query}`;
+  const settledAt = useDebounced(typed, EXCITER_SUGGEST_DEBOUNCE_MS);
+  const at = settledAt === "" ? null : { at: Number(settledAt.slice(0, settledAt.indexOf(" "))), q: settledAt.slice(settledAt.indexOf(" ") + 1) };
+  const current = at !== null && settledAt === typed;
   const suggest = useExciterSuggest(projectKey, at?.q ?? "", at?.at ?? 0, asks && at !== null && !dismissed);
   const words = current && !dismissed ? (suggest.data?.words ?? []) : [];
   const completion = suggest.data?.completion;
