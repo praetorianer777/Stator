@@ -48,6 +48,11 @@ CREATE POLICY exciter_connection_admin_bypass ON exciter_connection TO stator_ad
 CREATE POLICY exciter_token_app ON exciter_token USING (true) WITH CHECK (true);
 CREATE POLICY exciter_token_admin_bypass ON exciter_token TO stator_admin USING (true) WITH CHECK (true);
 
+CREATE POLICY exciter_connection_not_anonymous ON exciter_connection AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
+CREATE POLICY exciter_token_not_anonymous ON exciter_token AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
+
 -- Administrators keep the connection; each member keeps their own token and
 -- nobody reads anybody else's.
 CREATE POLICY exciter_connection_admins ON exciter_connection AS RESTRICTIVE FOR ALL TO stator_app

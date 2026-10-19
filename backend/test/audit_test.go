@@ -189,6 +189,12 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionArmatureAppRemoved, me, nil)
 	want(t, owner.delete(t, "/api/v1/armature/connection"), http.StatusNoContent, "disconnect Armature")
 	once(audit.ActionArmatureConnectionRemoved, me, nil)
+	want(t, owner.put(t, "/api/v1/exciter/connection", map[string]any{"baseUrl": exciterURL(t), "webhookSecret": exciterHookSecret}), http.StatusOK, "connect Exciter")
+	if data := once(audit.ActionExciterConnectionSaved, me, nil); strings.Contains(data, exciterHookSecret) || !strings.Contains(data, `"webhookSecret": "set"`) {
+		t.Errorf("the Exciter connection's record reads %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/exciter/connection"), http.StatusNoContent, "disconnect Exciter")
+	once(audit.ActionExciterConnectionRemoved, me, nil)
 
 	waiting := func(name string) uuid.UUID {
 		var id uuid.UUID
