@@ -331,6 +331,16 @@ instead", and is all an Armature without the capability is offered.
   sealed secret stays behind. A person reads and changes only their own grant
   and trip. A new Armature address forgets the app and every grant with the
   tokens.
+- **Scopes are asked for all at once.** Armature keeps one grant per person
+  and app, and a new consent, a token exchange or a refresh naming fewer
+  scopes replaces the grant's scopes with the narrower set
+  (Cloudster1/Armature#298). So every consent asks for `armature.AppScopes`
+  whole (`read`, and `issue.write`, which linking a page to an issue takes),
+  a refresh names no scope, and an exchange of a Keycloak token (#430) is for
+  a person who holds no grant yet. When an administrator's grant is to carry
+  more, such as `webhooks.partner` for #429, Stator asks that administrator
+  for every scope it needs in one consent, and never sends them through a
+  narrower one afterwards.
 - **Not here yet.** `webhooks.partner` is not asked for; managing the
   partner webhook is #429.
 

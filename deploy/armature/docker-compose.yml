@@ -1,7 +1,8 @@
 # A real Armature beside the stack, for make test-armature (mk/armature.mk):
 # built from the commit api/armature/SOURCE names, which is also the commit
 # whose API document the armature-stub is held to. Only what Stator calls
-# runs: the api, the worker that posts webhooks, and what those two need.
+# runs: the api, the worker that posts webhooks, the web app whose consent
+# page a person allows Stator on, and what those need.
 # Every service joins the stack's own network, so Stator's api and worker
 # reach it as armature-api and its worker posts to Stator's api as api.
 # Names start with armature- because the stack has an api of its own.
@@ -95,14 +96,42 @@ services:
       # keycloak:8080, as Stator's api does.
       ARMATURE_OIDC_BACKCHANNEL: http://localhost:${KEYCLOAK_PORT:-8180}=http://keycloak:8080
       ARMATURE_OIDC_REDIRECT_URL: http://localhost:${ARMATURE_PORT:-8191}/api/v1/auth/oidc/callback
-    ports:
-      - "127.0.0.1:${ARMATURE_PORT:-8191}:8080"
     healthcheck:
       test: ["CMD", "/app/api", "-healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 30s
+      start_interval: 1s
+
+  # The browser opens Armature here, as in Armature's own browser suite: its
+  # production bundle behind its nginx, which sends /api and the metadata
+  # documents to the api. Its nginx names the api api, which on this network
+  # is Stator's, so the address is changed before nginx starts.
+  armature-web:
+    image: stator-armature-web:${ARMATURE_REF:?the pinned commit}
+    build:
+      <<: *build
+      dockerfile: deploy/Dockerfile.web
+      target: production
+    depends_on:
+      armature-api:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - >-
+        sed -i 's#http://api:8080#http://armature-api:8080#' /etc/nginx/conf.d/default.conf
+        && grep -q 'http://armature-api:8080' /etc/nginx/conf.d/default.conf
+        && exec nginx -g 'daemon off;'
+    ports:
+      - "127.0.0.1:${ARMATURE_PORT:-8191}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
       start_interval: 1s
 
   armature-worker:

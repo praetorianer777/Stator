@@ -12,7 +12,7 @@ import (
 )
 
 // everything is what the Armature of api/armature/SOURCE reports.
-var everything = []string{"calendar@1", "issue-embed@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1"}
+var everything = []string{"calendar@1", "issue-embed@1", "plan@1", "remote-link-relations@1", "remote-links@1", "reports@1", "theme-export@1", "webhooks@1", CapabilityPartnerTokens, "webhooks.partner@1"}
 
 func metaServer(t *testing.T, calls *atomic.Int32, answer func(w http.ResponseWriter)) string {
 	t.Helper()

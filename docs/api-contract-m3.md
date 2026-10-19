@@ -785,8 +785,12 @@ starts beside it.
   Valkey of their own on the stack's network, as `armature-api` and the rest.
   The stack's api and worker reach `armature-api` through the guard and the
   backchannel like the stub, and Armature's worker posts webhooks to `api`.
-  It publishes `ARMATURE_PORT`, the tenth port of the checkout's block, which
-  `.cache/stack.env` names as `STATOR_REAL_ARMATURE_URL`. Its api reaches the
+  Armature's web app, its production bundle behind its own nginx as
+  `armature-web`, serves the consent page and sends `/api` and the metadata
+  documents on to `armature-api`. It publishes `ARMATURE_PORT`, the tenth port
+  of the checkout's block, which `.cache/stack.env` names as
+  `STATOR_REAL_ARMATURE_URL`, so a browser opens Armature at one address as
+  people do. Its api reaches the
   stack's Keycloak as Stator's does, so both sign in through the one realm
   `dynamo`, each with its own client (#411). Every run starts
   from an empty Armature and removes it afterwards; `KEEP_ARMATURE=1` keeps
@@ -798,8 +802,11 @@ starts beside it.
   epic over two dated issues and a third issue due this month; each of them
   gets a personal access token, Mia uses one of Armature's example themes,
   and a webhook to Stator is registered for the topics Stator reads.
-- **What it covers.** Connecting Armature in the settings and storing a
-  token; a chip, the issue block (inserted from the slash menu too), the
+- **What it covers.** Connecting Armature in the settings; connecting an
+  account with one click, through Armature's sign-in and its real consent
+  page, where Ada allows the pending Stator first and Mia then allows it for
+  herself, Stator reading an issue as Mia and Disconnect ending her grant in
+  Armature; storing a token instead; a chip, the issue block (inserted from the slash menu too), the
   issue list, the chart, the roadmap and the calendar's issues as Mia sees
   them, and Nils seeing none of them; issues filed from a selection; the
   remote link a published page puts on its issue, and its removal when the
