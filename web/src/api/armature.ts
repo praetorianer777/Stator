@@ -74,6 +74,37 @@ export function useRemoveArmatureConnection() {
   });
 }
 
+/** Stator as a connected app of Armature, for administrators; the client secret never comes back. */
+export type ArmatureApp = ArmatureConnection["app"];
+export type ArmatureAppInput = Wire["AppInput"];
+
+// A new client id forgets every member's grant, so the caller's own account
+// is asked again after the app changes.
+export function useSaveArmatureApp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: ArmatureAppInput): Promise<ArmatureConnection> => (await api.PUT("/armature/connection/app", { body })).data!.connection,
+    onSuccess: (connection) => {
+      queryClient.setQueryData(armatureConnectionQueryKey, connection);
+      void queryClient.invalidateQueries({ queryKey: armatureAccountQueryKey });
+    },
+  });
+}
+
+export function useRemoveArmatureApp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.DELETE("/armature/connection/app");
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: armatureConnectionQueryKey });
+      void queryClient.invalidateQueries({ queryKey: armatureAccountQueryKey });
+      forgetIssues(queryClient);
+    },
+  });
+}
+
 export function useArmatureAccount() {
   return useQuery({
     queryKey: armatureAccountQueryKey,

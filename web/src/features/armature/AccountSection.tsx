@@ -2,27 +2,41 @@ import { localDateFormat } from "@/lib/format";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useCheckArmature, useConnectArmature, useDisconnectArmature, type ArmatureAccount } from "@/api/armature";
-import { Button, Card, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, Card, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { ARMATURE_SECTION_ID, ARMATURE_TOKEN_PREFIX } from "@/config";
+import { ARMATURE_SECTION_ID, ARMATURE_TOKEN_PREFIX, type ArmatureOutcome } from "@/config";
 import { t } from "@/i18n";
-import { tokensUrl } from "./connectLink";
+import { appConnectHref, tokensUrl } from "./connectLink";
 
 const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
 /**
- * The caller's own Armature account: paste a token, see whom it acts as, check it, disconnect.
- * Reached from a connect hint, it focuses the token field and, once connected, hands over to onReturn.
+ * The caller's own Armature account: connect it with one click where Armature offers connected apps, or paste a token;
+ * see whom it acts as, check it, disconnect. Reached from a connect hint, it focuses the token field and, once connected,
+ * hands over to onReturn; returnTo is where a one-click connect comes back to, and outcome how the last one ended.
  */
-export function AccountSection({ focusToken = false, onReturn }: { focusToken?: boolean; onReturn?: () => void }) {
+export function AccountSection({
+  focusToken = false,
+  onReturn,
+  returnTo,
+  outcome,
+}: {
+  focusToken?: boolean;
+  onReturn?: () => void;
+  returnTo?: string;
+  outcome?: ArmatureOutcome;
+}) {
   const { data: account, isLoading, error } = useArmatureAccount();
   const check = useCheckArmature();
   const disconnect = useDisconnectArmature();
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(outcome === "connected" ? t.armature.account.outcomes.connected : "");
+  const [shownOutcome, setShownOutcome] = useState(outcome && outcome !== "connected" ? outcome : undefined);
 
   function forget() {
-    if (!window.confirm(t.armature.account.confirmDisconnect)) return;
+    const viaApp = account?.via === "app";
+    if (!window.confirm(viaApp ? t.armature.account.confirmDisconnectApp : t.armature.account.confirmDisconnect)) return;
     setNotice("");
+    setShownOutcome(undefined);
     disconnect.mutate(undefined, { onSuccess: () => setNotice(t.armature.account.disconnected) });
   }
 
@@ -40,6 +54,11 @@ export function AccountSection({ focusToken = false, onReturn }: { focusToken?: 
         {notice}
       </p>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
+      {shownOutcome && (
+        <div data-armature-outcome={shownOutcome}>
+          <ErrorBanner>{outcomeSentence(shownOutcome, account)}</ErrorBanner>
+        </div>
+      )}
       {isLoading || !account ? (
         isLoading && <Skeleton />
       ) : !account.configured ? (
@@ -47,7 +66,7 @@ export function AccountSection({ focusToken = false, onReturn }: { focusToken?: 
           {t.armature.account.notConfigured}
         </Card>
       ) : (
-        <Card className="space-y-4 p-4" data-armature-status={account.status}>
+        <Card className="space-y-4 p-4" data-armature-status={account.status} data-armature-via={account.via ?? undefined}>
           {account.connected && <Connected account={account} />}
           {account.connected && (
             <div className="flex flex-wrap gap-2">
@@ -59,24 +78,80 @@ export function AccountSection({ focusToken = false, onReturn }: { focusToken?: 
               </Button>
             </div>
           )}
-          {account.status !== "ok" && (
-            <TokenForm
-              account={account}
-              focus={focusToken}
-              returns={Boolean(onReturn)}
-              onConnected={() => {
-                setNotice("");
-                onReturn?.();
-              }}
-            />
-          )}
+          {account.status !== "ok" &&
+            (account.app.offered ? (
+              <OneClick account={account} focusToken={focusToken} returnTo={returnTo} returns={Boolean(onReturn)} onConnected={() => onReturn?.()} />
+            ) : (
+              <>
+                {account.app.refusal && (
+                  <p className="text-sm text-ink-muted" data-armature-refusal>
+                    {account.app.refusal}
+                  </p>
+                )}
+                <TokenForm
+                  account={account}
+                  focus={focusToken}
+                  returns={Boolean(onReturn)}
+                  onConnected={() => {
+                    setNotice("");
+                    onReturn?.();
+                  }}
+                />
+              </>
+            ))}
         </Card>
       )}
     </section>
   );
 }
 
+// A refusal of the registration is said in Armature's own words where the
+// account carries them.
+function outcomeSentence(outcome: ArmatureOutcome, account: ArmatureAccount | undefined): string {
+  if (outcome === "refused" && account?.app.refusal) return account.app.refusal;
+  return t.armature.account.outcomes[outcome];
+}
+
+// The token form stays behind a disclosure: the button is what most people
+// want, and a token is for an Armature that has not allowed Stator yet.
+function OneClick({
+  account,
+  focusToken,
+  returnTo,
+  returns,
+  onConnected,
+}: {
+  account: ArmatureAccount;
+  focusToken: boolean;
+  returnTo?: string;
+  returns: boolean;
+  onConnected: () => void;
+}) {
+  const [withToken, setWithToken] = useState(false);
+  return (
+    <div className="space-y-3" data-armature-one-click>
+      <p className="text-sm text-ink-muted">{t.armature.account.appIntro}</p>
+      {account.app.pending && (
+        <p className="text-sm text-ink" data-armature-app-pending>
+          {t.armature.account.appPending}
+        </p>
+      )}
+      {returnTo && <p className="text-sm text-ink-muted">{t.armature.account.appReturns}</p>}
+      <ButtonLink variant="primary" href={appConnectHref(returnTo)} data-action="connect-armature-app">
+        {t.armature.account.connectApp}
+      </ButtonLink>
+      <div>
+        <Button variant="link" aria-expanded={withToken} onClick={() => setWithToken((open) => !open)} data-action="use-armature-token">
+          {t.armature.account.useToken}
+        </Button>
+      </div>
+      {withToken && <TokenForm account={account} focus={focusToken || withToken} returns={returns} onConnected={onConnected} />}
+    </div>
+  );
+}
+
 function Connected({ account }: { account: ArmatureAccount }) {
+  const viaApp = account.via === "app";
   return (
     <div className="space-y-1 text-sm">
       {account.user && (
@@ -84,7 +159,8 @@ function Connected({ account }: { account: ArmatureAccount }) {
           {t.armature.account.connectedAs(account.user.name, account.user.email)}
         </p>
       )}
-      {account.status === "rejected" && <ErrorBanner>{t.armature.account.rejected}</ErrorBanner>}
+      {viaApp && <p className="text-ink-muted">{t.armature.account.viaApp}</p>}
+      {account.status === "rejected" && <ErrorBanner>{viaApp ? t.armature.account.rejectedApp : t.armature.account.rejected}</ErrorBanner>}
       {account.status === "unreachable" && <p className="text-ink-muted">{t.armature.account.unreachable}</p>}
       {account.checkedAt && <p className="text-ink-muted">{t.armature.account.checkedAt(when.format(new Date(account.checkedAt)))}</p>}
     </div>

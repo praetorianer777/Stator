@@ -3,6 +3,7 @@ import type { AuditAction } from "@/api/audit";
 import type { DeliveryState, WebhookTopic } from "@/api/webhooks";
 import type { ArmatureFeature } from "@/api/armature";
 import type { ExciterFeature } from "@/api/exciter";
+import type { ArmatureOutcome } from "@/config";
 
 /** The events a webhook may name besides everything. */
 type WebhookEventTopic = Exclude<WebhookTopic, "*">;
@@ -202,6 +203,8 @@ export const en = {
       title: "What members do next",
       intro:
         "Each member now connects their own Armature account: in Armature they open Tokens, make a token without the read-only mark and paste it under Your profile, Armature. Every hint to connect on a page takes them straight there.",
+      introApp:
+        "Each member now connects their own Armature account with one click: Connect Armature under Your profile, Armature, or any hint to connect on a page, and they allow Stator in Armature.",
       own: "Connect your own account",
     },
     capabilities: {
@@ -247,6 +250,55 @@ export const en = {
       disconnected: "Your Armature account is disconnected.",
       rejected: "Armature no longer accepts your token. Make a new one under Tokens in Armature and paste it here.",
       unreachable: "Armature did not answer the last check. Check again in a moment.",
+      connectApp: "Connect Armature",
+      appIntro: "Armature asks you once to allow Stator to see your issues and link pages to them, then sends you back here.",
+      appReturns: "Once you allow it, you go back to the page you came from.",
+      appPending:
+        "An Armature administrator has to allow Stator first. Until then Armature tells you so when you connect; an Armature administrator who connects their own account allows it on the way.",
+      useToken: "Use a token instead",
+      viaApp: "Connected through Armature's connected apps.",
+      rejectedApp: "Armature ended this connection, because it was disconnected there or Stator is no longer allowed. Connect Armature again.",
+      confirmDisconnectApp: "Disconnect your Armature account? Stator also ends its access in Armature. Pages show issue keys only until you connect again.",
+      outcomes: {
+        connected: "Your Armature account is connected.",
+        denied: "You did not allow Stator in Armature, so nothing is connected. Connect Armature again if you change your mind.",
+        expired: "That return from Armature did not belong to this session, or took too long. Connect Armature again.",
+        ended: "Armature no longer takes that answer. Connect Armature again.",
+        refused: "Armature would not register Stator. Paste a token instead, or ask an administrator to add Stator in Armature.",
+        unavailable: "This Armature does not offer connecting with one click. Paste a token instead.",
+        unreachable: "Armature did not answer. Try again in a moment.",
+        other_installation:
+          "That Armature account belongs to another Armature installation than the one connected. Sign in to the right one and connect again.",
+        not_configured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",
+        failed: "Armature did not connect your account. Try again, or paste a token instead.",
+      } as Record<ArmatureOutcome, string>,
+    },
+    app: {
+      title: "Connected app",
+      intro:
+        "Where Armature offers connected apps, members connect their accounts with one click instead of pasting a token. Stator registers itself the first time somebody connects.",
+      notOffered: "This Armature does not offer connected apps, so members paste a token.",
+      status: {
+        none: "Stator registers itself in Armature when the first member connects.",
+        pending:
+          "Stator is registered and waits for an Armature administrator to allow it. An Armature administrator who connects their own account allows it on the way.",
+        active: "Stator is allowed in Armature.",
+        refused: "Armature would not register Stator. It said:",
+      } as Record<"none" | "pending" | "active" | "refused", string>,
+      registeredBy: { stator: "Stator registered itself.", admin: "An administrator pasted it." } as Record<"stator" | "admin", string>,
+      clientIdShown: (id: string) => `Client id ${id}.`,
+      pasteTitle: "Register Stator by hand",
+      pasteIntro:
+        "In Armature, add Stator under Settings, Connected apps with the return address below and the scopes read and issue.write, then paste the client id and secret Armature shows.",
+      redirectUri: "Return address",
+      clientId: "Client id",
+      clientSecret: "Client secret",
+      clientSecretHint: "Shown once in Armature. Leave it empty for an app registered as public.",
+      save: "Save app",
+      saved: "The app is saved.",
+      remove: "Forget app",
+      confirmRemove: "Forget the app? Every member connected through it connects again.",
+      removed: "The app is forgotten. The next member to connect registers Stator again.",
     },
     links: {
       title: "Linked in Armature",
@@ -3241,6 +3293,8 @@ export const en = {
       "armature.connection_removed": "Armature disconnected",
       "exciter.connection_saved": "Exciter connected",
       "exciter.connection_removed": "Exciter disconnected",
+      "armature.app_saved": "Armature app saved",
+      "armature.app_removed": "Armature app removed",
       "page.exported": "Page exported",
       "page.shared": "Page shared",
       "audit.exported": "Audit log exported",

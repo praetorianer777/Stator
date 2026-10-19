@@ -39,12 +39,32 @@ function connection(over: Partial<ArmatureConnection> = {}): ArmatureConnection 
     connected: 0,
     updatedAt: "2026-10-01T08:00:00Z",
     partner: { status: "ok", meta: true, version: "1.3.0", capabilities: ARMATURE_CAPABILITIES, missing: [] },
+    app: {
+      offered: false,
+      status: "none",
+      clientId: null,
+      registeredBy: null,
+      refusal: null,
+      redirectUri: "http://stator.test/api/v1/armature/oauth/callback",
+      scopes: ["read", "issue.write"],
+    },
     ...over,
   };
 }
 
 function account(over: Partial<ArmatureAccount> = {}): ArmatureAccount {
-  return { configured: true, baseUrl: BASE, connected: false, status: "not_connected", user: null, checkedAt: null, missing: [], ...over };
+  return {
+    configured: true,
+    baseUrl: BASE,
+    connected: false,
+    via: null,
+    status: "not_connected",
+    user: null,
+    checkedAt: null,
+    missing: [],
+    app: { offered: false, pending: false, refusal: null, scopes: [] },
+    ...over,
+  };
 }
 
 const connectedAccount = account({

@@ -13,8 +13,8 @@ import {
 } from "@/api/exciter";
 import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { COPY_FEEDBACK_MS, EXCITER_SECTION_ID, EXCITER_WEBHOOK_SECRET_PREFIX } from "@/config";
-import { ConnectArmatureLink } from "@/features/armature/connectLink";
+import { COPY_FEEDBACK_MS, EXCITER_WEBHOOK_SECRET_PREFIX } from "@/config";
+import { ConnectExciterLink } from "./connectLink";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 
@@ -160,11 +160,7 @@ function MembersNext() {
     <section aria-labelledby="exciter-members" className="space-y-2" data-exciter-members="">
       <SectionTitle id="exciter-members">{t.exciter.members.title}</SectionTitle>
       <p className="text-sm text-ink-muted">{t.exciter.members.intro}</p>
-      {own && !works && (
-        <ConnectArmatureLink section={EXCITER_SECTION_ID} className="inline-flex text-sm text-accent hover:underline" data-action="connect-exciter-hint">
-          {t.exciter.members.own}
-        </ConnectArmatureLink>
-      )}
+      {own && !works && <ConnectExciterLink className="inline-flex text-sm text-accent hover:underline">{t.exciter.members.own}</ConnectExciterLink>}
     </section>
   );
 }

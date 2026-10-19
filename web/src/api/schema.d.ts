@@ -66,7 +66,7 @@ export interface paths {
         /** Store the caller's Armature personal access token, once Armature accepts it; it is never answered again. */
         put: operations["connectArmatureAccount"];
         post?: never;
-        /** Forget the caller's Armature token. */
+        /** Forget the caller's Armature token, or end their connected app's grant, in Armature too. */
         delete: operations["disconnectArmatureAccount"];
         options?: never;
         head?: never;
@@ -121,6 +121,24 @@ export interface paths {
         post?: never;
         /** Disconnect Armature, forgetting every stored token and the webhook secret. For administrators. */
         delete: operations["removeArmatureConnection"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/connection/app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store the connected app an Armature administrator registered for Stator by hand, where Armature registers none itself; a new client id forgets every member's grant of the old one. The secret is never answered. For administrators. */
+        put: operations["saveArmatureApp"];
+        post?: never;
+        /** Forget the connected app and every member's grant of it; the next member to connect registers Stator again. For administrators. */
+        delete: operations["removeArmatureApp"];
         options?: never;
         head?: never;
         patch?: never;
@@ -204,6 +222,40 @@ export interface paths {
         };
         /** One issue for an issue block or a hover card; null when the caller may not see it. */
         get: operations["getArmatureIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Where Armature sends the browser back: checks the state and the issuer, stores the grant and lands on the profile page with armature naming the outcome. */
+        get: operations["finishArmatureConnect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/armature/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Send the browser to Armature's consent page to connect the caller's account, registering Stator first when it is not yet. Needs a session; a refusal lands on the profile page with armature naming why. */
+        get: operations["startArmatureConnect"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4292,6 +4344,7 @@ export interface components {
             via: components["schemas"]["Subject"][];
         };
         Account: {
+            app: components["schemas"]["AccountApp"];
             baseUrl: string | null;
             /** Format: date-time */
             checkedAt: string | null;
@@ -4301,6 +4354,14 @@ export interface components {
             /** @enum {string} */
             status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
             user: components["schemas"]["AccountUser"] | null;
+            /** @enum {string|null} */
+            via: "app" | "token" | null;
+        };
+        AccountApp: {
+            offered: boolean;
+            pending: boolean;
+            refusal: string | null;
+            scopes: string[];
         };
         AccountUser: {
             email: string;
@@ -4331,6 +4392,10 @@ export interface components {
             page: components["schemas"]["PageRef"];
             snippet: components["schemas"]["Segment"][];
             title: components["schemas"]["Segment"][];
+        };
+        AppInput: {
+            clientId: string;
+            clientSecret: string;
         };
         Appearance: {
             cover: components["schemas"]["Cover"] | null;
@@ -4397,7 +4462,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -4413,7 +4478,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped")[];
+            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -4603,6 +4668,7 @@ export interface components {
             };
         };
         Connection: {
+            app: components["schemas"]["ConnectionApp"];
             baseUrl: string;
             connected: number;
             /** Format: uuid */
@@ -4614,6 +4680,17 @@ export interface components {
             webhookSecretSet: boolean;
             webhookTopics: string[];
             webhookUrl: string;
+        };
+        ConnectionApp: {
+            clientId: string | null;
+            offered: boolean;
+            redirectUri: string;
+            refusal: string | null;
+            /** @enum {string|null} */
+            registeredBy: "stator" | "admin" | null;
+            scopes: string[];
+            /** @enum {string} */
+            status: "none" | "pending" | "active" | "refused";
         };
         ConnectionCheck: {
             baseUrl: string;
@@ -7285,6 +7362,77 @@ export interface operations {
             };
         };
     };
+    saveArmatureApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connection: components["schemas"]["Connection"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeArmatureApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     checkArmatureConnection: {
         parameters: {
             query?: never;
@@ -7538,6 +7686,69 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    finishArmatureConnect: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                iss?: string;
+                error?: string;
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found: the browser is sent on. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startArmatureConnect: {
+        parameters: {
+            query?: {
+                /** @description A path of this application to go back to once connected. */
+                return?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found: the browser is sent on. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -8165,7 +8376,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -8214,7 +8425,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */

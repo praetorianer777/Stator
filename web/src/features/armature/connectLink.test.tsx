@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ARMATURE_RETURN_MAX_LENGTH } from "@/config";
-import { connectHref, safeReturn, tokensUrl } from "./connectLink";
+import { appConnectHref, connectHref, safeReturn, tokensUrl } from "./connectLink";
 
 describe("the way back from the token form", () => {
   it("keeps a path of this application with its query and anchor", () => {
@@ -30,6 +30,12 @@ describe("the way back from the token form", () => {
     expect(connectHref("/spaces/eng/plan?tab=issues")).toBe("/settings/profile?return=%2Fspaces%2Feng%2Fplan%3Ftab%3Dissues#armature");
     expect(connectHref("//evil.example")).toBe("/settings/profile#armature");
     expect(connectHref(undefined)).toBe("/settings/profile#armature");
+  });
+
+  it("starts a one-click connect with the same way back, and none it does not trust", () => {
+    expect(appConnectHref("/spaces/eng/plan?tab=issues")).toBe("/api/v1/armature/oauth/start?return=%2Fspaces%2Feng%2Fplan%3Ftab%3Dissues");
+    expect(appConnectHref("//evil.example")).toBe("/api/v1/armature/oauth/start");
+    expect(appConnectHref("/settings/profile")).toBe("/api/v1/armature/oauth/start");
   });
 
   it("opens Armature's tokens under the connected address, with or without a trailing slash", () => {

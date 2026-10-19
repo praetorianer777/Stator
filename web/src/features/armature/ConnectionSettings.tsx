@@ -17,6 +17,7 @@ import { ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS, ARMATURE_WEBHOOK_SECRET_PREFIX, COP
 import { t } from "@/i18n";
 import { useDebounced } from "@/lib/debounce";
 import { localDateFormat } from "@/lib/format";
+import { ConnectedApp } from "./ConnectedApp";
 import { ConnectArmatureLink } from "./connectLink";
 
 /** The organization's Armature instance and its webhook, for administrators. */
@@ -45,6 +46,7 @@ export function ConnectionSettings() {
       <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
       {connection && save.isSuccess && !connection.lastDelivery && <WebhookPending connection={connection} />}
       {connection && <MembersNext />}
+      {connection && <ConnectedApp connection={connection} />}
       {connection && <Capabilities partner={connection.partner} />}
       {connection && <Webhook connection={connection} />}
       {connection && (
@@ -200,7 +202,7 @@ function MembersNext() {
   return (
     <section aria-labelledby="armature-members" className="space-y-2" data-armature-members="">
       <SectionTitle id="armature-members">{t.armature.members.title}</SectionTitle>
-      <p className="text-sm text-ink-muted">{t.armature.members.intro}</p>
+      <p className="text-sm text-ink-muted">{own?.app?.offered ? t.armature.members.introApp : t.armature.members.intro}</p>
       {own && !works && <ConnectArmatureLink className="inline-flex text-sm text-accent hover:underline">{t.armature.members.own}</ConnectArmatureLink>}
     </section>
   );

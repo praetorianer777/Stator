@@ -24,6 +24,8 @@ const account = (over: Partial<ArmatureAccount> = {}): ArmatureAccount => ({
     email: "ada@acme.armature.test",
   },
   checkedAt: "2026-10-01T09:00:00Z",
+  via: "token",
+  app: { offered: false, pending: false, refusal: null, scopes: [] },
   missing: [],
   ...over,
 });

@@ -244,6 +244,7 @@ whose capability it does not list:
 | linking pages to the issues they name | `remote-links@1` |
 | following the Armature theme | `theme-export@1` |
 | the webhook from Armature | `webhooks@1` |
+| connecting an account with one click, below | `oauth.partner-tokens@1` |
 
 Armature names no capability for filing issues, so creating them rests on
 `issue-embed@1`, which the chips they leave behind need; a name for it belongs
@@ -328,6 +329,71 @@ signatures; the routes are under `/exciter`.
   `/requirements/{reqKey}` in Exciter's shapes and posts signed deliveries; a
   contract test holds both to `api/exciter/openapi.json`, which
   `make exciter-openapi REF=<sha>` vendors and `api/exciter/SOURCE` pins.
+## Connecting an account with one click
+
+Where Armature lists `oauth.partner-tokens@1` at `/meta`, a person connects
+their Armature account with **Connect Armature** instead of pasting a personal
+access token (#428). Stator is a connected app of Armature, as Armature's
+`docs/oauth.md` sets it out; the token form stays, under "Use a token
+instead", and is all an Armature without the capability is offered.
+
+- **Discovery.** Every address comes from
+  `{base}/.well-known/oauth-authorization-server`; its issuer has to be the
+  address the site connected, and it has to offer PKCE with `S256`. Each api
+  process keeps it for `armature.MetadataTTL`, five minutes.
+- **Registration.** The first person to connect registers Stator at the
+  registration endpoint (RFC 7591), with the return address
+  `{STATOR_APP_URL}/api/v1/armature/oauth/callback`, the scopes
+  `read issue.write` and HTTP Basic at the token endpoint. Armature holds the
+  app pending until one of its administrators allows it, which happens on the
+  consent page when an Armature administrator connects their own account; a
+  member meets "Stator is not connected to Armature yet" there, and Stator
+  says so beside the button meanwhile. An advisory lock keeps two people from
+  registering it twice.
+- **Registration closed.** An Armature that registers apps only by hand
+  answers 403 `access_denied`, or names no registration endpoint. Stator keeps
+  Armature's sentence and shows it to members, who keep the token form, and
+  to administrators under Settings, Armature, Connected app, where they paste
+  the client id and secret an Armature administrator made under Settings,
+  Connected apps (`PUT /armature/connection/app`). A new client id forgets
+  every grant of the old one; `DELETE /armature/connection/app` forgets the
+  app and its grants, and the next person to connect registers Stator again.
+- **The trip.** `GET /api/v1/armature/oauth/start?return=<path>` needs a
+  session. It keeps the digest of a 256-bit state, the person, the session,
+  the PKCE verifier and the way back in `armature_oauth_attempt` for ten
+  minutes, and sends the browser to the consent page. The callback answers
+  only the session that started the trip, once, and only an `iss` equal to
+  the issuer (RFC 9207); it redeems the code with the verifier, asks
+  `/auth/me` who the grant acts as, holds it to the connected installation as
+  a token is held, and lands on the profile with `armature` naming the
+  outcome (`connected`, `denied`, `expired`, `ended`, `refused`,
+  `unavailable`, `unreachable`, `other_installation`, `not_configured`,
+  `failed`). Connected with a way back, the profile goes on to it at once.
+  The way back follows the sign-in's rules: a path of this application only.
+- **The grant.** One row per person in `armature_grant`: both tokens sealed
+  with `STATOR_SECRET_KEY`, bound to the site, the person and which token it
+  is, their expiries and the scopes Armature granted. A grant replaces a
+  pasted token and a pasted token a grant, so each person has one. Every call
+  Stator makes as the person, the worker's link sync included, uses the grant
+  when there is one and the token otherwise.
+- **Refreshing.** An access token running out within `armature.RefreshAhead`
+  is renewed before the call, and a call answered 401 is renewed once and
+  sent again. Armature ends a grant whose rotated refresh token is presented
+  twice, so the renewal runs under `SELECT ... FOR UPDATE` on the person's
+  row; a second request waiting there finds the new tokens and uses them.
+  `invalid_grant` means the grant ended in Armature (disconnected there, the
+  app removed, the person switched off): the account says so as `rejected`,
+  in a sentence that asks to connect again.
+- **Disconnecting** forgets the grant and revokes its refresh token at
+  Armature's revocation endpoint (RFC 7009), which ends it there too; an
+  Armature that does not answer is logged, and the grant ends there unused.
+- **The database.** `armature_app` is the administrators' alone; what a
+  member's connect needs of it the service reads as `stator_admin`, so the
+  sealed secret stays behind. A person reads and changes only their own grant
+  and trip. A new Armature address forgets the app and every grant with the
+  tokens.
+- **Not here yet.** `webhooks.partner` is not asked for; managing the
+  partner webhook is #429.
 
 ## The rules
 

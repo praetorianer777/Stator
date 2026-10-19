@@ -447,6 +447,26 @@ export const ARMATURE_RETURN_MAX_LENGTH = 2000;
 export const ARMATURE_TOKENS_PATH = "/settings/tokens";
 /** Where an administrator connects the organization's Armature. */
 export const ARMATURE_SETTINGS_PATH = "/settings/armature";
+/** Where the browser goes to connect an account with one click; the server sends it on to Armature's consent page. */
+export const ARMATURE_CONNECT_PATH = `${API_BASE}/armature/oauth/start`;
+/** The query parameter the server lands on the profile with, naming how a connect ended. */
+export const ARMATURE_OUTCOME_PARAM = "armature";
+/** How every connect may end, as the server names it. */
+export const ARMATURE_OUTCOMES = [
+  "connected",
+  "denied",
+  "expired",
+  "ended",
+  "refused",
+  "unavailable",
+  "unreachable",
+  "other_installation",
+  "not_configured",
+  "failed",
+] as const;
+export type ArmatureOutcome = (typeof ARMATURE_OUTCOMES)[number];
+/** How every client secret Armature shows for a connected app starts. */
+export const ARMATURE_CLIENT_SECRET_PREFIX = "armature_ocs_";
 
 /** Where an administrator reads the organization's audit log. */
 export const AUDIT_PATH = "/settings/audit";

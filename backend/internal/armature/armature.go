@@ -173,6 +173,88 @@ type Connection struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	// Partner is what Armature said of itself at /meta, asked afresh.
 	Partner Partner `json:"partner"`
+	// App is Stator as a connected app of this Armature.
+	App ConnectionApp `json:"app"`
+}
+
+// AppStatus is where Stator stands as a connected app of Armature.
+type AppStatus string
+
+const (
+	// AppNone is no app yet: the first member to connect registers it.
+	AppNone AppStatus = "none"
+	// AppPending is registered by Stator and not yet allowed by an Armature
+	// administrator, as far as Stator knows: no grant was ever redeemed.
+	AppPending AppStatus = "pending"
+	AppActive  AppStatus = "active"
+	// AppRefused is an Armature that would not register Stator; Refusal
+	// holds its sentence, and an administrator pastes the app instead.
+	AppRefused AppStatus = "refused"
+)
+
+// AppStatuses lists every AppStatus, for the API document.
+var AppStatuses = []AppStatus{AppNone, AppPending, AppActive, AppRefused}
+
+// AppRegistrar says who registered the app in Armature.
+type AppRegistrar string
+
+const (
+	RegisteredByStator AppRegistrar = "stator"
+	RegisteredByAdmin  AppRegistrar = "admin"
+)
+
+// AppRegistrars lists every AppRegistrar, for the API document.
+var AppRegistrars = []AppRegistrar{RegisteredByStator, RegisteredByAdmin}
+
+// ConnectionApp is Stator as a connected app, for administrators. The client
+// secret is never answered.
+type ConnectionApp struct {
+	// Offered says Armature reports oauth.partner-tokens@1, so members see
+	// Connect Armature instead of the token form.
+	Offered      bool          `json:"offered"`
+	Status       AppStatus     `json:"status"`
+	ClientID     *string       `json:"clientId"`
+	RegisteredBy *AppRegistrar `json:"registeredBy"`
+	// Refusal is Armature's sentence when it would not register Stator.
+	Refusal *string `json:"refusal"`
+	// RedirectURI is the return address to register by hand.
+	RedirectURI string `json:"redirectUri"`
+	// Scopes are what Stator asks of Armature for each person.
+	Scopes []string `json:"scopes"`
+}
+
+// AppInput is an app an Armature administrator registered for Stator by
+// hand. A new client id forgets every grant of the old one.
+type AppInput struct {
+	ClientID string `json:"clientId"`
+	// ClientSecret is empty for an app registered as public.
+	ClientSecret string `json:"clientSecret"`
+}
+
+// AccountVia says how the caller's account is connected.
+type AccountVia string
+
+const (
+	// ViaApp is a grant from Armature's consent page.
+	ViaApp AccountVia = "app"
+	// ViaToken is a pasted personal access token.
+	ViaToken AccountVia = "token"
+)
+
+// AccountVias lists every AccountVia, for the API document.
+var AccountVias = []AccountVia{ViaApp, ViaToken}
+
+// AccountApp is what the caller needs to know of the connected app.
+type AccountApp struct {
+	// Offered says Connect Armature may be offered: Armature reports
+	// oauth.partner-tokens@1 and has not refused Stator.
+	Offered bool `json:"offered"`
+	// Pending says an Armature administrator has to allow Stator first.
+	Pending bool `json:"pending"`
+	// Refusal is Armature's sentence when it would not register Stator.
+	Refusal *string `json:"refusal"`
+	// Scopes are what the caller's grant holds, empty without one.
+	Scopes []string `json:"scopes"`
 }
 
 // ConnectionInput sets the instance. Changing baseUrl forgets every stored
@@ -190,9 +272,13 @@ type Account struct {
 	Configured bool `json:"configured"`
 	// BaseURL is where issues open, null until configured.
 	BaseURL *string `json:"baseUrl"`
-	// Connected says the caller stored a token.
-	Connected bool   `json:"connected"`
-	Status    Status `json:"status"`
+	// Connected says the caller stored a token or connected Stator's app.
+	Connected bool `json:"connected"`
+	// Via is how, null while not connected.
+	Via    *AccountVia `json:"via"`
+	Status Status      `json:"status"`
+	// App is what the caller may do with the connected app.
+	App AccountApp `json:"app"`
 	// User is who the token acts as in Armature, as the last check found.
 	User      *AccountUser `json:"user"`
 	CheckedAt *time.Time   `json:"checkedAt"`

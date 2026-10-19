@@ -1,8 +1,8 @@
 import { createContext, useContext, useMemo, useRef, type ReactNode } from "react";
 import { exciterLacks, useExciterAccount, useExciterRequirements, type ExciterAccount, type ExciterRequirement, type ExciterRequirements } from "@/api/exciter";
 import { cx } from "@/components/ui";
-import { EXCITER_FEATURE_CAPABILITIES, EXCITER_SECTION_ID } from "@/config";
-import { ConnectArmatureLink } from "@/features/armature/connectLink";
+import { EXCITER_FEATURE_CAPABILITIES } from "@/config";
+import { ConnectExciterLink } from "./connectLink";
 import { t } from "@/i18n";
 import { requirementBatches, requirementUrl } from "./requirementKeys";
 
@@ -136,10 +136,10 @@ function ConnectHint({ links, refused }: { links: boolean; refused: boolean }) {
   const short = refused ? c.replaceShort : c.connectShort;
   if (!links) return <span className="text-xs text-ink-muted">{short}</span>;
   return (
-    <ConnectArmatureLink section={EXCITER_SECTION_ID} className="text-xs text-ink-muted underline" data-action="connect-exciter-hint">
+    <ConnectExciterLink className="text-xs text-ink-muted underline">
       {short}
       <span className="sr-only">{c.connectRest}</span>
-    </ConnectArmatureLink>
+    </ConnectExciterLink>
   );
 }
 

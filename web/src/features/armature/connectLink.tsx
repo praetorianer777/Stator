@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { ARMATURE_RETURN_MAX_LENGTH, ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, ARMATURE_TOKENS_PATH, PROFILE_PATH } from "@/config";
+import { useArmatureAccount } from "@/api/armature";
+import { ARMATURE_CONNECT_PATH, ARMATURE_RETURN_MAX_LENGTH, ARMATURE_RETURN_PARAM, ARMATURE_SECTION_ID, ARMATURE_TOKENS_PATH, PROFILE_PATH } from "@/config";
 import { t } from "@/i18n";
 
 // Control characters, a backslash or whitespace in a path are never written by
@@ -42,6 +43,13 @@ export function connectHref(from: string | undefined, section: string = ARMATURE
   return `${PROFILE_PATH}${query}#${section}`;
 }
 
+/** The server's start of a one-click connect, which comes back to the profile and from there to where the person was. */
+export function appConnectHref(from: string | undefined): string {
+  const back = safeReturn(from);
+  const query = back ? `?${new URLSearchParams({ [ARMATURE_RETURN_PARAM]: back })}` : "";
+  return `${ARMATURE_CONNECT_PATH}${query}`;
+}
+
 /** Armature's page for making tokens, under the address the organization connected. */
 export function tokensUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}${ARMATURE_TOKENS_PATH}`;
@@ -51,31 +59,36 @@ type Router = ReturnType<typeof useRouter> | undefined;
 
 // Hints are also drawn inside the editor's node views and in tests without a
 // router, where the browser's address is the only one there is.
-function here(router: Router): string {
+export function here(router: Router): string {
   if (router) return router.state.location.href;
   return `${window.location.pathname}${window.location.search}${window.location.hash}`;
 }
 
-type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
-  /** The profile section whose token form the hint opens; Armature's when left out. */
-  section?: string;
-};
+type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">;
 
-/** A connect hint: opens the token form and comes back here once the account is connected. */
-export function ConnectArmatureLink({ onClick, children, section, ...rest }: LinkProps) {
+/**
+ * A connect hint: where Armature offers connected apps it goes straight to Armature's consent page,
+ * otherwise it opens the token form; either way it comes back here once the account is connected.
+ */
+export function ConnectArmatureLink({ onClick, children, ...rest }: LinkProps) {
   const router = useRouter({ warn: false }) as Router;
+  const { data: account } = useArmatureAccount();
+  // An api from before connected apps answers no app.
+  const oneClick = Boolean(account?.app?.offered);
+  const hrefOf = oneClick ? appConnectHref : connectHref;
   function follow(event: MouseEvent<HTMLAnchorElement>) {
     onClick?.(event);
     // The page may have moved on since the hint was drawn, so the way back is
     // taken at the moment the hint is followed.
-    const href = connectHref(here(router), section);
+    const href = hrefOf(here(router));
     event.currentTarget.href = href;
-    if (event.defaultPrevented || !router || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    // The one-click start is the server's, which the browser has to load itself.
+    if (oneClick || event.defaultPrevented || !router || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     router.history.push(href);
   }
   return (
-    <a data-action="connect-armature-hint" {...rest} href={connectHref(here(router), section)} onClick={follow}>
+    <a data-action="connect-armature-hint" data-one-click={oneClick ? "" : undefined} {...rest} href={hrefOf(here(router))} onClick={follow}>
       {children}
     </a>
   );
