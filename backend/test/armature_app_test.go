@@ -429,7 +429,7 @@ func TestConnectedAppRowsAreWalledByTheDatabase(t *testing.T) {
 		VALUES ($1, '\x00', '\x00', now(), now(), '{}', 'ok')`, home.user)
 	denied(t, conn, "starting a trip for the owner", `INSERT INTO armature_oauth_attempt (state_digest, user_id, session_id, code_verifier, expires_at)
 		VALUES ('\x01', $1, $2, 'v', now() + interval '1 hour')`, home.user, uuid.New())
-	denied(t, conn, "replacing the app", `UPDATE armature_app SET client_id = 'mine'`)
+	untouched(t, conn, "replacing the app", `UPDATE armature_app SET client_id = 'mine'`)
 	denied(t, conn, "choosing his grant's id", `INSERT INTO armature_grant (user_id, id, access_token, refresh_token, access_expires_at, refresh_expires_at, scopes, status)
 		VALUES ($1, $2, '\x00', '\x00', now(), now(), '{}', 'ok')`, bobID, uuid.New())
 
