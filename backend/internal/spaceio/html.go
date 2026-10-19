@@ -18,6 +18,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/markdown"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 )
@@ -53,6 +54,7 @@ var drawnInStator = map[string]bool{
 	document.NodeCalendar: true, document.NodeLabelledPages: true, document.NodeRecentlyUpdated: true,
 	document.NodeBlogPosts: true, document.NodeTaskReport: true, document.NodePropertiesReport: true,
 	document.NodeContributors: true, armature.NodeIssueList: true, armature.NodeChart: true, armature.NodeRoadmap: true,
+	exciter.NodeRequirementList: true,
 }
 
 // drawnNote is what stands in their place.

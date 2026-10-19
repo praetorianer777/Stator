@@ -197,6 +197,18 @@ func (w words) issueList(query string) string {
 	return w.pick("A list of Armature issues: ", "Eine Liste von Armature-Vorgängen: ") + query + "." + w.see()
 }
 
+func (w words) requirement(key string) string {
+	return w.pick("Exciter requirement ", "Exciter-Anforderung ") + key + "." + w.see()
+}
+
+func (w words) requirementList(project, query string) string {
+	out := w.pick("A list of Exciter requirements in ", "Eine Liste von Exciter-Anforderungen in ") + project
+	if strings.TrimSpace(query) != "" {
+		out += ": " + query
+	}
+	return out + "." + w.see()
+}
+
 func (w words) issueChart(project, query string) string {
 	return w.pick("An Armature chart of ", "Ein Armature-Diagramm von ") + project + ": " + query + "." + w.see()
 }

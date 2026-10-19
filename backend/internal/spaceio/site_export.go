@@ -36,6 +36,8 @@ var notCarried = []Omission{
 	{Key: "signInSecret", What: "The sign-in provider's client secret", Why: "It is sealed with this server's key. The provider comes across switched off unless the organization it lands in has one; enter the secret and switch it on."},
 	{Key: "webhookSecrets", What: "Webhook signing secrets", Why: "They are sealed with this server's key. Each webhook comes across switched off; rotate its secret, give the receiver the new one and switch it on."},
 	{Key: "armatureWebhookSecret", What: "Armature's webhook secret", Why: "It is sealed with this server's key. Save the Armature connection again and enter the new secret in Armature."},
+	{Key: "exciterAccounts", What: "Linked Exciter accounts", Why: "Each person's Exciter token is sealed with this server's key. Everybody pastes an Exciter token again under their profile."},
+	{Key: "exciterWebhookSecret", What: "Exciter's webhook secret", Why: "It is sealed with this server's key. Save the Exciter connection again and enter the new secret in Exciter."},
 	{Key: "joinRequests", What: "Requests to join", Why: "They wait for an administrator of this organization; whoever still wants in signs in again."},
 	{Key: "links", What: "Shares, public links and anonymous reads by link", Why: "A link opens the organization to people; give them again where it lands."},
 	{Key: "personal", What: "Notifications, stars, watches, page views and visits", Why: "They are each person's own reading of the old place."},
@@ -68,6 +70,7 @@ func readSite(ctx context.Context, tx db.DBTX, exporter uuid.UUID) (*siteSnapsho
 		func() error { return s.readPermissions(ctx, tx) },
 		func() error { return s.readSignIn(ctx, tx) },
 		func() error { return s.readArmature(ctx, tx) },
+		func() error { return s.readExciter(ctx, tx) },
 		func() error { return s.readBrand(ctx, tx) },
 		func() error { return s.readThemes(ctx, tx) },
 		func() error { return s.readTemplates(ctx, tx) },
@@ -199,6 +202,19 @@ func (s *siteSnapshot) readArmature(ctx context.Context, tx db.DBTX) error {
 		return err
 	}
 	s.m.Armature = &a
+	return nil
+}
+
+func (s *siteSnapshot) readExciter(ctx context.Context, tx db.DBTX) error {
+	var e SiteExciter
+	err := tx.QueryRow(ctx, `SELECT base_url FROM exciter_connection`).Scan(&e.BaseURL)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	case err != nil:
+		return err
+	}
+	s.m.Exciter = &e
 	return nil
 }
 
@@ -375,6 +391,7 @@ func (s *siteSnapshot) readNotCarried(ctx context.Context, tx db.DBTX) error {
 	counts := map[string]string{
 		"tokens":           `SELECT count(*) FROM api_token WHERE NOT for_render`,
 		"armatureAccounts": `SELECT (SELECT count(*) FROM armature_token) + (SELECT count(*) FROM armature_grant)`,
+		"exciterAccounts":  `SELECT count(*) FROM exciter_token`,
 		"webhookSecrets":   `SELECT count(*) FROM webhook_endpoint`,
 		"joinRequests":     `SELECT count(*) FROM join_request`,
 		"links":            `SELECT (SELECT count(*) FROM page_share) + (SELECT count(*) FROM page_link)`,

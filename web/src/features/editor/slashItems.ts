@@ -62,6 +62,16 @@ export const SLASH_ITEMS: SlashItem[] = [
   { ...item("armatureRoadmap", Icon.Roadmap, ["armature", "roadmap", "timeline", "epics", "plan", "gantt"], (c) => c.pickArmatureRoadmap()), armature: true },
   { ...item("armatureIssueList", Icon.Table, ["armature", "issues", "query", "nql", "list"], (c) => c.pickArmatureIssueList()), armature: true },
   { ...item("exciterRequirement", Icon.Task, ["exciter", "requirement", "spec", "specification"], (c) => c.pickExciterRequirement()), exciter: true },
+  {
+    ...item("exciterRequirementBlock", Icon.Task, ["exciter", "requirement", "statement", "rationale", "spec", "block"], (c) =>
+      c.pickExciterRequirementBlock(),
+    ),
+    exciter: true,
+  },
+  {
+    ...item("exciterRequirementList", Icon.Table, ["exciter", "requirements", "query", "list", "table"], (c) => c.pickExciterRequirementList()),
+    exciter: true,
+  },
   item("status", Icon.Label, ["status", "state", "badge", "label", "tag"], (c) => c.insertStatus()),
   item("date", Icon.Calendar, ["date", "day", "today", "deadline", "when"], (c) => c.insertDate()),
   item("labelledPages", Icon.Label, ["content by label", "labels", "tagged", "list", "pages"], (c) => c.pickLabelledPages()),

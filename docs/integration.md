@@ -308,9 +308,40 @@ signatures; the routes are under `/exciter`.
   under its current key, which the chip shows. Exciter's 404 is a requirement
   the reader does not see: the chip shows the key and says so. Without a
   token the key is a link to Exciter beside a hint that opens the token form.
+- **The picker.** The slash menu's Exciter requirement and Exciter
+  requirement block open one picker: `GET /exciter/search?q=` asks Exciter's
+  `GET /search/quick` as the author for the requirements whose key or title
+  start with the words, at most 10, sections left out. Words that are a
+  former key are read by key too, so the requirement it names now is offered.
+  Only a requirement Exciter found reaches the page.
+- **Requirement blocks.** An `exciterRequirementBlock` node holds the key
+  alone. `GET /exciter/requirements/{reqKey}` answers the chip's fields with
+  the `statement` and `rationale`, ProseMirror documents in Exciter's schema,
+  null when empty; chips and blocks share one cache entry per key. The block
+  draws the nodes and marks Stator knows (paragraphs, headings as bold lines
+  outside the page's outline, lists, quotes, code, rules, tables, bold,
+  italic, strike, code and links of `http`, `https` and `mailto` only); a
+  picture, an attachment, a mention, a glossary term and any node a later
+  Exciter adds are shown as their words.
+- **List blocks.** An `exciterRequirementList` node holds `project`, `query`
+  and `limit` (1 to 500), never its rows. The editor offers the projects
+  `GET /exciter/projects` reads from Exciter's `GET /projects` as the author,
+  and completes the query at the caret from
+  `GET /exciter/projects/{projectKey}/requirements/suggest?q=&at=`, Exciter's
+  suggest; `at` counts characters, and a pick writes over the characters
+  `completion.from` to `completion.to`. Each reader's view asks
+  `GET /exciter/projects/{projectKey}/requirements?query=&limit=&offset=`,
+  Exciter's grid with `kind=requirement`, with their own token, so
+  `currentUser()` is the reader; it shows key, title, status and revision, 50
+  rows a request up to the limit, with `total` for Show more. A query Exciter
+  does not read is 422 `bad_query` with `position`, which the block and the
+  editor mark in the query; a project the reader may not view answers
+  `found: false`. A blank query lists the whole project.
 - **Cache.** Each answer is kept per viewer's token row for at most
   `exciter.RequirementCacheTTL`, 60 seconds, in Valkey, with the keys each
-  requirement was read by under its id.
+  requirement was read by under its id. Lists are kept per reader, project,
+  query and window, and the projects per reader; the picker and completion
+  ask Exciter each time.
 - **Webhooks.** An Exciter administrator adds a webhook for
   `POST /api/v1/exciter/webhook`, envelope version 1, with the topics
   `requirement.created`, `requirement.revised`, `requirement.changed`,
@@ -323,12 +354,21 @@ signatures; the routes are under `/exciter`.
   `unsupported_version`). A body whose `source` is not `exciter`, and a topic
   or field Stator does not know, is answered 204 and changes nothing. A
   delivery only clears the cache: the keys it names, `fromKey` and `toKey`,
-  and every key the requirement of its `id` was read by. Its payload, read as
-  the webhook's owner, is never shown.
-- **The stand-in.** `cmd/exciter-stub` serves `/meta`, `/auth/me` and
-  `/requirements/{reqKey}` in Exciter's shapes and posts signed deliveries; a
-  contract test holds both to `api/exciter/openapi.json`, which
-  `make exciter-openapi REF=<sha>` vendors and `api/exciter/SOURCE` pins.
+  every key the requirement of its `id` was read by, and every list, as any
+  change may change what a query finds. Its payload, read as the webhook's
+  owner, is never shown.
+- **Moving an organization.** The organization's archive carries the
+  Exciter address, as it carries Armature's; the members' tokens and the
+  webhook secret stay behind and are listed among what does not come across.
+  An organization that has its own Exciter connection keeps it.
+- **The stand-in.** `cmd/exciter-stub` serves `/meta`, `/auth/me`,
+  `/requirements/{reqKey}`, `/search/quick`, `/projects` and a project's
+  `/requirements` and `/requirements/suggest` in Exciter's shapes, with a
+  small part of the query language (conditions on `key`, `title`, `status`
+  and `owner` joined by `AND`, `currentUser()`, `ORDER BY`), and posts signed
+  deliveries; a contract test holds both to `api/exciter/openapi.json`,
+  which `make exciter-openapi REF=<sha>` vendors and `api/exciter/SOURCE`
+  pins.
 ## Connecting an account with one click
 
 Where Armature lists `oauth.partner-tokens@1` at `/meta`, a person connects

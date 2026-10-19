@@ -93,7 +93,7 @@ export function textOf(node: DocNode): string {
   if (node.type === "mention") return `@${String(node.attrs?.label ?? "")}`;
   if (node.type === "hardBreak") return "\n";
   if (node.type === "attachment") return String(node.attrs?.fileName ?? "");
-  if (node.type === "armatureIssue" || node.type === "armatureIssueBlock") return String(node.attrs?.key ?? "");
+  if (["armatureIssue", "armatureIssueBlock", "exciterRequirement", "exciterRequirementBlock"].includes(node.type)) return String(node.attrs?.key ?? "");
   if (node.type === "status") return String(node.attrs?.label ?? "");
   if (node.type === "date") return String(node.attrs?.date ?? "");
   return (node.content ?? []).map(textOf).join("");

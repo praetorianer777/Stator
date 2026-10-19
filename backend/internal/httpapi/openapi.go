@@ -1019,8 +1019,29 @@ var operations = append([]operation{
 		query:     []param{{name: "key", repeated: true, schema: &openapi.Schema{Type: "string"}, description: "Requirement keys such as CHK-R42, 1 to " + strconv.Itoa(exciter.MaxLookupKeys) + "."}},
 		responses: map[int]any{200: env{"status": exciter.Status(""), "requirements": []exciter.RequirementResult{}}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/exciter/requirements/{reqKey}", handler: "handleGetExciterRequirement", tag: "exciter",
-		summary:   "One requirement by key, as the caller may see it; null when they may not.",
-		responses: map[int]any{200: env{"status": exciter.Status(""), "requirement": (*exciter.Requirement)(nil)}, 422: errorEnvelope{}}},
+		summary:   "One requirement by key with its statement and rationale, for a requirement block, as the caller may see it; null when they may not. Shares the chips' cache.",
+		responses: map[int]any{200: env{"status": exciter.Status(""), "requirement": (*exciter.RequirementDetail)(nil)}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/exciter/search", handler: "handleSearchExciterRequirements", tag: "exciter",
+		summary: "Requirements whose key or title start with the words, or the one a key named before a move, as the caller may see them in Exciter, sections left out: at most " + strconv.Itoa(exciter.SearchLimit) + ", for the picker.",
+		query: []param{
+			{name: "q", description: "The words or the key typed so far, at most " + strconv.Itoa(exciter.MaxSearchLength) + " characters."},
+		}, responses: map[int]any{200: env{"status": exciter.Status(""), "requirements": []exciter.Hit{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/exciter/projects", handler: "handleListExciterProjects", tag: "exciter",
+		summary:   "The Exciter projects the caller may view, archived ones left out, for a list block's editor.",
+		responses: ok(env{"status": exciter.Status(""), "projects": []exciter.Project{}})},
+	{method: "GET", path: "/exciter/projects/{projectKey}/requirements", handler: "handleListExciterRequirements", tag: "exciter",
+		summary: "A window of the requirements a query in Exciter's query language finds in one project, as the caller may see them, for a list block; currentUser() is the caller. Kept at most " + strconv.Itoa(int(exciter.RequirementCacheTTL.Seconds())) + " seconds. Refused with bad_query and its position; found is false for a project the caller may not view.",
+		query: []param{
+			{name: "query", description: "A query such as status = Approved ORDER BY key, at most " + strconv.Itoa(exciter.MaxQueryLength) + " characters; every requirement of the project when blank."},
+			{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(exciter.MaxListLimit) + "; " + strconv.Itoa(exciter.DefaultListLimit) + " when absent."},
+			{name: "offset", schema: intParam, description: "How many matches to skip; 0 when absent."},
+		}, responses: map[int]any{200: env{"status": exciter.Status(""), "requirements": []exciter.Row{}, "total": 0, "limit": 0, "offset": 0, "found": false}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/exciter/projects/{projectKey}/requirements/suggest", handler: "handleSuggestExciterQuery", tag: "exciter",
+		summary: "What may come next at the caret of a list block's query, as Exciter answers the caller: the slot, the characters a pick replaces, the words the language takes there and the requirements the text finds.",
+		query: []param{
+			{name: "q", description: "The query typed so far."},
+			{name: "at", schema: intParam, description: "The caret, in characters from 0; the end of the query when absent."},
+		}, responses: map[int]any{200: env{"status": exciter.Status(""), "suggestions": (*exciter.Suggestions)(nil)}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/exciter/webhook", handler: "handleExciterWebhook", tag: "exciter", public: true,
 		summary: "Where Exciter posts requirement events, signed with the webhook secret saved in Stator, the time within " + strconv.Itoa(int(armature.WebhookTimestampTolerance.Minutes())) + " minutes of Stator's clock; envelope version " + strconv.Itoa(exciter.WebhookVersion) + " with source exciter only. Clears the cached requirements they name, by key and by id, and ignores fields and topics it does not know.",
 		request: exciter.WebhookEnvelope{}, responses: map[int]any{204: nil, 401: errorEnvelope{}, 413: errorEnvelope{}, 422: errorEnvelope{}}},
@@ -1126,6 +1147,12 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(exciter.Partner{})] = "ExciterPartner"
 	b.Names[reflect.TypeOf(exciter.MissingFeature{})] = "ExciterMissingFeature"
 	b.Names[reflect.TypeOf(exciter.WebhookEnvelope{})] = "ExciterWebhookEnvelope"
+	b.Names[reflect.TypeOf(exciter.Row{})] = "ExciterRow"
+	b.Names[reflect.TypeOf(exciter.Hit{})] = "ExciterHit"
+	b.Names[reflect.TypeOf(exciter.Project{})] = "ExciterProject"
+	b.Names[reflect.TypeOf(exciter.Completion{})] = "ExciterCompletion"
+	b.Names[reflect.TypeOf(exciter.Word{})] = "ExciterWord"
+	b.Names[reflect.TypeOf(exciter.Suggestions{})] = "ExciterSuggestions"
 	b.Names[reflect.TypeOf(task.SetDoneInput{})] = "TaskSetDoneInput"
 	b.Names[reflect.TypeOf(task.Report{})] = "TaskReport"
 	b.Names[reflect.TypeOf(page.FromTemplateInput{})] = "PageFromTemplateInput"

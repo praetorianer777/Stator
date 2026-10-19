@@ -842,6 +842,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exciter/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The Exciter projects the caller may view, archived ones left out, for a list block's editor. */
+        get: operations["listExciterProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exciter/projects/{projectKey}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A window of the requirements a query in Exciter's query language finds in one project, as the caller may see them, for a list block; currentUser() is the caller. Kept at most 60 seconds. Refused with bad_query and its position; found is false for a project the caller may not view. */
+        get: operations["listExciterRequirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exciter/projects/{projectKey}/requirements/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What may come next at the caret of a list block's query, as Exciter answers the caller: the slot, the characters a pick replaces, the words the language takes there and the requirements the text finds. */
+        get: operations["suggestExciterQuery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exciter/requirements": {
         parameters: {
             query?: never;
@@ -866,8 +917,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** One requirement by key, as the caller may see it; null when they may not. */
+        /** One requirement by key with its statement and rationale, for a requirement block, as the caller may see it; null when they may not. Shares the chips' cache. */
         get: operations["getExciterRequirement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exciter/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Requirements whose key or title start with the words, or the one a key named before a move, as the caller may see them in Exciter, sections left out: at most 10, for the picker. */
+        get: operations["searchExciterRequirements"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4993,6 +5061,16 @@ export interface components {
             status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
             user: components["schemas"]["AccountUser"] | null;
         };
+        ExciterCompletion: {
+            custom?: boolean;
+            field?: string;
+            from: number;
+            prefix: string;
+            quoted: boolean;
+            slot: string;
+            to: number;
+            words: string[];
+        };
         ExciterConnection: {
             baseUrl: string;
             connected: number;
@@ -5015,6 +5093,18 @@ export interface components {
             baseUrl: string;
             webhookSecret?: string;
         };
+        ExciterHit: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            projectKey: string;
+            projectName: string;
+            revision: number;
+            status: components["schemas"]["RequirementStatus"] | null;
+            title: string;
+            trashed: boolean;
+            url: string;
+        };
         ExciterMissingFeature: {
             capability: string;
             /** @enum {string} */
@@ -5026,6 +5116,26 @@ export interface components {
             /** @enum {string} */
             status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
             version: string | null;
+        };
+        ExciterProject: {
+            key: string;
+            name: string;
+        };
+        ExciterRow: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            projectKey: string;
+            revision: number;
+            status: components["schemas"]["RequirementStatus"] | null;
+            title: string;
+            trashed: boolean;
+            url: string;
+        };
+        ExciterSuggestions: {
+            completion: components["schemas"]["ExciterCompletion"];
+            requirements: components["schemas"]["ExciterHit"][];
+            words: components["schemas"]["ExciterWord"][];
         };
         ExciterTokenInput: {
             token: string;
@@ -5041,6 +5151,11 @@ export interface components {
             source: "exciter";
             topic: string;
             version: number;
+        };
+        ExciterWord: {
+            detail: string;
+            label: string;
+            text: string;
         };
         ExportRequest: {
             /** @enum {string} */
@@ -5967,6 +6082,22 @@ export interface components {
             key: string;
             projectKey: string;
             revision: number;
+            status: components["schemas"]["RequirementStatus"] | null;
+            title: string;
+            /** Format: date-time */
+            trashedAt: string | null;
+            url: string;
+        };
+        RequirementDetail: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            projectKey: string;
+            /** @description A JSON value. */
+            rationale: unknown;
+            revision: number;
+            /** @description A JSON value. */
+            statement: unknown;
             status: components["schemas"]["RequirementStatus"] | null;
             title: string;
             /** Format: date-time */
@@ -9663,6 +9794,143 @@ export interface operations {
             };
         };
     };
+    listExciterProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        projects: components["schemas"]["ExciterProject"][];
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listExciterRequirements: {
+        parameters: {
+            query?: {
+                /** @description A query such as status = Approved ORDER BY key, at most 2000 characters; every requirement of the project when blank. */
+                query?: string;
+                /** @description 1 to 500; 20 when absent. */
+                limit?: number;
+                /** @description How many matches to skip; 0 when absent. */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        found: boolean;
+                        limit: number;
+                        offset: number;
+                        requirements: components["schemas"]["ExciterRow"][];
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
+                        total: number;
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    suggestExciterQuery: {
+        parameters: {
+            query?: {
+                /** @description The query typed so far. */
+                q?: string;
+                /** @description The caret, in characters from 0; the end of the query when absent. */
+                at?: number;
+            };
+            header?: never;
+            path: {
+                projectKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
+                        suggestions: components["schemas"]["ExciterSuggestions"] | null;
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     lookupExciterRequirements: {
         parameters: {
             query?: {
@@ -9726,7 +9994,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        requirement: components["schemas"]["Requirement"] | null;
+                        requirement: components["schemas"]["RequirementDetail"] | null;
+                        /** @enum {string} */
+                        status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchExciterRequirements: {
+        parameters: {
+            query?: {
+                /** @description The words or the key typed so far, at most 200 characters. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        requirements: components["schemas"]["ExciterHit"][];
                         /** @enum {string} */
                         status: "ok" | "not_configured" | "not_connected" | "rejected" | "unreachable" | "outdated";
                     };

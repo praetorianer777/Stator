@@ -327,4 +327,13 @@ Eine **Armature-Roadmap** legt die Vorgänge einer Abfrage auf eine Zeitleiste, 
 
 ## Exciter
 
-Mit verbundenem Exciter wird ein Anforderungsschlüssel wie <span data-stator="requirement">CHK-R1</span> zu einem Chip, der jeder Leserin und jedem Leser Titel, Status und Revision der Anforderung so zeigt, wie Exciter sie ihnen zeigt. Tippen Sie den Schlüssel und ein Leerzeichen, oder wählen Sie im Menü **Exciter-Anforderung** und geben Sie den Schlüssel ein. Ohne Exciter oder ohne Ihr eigenes Exciter-Token zeigt der Chip nur den Schlüssel und sagt, wie Sie sich verbinden.
+Mit verbundenem Exciter wird ein Anforderungsschlüssel wie <span data-stator="requirement">CHK-R1</span> zu einem Chip, der jeder Leserin und jedem Leser Titel, Status und Revision der Anforderung so zeigt, wie Exciter sie ihnen zeigt. Tippen Sie den Schlüssel und ein Leerzeichen, oder wählen Sie im Menü **Exciter-Anforderung** und finden Sie sie über ein Wort ihres Titels oder ihren Schlüssel. Ohne Exciter oder ohne Ihr eigenes Exciter-Token zeigt der Chip nur den Schlüssel und sagt, wie Sie sich verbinden.
+
+
+Ein **Exciter-Anforderungsblock** zeigt eine Anforderung mit ihrer Aussage und ihrer Begründung. Wählen Sie ihn im Menü und finden Sie die Anforderung über ein Wort ihres Titels oder ihren Schlüssel:
+
+<div data-stator="requirement">CHK-R1</div>
+
+Eine **Exciter-Anforderungsliste** zeigt als Tabelle die Anforderungen, die eine Abfrage in der Abfragesprache von Exciter in einem Projekt findet, jeweils einen Ausschnitt. Wählen Sie das Projekt, schreiben Sie die Abfrage, und der Editor ergänzt beim Tippen Feldnamen und Werte. `currentUser()` ist, wer die Seite liest, also zeigt dieselbe Liste allen Lesenden ihre eigenen:
+
+<div data-stator="requirements" data-project="CHK" data-limit="10">owner = currentUser() ORDER BY key</div>

@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -127,6 +129,77 @@ func TestEveryAnswerFitsExcitersDocument(t *testing.T) {
 				t.Errorf("%s: key %v, want %s", tc.name, got, tc.current)
 			}
 		}
+	}
+
+	keysOf := func(body map[string]any, list string, nested bool) []string {
+		var out []string
+		for _, each := range body[list].([]any) {
+			item := each.(map[string]any)
+			if nested {
+				item = item["requirement"].(map[string]any)
+			}
+			out = append(out, item["key"].(string))
+		}
+		return out
+	}
+	if _, body := get(t, doc, server.URL, "/search/quick?q=basket", "/search/quick", alice, served); !slices.Equal(keysOf(body, "requirements", true), []string{"CHK-R1"}) {
+		t.Errorf("a quick search by a word of the title finds %v", body)
+	}
+	if _, body := get(t, doc, server.URL, "/search/quick?q=sec-r", "/search/quick", bob, served); len(keysOf(body, "requirements", true)) != 0 {
+		t.Errorf("a quick search finds what the reader may not see: %v", body)
+	}
+	if _, body := get(t, doc, server.URL, "/projects", "/projects", alice, served); !slices.Equal(keysOf(body, "projects", false), []string{"CHK", "SEC"}) {
+		t.Errorf("alice's projects are %v", body)
+	}
+	if _, body := get(t, doc, server.URL, "/projects", "/projects", bob, served); !slices.Equal(keysOf(body, "projects", false), []string{"CHK"}) {
+		t.Errorf("bob's projects are %v", body)
+	}
+
+	const grid = "/projects/{projectKey}/requirements"
+	mine := "/projects/CHK/requirements?query=" + url.QueryEscape("owner = currentUser() ORDER BY key DESC") + "&limit=5"
+	if status, body := get(t, doc, server.URL, mine, grid, alice, served); status != http.StatusOK || !slices.Equal(keysOf(body, "rows", false), []string{"CHK-R2", "CHK-R1"}) || body["total"] != 2.0 {
+		t.Errorf("currentUser() for alice: %d %v", status, body)
+	}
+	if _, body := get(t, doc, server.URL, mine, grid, bob, served); !slices.Equal(keysOf(body, "rows", false), []string{"CHK-R4"}) {
+		t.Errorf("currentUser() for bob: %v", body)
+	}
+	if _, body := get(t, doc, server.URL, "/projects/CHK/requirements?limit=1&offset=1", grid, alice, served); !slices.Equal(keysOf(body, "rows", false), []string{"CHK-R2"}) || body["total"] != 4.0 {
+		t.Errorf("a window of the project: %v", body)
+	}
+	status, body := get(t, doc, server.URL, "/projects/CHK/requirements?query="+url.QueryEscape("status = Approved AND colour = red"), grid, alice, served)
+	if failure, _ := body["error"].(map[string]any); status != http.StatusBadRequest || failure["code"] != "bad_query" || failure["position"] != 23.0 {
+		t.Errorf("a query naming no field answers %d %v", status, body)
+	}
+	if status, _ := get(t, doc, server.URL, "/projects/SEC/requirements", grid, bob, served); status != http.StatusNotFound {
+		t.Errorf("a project the reader may not view answers %d", status)
+	}
+
+	const suggest = "/projects/{projectKey}/requirements/suggest"
+	for _, tc := range []struct {
+		q, at, slot string
+		want        []string
+	}{
+		{"sta", "3", "field", []string{"status"}},
+		{"status ", "", "operator", []string{"=", "!=", "~"}},
+		{"status = A", "", "value", []string{"Approved"}},
+		{"key = CHK-R1 ", "", "keyword", []string{"AND", "ORDER BY"}},
+	} {
+		path := "/projects/CHK/requirements/suggest?q=" + url.QueryEscape(tc.q)
+		if tc.at != "" {
+			path += "&at=" + tc.at
+		}
+		_, body := get(t, doc, server.URL, path, suggest, alice, served)
+		completion, _ := body["completion"].(map[string]any)
+		var words []string
+		for _, w := range body["words"].([]any) {
+			words = append(words, w.(map[string]any)["text"].(string))
+		}
+		if completion["slot"] != tc.slot || !slices.Equal(words, tc.want) {
+			t.Errorf("completing %q: %v", tc.q, body)
+		}
+	}
+	if status, _ := get(t, doc, server.URL, "/projects/CHK/requirements/suggest?q=key&at=9", suggest, alice, served); status != http.StatusUnprocessableEntity {
+		t.Errorf("a caret past the end answers %d", status)
 	}
 
 	for _, rt := range routes {

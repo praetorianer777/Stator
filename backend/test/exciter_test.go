@@ -7,7 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -261,6 +263,144 @@ func TestChipsShowEachViewerTheRequirementsExciterShowsThem(t *testing.T) {
 	if got := requirementOf(t, want(t, owner.get(t, "/api/v1/exciter/requirements/CHK-R1"), http.StatusOK, "read CHK-R1 again")); got["revision"] != float64(3) {
 		t.Errorf("within the cache's minute CHK-R1 reads %v", got)
 	}
+}
+
+func rowKeys(t *testing.T, r response, name string) []string {
+	t.Helper()
+	var keys []string
+	for _, each := range list(t, r, name) {
+		keys = append(keys, each.(map[string]any)["key"].(string))
+	}
+	return keys
+}
+
+func TestBlocksPickersAndListsReadExciterAsTheirReader(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	home := h.makeMember(t, "exc-lists")
+	owner := api.as(t, home.user)
+	bobID := h.addPerson(t, "member")
+	bob := api.as(t, bobID)
+	carol := api.as(t, h.addPerson(t, "member"))
+	tenant := exciterTenant(t)
+	want(t, owner.put(t, "/api/v1/exciter/connection", map[string]any{"baseUrl": exciterURL(t), "webhookSecret": exciterHookSecret}), http.StatusOK, "connect Exciter")
+	t.Cleanup(func() { owner.delete(t, "/api/v1/exciter/connection") })
+	want(t, owner.put(t, "/api/v1/exciter/account/token", map[string]any{"token": exciterPat(tenant, "alice")}), http.StatusOK, "alice connects")
+	want(t, bob.put(t, "/api/v1/exciter/account/token", map[string]any{"token": exciterPat(tenant, "bob")}), http.StatusOK, "bob connects")
+	h.settle(t)
+
+	t.Run("a block reads the statement and rationale, as Exciter wrote them", func(t *testing.T) {
+		got := requirementOf(t, want(t, owner.get(t, "/api/v1/exciter/requirements/CHK-R1"), http.StatusOK, "read CHK-R1 for a block"))
+		statement, _ := got["statement"].(map[string]any)
+		rationale, _ := got["rationale"].(map[string]any)
+		if statement["type"] != "doc" || rationale["type"] != "doc" || got["key"] != "CHK-R1" {
+			t.Errorf("a block reads %v", got)
+		}
+		if plain := requirementOf(t, want(t, owner.get(t, "/api/v1/exciter/requirements/CHK-R4"), http.StatusOK, "read CHK-R4")); plain["rationale"] != nil {
+			t.Errorf("a requirement without a rationale reads %v", plain["rationale"])
+		}
+		// The chips' lookup shares the answer without the documents.
+		r := want(t, owner.get(t, "/api/v1/exciter/requirements?key=CHK-R1"), http.StatusOK, "look CHK-R1 up")
+		if strings.Contains(string(r.Raw), "statement") {
+			t.Errorf("a chip's lookup carries the statement: %s", r.Raw)
+		}
+	})
+
+	t.Run("the picker finds by a word of the title and by a former key", func(t *testing.T) {
+		if keys := rowKeys(t, want(t, owner.get(t, "/api/v1/exciter/search?q=basket"), http.StatusOK, "find basket"), "requirements"); !slices.Equal(keys, []string{"CHK-R1"}) {
+			t.Errorf("basket finds %v", keys)
+		}
+		if keys := rowKeys(t, want(t, owner.get(t, "/api/v1/exciter/search?q=old-r7"), http.StatusOK, "find a former key"), "requirements"); !slices.Equal(keys, []string{"CHK-R4"}) {
+			t.Errorf("a former key finds %v", keys)
+		}
+		if keys := rowKeys(t, want(t, bob.get(t, "/api/v1/exciter/search?q=session"), http.StatusOK, "bob looks for SEC-R1"), "requirements"); len(keys) != 0 {
+			t.Errorf("bob finds %v, which Exciter hides from him", keys)
+		}
+		if msg := fieldError(t, want(t, owner.get(t, "/api/v1/exciter/search?q=%20"), http.StatusUnprocessableEntity, "look for nothing"), "q"); !strings.Contains(msg, "CHK-R42") {
+			t.Errorf("looking for nothing says %q", msg)
+		}
+		if r := want(t, carol.get(t, "/api/v1/exciter/search?q=basket"), http.StatusOK, "carol looks without a token"); r.Body["status"] != "not_connected" {
+			t.Errorf("a member without a token is answered %s", r.Raw)
+		}
+	})
+
+	t.Run("each reader lists their own projects", func(t *testing.T) {
+		if keys := rowKeys(t, want(t, owner.get(t, "/api/v1/exciter/projects"), http.StatusOK, "alice's projects"), "projects"); !slices.Equal(keys, []string{"CHK", "SEC"}) {
+			t.Errorf("alice's projects are %v", keys)
+		}
+		if keys := rowKeys(t, want(t, bob.get(t, "/api/v1/exciter/projects"), http.StatusOK, "bob's projects"), "projects"); !slices.Equal(keys, []string{"CHK"}) {
+			t.Errorf("bob's projects are %v", keys)
+		}
+	})
+
+	mine := "/api/v1/exciter/projects/CHK/requirements?query=" + url.QueryEscape("owner = currentUser() ORDER BY key")
+	t.Run("a list reads as its reader, currentUser() included", func(t *testing.T) {
+		alice := want(t, owner.get(t, mine), http.StatusOK, "alice's list")
+		if keys := rowKeys(t, alice, "requirements"); !slices.Equal(keys, []string{"CHK-R1", "CHK-R2"}) || alice.Body["total"] != float64(2) || alice.Body["found"] != true {
+			t.Errorf("alice's list is %s", alice.Raw)
+		}
+		first := list(t, alice, "requirements")[0].(map[string]any)
+		if first["url"] != exciterURL(t)+"/p/CHK/r/CHK-R1" || first["revision"] != float64(3) {
+			t.Errorf("a row reads %v", first)
+		}
+		if keys := rowKeys(t, want(t, bob.get(t, mine), http.StatusOK, "bob's list"), "requirements"); !slices.Equal(keys, []string{"CHK-R4"}) {
+			t.Errorf("bob's list is %v", keys)
+		}
+		window := want(t, owner.get(t, "/api/v1/exciter/projects/chk/requirements?limit=2&offset=2"), http.StatusOK, "a later window")
+		if keys := rowKeys(t, window, "requirements"); !slices.Equal(keys, []string{"CHK-R3", "CHK-R4"}) || window.Body["total"] != float64(4) || window.Body["offset"] != float64(2) {
+			t.Errorf("the second window is %s", window.Raw)
+		}
+		if unseen := want(t, bob.get(t, "/api/v1/exciter/projects/SEC/requirements"), http.StatusOK, "bob lists SEC"); unseen.Body["found"] != false || len(list(t, unseen, "requirements")) != 0 {
+			t.Errorf("a project bob may not view lists %s", unseen.Raw)
+		}
+	})
+
+	t.Run("a query that does not read is refused with where it went wrong", func(t *testing.T) {
+		r := want(t, owner.get(t, "/api/v1/exciter/projects/CHK/requirements?query="+url.QueryEscape("status = Approved AND colour = red")), http.StatusUnprocessableEntity, "a query naming no field")
+		failure, _ := r.Body["error"].(map[string]any)
+		if failure["code"] != "bad_query" || failure["position"] != float64(23) || !strings.Contains(failure["message"].(string), "colour") {
+			t.Errorf("a bad query is refused with %s", r.Raw)
+		}
+		for _, tc := range []struct {
+			who         *client
+			path, field string
+		}{
+			{owner, "/projects/CHK-R1/requirements", "project"},
+			{owner, "/projects/CHK/requirements?limit=501", "limit"},
+			{owner, "/projects/CHK/requirements?query=" + strings.Repeat("a", exciter.MaxQueryLength+1), "query"},
+			{owner, "/projects/CHK/requirements/suggest?q=key&at=9", "at"},
+			{owner, "/projects/CHK/requirements/suggest?q=key&at=-1", "at"},
+			{bob, "/projects/SEC/requirements/suggest?q=key", "project"},
+		} {
+			fieldError(t, want(t, tc.who.get(t, "/api/v1/exciter"+tc.path), http.StatusUnprocessableEntity, tc.path), tc.field)
+		}
+	})
+
+	t.Run("the editor completes at the caret", func(t *testing.T) {
+		r := want(t, owner.get(t, "/api/v1/exciter/projects/CHK/requirements/suggest?q="+url.QueryEscape("status = Ap AND key = CHK-R1")+"&at=11"), http.StatusOK, "complete a status")
+		s, _ := r.Body["suggestions"].(map[string]any)
+		completion, _ := s["completion"].(map[string]any)
+		words, _ := s["words"].([]any)
+		if completion["slot"] != "value" || completion["from"] != float64(9) || completion["to"] != float64(11) || len(words) != 1 || words[0].(map[string]any)["text"] != "Approved" {
+			t.Errorf("completing a status answers %s", r.Raw)
+		}
+	})
+
+	t.Run("a webhook clears every list, as any change may change what a query finds", func(t *testing.T) {
+		before := want(t, owner.get(t, mine), http.StatusOK, "alice's list")
+		changed := exciterStub(t, http.MethodPut, tenant+"/requirements/CHK-R1", map[string]any{"title": "The basket keeps its items for 90 days", "revision": 4})["requirement"].(map[string]any)
+		if again := want(t, owner.get(t, mine), http.StatusOK, "alice's list again"); string(again.Raw) != string(before.Raw) {
+			t.Errorf("within the cache's minute the list changed: %s", again.Raw)
+		}
+		hook := exciterEnvelope(t, uuid.New(), exciter.WebhookSource, "requirement.revised", map[string]any{"requirement": map[string]any{"id": changed["id"], "key": "CHK-R1"}})
+		if r := exciterDelivery(t, api, hook, exciterHookSecret, time.Now(), "1"); r.Status != http.StatusNoContent {
+			t.Fatalf("a signed delivery is answered %d %s", r.Status, r.Raw)
+		}
+		after := want(t, owner.get(t, mine), http.StatusOK, "alice's list after the webhook")
+		if first := list(t, after, "requirements")[0].(map[string]any); first["revision"] != float64(4) || first["title"] != "The basket keeps its items for 90 days" {
+			t.Errorf("after the webhook the list reads %s", after.Raw)
+		}
+	})
 }
 
 // exciterDelivery is one signed post to the receiver, as Exciter's sender

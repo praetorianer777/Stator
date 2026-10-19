@@ -3,6 +3,23 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-19: Exciter's documents are drawn in the browser, and a webhook clears every list (#440)
+
+- **The statement travels as Exciter wrote it.** A requirement block's
+  statement and rationale are passed through untouched and drawn by the web
+  client from a fixed set of nodes and marks, with everything else as its
+  words. Converting them on the server would mean a second allowlist to keep
+  in step with Exciter's, and React escapes what it draws; a link opens only
+  for `http`, `https` and `mailto`.
+- **Pictures are words.** Exciter's images are its attachments, which a
+  reader's browser could only load with an Exciter session, so the block
+  names the picture and links the requirement instead.
+- **Lists are cleared whole.** A delivery names one requirement, but which
+  queries find it before and after a change is Exciter's to know, so every
+  list the site kept is forgotten; a list costs one read to Exciter again.
+- **The picker and the completion are not cached.** They answer one author
+  typing, and a stale answer there is worse than one more request.
+
 ## 2026-10-19: Exciter is reached the way Armature is, through Armature's code (#440)
 
 Exciter's requirements on pages repeat what Stator does for Armature's issues,

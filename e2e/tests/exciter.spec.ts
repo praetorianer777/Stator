@@ -6,7 +6,7 @@ import { teamTest as test } from "../fixtures/team";
 import { openPage, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
-import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 import { apiFromStubURL, exciterURL } from "../fixtures/stack";
 
 const SETTINGS_PATH = "/settings/exciter";
@@ -181,19 +181,98 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
     await openShowing(page, `${path}/edit`, "Scope.");
     await caretTo(box, "end");
     await page.keyboard.type("/exciter");
-    await expect(menu.getByRole("option", { name: /Exciter requirement/ })).toBeVisible();
+    await expect(menu.locator('[data-slash-item="exciterRequirement"]')).toBeVisible();
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Insert an Exciter requirement" });
-    await dialog.getByLabel("Requirement key").fill("chk-r");
-    await dialog.getByRole("button", { name: "Insert" }).click();
-    await expect(dialog).toContainText("That is not a requirement key.");
+    const find = dialog.getByRole("combobox", { name: "Find a requirement" });
+    await find.fill("bask");
+    await expect(dialog.getByRole("option")).toHaveCount(1);
+    await expect(dialog.getByRole("option", { name: /CHK-R1/ })).toBeVisible();
     await expectAccessible(page);
-    await dialog.getByLabel("Requirement key").fill("chk-r1");
-    await dialog.getByRole("button", { name: "Insert" }).click();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
     await expect(box.locator('[data-exciter-requirement="CHK-R1"]')).toContainText(BASKET);
 
     // A key typed by an author Exciter answers becomes a chip too.
     await page.keyboard.type("and CHK-R4 ");
     await expect(box.locator('[data-exciter-requirement="CHK-R4"]')).toContainText("An order is confirmed by mail");
+  });
+
+  test("a block shows the statement and a list reads as each reader, currentUser() included", async ({ page, api, apiAs, pageAs, team }, testInfo) => {
+    must(await api.PUT("/exciter/connection", { body: { baseUrl: exciterURL() } }));
+    must(await api.PUT("/exciter/account/token", { body: { token: patFor(team.label, "alice") } }));
+    must(await (await apiAs("bob")).PUT("/exciter/account/token", { body: { token: patFor(team.label, "bob") } }));
+    const { space, target } = await freshPage(api, testInfo, {
+      type: "doc",
+      content: [
+        { type: "exciterRequirementBlock", attrs: { key: "CHK-R1" } },
+        { type: "exciterRequirementList", attrs: { project: "CHK", query: "owner = currentUser() ORDER BY key", limit: 20 } },
+        { type: "exciterRequirementList", attrs: { project: "CHK", query: "status = Approved AND colour = red", limit: 20 } },
+      ],
+    } as Body);
+
+    await openPage(page, space.key, target);
+    const block = page.getByRole("group", { name: "Exciter requirement CHK-R1" });
+    await expect(block.getByRole("region", { name: "Statement" })).toContainText("keeps its items for 30 days");
+    await expect(block.getByRole("region", { name: "Statement" }).getByRole("link", { name: "shop" })).toHaveAttribute(
+      "href",
+      "https://shop.example.test/basket",
+    );
+    await expect(block.getByRole("region", { name: "Rationale" })).toHaveText(/Most customers come back within a month/);
+    await expect(block.getByRole("link", { name: "Open in Exciter CHK-R1" })).toHaveAttribute("href", requirementAt("CHK-R1"));
+    const lists = page.locator("main [data-doc] [data-exciter-requirement-list]");
+    await expect(lists.first().locator("[data-requirement-row]")).toHaveText([/CHK-R1/, /CHK-R2/]);
+    await expect(lists.nth(1)).toHaveAttribute("data-state", "bad_query");
+    await expect(lists.nth(1)).toContainText("at character 23");
+    await expectAccessible(page);
+
+    const bob = await pageAs("bob");
+    await openShowing(bob, `/s/${space.key}/p/${target.id}/page`, "Statement");
+    await expect(bob.locator("main [data-doc] [data-exciter-requirement-list]").first().locator("[data-requirement-row]")).toHaveText([/CHK-R4/]);
+  });
+
+  test("an author inserts a requirement block and a list, completing the query at the caret", async ({ page, api, team }, testInfo) => {
+    must(await api.PUT("/exciter/connection", { body: { baseUrl: exciterURL() } }));
+    must(await api.PUT("/exciter/account/token", { body: { token: patFor(team.label, "alice") } }));
+    const { space, target } = await freshPage(api, testInfo, {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Scope." }] }, { type: "paragraph" }],
+    } as Body);
+    const box = page.locator("#page-body");
+    await openShowing(page, `/s/${space.key}/p/${target.id}/page/edit`, "Scope.");
+
+    await caretTo(box, "end");
+    await page.keyboard.type("/rationale");
+    await expect(page.locator('[data-slash-item="exciterRequirementBlock"]')).toBeVisible();
+    await page.keyboard.press("Enter");
+    const picker = page.getByRole("dialog", { name: "Insert an Exciter requirement block" });
+    await picker.getByRole("combobox", { name: "Find a requirement" }).fill("chk-r4");
+    await expect(picker.getByRole("option", { name: /CHK-R4/ })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(box.locator('[data-exciter-requirement-block="CHK-R4"]')).toContainText("An order is confirmed by mail.");
+
+    await caretTo(box, "end");
+    await page.keyboard.type("/requirements");
+    await expect(page.locator('[data-slash-item="exciterRequirementList"]')).toBeVisible();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Insert an Exciter requirement list" });
+    await dialog.getByRole("combobox", { name: "Project" }).selectOption("CHK");
+    const query = dialog.getByRole("textbox", { name: "Query" });
+    await query.click();
+    await page.keyboard.type("sta");
+    await expect(dialog.getByRole("option", { name: "status" })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(query).toHaveValue("status ");
+    await page.keyboard.type("= Ap");
+    await expect(dialog.getByRole("option", { name: "Approved" })).toBeVisible();
+    await expectAccessible(page);
+    await page.keyboard.press("Enter");
+    await expect(query).toHaveValue("status = Approved ");
+    await expect(dialog).toContainText("The query finds 1 requirement you can see.");
+    await dialog.getByRole("button", { name: "Insert" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(box.locator("[data-exciter-requirement-list] [data-requirement-row]")).toHaveText([/CHK-R1/]);
+    await publishFromEditor(page);
+    await expect(page.locator("main [data-doc] [data-exciter-requirement-list] [data-requirement-row]")).toHaveText([/CHK-R1/]);
   });
 });

@@ -21,7 +21,8 @@ import type { FoundKey, IssueSource } from "./armatureIssue";
 import type { ArmatureIssue } from "@/api/armature";
 import { IssueMenu } from "./IssueMenu";
 import { IssuePicker } from "@/features/armature/IssuePicker";
-import { RequirementKeyDialog } from "@/features/exciter/RequirementKeyDialog";
+import { RequirementPicker } from "@/features/exciter/RequirementPicker";
+import { RequirementListDialog } from "@/features/exciter/RequirementListDialog";
 import type { RequirementSource } from "./exciterRequirement";
 import { settleSketches } from "@/features/sketch/settle";
 import { IssueListDialog } from "@/features/armature/IssueListDialog";
@@ -43,7 +44,7 @@ import { calendarSettings } from "@/features/calendar/calendar";
 import { GalleryDialog } from "@/features/gallery/GalleryDialog";
 import { CreateIssuesDialog } from "@/features/armature/CreateIssuesDialog";
 import { placeChips, planSelection, type SelectionPlan } from "./issueSelection";
-import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT, GALLERY_DEFAULT_COLUMNS } from "@/config";
+import { ARMATURE_DEFAULT_COLUMNS, ARMATURE_LIST_DEFAULT_LIMIT, EXCITER_LIST_DEFAULT_LIMIT, GALLERY_DEFAULT_COLUMNS } from "@/config";
 import type { InlineValueTarget } from "./inlineValues";
 import { DateDialog, MathDialog, StatusDialog } from "./InlineValueDialogs";
 import { LinkCardDialog } from "./LinkCardDialog";
@@ -158,7 +159,8 @@ export function Editor({
   armatureRef.current = armature;
   const exciterRef = useRef(exciter);
   exciterRef.current = exciter;
-  const [pickingRequirement, setPickingRequirement] = useState(false);
+  const [pickingRequirement, setPickingRequirement] = useState<"chip" | "block" | null>(null);
+  const [makingRequirementList, setMakingRequirementList] = useState(false);
   const [pickingIssue, setPickingIssue] = useState(false);
   const [makingList, setMakingList] = useState(false);
   const [makingChart, setMakingChart] = useState(false);
@@ -216,7 +218,9 @@ export function Editor({
       armature,
       pickIssue: () => setPickingIssue(true),
       exciter,
-      pickRequirement: () => setPickingRequirement(true),
+      pickRequirement: () => setPickingRequirement("chip"),
+      pickRequirementBlock: () => setPickingRequirement("block"),
+      pickRequirementList: () => setMakingRequirementList(true),
       pickIssueList: () => setMakingList(true),
       pickChart: () => setMakingChart(true),
       pickRoadmap: () => setMakingRoadmap(true),
@@ -447,11 +451,25 @@ export function Editor({
         />
       )}
       {pickingRequirement && editor && (
-        <RequirementKeyDialog
-          onClose={() => setPickingRequirement(false)}
+        <RequirementPicker
+          title={pickingRequirement === "block" ? t.exciter.picker.titleBlock : t.exciter.picker.title}
+          onClose={() => setPickingRequirement(null)}
           onInsert={(key) => {
-            setPickingRequirement(false);
-            editor.chain().focus().insertExciterRequirement(key).run();
+            const chain = editor.chain().focus();
+            if (pickingRequirement === "block") chain.insertExciterRequirementBlock(key).run();
+            else chain.insertExciterRequirement(key).run();
+            setPickingRequirement(null);
+          }}
+        />
+      )}
+      {makingRequirementList && editor && (
+        <RequirementListDialog
+          initial={{ project: "", query: "", limit: EXCITER_LIST_DEFAULT_LIMIT }}
+          isNew
+          onClose={() => setMakingRequirementList(false)}
+          onSave={(settings) => {
+            setMakingRequirementList(false);
+            editor.chain().focus().insertExciterRequirementList(settings).run();
           }}
         />
       )}

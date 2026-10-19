@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -207,6 +208,89 @@ func (s *Server) handleGetExciterRequirement(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "requirement": requirement})
+}
+
+// The picker: requirements by the start of their key or title, or by a key
+// they had, as the caller may see them.
+func (s *Server) handleSearchExciterRequirements(w http.ResponseWriter, r *http.Request) {
+	if s.Exciter == nil {
+		respondError(w, r, errExciterOff)
+		return
+	}
+	status, found, err := s.Exciter.Search(r.Context(), r.URL.Query().Get("q"))
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if found == nil {
+		found = []exciter.Hit{}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "requirements": found})
+}
+
+func (s *Server) handleListExciterProjects(w http.ResponseWriter, r *http.Request) {
+	if s.Exciter == nil {
+		respondError(w, r, errExciterOff)
+		return
+	}
+	status, projects, err := s.Exciter.Projects(r.Context())
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if projects == nil {
+		projects = []exciter.Project{}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "projects": projects})
+}
+
+// The list block: one window of what a query finds in a project, as the
+// caller may see it in Exciter.
+func (s *Server) handleListExciterRequirements(w http.ResponseWriter, r *http.Request) {
+	if s.Exciter == nil {
+		respondError(w, r, errExciterOff)
+		return
+	}
+	limit, offset, bad := window(r, exciter.DefaultListLimit, exciter.MaxListLimit)
+	if bad != nil {
+		respondError(w, r, bad)
+		return
+	}
+	status, found, err := s.Exciter.List(r.Context(), chi.URLParam(r, "projectKey"), r.URL.Query().Get("query"), limit, offset)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	if found == nil {
+		found = &exciter.ListResult{Requirements: []exciter.Row{}, Limit: limit, Offset: offset, Found: true}
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{
+		"status": status, "requirements": found.Requirements, "total": found.Total, "limit": found.Limit, "offset": found.Offset, "found": found.Found,
+	})
+}
+
+// Completing a list block's query at the caret.
+func (s *Server) handleSuggestExciterQuery(w http.ResponseWriter, r *http.Request) {
+	if s.Exciter == nil {
+		respondError(w, r, errExciterOff)
+		return
+	}
+	q := r.URL.Query()
+	at := -1
+	if raw := q.Get("at"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 {
+			respondError(w, r, ErrValidation(map[string]string{"at": "Put the caret inside the query, counted in characters from 0."}))
+			return
+		}
+		at = n
+	}
+	status, suggestions, err := s.Exciter.Suggest(r.Context(), chi.URLParam(r, "projectKey"), q.Get("q"), at)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"status": status, "suggestions": suggestions})
 }
 
 // Webhooks: Exciter signs each delivery and its time with the site's secret.
