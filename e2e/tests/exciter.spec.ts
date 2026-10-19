@@ -242,7 +242,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
     await openShowing(page, `/s/${space.key}/p/${target.id}/page/edit`, "Scope.");
 
     await caretTo(box, "end");
-    await page.keyboard.type("/requirement block");
+    await page.keyboard.type("/rationale");
     await expect(page.locator('[data-slash-item="exciterRequirementBlock"]')).toBeVisible();
     await page.keyboard.press("Enter");
     const picker = page.getByRole("dialog", { name: "Insert an Exciter requirement block" });
@@ -252,7 +252,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
     await expect(box.locator('[data-exciter-requirement-block="CHK-R4"]')).toContainText("An order is confirmed by mail.");
 
     await caretTo(box, "end");
-    await page.keyboard.type("/requirement list");
+    await page.keyboard.type("/requirements");
     await expect(page.locator('[data-slash-item="exciterRequirementList"]')).toBeVisible();
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Insert an Exciter requirement list" });

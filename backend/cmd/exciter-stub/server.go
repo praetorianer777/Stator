@@ -384,6 +384,7 @@ func (s *stub) putRequirement(c *call) {
 		FormerKeys []string `json:"formerKeys"`
 		HiddenFrom []string `json:"hiddenFrom"`
 		Trashed    bool     `json:"trashed"`
+		Owner      *string  `json:"owner"`
 	}
 	if !decode(c, &req) {
 		return
@@ -395,6 +396,9 @@ func (s *stub) putRequirement(c *call) {
 	}
 	r := &requirement{ID: idOf(c.tenant.Name, key), Key: key, Title: req.Title, Status: req.Status, Revision: max(req.Revision, 1),
 		FormerKeys: req.FormerKeys, HiddenFrom: map[string]bool{}}
+	if req.Owner != nil {
+		r.Owner = *req.Owner
+	}
 	for _, p := range req.HiddenFrom {
 		r.HiddenFrom[p] = true
 	}
@@ -414,6 +418,9 @@ func (s *stub) putRequirement(c *call) {
 			}
 			if req.HiddenFrom == nil {
 				r.HiddenFrom = old.HiddenFrom
+			}
+			if req.Owner == nil {
+				r.Owner = old.Owner
 			}
 			c.tenant.requirements[i] = r
 			respond(c.w, http.StatusOK, map[string]any{"requirement": requirementView(c.tenant, r)})
