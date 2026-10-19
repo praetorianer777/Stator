@@ -78,6 +78,12 @@ export function AccountSection({
               </Button>
             </div>
           )}
+          {account.status !== "ok" && account.app.signInRefusal && (
+            <div className="space-y-1 text-sm" data-armature-sign-in-refusal>
+              <p className="text-ink">{t.armature.account.signInRefused}</p>
+              <blockquote className="border-l-2 border-border pl-3 text-ink-muted">{account.app.signInRefusal}</blockquote>
+            </div>
+          )}
           {account.status !== "ok" &&
             (account.app.offered ? (
               <OneClick account={account} focusToken={focusToken} returnTo={returnTo} returns={Boolean(onReturn)} onConnected={() => onReturn?.()} />

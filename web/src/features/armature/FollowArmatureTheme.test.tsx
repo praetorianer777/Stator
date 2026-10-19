@@ -25,7 +25,7 @@ const account = (over: Partial<ArmatureAccount> = {}): ArmatureAccount => ({
   },
   checkedAt: "2026-10-01T09:00:00Z",
   via: "token",
-  app: { offered: false, pending: false, refusal: null, scopes: [] },
+  app: { offered: false, pending: false, refusal: null, scopes: [], signInRefusal: null },
   missing: [],
   ...over,
 });

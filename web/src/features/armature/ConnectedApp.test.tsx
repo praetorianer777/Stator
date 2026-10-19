@@ -26,7 +26,7 @@ function account(over: Partial<ArmatureAccount> = {}, app: Partial<ArmatureAccou
     checkedAt: null,
     missing: [],
     ...over,
-    app: { offered: true, pending: false, refusal: null, scopes: [], ...app },
+    app: { offered: true, pending: false, refusal: null, scopes: [], signInRefusal: null, ...app },
   };
 }
 
@@ -96,6 +96,23 @@ describe("connecting one's account with one click", () => {
     await renderAt("/settings/profile");
     expect(await screen.findByText(/An Armature administrator has to allow Stator first/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect Armature" })).toBeInTheDocument();
+  });
+
+  it("says why Armature did not connect the person at sign-in, and still offers Connect", async () => {
+    const why = "Ada Lovelace has no Armature account yet. Sign in to Armature once, or ask an administrator to let them in.";
+    stubApi({ "GET /armature/account": { status: 200, body: { account: account({}, { signInRefusal: why }) } } });
+    await renderAt("/settings/profile");
+    const said = await screen.findByText(why);
+    expect(said.closest("[data-armature-sign-in-refusal]")).toHaveTextContent("When you signed in, Armature did not connect your account:");
+    expect(screen.getByRole("link", { name: "Connect Armature" })).toHaveAttribute("href", START);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says nothing of a refusal at sign-in once connected", async () => {
+    stubApi({ "GET /armature/account": { status: 200, body: { account: { ...viaApp, app: { ...viaApp.app, signInRefusal: "stale" } } } } });
+    await renderAt("/settings/profile");
+    expect(await screen.findByText(/Connected as Ada/)).toBeInTheDocument();
+    expect(document.querySelector("[data-armature-sign-in-refusal]")).toBeNull();
   });
 
   it("shows Armature's own sentence and the token form when it would not register Stator", async () => {
