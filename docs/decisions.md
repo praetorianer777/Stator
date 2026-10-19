@@ -3,6 +3,27 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-19: Exciter's theme file is vendored and travels through Stator unchanged (#443)
+
+Stator, Armature and Exciter share the `armature-theme/1` format, so a theme
+made in one imports into the other two (Cloudster1/Exciter#59).
+
+- **Vendored byte for byte, pinned by SHA-256.** Exciter's own export,
+  `backend/internal/theme/testdata/exciter.armature-theme.json`, is copied
+  from Exciter's `main` at 7303ef0. A unit test holds every theme file under
+  `testdata` to its SHA-256 and names where it came from, so a fixture edited
+  here fails rather than tests nothing of the product that wrote it. When
+  Exciter's export changes on purpose, vendor it again and update the sum.
+- **Compared as Exciter compares.** The integration test imports the file,
+  exports it again and compares name, spec and files, each file id replaced
+  by the file's place in the list and the CSS trimmed as save trims it, the
+  way Exciter's `backend/test/theme_exchange_test.go` does.
+- **Token names are shared.** Exciter vendors the names in
+  `web/src/lib/theme-tokens.ts` (its `make theme-tokens`), so renaming or
+  dropping a token here fails a test there. Such a change needs a note to
+  Exciter. An added token needs none: each product keeps any well-formed name
+  and draws only what its own stylesheet has.
+
 ## 2026-10-17: The chart is upgraded with data on CloudNativePG in kind (#432)
 
 #423 reached production because every upgrade test ran the migrations as a

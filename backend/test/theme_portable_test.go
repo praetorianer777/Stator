@@ -6,10 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -20,6 +22,11 @@ import (
 
 // minecraftFile is a theme exported from Armature, kept as it came.
 var minecraftFile = filepath.Join("..", "internal", "theme", "testdata", "minecraft.armature-theme.json")
+
+// exciterFile is Exciter's own export, vendored from Exciter as it came.
+var exciterFile = filepath.Join("..", "internal", "theme", "testdata", "exciter.armature-theme.json")
+
+var anyThemeID = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 
 // A theme leaves as one file with its pictures inside and comes back as the
 // importer's own, its files under new ids that the spec and the CSS now name.
@@ -172,6 +179,75 @@ func TestTheMinecraftThemeFromArmatureImports(t *testing.T) {
 			t.Fatalf("a deleted theme is still found: %v", err)
 		}
 	})
+}
+
+// travelled is what a theme file says once the ids an installation gave it
+// are left out, compared the way Exciter's theme_exchange_test.go compares.
+type travelled struct {
+	Name  string
+	Spec  string
+	Files []string
+}
+
+func travel(t *testing.T, raw []byte) travelled {
+	t.Helper()
+	var pkg theme.Package
+	if err := json.Unmarshal(raw, &pkg); err != nil {
+		t.Fatalf("not a theme file: %v", err)
+	}
+	if pkg.Format != theme.PackageFormat {
+		t.Fatalf("a file of format %q", pkg.Format)
+	}
+	numbered := map[string]string{}
+	out := travelled{Name: pkg.Name}
+	for i, a := range pkg.Assets {
+		numbered[a.ID.String()] = fmt.Sprintf("file-%d", i+1)
+		out.Files = append(out.Files, fmt.Sprintf("%s %s %x", a.Name, a.ContentType, a.Data))
+	}
+	// Save trims the CSS in all three products, so a last newline is no change.
+	pkg.Spec.CSS = strings.TrimSpace(pkg.Spec.CSS)
+	spec, err := json.Marshal(pkg.Spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out.Spec = anyThemeID.ReplaceAllStringFunc(string(spec), func(id string) string {
+		if n, ok := numbered[id]; ok {
+			return n
+		}
+		return "theme"
+	})
+	return out
+}
+
+// Exciter's export imports here and leaves again with the same name, spec
+// and files, so a theme made in Exciter is one Stator keeps whole.
+func TestExcitersThemeFileImportsAndLeavesTheSame(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	owner := api.as(t, h.makeMember(t, "exciter-theme").user)
+
+	file, err := os.ReadFile(exciterFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	imported := obj(t, want(t, owner.upload(t, "/api/v1/themes/import", "exciter.armature-theme.json", file), http.StatusCreated, "import Exciter's theme"), "theme")
+	resp, exported := owner.download(t, "/api/v1/themes/"+imported["id"].(string)+"/export")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("export: %d %s", resp.StatusCode, exported)
+	}
+	got, in := travel(t, exported), travel(t, file)
+	if len(in.Files) == 0 {
+		t.Fatal("Exciter's file carries no file of its own, so it proves nothing about ids")
+	}
+	if got.Name != in.Name {
+		t.Errorf("the name became %q, want %q", got.Name, in.Name)
+	}
+	if got.Spec != in.Spec {
+		t.Errorf("the spec changed on the way through:\n  in %s\n out %s", in.Spec, got.Spec)
+	}
+	if !reflect.DeepEqual(got.Files, in.Files) {
+		t.Errorf("the files are %d, want %d, or their bytes differ", len(got.Files), len(in.Files))
+	}
 }
 
 // normalised is a spec the way the service stores it: every map present.

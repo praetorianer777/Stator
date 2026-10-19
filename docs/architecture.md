@@ -216,7 +216,9 @@ process, which is only right for a single api process. `/readyz` and
 - **Reaching out.** Every outbound call passes `netguard`, which refuses
   addresses inside the network unless `STATOR_OUTBOUND_ALLOW` names them.
 - **Themes.** Armature theme files import unchanged, and a user can follow
-  their active Armature theme.
+  their active Armature theme. Exciter's export imports unchanged too, and
+  Exciter vendors the token names of `web/src/lib/theme-tokens.ts`, so a
+  renamed token needs a note to Exciter (`docs/decisions.md`, #443).
 - **Capabilities.** Stator reports what it offers at `/api/v1/meta` and reads
   Armature's there, turning off and naming each feature whose capability
   Armature lacks (`docs/integration.md`).
