@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ArmatureAccount, ArmatureConnection } from "@/api/armature";
 import { arrival, renderAt, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
+import { ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS } from "@/config";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -23,6 +24,8 @@ const ARMATURE_CAPABILITIES = [
   "theme-export@1",
   "webhooks@1",
 ];
+// The check waits for the field to rest before it asks.
+const CHECK_WAIT_MS = ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS * 4;
 const REFUSED = "Armature did not accept this token. Make a new one under Tokens in Armature and paste it here.";
 
 function connection(over: Partial<ArmatureConnection> = {}): ArmatureConnection {
@@ -85,6 +88,91 @@ describe("connecting Armature as an administrator", () => {
       "/settings/profile?return=%2Fsettings%2Farmature#armature",
     );
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("asks the typed address what answers there before saving, and stores nothing", async () => {
+    const sent = stubApi({
+      "GET /armature/connection": { status: 200, body: { connection: null } },
+      "POST /armature/connection/check": {
+        status: 200,
+        body: { check: { baseUrl: BASE, partner: { status: "ok", meta: true, version: "1.4.0", capabilities: ARMATURE_CAPABILITIES, missing: [] } } },
+      },
+    });
+    const user = userEvent.setup();
+    await renderAt("/settings/armature");
+    await user.type(await screen.findByLabelText("Armature address"), BASE);
+    expect(await screen.findByText("Armature 1.4.0 answers at this address.", undefined, { timeout: CHECK_WAIT_MS })).toBeInTheDocument();
+    expect(sent.filter((r) => r.method === "POST" && r.path === "/armature/connection/check").map((r) => r.body)).toEqual([{ baseUrl: BASE }]);
+    expect(sent.some((r) => r.method === "PUT")).toBe(false);
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("shows the guard's sentence by the field when Check finds the address refused", async () => {
+    const refused = `Stator may not reach armature.corp.example, because on this server the name resolves to a private address. Use Armature's public address, or add armature.corp.example to network.outboundAllow in the chart values (STATOR_OUTBOUND_ALLOW), or ask the operator to.`;
+    const sent = stubApi({
+      "GET /armature/connection": { status: 200, body: { connection: null } },
+      "POST /armature/connection/check": {
+        status: 422,
+        body: { error: { code: "validation_failed", message: "Some fields need attention.", fields: { baseUrl: refused } } },
+      },
+    });
+    const user = userEvent.setup();
+    await renderAt("/settings/armature");
+    await user.type(await screen.findByLabelText("Armature address"), "armature.corp.example");
+    await user.click(screen.getByRole("button", { name: "Check" }));
+    expect(await screen.findByText(refused)).toBeInTheDocument();
+    expect(screen.getByLabelText("Armature address")).toHaveAttribute("aria-invalid", "true");
+    expect(sent.filter((r) => r.path === "/armature/connection/check").map((r) => r.body)).toEqual([{ baseUrl: "armature.corp.example" }]);
+  });
+
+  it("does not ask the saved address again while it is unchanged", async () => {
+    const sent = stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection() } } });
+    await renderAt("/settings/armature");
+    await screen.findByLabelText("Armature address");
+    await new Promise((resolve) => setTimeout(resolve, ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS * 2));
+    expect(sent.some((r) => r.path === "/armature/connection/check")).toBe(false);
+  });
+
+  it("repeats the webhook steps after a save while Armature has never delivered", async () => {
+    let current: ArmatureConnection | null = connection();
+    stubApi({
+      "GET /armature/connection": () => ({ status: 200, body: { connection: current } }),
+      "PUT /armature/connection": () => {
+        current = connection({ updatedAt: "2026-10-02T08:00:00Z" });
+        return { status: 200, body: { connection: current } };
+      },
+      "GET /armature/account": { status: 200, body: { account: account() } },
+    });
+    const user = userEvent.setup();
+    await renderAt("/settings/armature");
+    await screen.findByLabelText("Armature address");
+    expect(document.querySelector("[data-armature-webhook-pending]")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const pending = await screen.findByRole("region", { name: "Armature has not delivered to Stator yet" });
+    const steps = within(pending)
+      .getAllByRole("listitem")
+      .map((li) => li.textContent);
+    expect(steps).toEqual([
+      "In Armature, open Settings, then Webhooks, and add an endpoint with the address http://stator.test/api/v1/armature/webhook/demo.",
+      "Subscribe it to issue.created, issue.updated, issue.transitioned, comment.added.",
+      "Save it in Armature first. Armature then shows the endpoint's secret once; it starts with armature_whs_. Copy it.",
+      "Paste the secret into Webhook secret above, then save here.",
+    ]);
+    expect(screen.getByRole("heading", { name: "What members do next" })).toBeInTheDocument();
+  });
+
+  it("says nothing more after a save once Armature has delivered", async () => {
+    const lastDelivery = { receivedAt: "2026-10-15T09:30:00Z", topic: "issue.updated", version: 1, timestamped: true };
+    stubApi({
+      "GET /armature/connection": { status: 200, body: { connection: connection({ lastDelivery }) } },
+      "PUT /armature/connection": { status: 200, body: { connection: connection({ lastDelivery, updatedAt: "2026-10-02T08:00:00Z" }) } },
+      "GET /armature/account": { status: 200, body: { account: account() } },
+    });
+    const user = userEvent.setup();
+    await renderAt("/settings/armature");
+    await user.click(await screen.findByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
+    expect(document.querySelector("[data-armature-webhook-pending]")).toBeNull();
   });
 
   it("says once a member's token has taught Stator which installation Armature is", async () => {

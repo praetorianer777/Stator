@@ -529,6 +529,8 @@ export const ARMATURE_LIST_DEFAULT_LIMIT = 20;
 export const ARMATURE_LIST_PAGE_SIZE = 20;
 /** The longest NQL query a list keeps, as armature.MaxQueryLength. */
 export const ARMATURE_QUERY_MAX_LENGTH = 2000;
+/** How long the connection form waits after a keystroke before asking the typed address what answers there. */
+export const ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS = 600;
 /** How long the list dialog waits after a keystroke before Armature checks the query. */
 export const ARMATURE_QUERY_CHECK_DEBOUNCE_MS = 400;
 /** Armature's priorities, lowest first, and its status categories in workflow order, for sorting rows. */

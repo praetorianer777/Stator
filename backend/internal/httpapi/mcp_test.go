@@ -178,6 +178,7 @@ var notTools = map[string]string{
 	"GET /audit/export":                                            whyAdmin,
 	"GET /armature/connection":                                     whyAdmin,
 	"PUT /armature/connection":                                     whyAdmin,
+	"POST /armature/connection/check":                              whyAdmin,
 	"DELETE /armature/connection":                                  whyAdmin,
 	"PUT /spaces/{spaceKey}/archive":                               whyAdmin,
 	"DELETE /spaces/{spaceKey}/archive":                            whyAdmin,

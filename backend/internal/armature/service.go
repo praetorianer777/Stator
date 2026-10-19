@@ -186,7 +186,7 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	}
 	moved := before == nil || before.BaseURL != base
 	if moved {
-		if err := s.describe(ctx, base); err != nil {
+		if _, err := s.probe(ctx, base); err != nil {
 			return nil, 0, err
 		}
 	}
@@ -222,7 +222,10 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	if err != nil {
 		return nil, lsn, err
 	}
-	out.Partner = s.Partner(ctx, base, true)
+	out.Partner = s.Partner(ctx, base, !moved)
+	// The page says after a save whether Armature ever delivered, so the
+	// answer carries it as the read does.
+	out.LastDelivery, _ = s.cache.Receipt(ctx, siteID)
 	return out, lsn, nil
 }
 
@@ -263,26 +266,6 @@ func (s *Service) normalizeBaseURL(raw string) (string, error) {
 		return "", &FieldError{Field: "baseUrl", Message: "Use an https address for Armature, so the members' tokens travel encrypted."}
 	}
 	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host), nil
-}
-
-// describe checks that an Armature answers at base before anybody's token is
-// sent there.
-func (s *Service) describe(ctx context.Context, base string) error {
-	ctx, cancel := context.WithTimeout(ctx, CallTimeout)
-	defer cancel()
-	err := s.client.Describe(ctx, base)
-	switch {
-	case err == nil:
-		return nil
-	case errors.Is(err, netguard.ErrBlocked):
-		s.opts.Log.Info("the SSRF guard refused an Armature address", "base_url", base, "error", err)
-		return &FieldError{Field: "baseUrl", Message: "Stator may not reach this address, because it is inside the server's own network. Use Armature's public address, or ask the operator to add the host to STATOR_OUTBOUND_ALLOW."}
-	case errors.Is(err, ErrNotArmature):
-		return &FieldError{Field: "baseUrl", Message: "Something answers at this address, but it is not Armature. Check the address, and leave out any path such as /api/v1."}
-	default:
-		s.opts.Log.Info("Armature did not answer at an address being connected", "base_url", base, "error", err)
-		return &FieldError{Field: "baseUrl", Message: "Armature did not answer at this address. Check the address, and that Armature is running, then save again."}
-	}
 }
 
 // Account is the caller's own link to Armature.

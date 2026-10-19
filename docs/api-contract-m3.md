@@ -125,6 +125,7 @@ it, never reads an answer given to the old one.
 |---|---|---|
 | `GET /armature/connection` | admin | `{connection}`, null when none |
 | `PUT /armature/connection` | admin | `{connection}`; 422 on `baseUrl`, `orgSlug`, `webhookSecret` |
+| `POST /armature/connection/check` | admin | `{check}`: `baseUrl` as it would be stored and `partner`; 422 on `baseUrl` saying what is wrong, with the exact `network.outboundAllow` value when the guard refuses the host. Stores nothing |
 | `DELETE /armature/connection` | admin | 204 |
 | `GET /armature/account` | member | `{account}` |
 | `PUT /armature/account/token` | member | `{account}`; 422 on `token`, 502 `armature_unreachable` |

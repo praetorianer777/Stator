@@ -325,6 +325,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Use(requireMember, s.requireUse, requireAdmin)
 			r.Get("/armature/connection", s.handleGetArmatureConnection)
 			r.Put("/armature/connection", s.handleSaveArmatureConnection)
+			r.Post("/armature/connection/check", s.handleCheckArmatureConnection)
 			r.Delete("/armature/connection", s.handleRemoveArmatureConnection)
 			r.Get("/audit", s.handleListAudit)
 			r.Get("/audit/facets", s.handleAuditFacets)

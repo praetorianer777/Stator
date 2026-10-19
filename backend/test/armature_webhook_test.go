@@ -343,6 +343,10 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		if got := last(); got == nil || got["topic"] != "ping" || got["version"] != nil || got["timestamped"] != false {
 			t.Errorf("the last delivery reads %v, want one without a version or a time", got)
 		}
+		saved := obj(t, want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "save again"), "connection")
+		if got, _ := saved["lastDelivery"].(map[string]any); got == nil || got["topic"] != "ping" {
+			t.Errorf("saving answers the last delivery as %v, want the ping", saved["lastDelivery"])
+		}
 	})
 
 	t.Run("a body over the limit is refused before it is read whole", func(t *testing.T) {

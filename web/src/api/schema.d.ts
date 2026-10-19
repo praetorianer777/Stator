@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/armature/connection/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask an address what answers there before saving it: the Armature version and what it offers, or a sentence on baseUrl saying what is wrong. Stores nothing. For administrators. */
+        post: operations["checkArmatureConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/armature/find": {
         parameters: {
             query?: never;
@@ -4459,6 +4476,13 @@ export interface components {
             webhookTopics: string[];
             webhookUrl: string;
         };
+        ConnectionCheck: {
+            baseUrl: string;
+            partner: components["schemas"]["Partner"];
+        };
+        ConnectionCheckInput: {
+            baseUrl: string;
+        };
         ConnectionInput: {
             baseUrl: string;
             webhookSecret?: string;
@@ -7029,6 +7053,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    checkArmatureConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionCheckInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        check: components["schemas"]["ConnectionCheck"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
