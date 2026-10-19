@@ -197,6 +197,8 @@ export const de: Messages = {
       title: "Was die Mitglieder jetzt tun",
       intro:
         "Jedes Mitglied verbindet jetzt sein eigenes Armature-Konto: In Armature öffnet es Tokens, erstellt ein Token ohne die Markierung read-only und fügt es unter Ihr Profil, Armature ein. Jeder Hinweis zum Verbinden auf einer Seite führt direkt dorthin.",
+      introApp:
+        "Jedes Mitglied verbindet jetzt sein eigenes Armature-Konto mit einem Klick: Armature verbinden unter Ihr Profil, Armature, oder ein Hinweis zum Verbinden auf einer Seite, und es erlaubt Stator in Armature.",
       own: "Eigenes Konto verbinden",
     },
     capabilities: {
@@ -243,6 +245,57 @@ export const de: Messages = {
       disconnected: "Ihr Armature-Konto ist getrennt.",
       rejected: "Armature akzeptiert Ihr Token nicht mehr. Erstellen Sie in Armature unter Tokens ein neues und fügen Sie es hier ein.",
       unreachable: "Armature hat auf die letzte Prüfung nicht geantwortet. Prüfen Sie gleich noch einmal.",
+      connectApp: "Armature verbinden",
+      appIntro: "Armature fragt Sie einmal, ob Stator Ihre Vorgänge sehen und Seiten mit ihnen verknüpfen darf, und schickt Sie dann hierher zurück.",
+      appReturns: "Sobald Sie es erlauben, geht es zurück zu der Seite, von der Sie kamen.",
+      appPending:
+        "Ein Armature-Administrator muss Stator zuerst erlauben. Bis dahin sagt Armature Ihnen das beim Verbinden; ein Armature-Administrator, der sein eigenes Konto verbindet, erlaubt es dabei.",
+      useToken: "Stattdessen ein Token verwenden",
+      viaApp: "Verbunden über die verbundenen Apps von Armature.",
+      rejectedApp: "Armature hat diese Verbindung beendet, weil sie dort getrennt wurde oder Stator nicht mehr erlaubt ist. Verbinden Sie Armature erneut.",
+      confirmDisconnectApp:
+        "Ihr Armature-Konto trennen? Stator beendet auch seinen Zugang in Armature. Seiten zeigen nur noch Vorgangsschlüssel, bis Sie es wieder verbinden.",
+      outcomes: {
+        connected: "Ihr Armature-Konto ist verbunden.",
+        denied: "Sie haben Stator in Armature nicht erlaubt, also ist nichts verbunden. Verbinden Sie Armature erneut, wenn Sie es sich anders überlegen.",
+        expired: "Diese Rückkehr von Armature gehörte nicht zu dieser Sitzung oder hat zu lange gedauert. Verbinden Sie Armature erneut.",
+        ended: "Armature nimmt diese Antwort nicht mehr an. Verbinden Sie Armature erneut.",
+        refused:
+          "Armature wollte Stator nicht registrieren. Fügen Sie stattdessen ein Token ein, oder bitten Sie einen Administrator, Stator in Armature hinzuzufügen.",
+        unavailable: "Dieses Armature bietet das Verbinden mit einem Klick nicht an. Fügen Sie stattdessen ein Token ein.",
+        unreachable: "Armature hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
+        other_installation:
+          "Dieses Armature-Konto gehört zu einer anderen Armature-Installation als der verbundenen. Melden Sie sich bei der richtigen an und verbinden Sie erneut.",
+        not_configured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",
+        failed: "Armature hat Ihr Konto nicht verbunden. Versuchen Sie es erneut, oder fügen Sie stattdessen ein Token ein.",
+      },
+    },
+    app: {
+      title: "Verbundene App",
+      intro:
+        "Wo Armature verbundene Apps anbietet, verbinden Mitglieder ihre Konten mit einem Klick, statt ein Token einzufügen. Stator registriert sich selbst, wenn sich jemand zum ersten Mal verbindet.",
+      notOffered: "Dieses Armature bietet keine verbundenen Apps an, also fügen Mitglieder ein Token ein.",
+      status: {
+        none: "Stator registriert sich in Armature, wenn sich das erste Mitglied verbindet.",
+        pending:
+          "Stator ist registriert und wartet darauf, dass ein Armature-Administrator es erlaubt. Ein Armature-Administrator, der sein eigenes Konto verbindet, erlaubt es dabei.",
+        active: "Stator ist in Armature erlaubt.",
+        refused: "Armature wollte Stator nicht registrieren. Es sagte:",
+      },
+      registeredBy: { stator: "Stator hat sich selbst registriert.", admin: "Ein Administrator hat es eingefügt." },
+      clientIdShown: (id: string) => `Client-ID ${id}.`,
+      pasteTitle: "Stator von Hand registrieren",
+      pasteIntro:
+        "Fügen Sie Stator in Armature unter Einstellungen, Verbundene Apps mit der Rücksprungadresse unten und den Bereichen read und issue.write hinzu, und fügen Sie dann die Client-ID und das Geheimnis ein, die Armature zeigt.",
+      redirectUri: "Rücksprungadresse",
+      clientId: "Client-ID",
+      clientSecret: "Client-Geheimnis",
+      clientSecretHint: "Wird in Armature einmal gezeigt. Lassen Sie es für eine als öffentlich registrierte App leer.",
+      save: "App speichern",
+      saved: "Die App ist gespeichert.",
+      remove: "App vergessen",
+      confirmRemove: "Die App vergessen? Jedes darüber verbundene Mitglied verbindet sich erneut.",
+      removed: "Die App ist vergessen. Das nächste Mitglied, das sich verbindet, registriert Stator erneut.",
     },
     links: {
       title: "In Armature verknüpft",
@@ -3225,6 +3278,8 @@ export const de: Messages = {
       "theme.default_set": "Standarddesign geändert",
       "armature.connection_saved": "Armature verbunden",
       "armature.connection_removed": "Armature getrennt",
+      "armature.app_saved": "Armature-App gespeichert",
+      "armature.app_removed": "Armature-App entfernt",
       "page.exported": "Seite exportiert",
       "page.shared": "Seite geteilt",
       "audit.exported": "Audit-Log exportiert",
