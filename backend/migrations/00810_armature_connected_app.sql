@@ -96,6 +96,14 @@ CREATE POLICY armature_oauth_attempt_own ON armature_oauth_attempt AS RESTRICTIV
     USING (user_id = current_actor_id())
     WITH CHECK (user_id = current_actor_id() AND perm_is_member(current_actor_id()));
 
+-- An anonymous reader names nobody, so none of them is theirs.
+CREATE POLICY armature_app_not_anonymous ON armature_app AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
+CREATE POLICY armature_grant_not_anonymous ON armature_grant AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
+CREATE POLICY armature_oauth_attempt_not_anonymous ON armature_oauth_attempt AS RESTRICTIVE FOR ALL TO stator_app
+    USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
+
 -- A grant's id is always a fresh default, so a new consent is a new row and
 -- its cache is new too; a refresh rewrites the tokens of the row it locked.
 REVOKE ALL ON armature_app, armature_grant, armature_oauth_attempt FROM stator_app;

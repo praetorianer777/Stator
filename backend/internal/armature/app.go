@@ -496,11 +496,16 @@ func (s *Service) FinishConnect(ctx context.Context, session uuid.UUID, answer u
 	if err != nil {
 		return back, lsn, err
 	}
-	if _, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+	// The later of the two writes is what the person's next read waits for,
+	// so the settings page they come back to says the app is allowed.
+	allowed, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		_, err := tx.Exec(ctx, `UPDATE armature_app SET status = 'active' WHERE status = 'pending' AND client_id = $1`, creds.ClientID)
 		return err
-	}); err != nil {
+	})
+	if err != nil {
 		s.opts.Log.Warn("the Armature app could not be marked allowed", "error", err)
+	} else if allowed > lsn {
+		lsn = allowed
 	}
 	s.learnInstallation(ctx, e, me)
 	return back, lsn, nil
