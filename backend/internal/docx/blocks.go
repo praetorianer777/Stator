@@ -8,6 +8,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/praetorianer777/stator/backend/internal/exciter"
 )
 
 type blockWriter func(w *writer, n document.Node, f frame, depth int)
@@ -85,12 +86,16 @@ func init() {
 		document.NodeContributors: func(w *writer, n document.Node, f frame, _ int) {
 			w.note(f, w.words.contributors(stringAttr(n, "scope") == document.ContributorsTree))
 		},
-		"image":                 (*writer).imageBlock,
-		document.NodeGallery:    (*writer).gallery,
-		"tableOfContents":       (*writer).contents,
-		"childPages":            func(w *writer, _ document.Node, f frame, _ int) { w.note(f, w.words.childPages) },
-		armature.NodeIssueBlock: func(w *writer, n document.Node, f frame, _ int) { w.note(f, w.words.issue(stringAttr(n, "key"))) },
-		armature.NodeIssueList:  func(w *writer, n document.Node, f frame, _ int) { w.note(f, w.words.issueList(stringAttr(n, "query"))) },
+		"image":                      (*writer).imageBlock,
+		document.NodeGallery:         (*writer).gallery,
+		"tableOfContents":            (*writer).contents,
+		"childPages":                 func(w *writer, _ document.Node, f frame, _ int) { w.note(f, w.words.childPages) },
+		armature.NodeIssueBlock:      func(w *writer, n document.Node, f frame, _ int) { w.note(f, w.words.issue(stringAttr(n, "key"))) },
+		armature.NodeIssueList:       func(w *writer, n document.Node, f frame, _ int) { w.note(f, w.words.issueList(stringAttr(n, "query"))) },
+		exciter.NodeRequirementBlock: func(w *writer, n document.Node, f frame, _ int) { w.note(f, w.words.requirement(stringAttr(n, "key"))) },
+		exciter.NodeRequirementList: func(w *writer, n document.Node, f frame, _ int) {
+			w.note(f, w.words.requirementList(stringAttr(n, "project"), stringAttr(n, "query")))
+		},
 		armature.NodeChart: func(w *writer, n document.Node, f frame, _ int) {
 			w.note(f, w.words.issueChart(stringAttr(n, "project"), stringAttr(n, "query")))
 		},

@@ -62,6 +62,10 @@ var routes = []route{
 	{Method: "GET", Path: "/meta", Public: true, handler: (*stub).meta},
 	{Method: "GET", Path: "/auth/me", handler: (*stub).me},
 	{Method: "GET", Path: "/requirements/{reqKey}", handler: (*stub).getRequirement},
+	{Method: "GET", Path: "/search/quick", handler: (*stub).quickSearch},
+	{Method: "GET", Path: "/projects", handler: (*stub).listProjects},
+	{Method: "GET", Path: "/projects/{projectKey}/requirements", handler: (*stub).listRequirements},
+	{Method: "GET", Path: "/projects/{projectKey}/requirements/suggest", handler: (*stub).suggest},
 }
 
 // namespace makes the stub's ids from names, so they are the same on every run.
@@ -89,6 +93,8 @@ type requirement struct {
 	// HiddenFrom are the people Exciter answers 404 for it.
 	HiddenFrom map[string]bool
 	TrashedAt  *time.Time
+	// Owner is the person currentUser() finds it for, empty for nobody.
+	Owner string
 }
 
 func (r *requirement) project() string { return r.Key[:strings.LastIndex(r.Key, "-R")] }
@@ -116,11 +122,13 @@ type tenant struct {
 func newTenant(name string) *tenant {
 	trashed := seeded.Add(48 * time.Hour)
 	return &tenant{Name: name, requirements: []*requirement{
-		{ID: idOf(name, "CHK-R1"), Key: "CHK-R1", Title: "The basket keeps its items for 30 days", Status: &status{"Approved", "approved"}, Revision: 3},
+		{ID: idOf(name, "CHK-R1"), Key: "CHK-R1", Title: "The basket keeps its items for 30 days", Status: &status{"Approved", "approved"}, Revision: 3, Owner: adminName},
 		{ID: idOf(name, "CHK-R2"), Key: "CHK-R2", Title: "Payment providers are tried in the order set", Status: &status{"In review", "review"}, Revision: 1,
-			HiddenFrom: map[string]bool{"bob": true}},
+			HiddenFrom: map[string]bool{"bob": true}, Owner: adminName},
 		{ID: idOf(name, "CHK-R3"), Key: "CHK-R3", Title: "Gift wrapping is offered at checkout", Status: &status{"Draft", "draft"}, Revision: 1, TrashedAt: &trashed},
-		{ID: idOf(name, "CHK-R4"), Key: "CHK-R4", Title: "An order is confirmed by mail", Status: &status{"Draft", "draft"}, Revision: 2, FormerKeys: []string{"OLD-R7"}},
+		{ID: idOf(name, "CHK-R4"), Key: "CHK-R4", Title: "An order is confirmed by mail", Status: &status{"Draft", "draft"}, Revision: 2, FormerKeys: []string{"OLD-R7"}, Owner: "bob"},
+		{ID: idOf(name, "SEC-R1"), Key: "SEC-R1", Title: "A session ends after 15 minutes idle", Status: &status{"Approved", "approved"}, Revision: 1,
+			HiddenFrom: map[string]bool{"bob": true}, Owner: adminName},
 	}}
 }
 
@@ -341,14 +349,11 @@ func requirementView(t *tenant, r *requirement) map[string]any {
 	if former == nil {
 		former = []string{}
 	}
-	doc := map[string]any{"type": "doc", "content": []any{
-		map[string]any{"type": "paragraph", "content": []any{map[string]any{"type": "text", "text": r.Title + "."}}},
-	}}
 	return map[string]any{
 		"id": r.ID, "key": r.Key, "projectKey": r.project(), "number": r.number(), "kind": "requirement",
-		"title": r.Title, "statement": doc, "rationale": nil, "type": nil,
-		"attributes": map[string]any{}, "computed": map[string]any{}, "testCase": nil,
-		"revision": r.Revision, "status": st, "owner": nil, "priority": nil, "labels": []string{}, "parentId": nil,
+		"title": r.Title, "statement": statementOf(r), "rationale": rationaleOf(r), "type": nil,
+		"attributes": map[string]any{}, "computed": map[string]any{}, "testCase": nil, "risk": nil,
+		"revision": r.Revision, "status": st, "owner": ownerOf(t, r), "priority": nil, "labels": []string{}, "parentId": nil,
 		"outline": strconv.Itoa(r.number()), "formerKeys": former, "copiedFrom": nil, "reuse": nil,
 		"createdAt": seeded, "createdByName": "Alice", "updatedAt": seeded, "updatedByName": "Alice", "trashedAt": r.TrashedAt,
 		"can":      map[string]any{"edit": false, "transition": false, "delete": false, "link": false, "comment": true},

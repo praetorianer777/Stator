@@ -845,6 +845,18 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 			n.Attrs["limit"] = limit
 		}
 		return n, true
+	case kindRequirement:
+		return document.Node{Type: exciter.NodeRequirementBlock, Attrs: map[string]any{"key": words}}, true
+	case kindRequirements:
+		n := document.Node{Type: exciter.NodeRequirementList, Attrs: map[string]any{"project": attrs["data-project"], "query": words}}
+		if v, ok := attrs["data-limit"]; ok {
+			limit, err := strconv.Atoi(v)
+			if err != nil {
+				return document.Node{}, false
+			}
+			n.Attrs["limit"] = limit
+		}
+		return n, true
 	case kindTOC:
 		level, err := strconv.Atoi(attrs["data-max-level"])
 		if err != nil {

@@ -131,7 +131,9 @@ func (s *Service) Webhook(ctx context.Context, body []byte, h WebhookHeaders) er
 	if !s.cache.FirstDelivery(ctx, site, env.ID) {
 		return nil
 	}
-	forget := make([]string, 0, len(keys)+2)
+	// Any change may change what a list's query finds, which no key tells.
+	forget := make([]string, 0, len(keys)+3)
+	forget = append(forget, s.listsKey(site))
 	if id != uuid.Nil {
 		for _, former := range s.cache.Members(ctx, s.idKey(site, id)) {
 			if !slices.Contains(keys, former) {

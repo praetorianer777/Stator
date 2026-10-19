@@ -2,6 +2,7 @@ package exciter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -40,15 +41,15 @@ func (s *Service) idKey(site, id uuid.UUID) string {
 }
 
 // cached reads the viewer's answer for key; false is a miss.
-func (s *Service) cached(ctx context.Context, v *Viewer, key string) (*Requirement, bool) {
-	var r *Requirement
+func (s *Service) cached(ctx context.Context, v *Viewer, key string) (*RequirementDetail, bool) {
+	var r *RequirementDetail
 	if s.cache.Field(ctx, s.requirementKey(v.SiteID, key), v.TokenID.String(), RequirementCacheTTL, &r) {
 		return r, true
 	}
 	return nil, false
 }
 
-func (s *Service) keep(ctx context.Context, v *Viewer, key string, r *Requirement) {
+func (s *Service) keep(ctx context.Context, v *Viewer, key string, r *RequirementDetail) {
 	s.cache.PutField(ctx, s.requirementKey(v.SiteID, key), v.TokenID.String(), RequirementCacheTTL, r)
 	if r != nil {
 		s.cache.Remember(ctx, s.idKey(v.SiteID, r.ID), key, RequirementCacheTTL)
@@ -58,11 +59,35 @@ func (s *Service) keep(ctx context.Context, v *Viewer, key string, r *Requiremen
 // Lookup answers one result per key, in order, as the viewer may see them.
 // Keys are distinct and normalized; a status other than ok has no results.
 func (s *Service) Lookup(ctx context.Context, keys []string) (Status, []RequirementResult, error) {
+	status, found, err := s.details(ctx, keys)
+	if status != StatusOK || err != nil {
+		return status, nil, err
+	}
+	out := make([]RequirementResult, len(keys))
+	for i, key := range keys {
+		out[i] = RequirementResult{Key: key}
+		if d := found[key]; d != nil {
+			out[i].Requirement = &d.Requirement
+		}
+	}
+	return StatusOK, out, nil
+}
+
+// Requirement is one requirement with its statement and rationale, as the
+// viewer may see it, nil when they may not; the key is normalized.
+func (s *Service) Requirement(ctx context.Context, key string) (Status, *RequirementDetail, error) {
+	status, found, err := s.details(ctx, []string{key})
+	return status, found[key], err
+}
+
+// details reads each key as the viewer, from the cache where it can; a chip
+// and a block of the same key share the one answer.
+func (s *Service) details(ctx context.Context, keys []string) (Status, map[string]*RequirementDetail, error) {
 	v, status, err := s.ViewerFor(ctx, FeatureRequirements)
 	if v == nil {
 		return status, nil, err
 	}
-	found := make(map[string]*Requirement, len(keys))
+	found := make(map[string]*RequirementDetail, len(keys))
 	var missing []string
 	for _, key := range keys {
 		if r, ok := s.cached(ctx, v, key); ok {
@@ -81,21 +106,7 @@ func (s *Service) Lookup(ctx context.Context, keys []string) (Status, []Requirem
 			s.keep(ctx, v, key, fetched[key])
 		}
 	}
-	out := make([]RequirementResult, len(keys))
-	for i, key := range keys {
-		out[i] = RequirementResult{Key: key, Requirement: found[key]}
-	}
-	return StatusOK, out, nil
-}
-
-// Requirement is one requirement as the viewer may see it, nil when they may
-// not; the key is normalized.
-func (s *Service) Requirement(ctx context.Context, key string) (Status, *Requirement, error) {
-	status, results, err := s.Lookup(ctx, []string{key})
-	if len(results) != 1 {
-		return status, nil, err
-	}
-	return status, results[0].Requirement, err
+	return StatusOK, found, nil
 }
 
 // failed is the status a read answers for a call's error; a refused token is
@@ -115,13 +126,13 @@ func (s *Service) failed(ctx context.Context, v *Viewer, err error) Status {
 
 // fetchAll reads each key on its own, a few at a time: Exciter answers a
 // former key by the requirement it names now, which no search would.
-func (s *Service) fetchAll(ctx context.Context, v *Viewer, keys []string) (map[string]*Requirement, error) {
+func (s *Service) fetchAll(ctx context.Context, v *Viewer, keys []string) (map[string]*RequirementDetail, error) {
 	var (
 		mu    sync.Mutex
 		first error
 		wg    sync.WaitGroup
 		slots = make(chan struct{}, LookupParallel)
-		out   = make(map[string]*Requirement, len(keys))
+		out   = make(map[string]*RequirementDetail, len(keys))
 	)
 	for _, key := range keys {
 		wg.Add(1)
@@ -148,7 +159,7 @@ func (s *Service) fetchAll(ctx context.Context, v *Viewer, keys []string) (map[s
 	return out, nil
 }
 
-// fetched is the part of Exciter's Requirement a chip reads.
+// fetched is the part of Exciter's Requirement a chip and a block read.
 type fetched struct {
 	ID         uuid.UUID          `json:"id"`
 	Key        string             `json:"key"`
@@ -157,11 +168,13 @@ type fetched struct {
 	Revision   int                `json:"revision"`
 	Status     *RequirementStatus `json:"status"`
 	TrashedAt  *time.Time         `json:"trashedAt"`
+	Statement  json.RawMessage    `json:"statement"`
+	Rationale  json.RawMessage    `json:"rationale"`
 }
 
 // fetch is Exciter's GET /requirements/{reqKey}, which answers a former key
 // too; nil when there is none the viewer may see, which Exciter says with 404.
-func (s *Service) fetch(ctx context.Context, v *Viewer, key string) (*Requirement, error) {
+func (s *Service) fetch(ctx context.Context, v *Viewer, key string) (*RequirementDetail, error) {
 	ctx, cancel := context.WithTimeout(ctx, armature.CallTimeout)
 	defer cancel()
 	var answer struct {
@@ -176,8 +189,20 @@ func (s *Service) fetch(ctx context.Context, v *Viewer, key string) (*Requiremen
 		return nil, err
 	}
 	f := answer.Requirement
-	return &Requirement{
-		ID: f.ID, Key: f.Key, URL: RequirementURL(v.Caller.BaseURL(), f.ProjectKey, f.Key), ProjectKey: f.ProjectKey,
-		Title: f.Title, Status: f.Status, Revision: f.Revision, TrashedAt: f.TrashedAt,
+	return &RequirementDetail{
+		Requirement: Requirement{
+			ID: f.ID, Key: f.Key, URL: RequirementURL(v.Caller.BaseURL(), f.ProjectKey, f.Key), ProjectKey: f.ProjectKey,
+			Title: f.Title, Status: f.Status, Revision: f.Revision, TrashedAt: f.TrashedAt,
+		},
+		Statement: documentOrNull(f.Statement), Rationale: documentOrNull(f.Rationale),
 	}, nil
+}
+
+// documentOrNull is a document as Exciter answered it, or null for none, so
+// a block never has to tell an absent text from a missing field.
+func documentOrNull(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	return raw
 }

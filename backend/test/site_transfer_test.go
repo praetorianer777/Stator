@@ -135,6 +135,12 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	want(t, owner.put(t, "/api/v1/themes/default", map[string]any{"themeId": house}), http.StatusOK, "make it the default")
 	want(t, owner.post(t, "/api/v1/templates", map[string]any{"name": "Meeting notes", "title": "Meeting", "body": textDoc("Who came"), "variables": []any{}}), http.StatusCreated, "an organization's template")
 	makeHook(t, owner, "Chat", "https://hooks.example.test/in", "page.published")
+	// Straight in, as no Exciter answers at the address: what travels is the
+	// row, never its sealed secret.
+	const exciterBase = "https://exciter.example.test"
+	if _, err := h.super.Exec(ctx, `INSERT INTO exciter_connection (base_url, webhook_secret) VALUES ($1, '\x00'::bytea)`, exciterBase); err != nil {
+		t.Fatalf("connect Exciter: %v", err)
+	}
 
 	var archive []byte
 	t.Run("an administrator exports the organization as one archive", func(t *testing.T) {
@@ -156,7 +162,10 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		for _, o := range m.NotCarried {
 			lists = append(lists, o.What)
 		}
-		for _, what := range []string{"Passwords", "Sessions", "Personal access tokens", "Linked Armature accounts", "Webhook signing secrets"} {
+		if m.Exciter == nil || m.Exciter.BaseURL != exciterBase {
+			t.Errorf("the manifest names Exciter as %+v", m.Exciter)
+		}
+		for _, what := range []string{"Passwords", "Sessions", "Personal access tokens", "Linked Armature accounts", "Webhook signing secrets", "Linked Exciter accounts", "Exciter's webhook secret"} {
 			if !slices.Contains(lists, what) {
 				t.Errorf("the archive does not say it leaves out %s: %v", what, lists)
 			}
@@ -240,6 +249,11 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}
 		if imports := list(t, want(t, landed.get(t, "/api/v1/site/imports"), http.StatusOK, "the imports"), "imports"); len(imports) != 1 || imports[0].(map[string]any)["id"] != job["id"] {
 			t.Errorf("the organization's imports are %v", imports)
+		}
+		var base string
+		var sealed bool
+		if err := fresh.super.QueryRow(ctx, `SELECT base_url, webhook_secret IS NOT NULL FROM exciter_connection`).Scan(&base, &sealed); err != nil || base != exciterBase || sealed {
+			t.Errorf("Exciter came across at %q with a secret %v: %v", base, sealed, err)
 		}
 	})
 

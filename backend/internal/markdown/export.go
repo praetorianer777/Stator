@@ -252,6 +252,14 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 			attrs = append(attrs, [2]string{"data-limit", strconv.Itoa(intAttr(n, "limit", 0))})
 		}
 		return div(kindIssueList, attrs, stringAttr(n, "query")), true
+	case exciter.NodeRequirementBlock:
+		return div(kindRequirement, nil, stringAttr(n, "key")), true
+	case exciter.NodeRequirementList:
+		attrs := [][2]string{{"data-project", stringAttr(n, "project")}}
+		if limit, ok := n.Attrs["limit"]; ok && limit != nil {
+			attrs = append(attrs, [2]string{"data-limit", strconv.Itoa(intAttr(n, "limit", 0))})
+		}
+		return div(kindRequirements, attrs, stringAttr(n, "query")), true
 	case "tableOfContents":
 		return div(kindTOC, [][2]string{{"data-max-level", strconv.Itoa(intAttr(n, "maxLevel", document.MaxHeadingLevel))}}, ""), true
 	case "childPages":

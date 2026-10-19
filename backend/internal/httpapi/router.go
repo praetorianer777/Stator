@@ -379,6 +379,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Delete("/exciter/account/token", s.handleDisconnectExciterAccount)
 			r.Get("/exciter/requirements", s.handleLookupExciterRequirements)
 			r.Get("/exciter/requirements/{reqKey}", s.handleGetExciterRequirement)
+			r.Get("/exciter/search", s.handleSearchExciterRequirements)
+			r.Get("/exciter/projects", s.handleListExciterProjects)
+			r.Get("/exciter/projects/{projectKey}/requirements", s.handleListExciterRequirements)
+			r.Get("/exciter/projects/{projectKey}/requirements/suggest", s.handleSuggestExciterQuery)
 		})
 
 		if s.TestInstance != nil {

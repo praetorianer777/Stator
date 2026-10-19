@@ -363,7 +363,7 @@ const UUIDPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const AnchorPattern = `^[\p{Ll}\p{Lo}\p{Lm}\p{N}]+(?:-[\p{Ll}\p{Lo}\p{Lm}\p{N}]+)*$`
 
 var (
-	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeSketch, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", NodeGallery, "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap}
+	blockNodes  = []string{"paragraph", "heading", "bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "horizontalRule", "table", "panel", "expand", "columns", NodeDecision, NodeMathBlock, NodeDiagram, NodeSketch, NodeLinkCard, NodeExcerpt, NodeInclude, NodeProperties, NodePropertiesReport, NodeLabelledPages, NodeRecentlyUpdated, NodeBlogPosts, NodeTaskReport, NodeAttachmentList, NodeTableChart, NodeCalendar, NodeTemplateButton, NodeContributors, "image", NodeGallery, "tableOfContents", "childPages", armature.NodeIssueBlock, armature.NodeIssueList, armature.NodeChart, armature.NodeRoadmap, exciter.NodeRequirementBlock, exciter.NodeRequirementList}
 	inlineNodes = []string{"text", "hardBreak", "mention", "attachment", armature.NodeIssue, exciter.NodeRequirement, NodeStatus, NodeDate, NodeMathInline}
 	mathAttrs   = map[string]Attr{"latex": {Kind: KindString, MaxLength: MaxMathLength, Pattern: `\S`}}
 	cellAttrs   = map[string]Attr{
@@ -511,6 +511,19 @@ var Allowed = Allowlist{
 		exciter.NodeRequirement: {
 			Inline: true,
 			Attrs:  map[string]Attr{"key": {Kind: KindString, Pattern: exciter.KeyPattern, MaxLength: exciter.MaxKeyLength}},
+		},
+		exciter.NodeRequirementBlock: {
+			Attrs: map[string]Attr{"key": {Kind: KindString, Pattern: exciter.KeyPattern, MaxLength: exciter.MaxKeyLength}},
+		},
+		// The project and the query, never the rows: each reader's view asks
+		// Exciter, so currentUser() is the reader. A blank query lists the
+		// whole project.
+		exciter.NodeRequirementList: {
+			Attrs: map[string]Attr{
+				"project": {Kind: KindString, Pattern: exciter.ProjectKeyPattern},
+				"query":   {Kind: KindString, MaxLength: exciter.MaxQueryLength},
+				"limit":   {Kind: KindInteger, Min: 1, Max: exciter.MaxListLimit},
+			},
 		},
 		// The query and how to show it, never its rows: each reader's view
 		// asks Armature for the rows that reader may see.

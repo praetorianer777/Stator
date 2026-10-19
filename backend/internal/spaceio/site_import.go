@@ -271,6 +271,7 @@ func (oi *siteImporter) write(ctx context.Context, tx db.DBTX) error {
 		func() error { return oi.writePermissions(ctx, tx) },
 		func() error { return oi.writeSignIn(ctx, tx) },
 		func() error { return oi.writeArmature(ctx, tx) },
+		func() error { return oi.writeExciter(ctx, tx) },
 		func() error { return oi.writeTemplates(ctx, tx) },
 		func() error { return oi.writeWebhooks(ctx, tx) },
 		func() error { return oi.writePreferences(ctx, tx) },
@@ -670,6 +671,25 @@ func (oi *siteImporter) writeArmature(ctx context.Context, tx db.DBTX) error {
 	}
 	if tag.RowsAffected() == 0 {
 		oi.report.Kept = append(oi.report.Kept, "armature")
+	}
+	return nil
+}
+
+// writeExciter brings the Exciter connection across as the Armature one: its
+// webhook secret stays behind, and an organization's own connection wins.
+func (oi *siteImporter) writeExciter(ctx context.Context, tx db.DBTX) error {
+	e := oi.m.Exciter
+	if e == nil {
+		return nil
+	}
+	tag, err := tx.Exec(ctx, `
+		INSERT INTO exciter_connection (base_url, updated_by) VALUES ($1, $2) ON CONFLICT (singleton) DO NOTHING`,
+		e.BaseURL, oi.importer)
+	if err != nil {
+		return part("the Exciter connection", err)
+	}
+	if tag.RowsAffected() == 0 {
+		oi.report.Kept = append(oi.report.Kept, "exciter")
 	}
 	return nil
 }

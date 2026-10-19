@@ -327,4 +327,13 @@ An **Armature roadmap** lays a query's issues out on a timeline by epic or by te
 
 ## Exciter
 
-With Exciter connected, a requirement key such as <span data-stator="requirement">CHK-R1</span> becomes a chip that shows the title, the status and the revision of the requirement to each reader as Exciter shows it to them. Type the key and a space, or choose **Exciter requirement** in the slash menu and enter the key. Without Exciter, or without your own Exciter token, the chip is the key alone and says how to connect.
+With Exciter connected, a requirement key such as <span data-stator="requirement">CHK-R1</span> becomes a chip that shows the title, the status and the revision of the requirement to each reader as Exciter shows it to them. Type the key and a space, or choose **Exciter requirement** in the slash menu and find it by a word of its title or its key. Without Exciter, or without your own Exciter token, the chip is the key alone and says how to connect.
+
+
+An **Exciter requirement block** shows one requirement with its statement and rationale. Choose it in the slash menu and find the requirement by a word of its title or by its key:
+
+<div data-stator="requirement">CHK-R1</div>
+
+An **Exciter requirement list** shows a table of the requirements a query in Exciter's query language finds in one project, a window at a time. Pick the project, write the query, and the editor completes field names and values as you type. `currentUser()` is whoever reads the page, so the same list shows each reader their own:
+
+<div data-stator="requirements" data-project="CHK" data-limit="10">owner = currentUser() ORDER BY key</div>

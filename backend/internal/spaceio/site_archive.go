@@ -44,6 +44,7 @@ type SiteManifest struct {
 	Permissions  []Grant          `json:"permissions"`
 	SignIn       *SiteSignIn      `json:"signIn"`
 	Armature     *SiteArmature    `json:"armature"`
+	Exciter      *SiteExciter     `json:"exciter"`
 	Brand        SiteBrand        `json:"brand"`
 	Themes       []SiteTheme      `json:"themes"`
 	PersonThemes []PersonTheme    `json:"personThemes"`
@@ -124,6 +125,11 @@ type SiteGroupRole struct {
 
 // SiteArmature is where the organization's Armature is, without its webhook secret.
 type SiteArmature struct {
+	BaseURL string `json:"baseUrl"`
+}
+
+// SiteExciter is where the organization's Exciter is, without its webhook secret.
+type SiteExciter struct {
 	BaseURL string `json:"baseUrl"`
 }
 

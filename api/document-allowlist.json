@@ -157,7 +157,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "blogPosts": {
@@ -277,7 +279,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "columns": {
@@ -384,7 +388,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "excerpt": {
@@ -437,7 +443,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "exciterRequirement": {
@@ -449,6 +457,32 @@
         }
       },
       "inline": true
+    },
+    "exciterRequirementBlock": {
+      "attrs": {
+        "key": {
+          "kind": "string",
+          "maxLength": 30,
+          "pattern": "^([A-Z][A-Z0-9]{1,9})-R([1-9][0-9]*)$"
+        }
+      }
+    },
+    "exciterRequirementList": {
+      "attrs": {
+        "limit": {
+          "kind": "integer",
+          "min": 1,
+          "max": 500
+        },
+        "project": {
+          "kind": "string",
+          "pattern": "^[A-Z][A-Z0-9]{1,9}$"
+        },
+        "query": {
+          "kind": "string",
+          "maxLength": 2000
+        }
+      }
     },
     "expand": {
       "attrs": {
@@ -495,7 +529,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "gallery": {
@@ -678,7 +714,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "mathBlock": {
@@ -794,7 +832,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "paragraph": {
@@ -998,7 +1038,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "tableChart": {
@@ -1098,7 +1140,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "tableOfContents": {
@@ -1165,7 +1209,9 @@
         "armatureIssueBlock",
         "armatureIssueList",
         "armatureChart",
-        "armatureRoadmap"
+        "armatureRoadmap",
+        "exciterRequirementBlock",
+        "exciterRequirementList"
       ]
     },
     "taskList": {

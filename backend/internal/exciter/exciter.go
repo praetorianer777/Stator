@@ -50,9 +50,36 @@ const (
 	CachePrefix = "stator:exciter:"
 )
 
-// NodeRequirement is the inline chip of a requirement on a page; its one
-// attribute is key. internal/document allows it.
-const NodeRequirement = "exciterRequirement"
+// The nodes a page names Exciter requirements with; internal/document
+// allows them, and a page stores neither a requirement nor a row.
+const (
+	// NodeRequirement is the inline chip of a requirement; its one attribute is key.
+	NodeRequirement = "exciterRequirement"
+	// NodeRequirementBlock shows one requirement with its statement and
+	// rationale; its one attribute is key.
+	NodeRequirementBlock = "exciterRequirementBlock"
+	// NodeRequirementList is a table of what a query finds in one project,
+	// with project, query and limit.
+	NodeRequirementList = "exciterRequirementList"
+)
+
+const (
+	// ProjectKeyPattern is the project part of KeyPattern.
+	ProjectKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
+	// MaxQueryLength is the longest query Exciter's language reads.
+	MaxQueryLength = 2000
+	// DefaultListLimit is the rows a list block shows at first, and
+	// MaxListLimit the most Exciter answers in one window.
+	DefaultListLimit = 20
+	MaxListLimit     = 500
+	// SearchLimit is the most requirements the picker offers, and
+	// MaxSearchLength bounds what it looks for.
+	SearchLimit     = 10
+	MaxSearchLength = 200
+	// SuggestLimit is the most words and requirements one completion offers,
+	// as many as Exciter answers.
+	SuggestLimit = 20
+)
 
 // Status says whether an answer came from Exciter, and if not, why; the
 // words are Armature's, so a client reads both alike.
@@ -153,6 +180,17 @@ type Requirement struct {
 	// TrashedAt is set for a requirement in Exciter's trash that the reader
 	// may still find there.
 	TrashedAt *time.Time `json:"trashedAt"`
+}
+
+// RequirementDetail is a requirement as a requirement block draws it: the
+// chip's fields with its statement and rationale.
+type RequirementDetail struct {
+	Requirement
+	// Statement and Rationale are ProseMirror documents in Exciter's schema,
+	// null when the requirement has none; a block renders the nodes it
+	// knows and the rest as text.
+	Statement json.RawMessage `json:"statement"`
+	Rationale json.RawMessage `json:"rationale"`
 }
 
 // RequirementStatus is where a requirement stands in its workflow.
