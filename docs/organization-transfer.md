@@ -79,8 +79,8 @@ worker checks again that whoever asked is still one before it begins.
   hub page and whether everybody lands on it, the default theme); its people
   with their roles, a guest with the space they were invited to; its groups
   with their members; its global permissions; the sign-in provider and the
-  roles its groups give, without the client secret; the Armature connection,
-  without its webhook secret; the brand's footer lines; its themes; the
+  roles its groups give, without the client secret; the Armature and Exciter connections,
+  without their webhook secrets; the brand's footer lines; its themes; the
   templates every space offers; its webhooks, without their secrets; each
   person's notification settings and chosen theme; the list of its spaces;
   and `notCarried`, the list below, with counts where they help.
@@ -125,7 +125,7 @@ transaction, so an import that fails leaves nothing behind:
   permissions, the brand's footer lines and logo, the themes and the
   default theme, the organization's templates, notification settings and
   chosen themes.
-- **The sign-in provider and the Armature connection** come across only
+- **The sign-in provider and the Armature and Exciter connections** come across only
   when the organization has none of its own; the report says when it kept
   its own. A provider comes across switched off, without its secret.
 - **Webhooks** come across switched off, without a secret that signs.
@@ -148,6 +148,8 @@ before anybody exports:
 | The sign-in provider's client secret | Sealed with the old server's key. Enter it, then switch the provider on. |
 | Webhook signing secrets | Sealed with the old server's key. Rotate each webhook's secret, give the receiver the new one, switch it on. |
 | Armature's webhook secret | Sealed with the old server's key. Save the Armature connection again and enter the new secret in Armature. |
+| Linked Exciter accounts | Each person's Exciter token is sealed with the old server's key. Everybody pastes an Exciter token again under their profile. |
+| Exciter's webhook secret | Sealed with the old server's key. Save the Exciter connection again and enter the new secret in Exciter. |
 | Requests to join | Whoever still wants in signs in again and asks anew. |
 | Shares, public links and anonymous reads by link | A link opens the organization to people; give them again. |
 | Notifications, stars, watches, page views and visits | Each person's own reading of the old place. |

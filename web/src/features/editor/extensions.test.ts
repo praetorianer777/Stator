@@ -84,6 +84,9 @@ describe("the slash menu's blocks", () => {
       // The picker asks which issue; this one answers lower case, as a person might type it.
       armatureIssue: (d) => JSON.stringify(find(d, "armatureIssueBlock")[0]?.attrs) === JSON.stringify({ key: "CP-4" }),
       exciterRequirement: (d) => JSON.stringify(find(d, "exciterRequirement")[0]?.attrs) === JSON.stringify({ key: "CHK-R42" }),
+      exciterRequirementBlock: (d) => JSON.stringify(find(d, "exciterRequirementBlock")[0]?.attrs) === JSON.stringify({ key: "CHK-R7" }),
+      exciterRequirementList: (d) =>
+        JSON.stringify(find(d, "exciterRequirementList")[0]?.attrs) === JSON.stringify({ project: "CHK", query: "status = Approved", limit: 50 }),
       armatureIssueList: (d) =>
         JSON.stringify(find(d, "armatureIssueList")[0]?.attrs) === JSON.stringify({ query: "project = CP", columns: ["key", "due"], limit: 5 }),
       // The dialog that opens on a new status or date is answered below.
@@ -135,6 +138,8 @@ describe("the slash menu's blocks", () => {
       const e = await make(undefined, {
         pickIssue: () => setTimeout(() => editor?.commands.insertArmatureIssueBlock("cp-4")),
         pickRequirement: () => setTimeout(() => editor?.commands.insertExciterRequirement("chk-r42")),
+        pickRequirementBlock: () => setTimeout(() => editor?.commands.insertExciterRequirementBlock("chk-r7")),
+        pickRequirementList: () => setTimeout(() => editor?.commands.insertExciterRequirementList({ project: "chk", query: "status = Approved", limit: 50 })),
         pickChart: () =>
           setTimeout(() => editor?.commands.insertArmatureChart({ project: "CP", query: "project = CP", chart: "pie", groupBy: "type", days: 30 })),
         pickRoadmap: () => setTimeout(() => editor?.commands.insertArmatureRoadmap({ project: "CP", query: "project = CP", groupBy: "team" })),

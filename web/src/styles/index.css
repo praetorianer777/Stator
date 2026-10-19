@@ -382,6 +382,7 @@
       .doc-gallery,
       .node-gallery,
       div[data-armature-issue-list],
+      div[data-exciter-requirement-list],
       .node-tableChart,
       .node-diagram,
       .node-sketch,
@@ -390,6 +391,7 @@
       .node-armatureChart,
       .node-armatureRoadmap,
       .node-armatureIssueList,
+      .node-exciterRequirementList,
       .node-calendar,
       .node-propertiesReport
     ),
@@ -408,6 +410,7 @@
           .doc-calendar,
           .doc-properties-report,
           div[data-armature-issue-list],
+          div[data-exciter-requirement-list],
           figure[data-image],
           .doc-gallery
         )

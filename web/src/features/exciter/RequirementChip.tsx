@@ -82,6 +82,34 @@ const STATUS_STYLES: Record<string, string> = {
   closed: "bg-status-todo-subtle",
 };
 
+/** Where a requirement stands in its workflow, coloured by the category of its status. */
+export function RequirementStatusLozenge({ status }: { status: ExciterRequirement["status"] }) {
+  if (!status) return null;
+  return (
+    <span
+      className={cx(
+        "rounded px-1 py-px text-2xs font-semibold tracking-wide whitespace-nowrap text-ink uppercase",
+        STATUS_STYLES[status.category] ?? STATUS_STYLES.draft,
+      )}
+      data-status-category={status.category}
+    >
+      <span className="sr-only">{t.exciter.chip.status} </span>
+      {status.name}
+    </span>
+  );
+}
+
+/** A requirement's revision, short to the eye and whole to a screen reader. */
+export function RequirementRevision({ revision }: { revision: number }) {
+  const c = t.exciter.chip;
+  return (
+    <span className="text-xs whitespace-nowrap text-ink-muted" title={c.revision(revision)} data-revision={revision}>
+      <span aria-hidden="true">{c.revisionShort(revision)}</span>
+      <span className="sr-only">{c.revision(revision)}</span>
+    </span>
+  );
+}
+
 const CHIP =
   "inline-flex max-w-full items-baseline gap-1 rounded-control border border-border bg-surface-raised px-1.5 align-baseline text-[0.9em] leading-snug";
 
@@ -151,22 +179,8 @@ function RequirementLink({ requirement, requirementKey, links }: { requirement: 
       {/* A requirement that moved shows the key it has now; the page keeps the one it was named by. */}
       <span className={cx("font-medium", trashed && "line-through")}>{requirement.key}</span>
       <span className="min-w-0 truncate">{requirement.title}</span>
-      {requirement.status && (
-        <span
-          className={cx(
-            "rounded px-1 py-px text-2xs font-semibold tracking-wide whitespace-nowrap text-ink uppercase",
-            STATUS_STYLES[requirement.status.category] ?? STATUS_STYLES.draft,
-          )}
-          data-status-category={requirement.status.category}
-        >
-          <span className="sr-only">{c.status} </span>
-          {requirement.status.name}
-        </span>
-      )}
-      <span className="text-xs whitespace-nowrap text-ink-muted" title={c.revision(requirement.revision)} data-revision={requirement.revision}>
-        <span aria-hidden="true">{c.revisionShort(requirement.revision)}</span>
-        <span className="sr-only">{c.revision(requirement.revision)}</span>
-      </span>
+      <RequirementStatusLozenge status={requirement.status} />
+      <RequirementRevision revision={requirement.revision} />
       {trashed && <span className="text-xs text-ink-muted">{c.trashed}</span>}
     </>
   );

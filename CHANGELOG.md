@@ -9,6 +9,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Exciter requirement blocks and lists on pages (#440): the slash menu's
+  Exciter requirement block shows one requirement with its statement and
+  rationale, drawn from Exciter's documents with what Stator does not know
+  shown as text. The Exciter requirement list shows a table of what a query in
+  Exciter's query language finds in one project, key, title, status and
+  revision, a window at a time; `currentUser()` is whoever reads the page. Its
+  editor offers the author's Exciter projects, completes the query at the
+  caret and marks where Exciter could not read it. Chips and blocks are
+  picked by a word of the title or the key, as Exciter's quick search finds
+  them, instead of typing the key. An organization's archive brings the
+  Exciter address along, without tokens or the webhook secret. In English
+  and German.
 - Exciter requirements as chips on pages (#440, first part): an administrator
   connects Exciter under Settings, Exciter, checked at its `/api/v1/meta`,
   and each member stores their own `exciter_pat_` token under Your profile,

@@ -31,6 +31,8 @@ import { InlineComment } from "./inlineComment";
 import { ArmatureIssue, ArmatureIssueFind, type IssueFindOptions, type IssueSource } from "./armatureIssue";
 import { ArmatureIssueBlock } from "./armatureIssueBlock";
 import { ExciterRequirement, type RequirementSource } from "./exciterRequirement";
+import { ExciterRequirementBlock } from "./exciterRequirementBlock";
+import { ExciterRequirementList } from "./exciterRequirementList";
 import { ArmatureIssueList } from "./armatureIssueList";
 import { ArmatureChart } from "./armatureChart";
 import { ArmatureRoadmap } from "./armatureRoadmap";
@@ -412,8 +414,12 @@ export interface ExtensionOptions {
   pickIssue?: () => void;
   /** What turns typed requirement keys into Exciter chips; without it nothing does. */
   exciter?: RequirementSource;
-  /** Opens the dialog the slash menu's Exciter requirement asks for a key with. */
+  /** Opens the picker the slash menu's Exciter requirement asks which requirement with. */
   pickRequirement?: () => void;
+  /** Opens the picker the slash menu's Exciter requirement block asks which requirement with. */
+  pickRequirementBlock?: () => void;
+  /** Opens the settings dialog the slash menu's Exciter requirement list starts with. */
+  pickRequirementList?: () => void;
   /** Opens the settings dialog the slash menu's Armature issue list starts with. */
   pickIssueList?: () => void;
   /** Opens the settings dialog the slash menu's Armature chart starts with. */
@@ -474,6 +480,8 @@ export function editorExtensions({
   pickIssue,
   exciter,
   pickRequirement,
+  pickRequirementBlock,
+  pickRequirementList,
   pickIssueList,
   pickLinkCard,
   pickChart,
@@ -555,6 +563,8 @@ export function editorExtensions({
     InlineComment,
     ArmatureIssue.configure({ source: armature }),
     ExciterRequirement.configure({ source: exciter, pick: pickRequirement }),
+    ExciterRequirementBlock.configure({ pick: pickRequirementBlock }),
+    ExciterRequirementList.configure({ pick: pickRequirementList }),
     ...(issueFind ? [ArmatureIssueFind.configure({ source: armature, suggestion: issueFind })] : []),
     ArmatureIssueBlock.configure({ pick: pickIssue }),
     ArmatureIssueList.configure({ pick: pickIssueList }),

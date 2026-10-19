@@ -3,6 +3,20 @@ import type { DocNode } from "@/features/editor/schema";
 
 /** The inline chip that names an Exciter requirement by its key. */
 export const EXCITER_REQUIREMENT_NODE = "exciterRequirement";
+/** The block that shows one requirement with its statement and rationale. */
+export const EXCITER_REQUIREMENT_BLOCK_NODE = "exciterRequirementBlock";
+/** The block that lists what a query finds in one project. */
+export const EXCITER_REQUIREMENT_LIST_NODE = "exciterRequirementList";
+
+/** A project key as Exciter writes it, the part of a requirement key before -R. */
+export const PROJECT_KEY_PATTERN = /^[A-Z][A-Z0-9]{1,9}$/;
+
+/** The project key upper case, or null when it is not one. */
+export function normalizeProjectKey(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const key = raw.trim().toUpperCase();
+  return PROJECT_KEY_PATTERN.test(key) ? key : null;
+}
 
 /** A requirement key as Exciter writes it; the server's allowlist holds the same. */
 export const REQUIREMENT_KEY_PATTERN = /^([A-Z][A-Z0-9]{1,9})-R([1-9][0-9]*)$/;
@@ -30,11 +44,11 @@ export function requirementUrl(baseUrl: string, key: string, projectKey = requir
   return `${baseUrl.replace(/\/+$/, "")}/p/${encodeURIComponent(projectKey)}/r/${encodeURIComponent(key)}`;
 }
 
-/** Every key a document's requirement chips name, once each, in reading order. */
+/** Every key a document's requirement chips and blocks name, once each, in reading order. */
 export function requirementKeysOf(nodes: DocNode | readonly DocNode[] | null | undefined): string[] {
   const found = new Set<string>();
   const walk = (node: DocNode) => {
-    if (node.type === EXCITER_REQUIREMENT_NODE) {
+    if (node.type === EXCITER_REQUIREMENT_NODE || node.type === EXCITER_REQUIREMENT_BLOCK_NODE) {
       const key = normalizeRequirementKey(node.attrs?.key);
       if (key) found.add(key);
     }

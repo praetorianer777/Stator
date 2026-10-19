@@ -30,7 +30,15 @@ import { PassagesContext } from "./passages";
 import { publicHref, publicPagePath, usePublicReading } from "./publicReading";
 import { ArmatureIssuesProvider, IssueChip } from "@/features/armature/IssueChip";
 import { ExciterRequirementsProvider, RequirementChip } from "@/features/exciter/RequirementChip";
-import { EXCITER_REQUIREMENT_NODE, normalizeRequirementKey, requirementKeysOf } from "@/features/exciter/requirementKeys";
+import {
+  EXCITER_REQUIREMENT_BLOCK_NODE,
+  EXCITER_REQUIREMENT_LIST_NODE,
+  EXCITER_REQUIREMENT_NODE,
+  normalizeRequirementKey,
+  requirementKeysOf,
+} from "@/features/exciter/requirementKeys";
+import { RequirementBlock } from "@/features/exciter/RequirementBlock";
+import { RequirementList, requirementListSettings } from "@/features/exciter/RequirementList";
 import { IssueBlock } from "@/features/armature/IssueBlock";
 import { IssueList, listSettings } from "@/features/armature/IssueList";
 import { DueChip } from "@/features/tasks/DueChip";
@@ -507,6 +515,31 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
         );
       }
       return <IssueBlock issueKey={key} />;
+    }
+    case EXCITER_REQUIREMENT_BLOCK_NODE: {
+      const key = normalizeRequirementKey(node.attrs?.key);
+      if (!key) return null;
+      if (!live) {
+        return (
+          <p className="doc-block doc-block-summary" data-exciter-requirement-block={key}>
+            {t.exciter.block.summary(key)}
+          </p>
+        );
+      }
+      return <RequirementBlock requirementKey={key} />;
+    }
+    // Its rows are each reader's own, now; a comparison says what it asks for.
+    case EXCITER_REQUIREMENT_LIST_NODE: {
+      const settings = requirementListSettings(node.attrs);
+      if (!settings.project) return null;
+      if (!live) {
+        return (
+          <p className="doc-block doc-block-summary" data-exciter-requirement-list="">
+            {t.exciter.list.summary(settings.project, settings.query)}
+          </p>
+        );
+      }
+      return <RequirementList settings={settings} />;
     }
     // Its rows are each reader's own, now; a comparison says what it asks for.
     case ARMATURE_CHART_NODE: {

@@ -533,6 +533,23 @@ export const EXCITER_FEATURE_CAPABILITIES = {
 export const EXCITER_LOOKUP_MAX_KEYS = 50;
 /** The longest requirement key Stator stores, as exciter.MaxKeyLength. */
 export const EXCITER_KEY_MAX_LENGTH = 30;
+/** How long the requirement picker waits after a keystroke before it asks Exciter. */
+export const EXCITER_SEARCH_DEBOUNCE_MS = 250;
+/** The fewest characters the picker looks for, and the most it sends, as exciter.MaxSearchLength. */
+export const EXCITER_SEARCH_MIN_LENGTH = 2;
+export const EXCITER_SEARCH_MAX_LENGTH = 200;
+/** The rows a new requirement list shows, and the most it may, as exciter.DefaultListLimit and MaxListLimit. */
+export const EXCITER_LIST_DEFAULT_LIMIT = 20;
+export const EXCITER_LIST_MAX_LIMIT = 500;
+/** The rows one request of a requirement list asks for; Show more asks for the next. */
+export const EXCITER_LIST_PAGE_SIZE = 50;
+/** The longest query a requirement list keeps, as exciter.MaxQueryLength. */
+export const EXCITER_QUERY_MAX_LENGTH = 2000;
+/** How long a list's editor waits after a keystroke before it checks the query and completes at the caret. */
+export const EXCITER_QUERY_CHECK_DEBOUNCE_MS = 400;
+export const EXCITER_SUGGEST_DEBOUNCE_MS = 150;
+/** How deep a requirement's statement is drawn; deeper nodes are shown as their text. */
+export const EXCITER_DOCUMENT_MAX_DEPTH = 12;
 /** The most issue keys one lookup asks for, as the API takes them; a page naming more asks in batches. */
 export const ARMATURE_LOOKUP_MAX_KEYS = 50;
 /** How long an issue chip's card waits before it shows, so a pointer passing over shows nothing. */

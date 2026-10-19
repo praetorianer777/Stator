@@ -63,6 +63,7 @@ pages and public links carry the same brand.
 | `tableOfContents` | the page's headings to its level, each a link to its heading |
 | `propertiesReport`, `labelledPages`, `recentlyUpdated`, `blogPosts`, `taskReport`, `attachmentList`, `calendar`, `templateButton`, `contributors`, `childPages` | a sentence saying what it lists, which the page in Stator shows as it is now |
 | `armatureIssueBlock`, `armatureIssueList`, `armatureChart`, `armatureRoadmap` | a sentence with the issue's key or the query, which Armature answers for each reader |
+| `exciterRequirementBlock`, `exciterRequirementList` | a sentence with the requirement's key, or the project and the query, which Exciter answers for each reader |
 
 ## Inline
 
