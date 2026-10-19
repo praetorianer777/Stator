@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -346,6 +347,30 @@ func TestArmatureWebhooksClearTheCachedIssuesTheyAnnounce(t *testing.T) {
 		saved := obj(t, want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t)}), http.StatusOK, "save again"), "connection")
 		if got, _ := saved["lastDelivery"].(map[string]any); got == nil || got["topic"] != "ping" {
 			t.Errorf("saving answers the last delivery as %v, want the ping", saved["lastDelivery"])
+		}
+
+		want(t, owner.delete(t, "/api/v1/armature/connection"), http.StatusNoContent, "disconnect Armature")
+		reconnected := obj(t, want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": armatureURL(t), "webhookSecret": webhookSecret}), http.StatusOK, "connect again"), "connection")
+		if reconnected["lastDelivery"] != nil {
+			t.Errorf("reconnecting answers a last delivery after disconnect: %v", reconnected["lastDelivery"])
+		}
+		if got := last(); got != nil {
+			t.Errorf("reading the connection after disconnect and reconnect answers a last delivery: %v", got)
+		}
+
+		// Moving the connection to another address forgets the delivery too.
+		if r := send(delivery{ID: uuid.New(), Topic: "ping", OrgID: armatureOrg, Payload: map[string]any{}}, webhookSecret); r.Status != http.StatusNoContent {
+			t.Fatalf("a delivery before moving is answered %d %s", r.Status, r.Raw)
+		}
+		if got := last(); got == nil || got["topic"] != "ping" {
+			t.Errorf("the last delivery before moving reads %v, want the ping", got)
+		}
+		relocated := obj(t, want(t, owner.put(t, "/api/v1/armature/connection", map[string]any{"baseUrl": os.Getenv(envArmatureStub)}), http.StatusOK, "move the connection"), "connection")
+		if relocated["lastDelivery"] != nil {
+			t.Errorf("moving the connection answers a last delivery: %v", relocated["lastDelivery"])
+		}
+		if got := last(); got != nil {
+			t.Errorf("reading the connection after moving answers a last delivery: %v", got)
 		}
 	})
 
