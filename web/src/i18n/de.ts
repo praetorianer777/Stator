@@ -611,6 +611,26 @@ export const de: Messages = {
     disconnect: "Exciter trennen",
     confirmDisconnect: "Exciter trennen? Die Tokens aller Mitglieder werden vergessen, und Seiten zeigen nur Anforderungsschlüssel.",
     disconnected: "Exciter ist getrennt.",
+    app: {
+      title: "Verbinden bei der Anmeldung",
+      intro:
+        "Wo Stator und Exciter Personen über dasselbe Keycloak-Realm anmelden, verbindet Stator jede Person bei ihrer Anmeldung mit Exciter, ohne dass ein Token eingefügt wird. Ein Exciter-Administrator registriert Stator als Partner-App mit dem Keycloak-Client von Stator; fügen Sie deren Client-ID und Secret hier ein.",
+      states: {
+        exchanging: "Personen werden bei ihrer Anmeldung mit Exciter verbunden.",
+        not_offered: "Dieses Exciter bietet das Verbinden bei der Anmeldung nicht an (oauth.token-exchange@1). Mitglieder fügen stattdessen ein Token ein.",
+        off: "Die App ist gespeichert, aber der Betreiber hat das Verbinden bei der Anmeldung nicht eingeschaltet (STATOR_EXCITER_TOKEN_EXCHANGE).",
+        missing: "Exciter bietet das Verbinden bei der Anmeldung an. Fügen Sie die Partner-App ein, die es für Stator registriert hat, um es einzuschalten.",
+      },
+      clientIdShown: (id: string) => `Client-ID ${id}.`,
+      formTitle: "Partner-App",
+      clientId: "Client-ID",
+      clientSecret: "Client-Secret",
+      save: "App speichern",
+      saved: "Die App ist gespeichert.",
+      remove: "App vergessen",
+      confirmRemove: "Die App vergessen? Alle bei der Anmeldung Verbundenen werden getrennt und fügen wieder ein Token ein.",
+      removed: "Die App ist vergessen.",
+    },
     members: {
       title: "Was Mitglieder als Nächstes tun",
       intro:
@@ -655,6 +675,9 @@ export const de: Messages = {
       disconnected: "Ihr Exciter-Konto ist getrennt.",
       rejected: "Exciter nimmt Ihr Token nicht mehr an. Erstellen Sie in Exciter unter Ihr Konto, Zugriffstokens ein neues und fügen Sie es hier ein.",
       unreachable: "Exciter hat auf die letzte Prüfung nicht geantwortet. Prüfen Sie gleich noch einmal.",
+      signInRefused: "Bei Ihrer Anmeldung hat Exciter Ihr Konto nicht verbunden:",
+      viaSignIn: "Bei der Anmeldung über Single Sign-on verbunden.",
+      rejectedSignIn: "Exciter hat diese Verbindung beendet. Melden Sie sich erneut an, oder fügen Sie hier ein Exciter-Token ein.",
     },
     chip: {
       connectShort: "Exciter verbinden",
@@ -3507,6 +3530,8 @@ export const de: Messages = {
       "armature.connection_removed": "Armature getrennt",
       "exciter.connection_saved": "Exciter verbunden",
       "exciter.connection_removed": "Exciter getrennt",
+      "exciter.app_saved": "Exciter-Partner-App gespeichert",
+      "exciter.app_removed": "Exciter-Partner-App entfernt",
       "armature.app_saved": "Armature-App gespeichert",
       "armature.app_removed": "Armature-App entfernt",
       "oauth.client_created": "Verbundene App registriert",

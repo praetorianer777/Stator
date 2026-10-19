@@ -527,6 +527,8 @@ export const EXCITER_TOKENS_PATH = "/settings/tokens";
 /** How every Exciter personal access token and webhook secret starts, as Exciter makes them. */
 export const EXCITER_TOKEN_PREFIX = "exciter_pat_";
 export const EXCITER_WEBHOOK_SECRET_PREFIX = "exciter_whs_";
+/** Starts every secret Exciter shows for a partner app. */
+export const EXCITER_CLIENT_SECRET_PREFIX = "exciter_ocs_";
 /** The capability each part of Stator needs Exciter to report at /meta, as exciter.FeatureCapabilities. */
 export const EXCITER_FEATURE_CAPABILITIES = {
   requirements: "requirement-embed@1",

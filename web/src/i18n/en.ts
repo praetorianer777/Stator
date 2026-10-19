@@ -600,6 +600,26 @@ export const en = {
     disconnect: "Disconnect Exciter",
     confirmDisconnect: "Disconnect Exciter? Every member's token is forgotten, and pages show requirement keys only.",
     disconnected: "Exciter is disconnected.",
+    app: {
+      title: "Connecting at sign-in",
+      intro:
+        "Where Stator and Exciter sign people in through the same Keycloak realm, Stator connects each person to Exciter when they sign in, with no token to paste. An Exciter administrator registers Stator as a partner app with Stator's Keycloak client; paste its client id and secret here.",
+      states: {
+        exchanging: "People are connected to Exciter when they sign in.",
+        not_offered: "This Exciter does not offer connecting people at sign-in (oauth.token-exchange@1). Members paste a token instead.",
+        off: "The app is stored, but the operator has not turned connecting at sign-in on (STATOR_EXCITER_TOKEN_EXCHANGE).",
+        missing: "Exciter offers connecting people at sign-in. Paste the partner app it registered for Stator to turn it on.",
+      },
+      clientIdShown: (id: string) => `Client id ${id}.`,
+      formTitle: "Partner app",
+      clientId: "Client id",
+      clientSecret: "Client secret",
+      save: "Save the app",
+      saved: "The app is stored.",
+      remove: "Forget the app",
+      confirmRemove: "Forget the app? Everybody connected at sign-in is disconnected and pastes a token again.",
+      removed: "The app is forgotten.",
+    },
     members: {
       title: "What members do next",
       intro:
@@ -643,6 +663,9 @@ export const en = {
       disconnected: "Your Exciter account is disconnected.",
       rejected: "Exciter no longer accepts your token. Make a new one under Your account, Access tokens in Exciter and paste it here.",
       unreachable: "Exciter did not answer the last check. Check again in a moment.",
+      signInRefused: "When you signed in, Exciter did not connect your account:",
+      viaSignIn: "Connected when you signed in through single sign-on.",
+      rejectedSignIn: "Exciter ended this connection. Sign in again, or paste an Exciter token here.",
     },
     chip: {
       connectShort: "Connect Exciter",
@@ -3398,6 +3421,8 @@ export const en = {
       "armature.connection_removed": "Armature disconnected",
       "exciter.connection_saved": "Exciter connected",
       "exciter.connection_removed": "Exciter disconnected",
+      "exciter.app_saved": "Exciter partner app saved",
+      "exciter.app_removed": "Exciter partner app removed",
       "armature.app_saved": "Armature app saved",
       "armature.app_removed": "Armature app removed",
       "oauth.client_created": "Connected app registered",
