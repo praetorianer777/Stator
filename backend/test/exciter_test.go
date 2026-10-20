@@ -212,6 +212,11 @@ func TestAnAdministratorConnectsExciterAndMembersTheirTokens(t *testing.T) {
 		t.Errorf("the stored app is %v", withApp)
 	}
 	want(t, owner.delete(t, "/api/v1/exciter/connection/app"), http.StatusNoContent, "forget the app")
+	for _, action := range []string{"exciter.app_saved", "exciter.app_removed"} {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = $1 AND actor_user_id = $2`, action, home.user); n != 1 {
+			t.Errorf("%s is recorded %d times, want once", action, n)
+		}
+	}
 
 	// A new address forgets every stored token, so none is sent to another host.
 	want(t, owner.put(t, "/api/v1/exciter/connection", map[string]any{"baseUrl": strings.Replace(base, "localhost", "127.0.0.1", 1)}), http.StatusUnprocessableEntity, "an address the guard refuses")

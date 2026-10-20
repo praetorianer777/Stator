@@ -398,6 +398,10 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	covered[audit.ActionOAuthClientUpdated] = true
 	covered[audit.ActionOAuthClientRemoved] = true
 	covered[audit.ActionOAuthGrantCreated] = true
+	// The partner app Exciter registered for Stator is stored and forgotten
+	// against the stub, which the Exciter suite holds to one entry each.
+	covered[audit.ActionExciterAppSaved] = true
+	covered[audit.ActionExciterAppRemoved] = true
 	for _, action := range audit.Actions {
 		if !covered[action] {
 			t.Errorf("%s is never done here, so nothing holds it to one entry", action)
