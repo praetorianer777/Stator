@@ -66,7 +66,8 @@ type api struct {
 	box      *secret.Box
 }
 
-func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
+// startAPI starts the sign-in surface; tweaks add what a test needs besides.
+func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration, tweaks ...func(*httpapi.Server)) *api {
 	t.Helper()
 	key := make([]byte, secret.KeySize)
 	if _, err := rand.Read(key); err != nil {
@@ -86,7 +87,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 		sso:      oidc.NewService(h.cluster, box, base+httpapi.APIPrefix+"/auth/oidc/callback"),
 		box:      box,
 	}
-	server.Config.Handler = observed(t, (&httpapi.Server{
+	surface := &httpapi.Server{
 		Instance:        instance.NewResolver(h.cluster),
 		DB:              h.cluster,
 		Fresh:           h.freshness(t),
@@ -98,7 +99,11 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration) *api {
 		Audit:           audit.NewService(h.cluster),
 		CookieName:      h.cfg.Auth.SessionCookie,
 		AppBaseURL:      "http://" + appHost,
-	}).Routes(nil))
+	}
+	for _, tweak := range tweaks {
+		tweak(surface)
+	}
+	server.Config.Handler = observed(t, surface.Routes(nil))
 	server.Start()
 	t.Cleanup(server.Close)
 	return a
@@ -314,6 +319,32 @@ func (k *keycloak) idOf(t *testing.T, path string) string {
 		t.Fatalf("%s found %d, want exactly one", path, len(found))
 	}
 	return found[0].ID
+}
+
+// audience adds audience to the access tokens of the realm's client named
+// clientID until the test ends, as the realm gives a partner tool's client
+// the audience of each tool it exchanges its tokens with.
+func (k *keycloak) audience(t *testing.T, clientID, audience string) {
+	t.Helper()
+	id := k.idOf(t, "/clients?clientId="+url.QueryEscape(clientID))
+	// Named apart, so a run left behind by a stopped suite never clashes.
+	name := audience + "-audience-" + uuid.NewString()[:8]
+	k.send(t, http.MethodPost, "/clients/"+id+"/protocol-mappers/models", map[string]any{
+		"name": name, "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+		"config": map[string]string{"included.client.audience": audience, "access.token.claim": "true", "id.token.claim": "false"},
+	}, nil)
+	t.Cleanup(func() {
+		var mappers []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		k.call(t, http.MethodGet, "/clients/"+id+"/protocol-mappers/models", &mappers)
+		for _, m := range mappers {
+			if m.Name == name {
+				k.call(t, http.MethodDelete, "/clients/"+id+"/protocol-mappers/models/"+m.ID, nil)
+			}
+		}
+	})
 }
 
 // setMembership adds or removes a realm user from a realm group.

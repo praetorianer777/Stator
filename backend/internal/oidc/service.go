@@ -384,6 +384,7 @@ func (s *Service) Exchange(ctx context.Context, state, code string) (*Identity, 
 	if err != nil {
 		return nil, "", err
 	}
+	identity.AccessToken = tokens.AccessToken
 	return identity, redirect, nil
 }
 

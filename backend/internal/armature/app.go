@@ -550,15 +550,7 @@ func (s *Service) finishConnect(ctx context.Context, user uuid.UUID, purpose Con
 	}
 	// The later of the two writes is what the person's next read waits for,
 	// so the settings page they come back to says the app is allowed.
-	allowed, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `UPDATE armature_app SET status = 'active' WHERE status = 'pending' AND client_id = $1`, creds.ClientID)
-		return err
-	})
-	if err != nil {
-		s.opts.Log.Warn("the Armature app could not be marked allowed", "error", err)
-	} else if allowed > lsn {
-		lsn = allowed
-	}
+	lsn = max(lsn, s.noteAppAllowed(ctx, creds.ClientID))
 	s.learnInstallation(ctx, e, me)
 	if purpose != PurposeWebhook {
 		return lsn, nil
@@ -585,6 +577,9 @@ func (s *Service) storeGrant(ctx context.Context, site, user uuid.UUID, set *Tok
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM armature_grant WHERE user_id = $1`, user); err != nil {
 			return fmt.Errorf("forget the old Armature grant: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM armature_sign_in WHERE user_id = $1`, user); err != nil {
+			return fmt.Errorf("forget why Armature did not connect at sign-in: %w", err)
 		}
 		_, err := tx.Exec(ctx, `
 			INSERT INTO armature_grant (user_id, access_token, refresh_token, access_expires_at, refresh_expires_at, scopes,

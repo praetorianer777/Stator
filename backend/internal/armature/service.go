@@ -54,6 +54,8 @@ type Options struct {
 	// WebhookURL is where Armature reaches Stator's webhook receiver, when
 	// that is not under AppURL; empty is AppURL's.
 	WebhookURL string
+	// TokenExchange connects people at sign-in where Armature offers it.
+	TokenExchange bool
 	// Allow is what STATOR_OUTBOUND_ALLOW names; such a host may be plain http.
 	Allow netguard.Allow
 	// Development lets any base URL be plain http.
@@ -339,6 +341,11 @@ func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
 		return &Account{Status: StatusNotConfigured, Missing: []MissingFeature{}, App: AccountApp{Scopes: []string{}}}, nil
 	}
 	a := &Account{Configured: true, BaseURL: &e.BaseURL, Status: StatusNotConnected, Missing: []MissingFeature{}, App: AccountApp{Scopes: []string{}}}
+	if user, ok := db.UserFrom(ctx); ok {
+		if a.App.SignInRefusal, err = signInRefusalOf(ctx, tx, user); err != nil {
+			return nil, err
+		}
+	}
 	grant, err := s.ownGrant(ctx, tx)
 	if err != nil {
 		return nil, err
@@ -450,6 +457,9 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 		// person's cache is new with the token.
 		if _, err := tx.Exec(ctx, `DELETE FROM armature_token WHERE user_id = $1`, user); err != nil {
 			return fmt.Errorf("forget the old Armature token: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM armature_sign_in WHERE user_id = $1`, user); err != nil {
+			return fmt.Errorf("forget why Armature did not connect at sign-in: %w", err)
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO armature_token (user_id, token, armature_user_id, armature_user_name, armature_user_email, status, checked_at)

@@ -278,6 +278,7 @@ export const de: Messages = {
       appReturns: "Sobald Sie es erlauben, geht es zurück zu der Seite, von der Sie kamen.",
       appPending:
         "Ein Armature-Administrator muss Stator zuerst erlauben. Bis dahin sagt Armature Ihnen das beim Verbinden; ein Armature-Administrator, der sein eigenes Konto verbindet, erlaubt es dabei.",
+      signInRefused: "Bei Ihrer Anmeldung hat Armature Ihr Konto nicht verbunden:",
       useToken: "Stattdessen ein Token verwenden",
       viaApp: "Verbunden über die verbundenen Apps von Armature.",
       rejectedApp: "Armature hat diese Verbindung beendet, weil sie dort getrennt wurde oder Stator nicht mehr erlaubt ist. Verbinden Sie Armature erneut.",

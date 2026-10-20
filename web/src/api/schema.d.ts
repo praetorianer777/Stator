@@ -4481,6 +4481,7 @@ export interface components {
             pending: boolean;
             refusal: string | null;
             scopes: string[];
+            signInRefusal: string | null;
         };
         AccountUser: {
             email: string;

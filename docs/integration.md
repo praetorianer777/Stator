@@ -246,6 +246,7 @@ whose capability it does not list:
 | the webhook from Armature | `webhooks@1` |
 | connecting an account with one click, below | `oauth.partner-tokens@1` |
 | connecting Armature in one step, below | `webhooks.partner@1` beside `oauth.partner-tokens@1` |
+| connecting people at sign-in, below | `oauth.token-exchange@1` |
 
 Armature names no capability for filing issues, so creating them rests on
 `issue-embed@1`, which the chips they leave behind need; a name for it belongs
@@ -500,6 +501,49 @@ instead", and is all an Armature without the capability is offered.
   has a secret.
 - **The page** says what members do next once connected, with Connect
   Armature for the administrator's own account where it is not connected yet.
+
+## Connecting people at sign-in
+
+Where Stator and Armature sign people in through the same Keycloak realm
+(`dynamo`), Stator connects each person to Armature when they sign in, with
+no click and no token (#430), as Armature's `docs/oauth.md` sets out under
+"A signed-in person, with no click".
+
+- **When.** Only where the operator turns it on, with
+  `STATOR_ARMATURE_TOKEN_EXCHANGE=true` (chart `armature.tokenExchange`), and
+  only where Armature lists `oauth.token-exchange@1` at `/meta`. Off, or
+  against an Armature without it, nothing is asked at sign-in.
+- **The exchange.** After a sign-in through the identity provider, the api
+  posts the person's Keycloak access token to Armature's token endpoint as
+  Stator's connected app, authenticated with the app's client id and secret:
+  `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
+  `subject_token=<the access token>`,
+  `subject_token_type=urn:ietf:params:oauth:token-type:access_token`,
+  `scope=read issue.write`. The answer is a full grant, kept and refreshed as
+  one from the consent page is, after `/auth/me` holds it to the connected
+  installation. The access token itself is never stored.
+- **Who is asked for.** A member, not a guest, with no live link: a grant
+  that is not `rejected` and has not run out, or a pasted token that is not
+  `rejected`, is kept, so a person connected by hand or by Connect keeps that
+  connection. A missing or dead one is filled in.
+- **Never in the way.** The sign-in goes on whatever Armature answers, within
+  `armature.SignInTimeout` (ten seconds) at most. A refusal is kept in
+  `armature_sign_in`, in Armature's own words where it gave some, such as
+  "Ada Lovelace has no Armature account yet. Sign in to Armature once, or ask
+  an administrator to let them in." or an app without a Keycloak client
+  (`unauthorized_client`). `GET /armature/account` answers it as
+  `app.signInRefusal`, and the profile says it above Connect Armature and the
+  token form. Storing a grant or a token forgets it. A person reads only
+  their own.
+- **What it needs.** In Armature, Stator's app (registered by an Armature
+  administrator, or by Stator and allowed) with its Keycloak client named,
+  `stator` in the realm (`keycloakClientId` under Settings, Connected apps);
+  in Stator, that app's client id and secret under Settings, Armature,
+  Connected app (`PUT /armature/connection/app`), unless Stator registered
+  itself; in Keycloak, an audience mapper on Stator's client that adds
+  Armature's client id (`armature`) to Stator's access tokens, since Armature
+  takes only a token whose `aud` holds its own client. Keycloak's own token
+  exchange is not switched on.
 
 ## The rules
 

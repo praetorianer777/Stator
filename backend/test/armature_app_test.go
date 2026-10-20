@@ -158,6 +158,8 @@ type stubGrant struct {
 	Scope     string `json:"scope"`
 	Refreshes int    `json:"refreshes"`
 	Ended     bool   `json:"ended"`
+	// Exchanged says the grant came from an identity provider's token.
+	Exchanged bool `json:"exchanged"`
 }
 
 func stubGrants(t *testing.T, tenant, person string) []stubGrant {

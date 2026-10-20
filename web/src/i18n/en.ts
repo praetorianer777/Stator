@@ -281,6 +281,7 @@ export const en = {
       appReturns: "Once you allow it, you go back to the page you came from.",
       appPending:
         "An Armature administrator has to allow Stator first. Until then Armature tells you so when you connect; an Armature administrator who connects their own account allows it on the way.",
+      signInRefused: "When you signed in, Armature did not connect your account:",
       useToken: "Use a token instead",
       viaApp: "Connected through Armature's connected apps.",
       rejectedApp: "Armature ended this connection, because it was disconnected there or Stator is no longer allowed. Connect Armature again.",

@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -400,6 +401,7 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 
 	c.connectedApp(server.URL)
 	c.partnerWebhook(server.URL)
+	c.tokenExchange()
 
 	for _, rt := range routes {
 		if !c.served[rt.Method+" "+rt.Path] {
@@ -631,6 +633,57 @@ func (c *contract) partnerWebhook(base string) {
 	c.expect("DELETE", armature.PartnerWebhookPath, admin, nil, 204)
 	c.expect("PATCH", armature.PartnerWebhookPath, admin, map[string]any{"enabled": true}, 404)
 	c.expect("POST", armature.PartnerWebhookPath+"/rotate-secret", admin, nil, 404)
+}
+
+// providerToken is an access token as the realm's Keycloak issues it to
+// azp for the person at email, its signature left out as the stub reads none.
+func providerToken(azp, email string, audience ...string) string {
+	claims, _ := json.Marshal(map[string]any{"iss": "http://keycloak.test/realms/dynamo", "azp": azp, "aud": audience,
+		"exp": time.Now().Add(time.Minute).Unix(), "email": email, "email_verified": true, "name": "Alice Admin"})
+	return "eyJhbGciOiJSUzI1NiJ9." + base64.RawURLEncoding.EncodeToString(claims) + ".c2ln"
+}
+
+// tokenExchange connects a person at sign-in as Stator does (#430): an app
+// whose Keycloak client an administrator named trades the person's token
+// from the shared realm for a full grant, and every refusal is OAuth's.
+func (c *contract) tokenExchange() {
+	t := c.t
+	registered := func(exchange map[string]any) (string, string) {
+		made := c.expect("POST", oauthPrefix+"/clients", "", map[string]any{"name": armature.AppName, "scope": armature.AdminScopes,
+			"redirectUris": []string{"https://stator.example/api/v1/armature/oauth/callback"}, "exchange": exchange}, 201)
+		return made["clientId"].(string), made["clientSecret"].(string)
+	}
+	id, secret := registered(map[string]any{"keycloakClientId": "stator", "tenant": "acme", "people": map[string]string{"Alice@Suite.test": "alice"}})
+	exchange := func(token, scope string) url.Values {
+		return url.Values{"grant_type": {armature.GrantTokenExchange}, "subject_token": {token},
+			"subject_token_type": {armature.TokenTypeAccess}, "scope": {scope}}
+	}
+
+	status, set := c.form("/oauth/token", id, secret, exchange(providerToken("stator", "alice@suite.test", "armature", "account"), armature.AppScopes))
+	if status != 200 || !strings.HasPrefix(fmt.Sprint(set["refresh_token"]), "armature_ort_") || set["scope"] != armature.AppScopes {
+		t.Fatalf("the exchange answered %d %v", status, set)
+	}
+	if who := c.expect("GET", "/auth/me", set["access_token"].(string), nil, 200)["principal"].(map[string]any)["user"].(map[string]any); who["email"] != "alice@acme.armature.test" {
+		t.Errorf("the exchanged grant acts as %v", who)
+	}
+	refusals := []struct {
+		why, token, scope, code string
+	}{
+		{"somebody without an account", providerToken("stator", "bob@suite.test", "armature"), armature.AppScopes, "invalid_grant"},
+		{"a token of another client", providerToken("exciter", "alice@suite.test", "armature"), armature.AppScopes, "invalid_grant"},
+		{"a token not meant for Armature", providerToken("stator", "alice@suite.test", "account"), armature.AppScopes, "invalid_grant"},
+		{"webhooks.partner asked", providerToken("stator", "alice@suite.test", "armature"), armature.AdminScopes, "invalid_scope"},
+	}
+	for _, r := range refusals {
+		if status, refused := c.form("/oauth/token", id, secret, exchange(r.token, r.scope)); status != 400 || refused["error"] != r.code {
+			t.Errorf("%s answered %d %v, want 400 %s", r.why, status, refused, r.code)
+		}
+	}
+	plain, plainSecret := registered(nil)
+	status, refused := c.form("/oauth/token", plain, plainSecret, exchange(providerToken("stator", "alice@suite.test", "armature"), armature.AppScopes))
+	if status != 400 || refused["error"] != "unauthorized_client" || !strings.Contains(fmt.Sprint(refused["error_description"]), "Keycloak client") {
+		t.Errorf("an app without a Keycloak client exchanged with %d %v", status, refused)
+	}
 }
 
 // A webhook from the stub is one Armature's receiver code would accept: the

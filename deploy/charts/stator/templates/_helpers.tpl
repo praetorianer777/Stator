@@ -215,6 +215,9 @@ STATOR_ARMATURE_BACKCHANNEL: {{ join "," $pairs | quote }}
 {{- with .Values.armature.webhookUrl }}
 STATOR_ARMATURE_WEBHOOK_URL: {{ . | quote }}
 {{- end }}
+{{- if .Values.armature.tokenExchange }}
+STATOR_ARMATURE_TOKEN_EXCHANGE: "true"
+{{- end }}
 {{- with .Values.exciter.backchannel }}
 {{- $pairs := list }}
 {{- range $public, $reachable := . }}

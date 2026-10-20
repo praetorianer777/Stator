@@ -258,6 +258,9 @@ type AccountApp struct {
 	Refusal *string `json:"refusal"`
 	// Scopes are what the caller's grant holds, empty without one.
 	Scopes []string `json:"scopes"`
+	// SignInRefusal says why Armature did not connect the caller when they
+	// last signed in through the shared identity provider, null otherwise.
+	SignInRefusal *string `json:"signInRefusal"`
 }
 
 // ConnectionInput sets the instance. Changing baseUrl forgets every stored

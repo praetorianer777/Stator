@@ -63,7 +63,7 @@ function account(over: Partial<ArmatureAccount> = {}): ArmatureAccount {
     user: null,
     checkedAt: null,
     missing: [],
-    app: { offered: false, pending: false, refusal: null, scopes: [] },
+    app: { offered: false, pending: false, refusal: null, scopes: [], signInRefusal: null },
     ...over,
   };
 }

@@ -267,6 +267,12 @@ armature:
   # /api/v1/armature/webhook. Set it where Armature reaches Stator under
   # another name, such as http://stator-api.stator.svc:8080/api/v1/armature/webhook.
   webhookUrl: ""
+  # Connect each person to Armature when they sign in through the identity
+  # provider Armature shares, by exchanging their access token for a grant
+  # of Stator's connected app, where Armature reports oauth.token-exchange@1.
+  # Needs Stator's app in Armature with its Keycloak client named, and an
+  # audience mapper adding Armature's client to Stator's tokens (docs/integration.md).
+  tokenExchange: false
 
 exciter:
   # public-origin: reachable-origin, for an Exciter this release reaches at

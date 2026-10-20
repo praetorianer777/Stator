@@ -54,7 +54,7 @@ const admin: ArmatureAccount = {
   user: { id: "0195f000-0000-7000-8000-0000000000b1", name: "Ada", email: "ada@acme.armature.test" },
   checkedAt: "2026-10-01T09:00:00Z",
   missing: [],
-  app: { offered: true, pending: false, refusal: null, scopes: ["read", "issue.write", "webhooks.partner"] },
+  app: { offered: true, pending: false, refusal: null, scopes: ["read", "issue.write", "webhooks.partner"], signInRefusal: null },
 };
 
 const notConnected: ArmatureAccount = { ...admin, connected: false, via: null, status: "not_connected", user: null, checkedAt: null };
