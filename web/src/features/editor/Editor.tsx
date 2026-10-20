@@ -358,6 +358,9 @@ export function Editor({
             .run();
       },
       insertVariable: (name) => {
+        // TipTap's focus() moves focus a frame later, and a key pressed in
+        // between would land on the button just clicked and press it again.
+        editor.view.focus();
         if (editor.schema.nodes.templateVariable) editor.chain().focus().insertVariable(name).run();
       },
       clear: () => {
