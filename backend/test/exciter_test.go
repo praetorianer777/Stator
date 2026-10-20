@@ -186,6 +186,15 @@ func TestAnAdministratorConnectsExciterAndMembersTheirTokens(t *testing.T) {
 	if checked["status"] != "ok" {
 		t.Errorf("a check of a good token says %v", checked)
 	}
+	found := obj(t, want(t, owner.post(t, "/api/v1/exciter/connection/check", map[string]any{"baseUrl": base}), http.StatusOK, "check the address again"), "check")
+	if found["baseUrl"] != base {
+		t.Errorf("the check found %v", found)
+	}
+	want(t, bob.delete(t, "/api/v1/exciter/account/token"), http.StatusNoContent, "bob disconnects")
+	if n := h.countRows(t, `SELECT count(*) FROM exciter_token WHERE user_id = $1`, bobID); n != 0 {
+		t.Error("disconnecting kept bob's token")
+	}
+	want(t, bob.put(t, "/api/v1/exciter/account/token", map[string]any{"token": exciterPat(tenant, "bob")}), http.StatusOK, "bob connects again")
 
 	// A new address forgets every stored token, so none is sent to another host.
 	want(t, owner.put(t, "/api/v1/exciter/connection", map[string]any{"baseUrl": strings.Replace(base, "localhost", "127.0.0.1", 1)}), http.StatusUnprocessableEntity, "an address the guard refuses")
