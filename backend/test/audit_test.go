@@ -392,6 +392,12 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	// An import fills a fresh organization, which the organization transfer
 	// suite holds to one entry.
 	covered[audit.ActionOrgImported] = true
+	// The connected apps' acts need the identity provider, so the token
+	// exchange suite holds them to one entry each.
+	covered[audit.ActionOAuthClientCreated] = true
+	covered[audit.ActionOAuthClientUpdated] = true
+	covered[audit.ActionOAuthClientRemoved] = true
+	covered[audit.ActionOAuthGrantCreated] = true
 	for _, action := range audit.Actions {
 		if !covered[action] {
 			t.Errorf("%s is never done here, so nothing holds it to one entry", action)

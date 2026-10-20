@@ -167,7 +167,10 @@ check "the web's nginx passes a shared draft's WebSocket on" \
 # One connection per request ran out of local ports at a few hundred a second (#372).
 check "the web's nginx keeps its connections to the api" \
     "$(grep -A2 -F 'upstream stator_api {' <<<"${RENDERED}" | grep -cE "server ${FULL}-api:[0-9]+;|keepalive [0-9]+;") $(grep -cE '^ {8}(proxy_http_version 1.1|proxy_set_header Connection "");$' <<<"${RENDERED}") $(grep -c 'proxy_pass http://stator_api;' <<<"${RENDERED}")" \
-    "2 2 5"
+    "2 2 6"
+check "the OAuth metadata reaches the api through the web's nginx and the Ingress" \
+    "$(grep -A1 -F 'location = /.well-known/oauth-authorization-server {' <<<"${RENDERED}" | grep -c 'proxy_pass http://stator_api;') $(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set ingress.enabled=true --set ingress.host=wiki.example 2>&1 | grep -A1 -F 'path: /.well-known/oauth-authorization-server' | grep -c 'pathType: Exact')" \
+    "1 1"
 
 echo "⎈ One api pod without Valkey"
 render "one api pod, no Valkey" --set database.host=db.example --set api.replicas=1

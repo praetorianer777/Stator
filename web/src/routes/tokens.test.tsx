@@ -25,6 +25,7 @@ function token(over: Partial<ApiToken>): ApiToken {
     lastUsedAt: null,
     expiresAt: null,
     createdAt: "2026-09-29T08:00:00Z",
+    clientId: null,
     ...over,
   };
 }
@@ -49,6 +50,16 @@ describe("the tokens page", () => {
     expect(within(row("stale")).getByText("Expired")).toBeInTheDocument();
     expect(within(row("deploy")).queryByText("Expired")).toBeNull();
     expect(document.querySelector("[data-fresh-token]")).toBeNull();
+  });
+
+  it("marks a connected app's grant, which is revoked like any token", async () => {
+    const grant = token({ id: "0195f000-0000-7000-8000-0000000000a4", name: "Exciter (connected app)", clientId: "0195f000-0000-7000-8000-0000000000c1" });
+    stubApi({ "GET /tokens": { status: 200, body: { tokens: [grant, reporting] } } });
+    await renderAt("/settings/tokens");
+    await waitFor(() => expect(row("Exciter (connected app)")).not.toBeNull());
+    expect(within(row("Exciter (connected app)")).getByText("Connected app")).toBeInTheDocument();
+    expect(within(row("Exciter (connected app)")).getByRole("button", { name: /Revoke/ })).toBeInTheDocument();
+    expect(within(row("reporting")).queryByText("Connected app")).toBeNull();
   });
 
   it("says how to connect an assistant, with the address and client settings", async () => {

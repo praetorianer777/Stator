@@ -38,6 +38,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
@@ -196,6 +197,7 @@ func run() error {
 		Auth:              accounts,
 		Accounts:          accounts,
 		OIDC:              sso,
+		OAuth:             oauth.NewService(cluster, sso, cfg.AppBaseURL, log),
 		OIDCCallbackURL:   cfg.Auth.OIDCRedirectURL,
 		Log:               log,
 		Telemetry:         tel,

@@ -20,6 +20,14 @@ const (
 	// APITokenPrefix marks a personal access token, so a secret scanner, a log
 	// redaction and a person can each recognise one on sight.
 	APITokenPrefix = "stator_pat_"
+	// AccessTokenPrefix and RefreshTokenPrefix mark the two tokens of a
+	// connected app's grant (#461), ClientSecretPrefix an app's secret.
+	AccessTokenPrefix  = "stator_oat_"
+	RefreshTokenPrefix = "stator_ort_"
+	ClientSecretPrefix = "stator_ocs_"
+	// ConnectedAppSuffix follows an app's name in its grant's name, as in
+	// "Exciter (connected app)" in the person's token list.
+	ConnectedAppSuffix = " (connected app)"
 )
 
 // GenerateToken returns a new opaque secret and the digest to store for it.
@@ -34,11 +42,16 @@ func GenerateToken() (secret string, digest []byte, err error) {
 
 // GenerateAPIToken returns a prefixed personal access token and its digest.
 func GenerateAPIToken() (secret string, digest []byte, err error) {
+	return GeneratePrefixed(APITokenPrefix)
+}
+
+// GeneratePrefixed returns a new secret behind prefix and its digest.
+func GeneratePrefixed(prefix string) (secret string, digest []byte, err error) {
 	s, _, err := GenerateToken()
 	if err != nil {
 		return "", nil, err
 	}
-	secret = APITokenPrefix + s
+	secret = prefix + s
 	return secret, HashToken(secret), nil
 }
 
@@ -49,15 +62,24 @@ func HashToken(secret string) []byte {
 }
 
 // IsAPIToken reports whether a presented credential claims to be a personal
-// access token rather than a session secret.
+// access token or a connected app's access token rather than a session secret.
 func IsAPIToken(secret string) bool {
-	return strings.HasPrefix(secret, APITokenPrefix)
+	return strings.HasPrefix(secret, APITokenPrefix) || IsAccessToken(secret)
 }
 
-// ParseAPIToken checks that a personal access token has the shape
-// GenerateAPIToken gives one, so a malformed one costs no database round trip.
+// IsAccessToken reports whether a credential claims to be a grant's access token.
+func IsAccessToken(secret string) bool {
+	return strings.HasPrefix(secret, AccessTokenPrefix)
+}
+
+// ParseAPIToken checks that a personal access token or a grant's access
+// token has the shape GeneratePrefixed gives one, so a malformed one costs no
+// database round trip.
 func ParseAPIToken(secret string) error {
 	body, ok := strings.CutPrefix(secret, APITokenPrefix)
+	if !ok {
+		body, ok = strings.CutPrefix(secret, AccessTokenPrefix)
+	}
 	if !ok {
 		return ErrInvalidToken
 	}

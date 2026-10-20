@@ -5,6 +5,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/armature"
 	"github.com/praetorianer777/stator/backend/internal/events"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
@@ -60,6 +61,12 @@ var integrationCapabilities = []capability{
 			"POST /webhooks/{webhookID}/rotate-secret",
 		},
 		topics: webhook.Topics,
+	},
+	{
+		name: oauth.CapabilityTokenExchange,
+		promise: "POST /oauth/token with grant_type " + oauth.GrantTokenExchange + ": subject_token is an access token of the shared Keycloak realm whose azp is the partner app's Keycloak client id and whose aud holds Stator's client; " +
+			"the app authenticates with its own credentials; the answer is an access and a refresh token within the person's rights, with no consent page.",
+		operations: []string{"GET " + oauth.MetadataPath, "POST /oauth/token", "POST /oauth/revoke"},
 	},
 	{
 		name:    "theme-export@1",

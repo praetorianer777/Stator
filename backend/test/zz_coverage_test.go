@@ -20,7 +20,8 @@ func TestEveryOperationWasExercisedBothWays(t *testing.T) {
 	neverSucceeded, neverRefused := apiContract.uncovered()
 	// A GET with no input and no session cannot be refused; there is nothing
 	// to refuse it for.
-	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true, "GET /meta": true}
+	unrefusable := map[string]bool{"GET /healthz": true, "GET /readyz": true, "GET /openapi.json": true, "GET /meta": true,
+		"GET /.well-known/oauth-authorization-server": true}
 	// A pending operation answers 501 until it is built, so it cannot succeed.
 	pending := map[string]bool{}
 	for _, r := range httpapi.Catalog() {

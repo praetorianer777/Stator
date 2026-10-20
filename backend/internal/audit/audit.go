@@ -126,6 +126,12 @@ const (
 	// ActionReviewSkipped is a pending review an administrator published
 	// without its approvals, with why.
 	ActionReviewSkipped = "review.skipped"
+	// Connected apps that trade a person's identity provider token for a
+	// grant (#461), and each grant so made.
+	ActionOAuthClientCreated = "oauth.client_created"
+	ActionOAuthClientUpdated = "oauth.client_updated"
+	ActionOAuthClientRemoved = "oauth.client_removed"
+	ActionOAuthGrantCreated  = "oauth.grant_created"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -153,6 +159,7 @@ var Actions = []string{
 	ActionExampleSpaceCreated, ActionExampleSpaceRenewed,
 	ActionSpaceExported, ActionSpaceImported, ActionOrgExported, ActionOrgImported,
 	ActionReviewRuleSet, ActionReviewRuleRemoved, ActionReviewSkipped,
+	ActionOAuthClientCreated, ActionOAuthClientUpdated, ActionOAuthClientRemoved, ActionOAuthGrantCreated,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

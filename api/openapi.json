@@ -76,6 +76,9 @@
       "name": "notifications"
     },
     {
+      "name": "oauth"
+    },
+    {
       "name": "pages"
     },
     {
@@ -146,6 +149,37 @@
     }
   ],
   "paths": {
+    "/.well-known/oauth-authorization-server": {
+      "get": {
+        "operationId": "oAuthMetadata",
+        "summary": "RFC 8414's metadata: the issuer, the token and revocation endpoints, the scopes and grants. Lives at the origin, outside /api/v1; partners may keep it for five minutes.",
+        "tags": [
+          "oauth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Metadata"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/access/me": {
       "get": {
         "operationId": "myAccess",
@@ -2342,7 +2376,11 @@
                 "org.imported",
                 "review.rule_set",
                 "review.rule_removed",
-                "review.skipped"
+                "review.skipped",
+                "oauth.client_created",
+                "oauth.client_updated",
+                "oauth.client_removed",
+                "oauth.grant_created"
               ]
             }
           },
@@ -2529,7 +2567,11 @@
                 "org.imported",
                 "review.rule_set",
                 "review.rule_removed",
-                "review.skipped"
+                "review.skipped",
+                "oauth.client_created",
+                "oauth.client_updated",
+                "oauth.client_removed",
+                "oauth.grant_created"
               ]
             }
           },
@@ -5605,6 +5647,333 @@
                   "required": [
                     "unread"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/clients": {
+      "get": {
+        "operationId": "listOAuthClients",
+        "summary": "The partner apps that may exchange people's identity provider tokens here, by name. For administrators.",
+        "tags": [
+          "oauth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "clients": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Client"
+                      }
+                    }
+                  },
+                  "required": [
+                    "clients"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOAuthClient",
+        "summary": "Register a partner app with the Keycloak client it signs people in with; its secret, stator_ocs_..., is in this answer and never again. For administrators.",
+        "tags": [
+          "oauth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "client": {
+                      "$ref": "#/components/schemas/Client"
+                    }
+                  },
+                  "required": [
+                    "client"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/clients/{clientID}": {
+      "delete": {
+        "operationId": "deleteOAuthClient",
+        "summary": "Remove a partner app; every grant of it ends. For administrators.",
+        "tags": [
+          "oauth"
+        ],
+        "parameters": [
+          {
+            "name": "clientID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateOAuthClient",
+        "summary": "Change a partner app; what is left out keeps its value. A new name follows into its grants, narrower scopes narrow them at once. For administrators.",
+        "tags": [
+          "oauth"
+        ],
+        "parameters": [
+          {
+            "name": "clientID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientChanges"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "client": {
+                      "$ref": "#/components/schemas/Client"
+                    }
+                  },
+                  "required": [
+                    "client"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/revoke": {
+      "post": {
+        "operationId": "oAuthRevoke",
+        "summary": "RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike.",
+        "tags": [
+          "oauth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/token": {
+      "post": {
+        "operationId": "oAuthToken",
+        "summary": "The token endpoint, for a partner app with its client id and secret, by HTTP Basic or in the form. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to the app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, unauthorized_client, unsupported_grant_type.",
+        "tags": [
+          "oauth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -19547,6 +19916,13 @@
           "allSpaces": {
             "type": "boolean"
           },
+          "clientId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -19599,7 +19975,8 @@
           "allSpaces",
           "lastUsedAt",
           "expiresAt",
-          "createdAt"
+          "createdAt",
+          "clientId"
         ]
       },
       "AccessPage": {
@@ -20332,7 +20709,11 @@
               "org.imported",
               "review.rule_set",
               "review.rule_removed",
-              "review.skipped"
+              "review.skipped",
+              "oauth.client_created",
+              "oauth.client_updated",
+              "oauth.client_removed",
+              "oauth.grant_created"
             ]
           },
           "actorId": {
@@ -20457,7 +20838,11 @@
                 "org.imported",
                 "review.rule_set",
                 "review.rule_removed",
-                "review.skipped"
+                "review.skipped",
+                "oauth.client_created",
+                "oauth.client_updated",
+                "oauth.client_removed",
+                "oauth.grant_created"
               ]
             }
           },
@@ -20992,6 +21377,89 @@
         },
         "required": [
           "themeId"
+        ]
+      },
+      "Client": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "grants": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "keycloakClientId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secret": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scopes",
+          "keycloakClientId",
+          "grants",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ClientChanges": {
+        "type": "object",
+        "properties": {
+          "keycloakClientId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ClientInput": {
+        "type": "object",
+        "properties": {
+          "keycloakClientId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "scopes",
+          "keycloakClientId"
         ]
       },
       "Comment": {
@@ -22129,6 +22597,21 @@
           "topic",
           "occurredAt",
           "payload"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "error_description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "error_description"
         ]
       },
       "ErrorEnvelope": {
@@ -24072,6 +24555,64 @@
           "build",
           "apiVersion",
           "capabilities"
+        ]
+      },
+      "Metadata": {
+        "type": "object",
+        "properties": {
+          "grant_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "response_types_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "revocation_endpoint": {
+            "type": "string"
+          },
+          "revocation_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service_documentation": {
+            "type": "string"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint_auth_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "issuer",
+          "token_endpoint",
+          "revocation_endpoint",
+          "scopes_supported",
+          "grant_types_supported",
+          "token_endpoint_auth_methods_supported",
+          "revocation_endpoint_auth_methods_supported",
+          "response_types_supported",
+          "service_documentation"
         ]
       },
       "MissingFeature": {
@@ -26885,6 +27426,26 @@
           }
         }
       },
+      "RevokeRequest": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "token_type_hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
       "Roadmap": {
         "type": "object",
         "properties": {
@@ -27410,6 +27971,13 @@
           "allSpaces": {
             "type": "boolean"
           },
+          "clientId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -27466,6 +28034,7 @@
           "lastUsedAt",
           "expiresAt",
           "createdAt",
+          "clientId",
           "owner"
         ]
       },
@@ -29275,6 +29844,68 @@
         },
         "required": [
           "token"
+        ]
+      },
+      "TokenRequest": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string"
+          },
+          "grant_type": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "requested_token_type": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "subject_token": {
+            "type": "string"
+          },
+          "subject_token_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "grant_type"
+        ]
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer"
+          },
+          "issued_token_type": {
+            "type": "string"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in",
+          "refresh_token",
+          "scope"
         ]
       },
       "TrashItem": {

@@ -10,13 +10,14 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 )
 
-// capabilityName is name@version, as Armature and Dynamo's shared list spell them.
-var capabilityName = regexp.MustCompile(`^[a-z][a-z-]*@[1-9][0-9]*$`)
+// capabilityName is name@version, as Armature and Dynamo's shared list spell
+// them; a dot groups names, as in oauth.token-exchange@1.
+var capabilityName = regexp.MustCompile(`^[a-z][a-z-]*(\.[a-z][a-z-]*)*@[1-9][0-9]*$`)
 
 // A partner offers a feature on seeing its name at /meta, so the list is the
 // one docs/integration.md describes, sorted, and nothing else.
 func TestMetaReportsTheIntegrationCapabilities(t *testing.T) {
-	want := []string{"page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"}
+	want := []string{"oauth.token-exchange@1", "page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"}
 	if got := capabilities(); !slices.Equal(got, want) {
 		t.Errorf("capabilities() = %v, want %v", got, want)
 	}

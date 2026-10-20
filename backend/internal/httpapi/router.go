@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/label"
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -153,6 +154,9 @@ type Server struct {
 	// Exciter keeps the Exciter connection and the members' tokens, as
 	// Armature does; nil answers that Exciter is out of reach.
 	Exciter *exciter.Service
+	// OAuth hands partner tools a person's token by token exchange (#461);
+	// nil serves none of it.
+	OAuth *oauth.Service
 	// Audit reads the record for administrators and keeps exports; nil refuses
 	// both. AuditRetention is how long the worker keeps an entry, zero forever.
 	Audit          *audit.Service
@@ -211,6 +215,8 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	// Liveness and readiness are deliberately outside the API and authentication.
 	r.Get("/healthz", s.handleLiveness)
 	r.Get("/readyz", s.handleReadiness)
+	// RFC 8414 puts the metadata under the issuer, which is the origin.
+	r.Get(oauth.MetadataPath, s.handleOAuthMetadata)
 
 	r.Route(APIPrefix, func(r chi.Router) {
 		r.Get("/openapi.json", s.handleOpenAPI)
@@ -223,6 +229,9 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// The address before #380, which receivers set up in Armature still use.
 		r.Post("/armature/webhook/{siteSlug}", s.handleArmatureWebhook)
 		r.Post("/exciter/webhook", s.handleExciterWebhook)
+		// A partner app authenticates with its own secret, so nobody signs in.
+		r.Post("/oauth/token", s.handleOAuthToken)
+		r.Post("/oauth/revoke", s.handleOAuthRevoke)
 		r.Group(func(r chi.Router) {
 			r.Use(s.anonymousReader)
 			r.Get("/public", s.handlePublicSite)
@@ -336,6 +345,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/exciter/connection", s.handleSaveExciterConnection)
 			r.Post("/exciter/connection/check", s.handleCheckExciterConnection)
 			r.Delete("/exciter/connection", s.handleRemoveExciterConnection)
+			r.Get("/oauth/clients", s.handleListOAuthClients)
+			r.Post("/oauth/clients", s.handleCreateOAuthClient)
+			r.Patch("/oauth/clients/{clientID}", s.handleUpdateOAuthClient)
+			r.Delete("/oauth/clients/{clientID}", s.handleDeleteOAuthClient)
 			r.Put("/armature/connection/app", s.handleSaveArmatureApp)
 			r.Delete("/armature/connection/app", s.handleRemoveArmatureApp)
 			// A browser navigation, which carries the session the state is bound to.
