@@ -275,6 +275,33 @@ describe("the requirement list's editor", () => {
     expect(onSave).toHaveBeenCalledWith({ project: "CHK", query: "status ", limit: 20 });
   });
 
+  it("puts the caret behind a completed word in the same commit, so a key typed next lands after it", async () => {
+    stubApi({
+      "GET /exciter/account": account(),
+      "GET /exciter/projects": { status: 200, body: { status: "ok", projects: [{ key: "CHK", name: "Checkout" }] } },
+      "GET /exciter/projects/CHK/requirements": { status: 200, body: { status: "ok", requirements: [], total: 2, limit: 1, offset: 0, found: true } },
+      "GET /exciter/projects/CHK/requirements/suggest": {
+        status: 200,
+        body: {
+          status: "ok",
+          suggestions: {
+            completion: { slot: "field", prefix: "sta", from: 0, to: 3, quoted: false, words: ["status"] },
+            words: [{ text: "status", label: "status", detail: "The requirement's status" }],
+            requirements: [],
+          },
+        },
+      },
+    });
+    wrap(<RequirementListDialog initial={{ project: "CHK", query: "sta = Approved", limit: 20 }} isNew onSave={() => {}} onClose={() => {}} />);
+    const query = screen.getByLabelText<HTMLTextAreaElement>("Query");
+    query.focus();
+    query.setSelectionRange(3, 3);
+    fireEvent.click(query);
+    fireEvent.mouseDown(await screen.findByRole("option", { name: /status/ }));
+    expect(query).toHaveValue("status = Approved");
+    expect(query.selectionStart).toBe(6);
+  });
+
   it("refuses to save without a project", async () => {
     stubApi({ "GET /exciter/account": account(), "GET /exciter/projects": { status: 200, body: { status: "ok", projects: [] } } });
     const onSave = vi.fn();

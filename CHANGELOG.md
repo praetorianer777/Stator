@@ -1321,6 +1321,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Completing a requirement list's query no longer sends the caret back to the
+  word just written when the next key comes before the next frame (#474), which
+  garbled the query and offered no values; the caret is set in the same commit.
 - An instance under CloudNativePG that holds data upgrades again (#423).
   There the migrations run as `stator_owner`, which row level security binds,
   and the migrations that fill new columns or tables from the rows already
