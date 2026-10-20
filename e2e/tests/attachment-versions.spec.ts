@@ -95,16 +95,29 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
   test("a file uploaded while the list is still loading appears", async ({ page, api }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
     let late = true;
-    await page.route(`**/api/v1/pages/${wiki.id}/attachments`, async (route) => {
+    let release = () => {};
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let fulfilled: Promise<void> = Promise.resolve();
+    await page.route(`**/api/v1/pages/${wiki.id}/attachments`, (route) => {
       if (route.request().method() !== "GET" || !late) return route.continue();
       late = false;
-      const answeredBefore = await route.fetch();
-      await expect(row(page, "budget.csv")).toHaveCount(0);
-      await expect(page.locator("[data-attachment-notice]")).toHaveText("Attached budget.csv.");
-      await route.fulfill({ response: answeredBefore });
+      // The handler must not outlive the test: a response fetched here is
+      // disposed once the test ends, and fulfilling it then throws.
+      fulfilled = (async () => {
+        const answeredBefore = await route.fetch();
+        await released;
+        await route.fulfill({ response: answeredBefore });
+      })();
     });
     await page.goto(`/s/${key}/p/${wiki.id}/budget`);
+    await expect(row(page, "budget.csv")).toHaveCount(0);
     await panel(page).locator("[data-attachment-input]").setInputFiles(csv("one\n"));
+    await expect(page.locator("[data-attachment-notice]")).toHaveText("Attached budget.csv.");
+    const arrived = page.waitForResponse((r) => r.url().endsWith(`/pages/${wiki.id}/attachments`) && r.request().method() === "GET");
+    release();
+    await fulfilled;
+    await arrived;
+    await page.evaluate(() => new Promise((done) => setTimeout(done, 0)));
     await expect(row(page, "budget.csv")).toHaveAttribute("data-version", "1");
   });
 
