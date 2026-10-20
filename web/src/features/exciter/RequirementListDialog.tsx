@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ApiError } from "@/api/client";
 import { exciterLacks, useExciterAccount, useExciterProjects, useExciterQueryCheck, useExciterSuggest } from "@/api/exciter";
 import { Button, cx, Dialog, Input, Labelled, SelectInput, Textarea } from "@/components/ui";
@@ -94,6 +94,18 @@ export function RequirementListDialog({
   const completion = suggest.data?.completion;
   const shown = Math.min(active, Math.max(words.length - 1, 0));
 
+  // Set in the commit that writes the word, not a frame later: a key typed in
+  // between would otherwise be followed by a jump of the caret back to the word.
+  const placeCaret = useRef<{ text: string; caret: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = field.current;
+    const want = placeCaret.current;
+    if (!el || !want || el.value !== want.text) return;
+    placeCaret.current = null;
+    const offset = offsetOf(want.text, want.caret);
+    el.setSelectionRange(offset, offset);
+  });
+
   function pick(text: string) {
     if (!completion) return;
     const next = completeWith(query, completion.from, completion.to, text);
@@ -101,13 +113,7 @@ export function RequirementListDialog({
     setCaret(next.caret);
     setActive(0);
     setProblems(({ query: _, ...rest }) => rest);
-    // The field keeps focus; the caret goes after what was written.
-    requestAnimationFrame(() => {
-      const el = field.current;
-      if (!el) return;
-      const offset = offsetOf(next.text, next.caret);
-      el.setSelectionRange(offset, offset);
-    });
+    placeCaret.current = next;
   }
 
   function keys(event: KeyboardEvent<HTMLTextAreaElement>) {
