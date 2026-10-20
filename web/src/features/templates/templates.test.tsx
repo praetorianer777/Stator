@@ -1,6 +1,6 @@
 import "@/routes/templates.lazy";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Editor } from "@tiptap/core";
 import type { Template } from "@/api/templates";
@@ -253,6 +253,21 @@ describe("keeping templates", () => {
       ],
     });
     expect(JSON.stringify(body.body)).toContain('{"type":"templateVariable","attrs":{"name":"customer"}}');
+  });
+
+  it("moves focus into the body as a blank is inserted, before the next key is pressed", async () => {
+    stubDialog();
+    const router = await renderAt("/settings/templates/new?space=DOCS");
+    await arrival(router, "/settings/templates/new");
+    const editor = await screen.findByRole("textbox", { name: "Body" });
+    await userEvent.click(screen.getByRole("button", { name: "Add variable" }));
+    const variables = screen.getByRole("group", { name: "Variables" });
+    await userEvent.type(within(variables).getByLabelText("Label"), "Customer");
+    const insert = within(variables).getByRole("button", { name: "Insert Customer" });
+    insert.focus();
+    fireEvent.click(insert);
+    expect(editor).toHaveFocus();
+    await waitFor(() => expect(editor.querySelectorAll("[data-template-variable=customer]")).toHaveLength(1));
   });
 
   it("refuses a built-in, saying why", async () => {
