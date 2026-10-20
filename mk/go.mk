@@ -77,6 +77,9 @@ check-go: fmt-check vet test-go openapi-check document-allowlist-check ## The ba
 
 # The suite runs against the compose stack (mk/stack.mk) rather than a database
 # of its own, so the gate never starts a second Postgres.
+# The whole suite unsharded, as the push gate runs it, takes longer than go
+# test's ten minutes, which would stop it as if a test had hung.
+INTEGRATION_TIMEOUT ?= 60m
 .PHONY: test-integration
 # SHARD=2/3 runs one part, as CI splits the suite across jobs; the listing is
 # built with -race so the run after it finds its binary in the build cache.
@@ -89,4 +92,4 @@ test-integration: | $(GO_CACHE) ## Run the integration suite against this checko
 		run=$$(printf '%s\n' "$$listing" | $(ROOT)/scripts/integration-shard.sh "$(SHARD)"); \
 		echo "Part $(SHARD) of the integration suite: $$(printf '%s' "$$run" | tr -cd '|' | wc -c | awk '{print $$1 + 1}') tests"; \
 	fi; \
-	$(ROOT)/scripts/go-test.sh $(REPORTS)/integration.json $(DOCKER_GO_STACK) go test -race -json -tags integration -count=1 $(TESTFLAGS) $${run:+-run "$$run"} ./test/...
+	$(ROOT)/scripts/go-test.sh $(REPORTS)/integration.json $(DOCKER_GO_STACK) go test -race -json -tags integration -count=1 -timeout=$(INTEGRATION_TIMEOUT) $(TESTFLAGS) $${run:+-run "$$run"} ./test/...
