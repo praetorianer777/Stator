@@ -1,5 +1,6 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
+import { openShowing } from "../fixtures/replica";
 import { teamTest as test } from "../fixtures/team";
 import { armatureURL } from "../fixtures/stack";
 import { answered, armatureSignedIn, passwordOf, readSeed, realArmatureURL, type ArmaturePerson } from "./armature";
@@ -169,7 +170,6 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     await paste(page, seed.people.member.token);
     await expect(page.locator("[data-armature-account]")).not.toContainText("another Armature installation");
     await expect.poll(async () => (await api.GET("/armature/connection")).data?.connection?.installationId).toBe(seed.installationId);
-    await page.goto("/settings/armature");
-    await expect(page.getByText(/confirmed its installation through a member's token/)).toBeVisible();
+    await openShowing(page, "/settings/armature", page.getByText(/confirmed its installation through a member's token/));
   });
 });
