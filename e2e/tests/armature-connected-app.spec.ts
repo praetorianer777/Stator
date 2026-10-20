@@ -2,6 +2,7 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
+import { openShowing } from "../fixtures/replica";
 import { expectAccessible } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
@@ -113,7 +114,7 @@ test.describe("connecting Armature with one click", { tag: ["@auth"] }, () => {
 
   test("a member waits for an Armature administrator to allow a pending app", async ({ pageAs, team }) => {
     const bob = await pageAs("bob");
-    await bob.goto("/settings/profile");
+    await openShowing(bob, "/settings/profile", bob.locator('[data-action="connect-armature-app"]'));
     await bob.locator('[data-action="connect-armature-app"]').click();
     await expect(bob).toHaveURL(new RegExp(`^${connectedApp().base}/oauth/authorize\\?`));
     await bob.getByLabel("Armature organization").fill(team.label);
@@ -121,7 +122,7 @@ test.describe("connecting Armature with one click", { tag: ["@auth"] }, () => {
     await bob.getByRole("button", { name: "Allow" }).click();
     await expect(bob.getByRole("alert")).toHaveText("Stator is not connected to Armature yet. An Armature administrator connects it first.");
 
-    await bob.goto("/settings/profile");
+    await openShowing(bob, "/settings/profile", bob.locator("[data-armature-app-pending]"));
     await expect(bob.locator("[data-armature-app-pending]")).toContainText("An Armature administrator has to allow Stator first.");
   });
 });
