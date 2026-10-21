@@ -1356,6 +1356,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Disconnecting Armature, or moving its connection to another address, forgets
+  the last webhook delivery Stator took (#451). A new connection showed the old
+  Armature's delivery, and so hid the steps to set up a webhook, although the
+  new Armature had never delivered.
 - Completing a requirement list's query no longer sends the caret back to the
   word just written when the next key comes before the next frame (#474), which
   garbled the query and offered no values; the caret is set in the same commit.
