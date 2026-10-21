@@ -6,6 +6,9 @@ import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spa
 // A 1 by 1 PNG, which is all a logo needs to be.
 const LOGO = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const PRINTED = { timeout: 30_000 } as const;
+// Above the server's render timeout (20 s), so a print it gives up on fails
+// the test with Stator's answer rather than with the request's own timeout.
+const PRINT_REQUEST = 25_000;
 const IMAGE = /\/Subtype\s*\/Image/g;
 
 test.describe("the brand in a PDF", { tag: ["@auth", "@desktop"] }, () => {
@@ -19,7 +22,9 @@ test.describe("the brand in a PDF", { tag: ["@auth", "@desktop"] }, () => {
         content: [{ type: "paragraph", content: [{ type: "text", text: "Printed with our brand." }] }],
       });
       const pdf = async () => {
-        const { response, data } = await api.GET("/pages/{pageID}/pdf", { params: { path: { pageID: guide.id } }, parseAs: "arrayBuffer" });
+        const { response, data } = await api
+          .within(PRINT_REQUEST)
+          .GET("/pages/{pageID}/pdf", { params: { path: { pageID: guide.id } }, parseAs: "arrayBuffer" });
         expect(response.status).toBe(200);
         return Buffer.from(data as ArrayBuffer).toString("latin1");
       };
