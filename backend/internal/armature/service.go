@@ -247,6 +247,9 @@ func (s *Service) SaveConnection(ctx context.Context, in ConnectionInput, ip str
 	if err != nil {
 		return nil, lsn, err
 	}
+	if moved {
+		s.cache.ForgetReceipt(ctx, siteID)
+	}
 	out.Partner = s.Partner(ctx, base, !moved)
 	out.App.Offered = out.Partner.OffersApp()
 	out.Webhook.Offered = out.Partner.OffersPartnerWebhook()
@@ -273,13 +276,18 @@ func (s *Service) RemoveConnection(ctx context.Context, ip string) (db.LSN, erro
 	if partner {
 		s.removePartnerWebhook(ctx)
 	}
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+	var siteID uuid.UUID
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		if siteID, err = instance.ID(ctx, tx); err != nil {
+			return err
+		}
 		var forgotten int
 		if err := tx.QueryRow(ctx, `SELECT coalesce(armature_connected_count(), 0)`).Scan(&forgotten); err != nil {
 			return err
 		}
 		var base string
-		err := tx.QueryRow(ctx, `DELETE FROM armature_connection RETURNING base_url`).Scan(&base)
+		err = tx.QueryRow(ctx, `DELETE FROM armature_connection RETURNING base_url`).Scan(&base)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -291,6 +299,11 @@ func (s *Service) RemoveConnection(ctx context.Context, ip string) (db.LSN, erro
 			Data: map[string]any{"baseUrl": base, "tokensForgotten": forgotten},
 		})
 	})
+	if err != nil {
+		return lsn, err
+	}
+	s.cache.ForgetReceipt(ctx, siteID)
+	return lsn, nil
 }
 
 // normalizeBaseURL keeps the origin only: Armature's API is always under

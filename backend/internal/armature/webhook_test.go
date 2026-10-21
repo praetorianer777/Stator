@@ -1,11 +1,14 @@
 package armature
 
 import (
+	"context"
 	"encoding/json"
 	"slices"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestSignMatchesArmature(t *testing.T) {
@@ -100,4 +103,9 @@ func TestATimestampedSignatureIsHeldToTheWindow(t *testing.T) {
 			t.Errorf("%s: signed %v fresh %v, want %v %v", c.name, signed, fresh, c.wantSigned, c.wantFresh)
 		}
 	}
+}
+
+func TestForgetReceiptOnNilCache(t *testing.T) {
+	var c *Cache
+	c.ForgetReceipt(context.Background(), uuid.New())
 }
