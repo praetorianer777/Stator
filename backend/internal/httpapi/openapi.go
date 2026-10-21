@@ -1015,6 +1015,12 @@ var operations = append([]operation{
 	{method: "DELETE", path: "/exciter/connection", handler: "handleRemoveExciterConnection", wholeInstance: true, tag: "exciter",
 		summary:   "Disconnect Exciter, forgetting every stored token and the webhook secret. For administrators.",
 		responses: none()},
+	{method: "PUT", path: "/exciter/connection/app", handler: "handleSaveExciterApp", wholeInstance: true, tag: "exciter",
+		summary: "Store the partner app an Exciter administrator registered for Stator with Stator's Keycloak client, so people are connected to Exciter at sign-in by token exchange; a new client id forgets every grant of the old one. The secret is never answered. For administrators.",
+		request: exciter.AppInput{}, responses: map[int]any{200: env{"connection": exciter.Connection{}}, 404: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/exciter/connection/app", handler: "handleRemoveExciterApp", wholeInstance: true, tag: "exciter",
+		summary:   "Forget the partner app and every grant of it; people paste an Exciter token again. For administrators.",
+		responses: none()},
 	{method: "GET", path: "/exciter/account", handler: "handleGetExciterAccount", tag: "exciter",
 		summary:   "Whether the caller connected their Exciter token, whom it acts as, and what the connected Exciter does not offer.",
 		responses: ok(env{"account": exciter.Account{}})},
@@ -1177,6 +1183,8 @@ func specBuilder() *openapi.Builder {
 	b.Names[reflect.TypeOf(template.Input{})] = "TemplateInput"
 	b.Names[reflect.TypeOf(task.PageRef{})] = "TaskPage"
 	b.Names[reflect.TypeOf(exciter.Connection{})] = "ExciterConnection"
+	b.Names[reflect.TypeOf(exciter.ConnectionApp{})] = "ExciterConnectionApp"
+	b.Names[reflect.TypeOf(exciter.AppInput{})] = "ExciterAppInput"
 	b.Names[reflect.TypeOf(exciter.ConnectionInput{})] = "ExciterConnectionInput"
 	b.Names[reflect.TypeOf(exciter.ConnectionCheckInput{})] = "ExciterConnectionCheckInput"
 	b.Names[reflect.TypeOf(exciter.ConnectionCheck{})] = "ExciterConnectionCheck"
@@ -1297,6 +1305,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(armature.AppStatus(""))] = enumStrings(armature.AppStatuses)
 	b.Enums[reflect.TypeOf(armature.AppRegistrar(""))] = enumStrings(armature.AppRegistrars)
 	b.Enums[reflect.TypeOf(armature.AccountVia(""))] = enumStrings(armature.AccountVias)
+	b.Enums[reflect.TypeOf(exciter.AccountVia(""))] = enumStrings(exciter.AccountVias)
 	b.Enums[reflect.TypeOf(armature.Feature(""))] = enumStrings(armature.Features)
 	b.Enums[reflect.TypeOf(armature.ChartKind(""))] = enumStrings(armature.ChartKinds)
 	b.Enums[reflect.TypeOf(armature.RoadmapGrouping(""))] = enumStrings(armature.RoadmapGroupings)

@@ -74,6 +74,27 @@ export function useRemoveExciterConnection() {
   });
 }
 
+export type ExciterAppInput = Wire["ExciterAppInput"];
+
+/** Stores the partner app Exciter registered for Stator, which connects people at sign-in; a refusal is an ApiError by field. */
+export function useSaveExciterApp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: ExciterAppInput): Promise<ExciterConnection> => (await api.PUT("/exciter/connection/app", { body })).data!.connection,
+    onSuccess: (connection) => queryClient.setQueryData(exciterConnectionQueryKey, connection),
+  });
+}
+
+export function useRemoveExciterApp() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      await api.DELETE("/exciter/connection/app");
+    },
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: exciterConnectionQueryKey }),
+  });
+}
+
 export function useExciterAccount() {
   return useQuery({
     queryKey: exciterAccountQueryKey,

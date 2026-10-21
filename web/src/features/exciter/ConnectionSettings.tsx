@@ -4,7 +4,9 @@ import {
   useCheckExciterAddress,
   useExciterAccount,
   useExciterConnection,
+  useRemoveExciterApp,
   useRemoveExciterConnection,
+  useSaveExciterApp,
   useSaveExciterConnection,
   type ExciterConnection,
   type ExciterConnectionCheck,
@@ -13,7 +15,7 @@ import {
 } from "@/api/exciter";
 import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { COPY_FEEDBACK_MS, EXCITER_WEBHOOK_SECRET_PREFIX } from "@/config";
+import { COPY_FEEDBACK_MS, EXCITER_CLIENT_SECRET_PREFIX, EXCITER_WEBHOOK_SECRET_PREFIX } from "@/config";
 import { ConnectExciterLink } from "./connectLink";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
@@ -45,6 +47,7 @@ export function ExciterConnectionSettings() {
       <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
       {connection && <MembersNext />}
       {connection && <Capabilities partner={connection.partner} />}
+      {connection && <PartnerApp connection={connection} />}
       {connection && <Webhook connection={connection} />}
       {connection && (
         <section aria-labelledby="exciter-disconnect" className="space-y-2">
@@ -198,6 +201,82 @@ function Capabilities({ partner }: { partner: ExciterPartner }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/**
+ * Stator as a partner app of Exciter, which connects each person at sign-in by exchanging their access token:
+ * where it stands, and the client id and secret Exciter's administrator registered it with.
+ */
+function PartnerApp({ connection }: { connection: ExciterConnection }) {
+  const p = t.exciter.app;
+  const app = connection.app;
+  const save = useSaveExciterApp();
+  const remove = useRemoveExciterApp();
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [notice, setNotice] = useState("");
+  const fields = save.error instanceof ApiError ? save.error.fields : {};
+  const formError = save.error && Object.keys(fields).length === 0 ? save.error.message : null;
+  const state = app.exchanging ? "exchanging" : !app.offered ? "not_offered" : app.clientId ? "off" : "missing";
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    setNotice("");
+    save.mutate(
+      { clientId: clientId.trim(), clientSecret: clientSecret.trim() },
+      {
+        onSuccess: () => {
+          setClientId("");
+          setClientSecret("");
+          setNotice(p.saved);
+        },
+      },
+    );
+  }
+
+  function forget() {
+    if (!window.confirm(p.confirmRemove)) return;
+    setNotice("");
+    remove.mutate(undefined, { onSuccess: () => setNotice(p.removed) });
+  }
+
+  return (
+    <section aria-labelledby="exciter-app" className="space-y-3" data-exciter-app={state}>
+      <SectionTitle id="exciter-app">{p.title}</SectionTitle>
+      <p className="text-sm text-ink-muted">{p.intro}</p>
+      <p className="text-sm text-ink" data-exciter-app-state>
+        {p.states[state]}
+      </p>
+      {app.clientId && <p className="text-sm text-ink-muted">{p.clientIdShown(app.clientId)}</p>}
+      <p role="status" className="text-sm text-ink-muted empty:hidden" data-exciter-app-notice>
+        {notice}
+      </p>
+      {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
+      <form onSubmit={submit} noValidate className="space-y-3 rounded-control border border-border p-4" aria-label={p.formTitle} data-exciter-app-form>
+        <Field label={p.clientId} autoComplete="off" value={clientId} error={fields.clientId} onChange={(event) => setClientId(event.target.value)} />
+        <Field
+          label={p.clientSecret}
+          type="password"
+          autoComplete="off"
+          placeholder={`${EXCITER_CLIENT_SECRET_PREFIX}...`}
+          value={clientSecret}
+          error={fields.clientSecret}
+          onChange={(event) => setClientSecret(event.target.value)}
+        />
+        {formError && <ErrorBanner>{formError}</ErrorBanner>}
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" loading={save.isPending} disabled={!clientId.trim() || !clientSecret.trim()} data-action="save-exciter-app">
+            {p.save}
+          </Button>
+          {app.clientId && (
+            <Button variant="ghost" onClick={forget} loading={remove.isPending} data-action="forget-exciter-app">
+              {p.remove}
+            </Button>
+          )}
+        </div>
+      </form>
     </section>
   );
 }

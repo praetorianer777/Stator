@@ -225,6 +225,12 @@ STATOR_ARMATURE_TOKEN_EXCHANGE: "true"
 {{- end }}
 STATOR_EXCITER_BACKCHANNEL: {{ join "," $pairs | quote }}
 {{- end }}
+{{- with .Values.exciter.webhookUrl }}
+STATOR_EXCITER_WEBHOOK_URL: {{ . | quote }}
+{{- end }}
+{{- if .Values.exciter.tokenExchange }}
+STATOR_EXCITER_TOKEN_EXCHANGE: "true"
+{{- end }}
 STATOR_SESSION_COOKIE: {{ .Values.auth.sessionCookie | quote }}
 STATOR_SECURE_COOKIES: {{ .Values.auth.secureCookies | quote }}
 

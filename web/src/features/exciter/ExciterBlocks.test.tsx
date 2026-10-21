@@ -23,7 +23,20 @@ const BASE = "https://exciter.example.com";
 
 const account = (over: Partial<ExciterAccount> = {}): Answer => ({
   status: 200,
-  body: { account: { configured: true, baseUrl: BASE, connected: true, status: "ok", user: null, checkedAt: null, missing: [], ...over } },
+  body: {
+    account: {
+      configured: true,
+      baseUrl: BASE,
+      connected: true,
+      via: "token",
+      status: "ok",
+      user: null,
+      checkedAt: null,
+      missing: [],
+      signInRefusal: null,
+      ...over,
+    },
+  },
 });
 
 const text = (t: string, marks?: unknown[]) => ({ type: "text", text: t, ...(marks ? { marks } : {}) });

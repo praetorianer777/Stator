@@ -2339,6 +2339,8 @@
                 "armature.app_removed",
                 "exciter.connection_saved",
                 "exciter.connection_removed",
+                "exciter.app_saved",
+                "exciter.app_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -2530,6 +2532,8 @@
                 "armature.app_removed",
                 "exciter.connection_saved",
                 "exciter.connection_removed",
+                "exciter.app_saved",
+                "exciter.app_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -4163,6 +4167,97 @@
                   "required": [
                     "connection"
                   ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exciter/connection/app": {
+      "delete": {
+        "operationId": "removeExciterApp",
+        "summary": "Forget the partner app and every grant of it; people paste an Exciter token again. For administrators.",
+        "tags": [
+          "exciter"
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveExciterApp",
+        "summary": "Store the partner app an Exciter administrator registered for Stator with Stator's Keycloak client, so people are connected to Exciter at sign-in by token exchange; a new client id forgets every grant of the old one. The secret is never answered. For administrators.",
+        "tags": [
+          "exciter"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExciterAppInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/ExciterConnection"
+                    }
+                  },
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -20672,6 +20767,8 @@
               "armature.app_removed",
               "exciter.connection_saved",
               "exciter.connection_removed",
+              "exciter.app_saved",
+              "exciter.app_removed",
               "page.exported",
               "audit.exported",
               "page.owner_set",
@@ -20801,6 +20898,8 @@
                 "armature.app_removed",
                 "exciter.connection_saved",
                 "exciter.connection_removed",
+                "exciter.app_saved",
+                "exciter.app_removed",
                 "page.exported",
                 "audit.exported",
                 "page.owner_set",
@@ -22925,6 +23024,12 @@
               "$ref": "#/components/schemas/ExciterMissingFeature"
             }
           },
+          "signInRefusal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -22945,16 +23050,43 @@
                 "type": "null"
               }
             ]
+          },
+          "via": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "token",
+              "sign_in"
+            ]
           }
         },
         "required": [
           "configured",
           "baseUrl",
           "connected",
+          "via",
           "status",
+          "signInRefusal",
           "user",
           "checkedAt",
           "missing"
+        ]
+      },
+      "ExciterAppInput": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "clientSecret": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "clientSecret"
         ]
       },
       "ExciterCompletion": {
@@ -23000,6 +23132,9 @@
       "ExciterConnection": {
         "type": "object",
         "properties": {
+          "app": {
+            "$ref": "#/components/schemas/ExciterConnectionApp"
+          },
           "baseUrl": {
             "type": "string"
           },
@@ -23044,7 +23179,34 @@
           "lastDelivery",
           "connected",
           "updatedAt",
-          "partner"
+          "partner",
+          "app"
+        ]
+      },
+      "ExciterConnectionApp": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exchanging": {
+            "type": "boolean"
+          },
+          "offered": {
+            "type": "boolean"
+          },
+          "secretSet": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "clientId",
+          "secretSet",
+          "offered",
+          "exchanging"
         ]
       },
       "ExciterConnectionCheck": {

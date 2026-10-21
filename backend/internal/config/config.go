@@ -236,6 +236,12 @@ type Exciter struct {
 	// Backchannel maps an Exciter's public origin to the one this process
 	// reaches it at, for a stack where the two differ.
 	Backchannel map[string]string
+	// WebhookURL is the receiver address Stator names for Exciter's webhook,
+	// when Exciter reaches Stator under another name; empty is STATOR_APP_URL's.
+	WebhookURL string
+	// TokenExchange connects a person to Exciter at their sign-in through
+	// the shared identity provider, where Exciter offers the exchange.
+	TokenExchange bool
 }
 
 // Bootstrap is what cmd/seed sets up in the demo organization: a first local
@@ -407,6 +413,8 @@ func Load() (Config, error) {
 	c.Armature.WebhookURL = strings.TrimSuffix(l.str("STATOR_ARMATURE_WEBHOOK_URL", ""), "/")
 	c.Armature.TokenExchange = l.boolean("STATOR_ARMATURE_TOKEN_EXCHANGE", false)
 	c.Exciter.Backchannel = l.rewrites("STATOR_EXCITER_BACKCHANNEL")
+	c.Exciter.WebhookURL = strings.TrimSuffix(l.str("STATOR_EXCITER_WEBHOOK_URL", ""), "/")
+	c.Exciter.TokenExchange = l.boolean("STATOR_EXCITER_TOKEN_EXCHANGE", false)
 	c.SecretKey = l.secretKey("STATOR_SECRET_KEY", c.Env)
 
 	if c.DB.PrimaryURL == "" {
@@ -450,6 +458,11 @@ func Load() (Config, error) {
 	if w := c.Armature.WebhookURL; w != "" {
 		if u, err := url.Parse(w); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			l.problem(fmt.Sprintf("STATOR_ARMATURE_WEBHOOK_URL is %q; set it to the absolute address Armature reaches Stator's webhook receiver at, ending in /api/v1/armature/webhook.", w))
+		}
+	}
+	if w := c.Exciter.WebhookURL; w != "" {
+		if u, err := url.Parse(w); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			l.problem(fmt.Sprintf("STATOR_EXCITER_WEBHOOK_URL is %q; set it to the absolute address Exciter reaches Stator's webhook receiver at, ending in /api/v1/exciter/webhook.", w))
 		}
 	}
 	if strings.TrimSpace(os.Getenv(retiredBootstrapSlug)) != "" {

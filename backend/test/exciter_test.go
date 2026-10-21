@@ -186,6 +186,9 @@ func TestAnAdministratorConnectsExciterAndMembersTheirTokens(t *testing.T) {
 	if checked["status"] != "ok" {
 		t.Errorf("a check of a good token says %v", checked)
 	}
+	if checked["via"] != "token" {
+		t.Errorf("a pasted token is connected via %v", checked["via"])
+	}
 	found := obj(t, want(t, owner.post(t, "/api/v1/exciter/connection/check", map[string]any{"baseUrl": base}), http.StatusOK, "check the address again"), "check")
 	if found["baseUrl"] != base {
 		t.Errorf("the check found %v", found)
@@ -195,6 +198,25 @@ func TestAnAdministratorConnectsExciterAndMembersTheirTokens(t *testing.T) {
 		t.Error("disconnecting kept bob's token")
 	}
 	want(t, bob.put(t, "/api/v1/exciter/account/token", map[string]any{"token": exciterPat(tenant, "bob")}), http.StatusOK, "bob connects again")
+
+	// The partner app that connects people at sign-in (#462) is the administrators'.
+	app := map[string]any{"clientId": "0199-stator", "clientSecret": exciter.ClientSecretPrefix + "abc"}
+	errorCode(t, want(t, bob.put(t, "/api/v1/exciter/connection/app", app), http.StatusForbidden, "a member stores the app"))
+	errorCode(t, want(t, bob.delete(t, "/api/v1/exciter/connection/app"), http.StatusForbidden, "a member forgets the app"))
+	if msg := fieldError(t, want(t, owner.put(t, "/api/v1/exciter/connection/app", map[string]any{"clientId": "0199-stator", "clientSecret": "armature_ocs_x"}),
+		http.StatusUnprocessableEntity, "an Armature secret"), "clientSecret"); !strings.Contains(msg, exciter.ClientSecretPrefix) {
+		t.Errorf("a wrong secret is refused with %q", msg)
+	}
+	withApp := obj(t, want(t, owner.put(t, "/api/v1/exciter/connection/app", app), http.StatusOK, "store the app"), "connection", "app")
+	if withApp["clientId"] != "0199-stator" || withApp["secretSet"] != true || withApp["exchanging"] != false {
+		t.Errorf("the stored app is %v", withApp)
+	}
+	want(t, owner.delete(t, "/api/v1/exciter/connection/app"), http.StatusNoContent, "forget the app")
+	for _, action := range []string{"exciter.app_saved", "exciter.app_removed"} {
+		if n := h.countRows(t, `SELECT count(*) FROM audit_log WHERE action = $1 AND actor_user_id = $2`, action, home.user); n != 1 {
+			t.Errorf("%s is recorded %d times, want once", action, n)
+		}
+	}
 
 	// A new address forgets every stored token, so none is sent to another host.
 	want(t, owner.put(t, "/api/v1/exciter/connection", map[string]any{"baseUrl": strings.Replace(base, "localhost", "127.0.0.1", 1)}), http.StatusUnprocessableEntity, "an address the guard refuses")

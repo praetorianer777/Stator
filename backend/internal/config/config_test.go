@@ -26,7 +26,7 @@ func clean(t *testing.T) {
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
 		"STATOR_BOOTSTRAP_OIDC_ISSUER", "STATOR_BOOTSTRAP_OIDC_CLIENT_ID", "STATOR_BOOTSTRAP_OIDC_CLIENT_SECRET",
 		"STATOR_BOOTSTRAP_MEMBERS", "STATOR_BOOTSTRAP_ORG_SLUG", "STATOR_BOOTSTRAP_ORG_NAME", "STATOR_TEST_ENDPOINTS", "STATOR_TEST_ENDPOINTS_TOKEN",
-		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL", "STATOR_ARMATURE_WEBHOOK_URL", "STATOR_ARMATURE_TOKEN_EXCHANGE", "STATOR_EXCITER_BACKCHANNEL",
+		"STATOR_SMTP_ADDR", "STATOR_MAIL_FROM", "STATOR_OUTBOUND_ALLOW", "STATOR_ARMATURE_BACKCHANNEL", "STATOR_ARMATURE_WEBHOOK_URL", "STATOR_ARMATURE_TOKEN_EXCHANGE", "STATOR_EXCITER_BACKCHANNEL", "STATOR_EXCITER_WEBHOOK_URL", "STATOR_EXCITER_TOKEN_EXCHANGE",
 		"STATOR_RETAIN_AUDIT", "STATOR_RETAIN_PAGE_VIEWS",
 		"STATOR_VERIFICATION_CHECK_INTERVAL", "STATOR_TASK_DUE_CHECK_INTERVAL", "STATOR_SCHEDULE_CHECK_INTERVAL",
 		"STATOR_EXAMPLE_CHECK_INTERVAL", "STATOR_WORD_IMPORT_CHECK_INTERVAL",
@@ -607,6 +607,22 @@ func TestExciterIsReachedAsTheOperatorSays(t *testing.T) {
 	t.Setenv("STATOR_EXCITER_BACKCHANNEL", "exciter-stub")
 	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_EXCITER_BACKCHANNEL") {
 		t.Errorf("an unreadable pair was not refused by name: %v", err)
+	}
+
+	clean(t)
+	t.Setenv("STATOR_EXCITER_WEBHOOK_URL", "http://api:8080/api/v1/exciter/webhook/")
+	if cfg, err = Load(); err != nil || cfg.Exciter.WebhookURL != "http://api:8080/api/v1/exciter/webhook" || cfg.Exciter.TokenExchange {
+		t.Errorf("the webhook address reads as %q, the exchange as %v: %v", cfg.Exciter.WebhookURL, cfg.Exciter.TokenExchange, err)
+	}
+	clean(t)
+	t.Setenv("STATOR_EXCITER_WEBHOOK_URL", "api:8080/hook")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_EXCITER_WEBHOOK_URL") {
+		t.Errorf("a webhook address that is no URL was not refused by name: %v", err)
+	}
+	clean(t)
+	t.Setenv("STATOR_EXCITER_TOKEN_EXCHANGE", "true")
+	if cfg, err = Load(); err != nil || !cfg.Exciter.TokenExchange {
+		t.Errorf("STATOR_EXCITER_TOKEN_EXCHANGE=true does not turn the exchange at sign-in on: %v", err)
 	}
 }
 

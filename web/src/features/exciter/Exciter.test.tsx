@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -32,7 +32,20 @@ const requirement = (key: string, title: string, over: Partial<ExciterRequiremen
 
 const account = (over: Partial<ExciterAccount>): Answer => ({
   status: 200,
-  body: { account: { configured: true, baseUrl: BASE, connected: true, status: "ok", user: null, checkedAt: null, missing: [], ...over } },
+  body: {
+    account: {
+      configured: true,
+      baseUrl: BASE,
+      connected: true,
+      via: "token",
+      status: "ok",
+      user: null,
+      checkedAt: null,
+      missing: [],
+      signInRefusal: null,
+      ...over,
+    },
+  },
 });
 
 const para = (...keys: string[]): Doc => ({
@@ -182,6 +195,25 @@ describe("the Exciter section of the profile", () => {
     expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ token: "exciter_pat_bob" });
   });
 
+  it("says why Exciter did not connect the person at sign-in, above the token form", async () => {
+    const why = "Ada Lovelace has no Exciter account yet. Sign in to Exciter once, or ask an administrator to let them in.";
+    stubApi({ "GET /exciter/account": account({ connected: false, via: null, status: "not_connected", signInRefusal: why }) });
+    wrap(<ExciterAccountSection />);
+    const said = await screen.findByText(why);
+    expect(said.closest("[data-exciter-sign-in-refusal]")).toHaveTextContent("When you signed in, Exciter did not connect your account:");
+    expect(screen.getByLabelText("Exciter token")).toBeInTheDocument();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says an account was connected at sign-in", async () => {
+    stubApi({
+      "GET /exciter/account": account({ via: "sign_in", user: { id: "0195f000-0000-7000-8000-0000000000b1", name: "Bob", email: "bob@suite.test" } }),
+    });
+    wrap(<ExciterAccountSection />);
+    expect(await screen.findByText("Connected when you signed in through single sign-on.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Exciter token")).toBeNull();
+  });
+
   it("says what to do when Stator has no Exciter", async () => {
     stubApi({ "GET /exciter/account": account({ configured: false, baseUrl: null, connected: false, status: "not_configured" }) });
     wrap(<ExciterAccountSection />);
@@ -212,6 +244,7 @@ describe("the Exciter settings", () => {
           connected: 0,
           updatedAt: "2026-10-19T09:00:00Z",
           partner,
+          app: { clientId: null, secretSet: false, offered: false, exchanging: false },
         };
         return { status: 200, body: { connection: saved } };
       },
@@ -225,5 +258,38 @@ describe("the Exciter settings", () => {
     expect(await screen.findByText(/Stator turns off requirement lists, because Exciter does not offer requirement-list@1/)).toBeInTheDocument();
     expect(screen.getByDisplayValue("http://stator.test/api/v1/exciter/webhook")).toBeInTheDocument();
     expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ baseUrl: BASE, webhookSecret: "exciter_whs_x" });
+  });
+
+  it("store the partner app Exciter registered, which connects people at sign-in", async () => {
+    let app = { clientId: null as string | null, secretSet: false, offered: true, exchanging: false };
+    const connection = () => ({
+      baseUrl: BASE,
+      webhookSecretSet: true,
+      webhookUrl: "http://stator.test/api/v1/exciter/webhook",
+      webhookTopics: ["requirement.created"],
+      lastDelivery: null,
+      connected: 0,
+      updatedAt: "2026-10-19T09:00:00Z",
+      partner: { status: "ok", version: "1.5.0", capabilities: ["oauth.token-exchange@1", "requirement-embed@1"], missing: [] },
+      app,
+    });
+    const sent = stubApi({
+      "GET /exciter/account": account({ connected: false, status: "not_connected" }),
+      "GET /exciter/connection": () => ({ status: 200, body: { connection: connection() } }),
+      "PUT /exciter/connection/app": () => {
+        app = { clientId: "0199-stator", secretSet: true, offered: true, exchanging: true };
+        return { status: 200, body: { connection: connection() } };
+      },
+    });
+    await renderAt("/settings/exciter");
+    expect(await screen.findByText(/Exciter offers connecting people at sign-in/)).toBeInTheDocument();
+    const form = screen.getByRole("form", { name: "Partner app" });
+    await userEvent.type(within(form).getByLabelText("Client id"), "0199-stator");
+    await userEvent.type(within(form).getByLabelText("Client secret"), "exciter_ocs_x");
+    await userEvent.click(within(form).getByRole("button", { name: "Save the app" }));
+    expect(await screen.findByText("People are connected to Exciter when they sign in.")).toBeInTheDocument();
+    expect(screen.getByText("Client id 0199-stator.")).toBeInTheDocument();
+    expect(sent.find((r) => r.method === "PUT")?.body).toEqual({ clientId: "0199-stator", clientSecret: "exciter_ocs_x" });
+    expect(await axeViolations()).toEqual([]);
   });
 });

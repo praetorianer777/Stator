@@ -66,6 +66,9 @@ var routes = []route{
 	{Method: "GET", Path: "/projects", handler: (*stub).listProjects},
 	{Method: "GET", Path: "/projects/{projectKey}/requirements", handler: (*stub).listRequirements},
 	{Method: "GET", Path: "/projects/{projectKey}/requirements/suggest", handler: (*stub).suggest},
+	// An app authenticates with its own secret at the OAuth endpoints.
+	{Method: "POST", Path: "/oauth/token", Public: true, handler: (*stub).token},
+	{Method: "POST", Path: "/oauth/revoke", Public: true, handler: (*stub).revoke},
 }
 
 // namespace makes the stub's ids from names, so they are the same on every run.
@@ -173,6 +176,18 @@ func (w *world) caller(token string) (*tenant, string, bool) {
 	return w.tenant(rest[:at]), rest[at+1:], true
 }
 
+// caller resolves a bearer: a grant's access token or a personal one.
+func (s *stub) caller(token string) (*tenant, string, bool) {
+	if strings.HasPrefix(token, accessPrefix) {
+		name, person, ok := s.oauth.holder(token)
+		if !ok {
+			return nil, "", false
+		}
+		return s.world.tenant(name), person, true
+	}
+	return s.world.caller(token)
+}
+
 type metaOverride struct {
 	Capabilities []string `json:"capabilities"`
 }
@@ -183,6 +198,7 @@ type stub struct {
 	client  *http.Client
 	mu      sync.Mutex
 	metas   map[string]metaOverride
+	oauth   *oauthServer
 }
 
 // call is one request as a person of a tenant.
@@ -195,7 +211,7 @@ type call struct {
 
 func newStub(openapi []byte) *stub {
 	return &stub{world: &world{tenants: map[string]*tenant{}}, openapi: openapi,
-		client: &http.Client{Timeout: webhookTimeout}, metas: map[string]metaOverride{}}
+		client: &http.Client{Timeout: webhookTimeout}, metas: map[string]metaOverride{}, oauth: newOAuth()}
 }
 
 // handler routes Exciter's operations and the /_stub/ controls.
@@ -207,6 +223,7 @@ func (s *stub) handler() http.Handler {
 	mux.HandleFunc("GET "+stubPrefix+"/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("PUT "+metaPrefix+"/{host}", s.setMeta)
 	mux.HandleFunc("DELETE "+metaPrefix+"/{host}", s.forgetMeta)
+	s.oauthControls(mux)
 	mux.HandleFunc("PUT "+stubPrefix+"/{tenant}/requirements/{reqKey}", s.control((*stub).putRequirement))
 	mux.HandleFunc("POST "+stubPrefix+"/{tenant}/requirements/{reqKey}/move", s.control((*stub).moveRequirement))
 	// Unlocked while it posts, so a receiver that calls back finds the stub free.
@@ -235,7 +252,7 @@ func (s *stub) serve(rt route) http.HandlerFunc {
 			token, found := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 			s.world.mu.Lock()
 			defer s.world.mu.Unlock()
-			t, person, ok := s.world.caller(strings.TrimSpace(token))
+			t, person, ok := s.caller(strings.TrimSpace(token))
 			if !found || !ok {
 				refuse(w, http.StatusUnauthorized, "unauthorized", "Sign in to continue.")
 				return

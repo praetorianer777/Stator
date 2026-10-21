@@ -40,6 +40,11 @@ var (
 type Options struct {
 	// AppURL is Stator's own origin, for the webhook address.
 	AppURL string
+	// WebhookURL is where Exciter reaches Stator's webhook receiver, when
+	// that is not under AppURL; empty is AppURL's.
+	WebhookURL string
+	// TokenExchange connects people at sign-in where Exciter offers it.
+	TokenExchange bool
 	// Allow is what STATOR_OUTBOUND_ALLOW names; such a host may be plain http.
 	Allow netguard.Allow
 	// Development lets any base URL be plain http.
@@ -105,13 +110,22 @@ func (s *Service) Connection(ctx context.Context) (*Connection, error) {
 	})
 	if out != nil && err == nil {
 		out.Partner = s.Partner(ctx, out.BaseURL, true)
+		s.noteApp(ctx, out, false)
 		out.LastDelivery, _ = s.cache.Receipt(ctx, site)
 	}
 	return out, err
 }
 
+// webhookURL is the receiver address Stator names for Exciter's webhook.
+func (s *Service) webhookURL() string {
+	if s.opts.WebhookURL != "" {
+		return s.opts.WebhookURL
+	}
+	return s.opts.AppURL + WebhookPath
+}
+
 func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, error) {
-	c := Connection{WebhookURL: s.opts.AppURL + WebhookPath, WebhookTopics: WebhookTopics}
+	c := Connection{WebhookURL: s.webhookURL(), WebhookTopics: WebhookTopics}
 	var connected *int
 	err := tx.QueryRow(ctx, `
 		SELECT base_url, webhook_secret IS NOT NULL, updated_at, exciter_connected_count()
@@ -125,6 +139,9 @@ func (s *Service) readConnection(ctx context.Context, tx db.DBTX) (*Connection, 
 	}
 	if connected != nil {
 		c.Connected = *connected
+	}
+	if c.App, err = connectionApp(ctx, tx); err != nil {
+		return nil, err
 	}
 	return &c, nil
 }
@@ -323,11 +340,20 @@ func (s *Service) account(ctx context.Context, tx db.DBTX) (*Account, error) {
 		return &Account{Status: StatusNotConfigured, Missing: []MissingFeature{}}, nil
 	}
 	a := &Account{Configured: true, BaseURL: &base, Status: StatusNotConnected, Missing: []MissingFeature{}}
+	if user, ok := db.UserFrom(ctx); ok {
+		if a.SignInRefusal, err = signInRefusalOf(ctx, tx, user); err != nil {
+			return nil, err
+		}
+	}
 	row, err := s.ownToken(ctx, tx)
 	if err != nil || row == nil {
 		return a, err
 	}
-	a.Connected, a.Status, a.User, a.CheckedAt = true, row.Status, row.User, &row.CheckedAt
+	via := ViaToken
+	if row.Refresh != nil {
+		via = ViaSignIn
+	}
+	a.Connected, a.Via, a.Status, a.User, a.CheckedAt = true, &via, row.Status, row.User, &row.CheckedAt
 	return a, nil
 }
 
@@ -340,22 +366,23 @@ type tokenRow struct {
 	Status    Status
 	User      *armature.AccountUser
 	CheckedAt time.Time
+	// Refresh and AccessExpires are set for a grant the exchange at sign-in
+	// stored, whose token is its access token.
+	Refresh       []byte
+	AccessExpires *time.Time
 }
 
-func (s *Service) ownToken(ctx context.Context, tx db.DBTX) (*tokenRow, error) {
-	user, ok := db.UserFrom(ctx)
-	if !ok {
-		return nil, ErrNotConnected
-	}
+const tokenColumns = `id, (SELECT id FROM site), token, status, exciter_user_id, exciter_user_name, exciter_user_email, checked_at,
+	refresh_token, access_expires_at`
+
+func scanToken(r pgx.Row) (*tokenRow, error) {
 	var (
 		row               tokenRow
 		exciterUser       *uuid.UUID
 		exciterName, mail *string
 	)
-	err := tx.QueryRow(ctx, `
-		SELECT id, (SELECT id FROM site), token, status, exciter_user_id, exciter_user_name, exciter_user_email, checked_at
-		FROM exciter_token WHERE user_id = $1`, user,
-	).Scan(&row.ID, &row.SiteID, &row.Sealed, &row.Status, &exciterUser, &exciterName, &mail, &row.CheckedAt)
+	err := r.Scan(&row.ID, &row.SiteID, &row.Sealed, &row.Status, &exciterUser, &exciterName, &mail, &row.CheckedAt,
+		&row.Refresh, &row.AccessExpires)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -366,6 +393,14 @@ func (s *Service) ownToken(ctx context.Context, tx db.DBTX) (*tokenRow, error) {
 		row.User = &armature.AccountUser{ID: *exciterUser, Name: deref(exciterName), Email: deref(mail)}
 	}
 	return &row, nil
+}
+
+func (s *Service) ownToken(ctx context.Context, tx db.DBTX) (*tokenRow, error) {
+	user, ok := db.UserFrom(ctx)
+	if !ok {
+		return nil, ErrNotConnected
+	}
+	return scanToken(tx.QueryRow(ctx, `SELECT `+tokenColumns+` FROM exciter_token WHERE user_id = $1`, user))
 }
 
 // Connect stores the caller's token once Exciter accepts it.
@@ -406,12 +441,19 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 		return nil, 0, err
 	}
 
-	var out *Account
+	var (
+		out  *Account
+		gone *tokenRow
+	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
 		// A new row rather than an update, so the row id that keys the
 		// person's cache is new with the token.
-		if _, err := tx.Exec(ctx, `DELETE FROM exciter_token WHERE user_id = $1`, user); err != nil {
+		var err error
+		if gone, err = scanToken(tx.QueryRow(ctx, `DELETE FROM exciter_token WHERE user_id = $1 RETURNING `+tokenColumns, user)); err != nil {
 			return fmt.Errorf("forget the old Exciter token: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM exciter_sign_in WHERE user_id = $1`, user); err != nil {
+			return err
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO exciter_token (user_id, token, exciter_user_id, exciter_user_name, exciter_user_email, status, checked_at)
@@ -425,6 +467,7 @@ func (s *Service) Connect(ctx context.Context, token string) (*Account, db.LSN, 
 	if err != nil {
 		return nil, lsn, err
 	}
+	s.revokeGrant(ctx, base, gone)
 	s.noteMissing(ctx, out, false)
 	return out, lsn, nil
 }
@@ -452,15 +495,12 @@ func (s *Service) Check(ctx context.Context) (*Account, db.LSN, error) {
 	}
 
 	status, user := StatusRejected, row.User
-	token, openErr := s.open(ctx, row)
-	if openErr == nil {
-		me, err := s.me(ctx, base, token)
-		switch {
-		case errors.Is(err, armature.ErrUnreachable):
-			status = StatusUnreachable
-		case err == nil:
-			status, user = StatusOK, me
-		}
+	me, err := s.checkRow(ctx, base, row)
+	switch {
+	case errors.Is(err, armature.ErrUnreachable):
+		status = StatusUnreachable
+	case err == nil:
+		status, user = StatusOK, me
 	}
 
 	var out *Account
@@ -485,16 +525,54 @@ func (s *Service) Check(ctx context.Context) (*Account, db.LSN, error) {
 	return out, lsn, err
 }
 
-// Disconnect forgets the caller's token; forgetting none is not an error.
+// checkRow asks Exciter who a stored token or grant acts as; a grant is
+// renewed first when it runs out, as any call with it is.
+func (s *Service) checkRow(ctx context.Context, base string, row *tokenRow) (*armature.AccountUser, error) {
+	if row.Refresh == nil {
+		token, err := s.open(ctx, row)
+		if err != nil {
+			return nil, armature.ErrRejected
+		}
+		return s.me(ctx, base, token)
+	}
+	caller, err := s.grantCaller(ctx, base, row)
+	if err != nil {
+		return nil, err
+	}
+	call, cancel := context.WithTimeout(ctx, armature.CallTimeout)
+	defer cancel()
+	var answer struct {
+		User armature.AccountUser `json:"user"`
+	}
+	if err := caller.Get(call, "/auth/me", nil, &answer); err != nil {
+		return nil, err
+	}
+	return &answer.User, nil
+}
+
+// Disconnect forgets the caller's token or grant, and revokes a grant at
+// Exciter so it ends there too; forgetting none is not an error.
 func (s *Service) Disconnect(ctx context.Context) (db.LSN, error) {
 	user, ok := db.UserFrom(ctx)
 	if !ok {
 		return 0, ErrNotConnected
 	}
-	return s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
-		_, err := tx.Exec(ctx, `DELETE FROM exciter_token WHERE user_id = $1`, user)
+	var (
+		base string
+		gone *tokenRow
+	)
+	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		if base, err = s.endpoint(ctx, tx); err != nil {
+			return err
+		}
+		gone, err = scanToken(tx.QueryRow(ctx, `DELETE FROM exciter_token WHERE user_id = $1 RETURNING `+tokenColumns, user))
 		return err
 	})
+	if err == nil {
+		s.revokeGrant(ctx, base, gone)
+	}
+	return lsn, err
 }
 
 // Viewer is the caller as Exciter knows them. TokenID keys their entries in
@@ -534,6 +612,13 @@ func (s *Service) Viewer(ctx context.Context) (*Viewer, Status, error) {
 		return nil, StatusNotConnected, nil
 	case row.Status == StatusRejected:
 		return nil, StatusRejected, nil
+	}
+	if row.Refresh != nil {
+		caller, err := s.grantCaller(ctx, base, row)
+		if err != nil {
+			return nil, armature.StatusOf(err), nil
+		}
+		return &Viewer{SiteID: row.SiteID, UserID: user, TokenID: row.ID, Caller: caller}, StatusOK, nil
 	}
 	token, err := s.open(ctx, row)
 	if err != nil {

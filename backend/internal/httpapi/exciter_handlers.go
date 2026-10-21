@@ -85,6 +85,39 @@ func (s *Server) handleRemoveExciterConnection(w http.ResponseWriter, r *http.Re
 	respondNoContent(w)
 }
 
+func (s *Server) handleSaveExciterApp(w http.ResponseWriter, r *http.Request) {
+	if s.Exciter == nil {
+		respondError(w, r, errExciterOff)
+		return
+	}
+	var req exciter.AppInput
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	connection, lsn, err := s.Exciter.SaveApp(r.Context(), req, clientIP(r))
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondJSON(w, r, http.StatusOK, map[string]any{"connection": connection})
+}
+
+func (s *Server) handleRemoveExciterApp(w http.ResponseWriter, r *http.Request) {
+	if s.Exciter == nil {
+		respondError(w, r, errExciterOff)
+		return
+	}
+	lsn, err := s.Exciter.RemoveApp(r.Context(), clientIP(r))
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
 func (s *Server) handleGetExciterAccount(w http.ResponseWriter, r *http.Request) {
 	if s.Exciter == nil {
 		respondError(w, r, errExciterOff)

@@ -200,6 +200,8 @@ var notTools = map[string]string{
 	"POST /oauth/clients":                                          whyAdmin,
 	"PATCH /oauth/clients/{clientID}":                              whyAdmin,
 	"DELETE /oauth/clients/{clientID}":                             whyAdmin,
+	"PUT /exciter/connection/app":                                  whyAdmin,
+	"DELETE /exciter/connection/app":                               whyAdmin,
 	"DELETE /armature/connection/app":                              whyAdmin,
 	"GET /armature/connection/webhook/connect":                     whyEdge,
 	"POST /armature/connection/webhook/rotate-secret":              whyAdmin,

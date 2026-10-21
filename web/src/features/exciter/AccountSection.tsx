@@ -64,6 +64,12 @@ export function ExciterAccountSection({ focusToken = false, onReturn }: { focusT
               </Button>
             </div>
           )}
+          {account.status !== "ok" && account.signInRefusal && (
+            <div className="space-y-1 text-sm" data-exciter-sign-in-refusal>
+              <p className="text-ink">{a.signInRefused}</p>
+              <blockquote className="border-l-2 border-border pl-3 text-ink-muted">{account.signInRefusal}</blockquote>
+            </div>
+          )}
           {account.status !== "ok" && (
             <TokenForm
               account={account}
@@ -90,7 +96,8 @@ function Connected({ account }: { account: ExciterAccount }) {
           {a.connectedAs(account.user.name, account.user.email)}
         </p>
       )}
-      {account.status === "rejected" && <ErrorBanner>{a.rejected}</ErrorBanner>}
+      {account.via === "sign_in" && <p className="text-ink-muted">{a.viaSignIn}</p>}
+      {account.status === "rejected" && <ErrorBanner>{account.via === "sign_in" ? a.rejectedSignIn : a.rejected}</ErrorBanner>}
       {account.status === "unreachable" && <p className="text-ink-muted">{a.unreachable}</p>}
       {account.checkedAt && <p className="text-ink-muted">{a.checkedAt(when.format(new Date(account.checkedAt)))}</p>}
     </div>
