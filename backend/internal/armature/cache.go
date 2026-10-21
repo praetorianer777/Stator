@@ -155,6 +155,14 @@ func (c *Cache) Forget(ctx context.Context, keys ...string) {
 	c.warn(c.store.Del(ctx, keys...).Err(), "forget")
 }
 
+// ForgetReceipt clears the last webhook delivery remembered for the site.
+func (c *Cache) ForgetReceipt(ctx context.Context, site uuid.UUID) {
+	if c == nil {
+		return
+	}
+	c.warn(c.store.Del(ctx, ReceiptKey(site)).Err(), "forget receipt")
+}
+
 // Issue reads the owner of tokenID's answer for issueKey into out, null for
 // an issue they may not see; false is a miss, a field past its TTL included.
 func (c *Cache) Issue(ctx context.Context, site, tokenID uuid.UUID, issueKey string, out any) (ok bool) {

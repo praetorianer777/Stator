@@ -62,20 +62,13 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       await page.getByLabel("Armature address", { exact: true }).fill(armatureURL());
       await expect(page.locator('[data-armature-check="found"]')).toHaveText(`Armature ${STUB_VERSION} answers at this address.`);
       await page.getByLabel("Webhook secret", { exact: true }).fill(WEBHOOK_SECRET);
-      const saved = page.waitForResponse((r) => r.request().method() === "PUT" && r.url().endsWith("/api/v1/armature/connection"));
       await page.locator('[data-action="save-armature"]').click();
       await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
-      // The last delivery is the organization's and outlives a disconnect, so
-      // the webhook spec may have left one in this worker's organization.
-      const delivered = (await (await saved).json()).connection.lastDelivery !== null;
+      // The stub never delivers, so the page repeats how to set up the webhook.
       const pending = page.locator("[data-armature-webhook-pending]");
-      if (delivered) {
-        await expect(pending).toHaveCount(0);
-      } else {
-        await expect(pending).toContainText("Armature has not delivered to Stator yet");
-        await expect(pending.getByRole("listitem").first()).toContainText("/api/v1/armature/webhook.");
-        await expect(pending).toContainText("A secret is stored.");
-      }
+      await expect(pending).toContainText("Armature has not delivered to Stator yet");
+      await expect(pending.getByRole("listitem").first()).toContainText("/api/v1/armature/webhook.");
+      await expect(pending).toContainText("A secret is stored.");
       await expect(page.getByLabel("Webhook address", { exact: true })).toHaveValue(new RegExp(`/api/v1/armature/webhook$`));
       await expect(page.getByLabel("Webhook secret", { exact: true })).toHaveValue("");
       await expect(page.locator("body")).not.toContainText(WEBHOOK_SECRET);
