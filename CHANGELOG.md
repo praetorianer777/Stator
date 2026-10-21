@@ -7,6 +7,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-21
+
 ### Added
 
 - Connecting people to Exciter at sign-in (#462), as to Armature: where the
