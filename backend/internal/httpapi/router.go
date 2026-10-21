@@ -217,6 +217,10 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 	r.Get("/readyz", s.handleReadiness)
 	// RFC 8414 puts the metadata under the issuer, which is the origin.
 	r.Get(oauth.MetadataPath, s.handleOAuthMetadata)
+	// RFC 9728 inserts the resource's path after the well-known one; the
+	// bare document answers clients that ask for the origin's.
+	r.Get(oauth.ResourceMetadataPath, s.handleResourceMetadata)
+	r.Get(oauth.ResourceMetadataPath+APIPrefix+oauth.MCPPath, s.handleResourceMetadata)
 
 	r.Route(APIPrefix, func(r chi.Router) {
 		r.Get("/openapi.json", s.handleOpenAPI)
@@ -232,6 +236,19 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// A partner app authenticates with its own secret, so nobody signs in.
 		r.Post("/oauth/token", s.handleOAuthToken)
 		r.Post("/oauth/revoke", s.handleOAuthRevoke)
+		r.Post("/oauth/register", s.handleOAuthRegister)
+		// A browser navigation, which the consent page or the sign-in answers.
+		r.Get("/oauth/authorize", s.handleOAuthAuthorize)
+		r.Group(func(r chi.Router) {
+			r.Use(requireMember, s.requireUse, requireSession)
+			r.Get("/oauth/consent", s.handleGetOAuthConsent)
+			r.Post("/oauth/consent", s.handleDecideOAuthConsent)
+		})
+		// A 401 here tells an MCP client where to get a token (RFC 9728).
+		r.Group(func(r chi.Router) {
+			r.Use(s.requireMCPAuth, requireMember, s.requireUse)
+			r.Post("/mcp", s.handleMCP)
+		})
 		r.Group(func(r chi.Router) {
 			r.Use(s.anonymousReader)
 			r.Get("/public", s.handlePublicSite)
@@ -604,7 +621,6 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Post("/notifications/read", s.handleMarkRead)
 			r.Get("/notification-preferences", s.handleNotificationPreferences)
 			r.Put("/notification-preferences", s.handleSaveNotificationPreferences)
-			r.Post("/mcp", s.handleMCP)
 			mountPending(r, false)
 		})
 	})

@@ -4,8 +4,9 @@ import { createRoute } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { useSpaces } from "@/api/spaces";
 import { useCreateToken, useRevokeToken, useTokens, type ApiToken } from "@/api/tokens";
-import { Button, Card, Checkbox, Chip, EmptyState, ErrorBanner, Field, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
+import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { SpacePicker } from "@/features/spaces/SpacePicker";
 import {
   COPY_FEEDBACK_MS,
   DAY_MS,
@@ -242,25 +243,15 @@ function CreateTokenForm({ onCreated }: { onCreated: (token: ApiToken) => void }
         </div>
         {fields.scopes && <ErrorBanner>{fields.scopes}</ErrorBanner>}
         {choosable.length > 0 && (
-          <fieldset aria-describedby="tokens-spaces-hint" data-token-spaces-picker>
-            <legend className="text-sm font-medium text-ink">{t.tokens.spaces}</legend>
-            <p id="tokens-spaces-hint" className="mb-2 text-xs text-ink-muted">
-              {spaces.length === 0 ? t.tokens.spacesAll : t.tokens.spacesSome}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {choosable.map((space) => (
-                <Chip
-                  key={space.key}
-                  pressed={spaces.includes(space.key)}
-                  data-space={space.key}
-                  onClick={() => setSpaces((picked) => (picked.includes(space.key) ? picked.filter((k) => k !== space.key) : [...picked, space.key]))}
-                >
-                  {space.name}
-                  <span className="text-xs">{space.key}</span>
-                </Chip>
-              ))}
-            </div>
-          </fieldset>
+          <SpacePicker
+            spaces={choosable}
+            picked={spaces}
+            onChange={setSpaces}
+            legend={t.tokens.spaces}
+            hint={spaces.length === 0 ? t.tokens.spacesAll : t.tokens.spacesSome}
+            hintId="tokens-spaces-hint"
+            data-token-spaces-picker
+          />
         )}
         {fields.spaces && <ErrorBanner>{fields.spaces}</ErrorBanner>}
         <Button type="submit" icon={<Icon.Plus />} loading={create.isPending} data-action="create-token">

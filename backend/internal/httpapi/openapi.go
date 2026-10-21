@@ -1067,18 +1067,48 @@ var operations = append([]operation{
 
 	// Partner tools exchange a person's identity provider token for theirs (#461).
 	{method: "GET", path: oauth.MetadataPath, handler: "handleOAuthMetadata", tag: "oauth", public: true,
-		summary:   "RFC 8414's metadata: the issuer, the token and revocation endpoints, the scopes and grants. Lives at the origin, outside " + APIPrefix + "; partners may keep it for five minutes.",
+		summary:   "RFC 8414's metadata: the issuer, the authorization, token, revocation and registration endpoints, the scopes, grants and PKCE method. Lives at the origin, outside " + APIPrefix + "; partners may keep it for five minutes.",
 		responses: ok(oauth.Metadata{})},
+	{method: "GET", path: oauth.ResourceMetadataPath + APIPrefix + oauth.MCPPath, handler: "handleResourceMetadata", id: "getMCPResourceMetadata", tag: "oauth", public: true,
+		summary:   "RFC 9728's metadata of the MCP endpoint, the one resource a consented app's token is for: its address, Stator as its authorization server, the scopes. A 401 at the endpoint points here. Lives at the origin.",
+		responses: ok(oauth.ResourceMetadata{})},
+	{method: "GET", path: oauth.ResourceMetadataPath, handler: "handleResourceMetadata", id: "getResourceMetadata", tag: "oauth", public: true,
+		summary:   "The MCP endpoint's metadata again, for a client that asks at the origin's well-known address.",
+		responses: ok(oauth.ResourceMetadata{})},
+	{method: "POST", path: "/oauth/register", handler: "handleOAuthRegister", tag: "oauth", public: true,
+		summary: "RFC 7591: an app registers itself with its name, return addresses (https, or http on a loopback address at any port) and how it authenticates; a confidential app's secret, " + auth.ClientSecretPrefix + "..., is in this answer and never again. " +
+			"The app is pending until a Stator administrator allows it by connecting it once, and is removed after a day otherwise. grant_types holds authorization_code, and may name refresh_token and the token exchange. At most " + strconv.Itoa(RegistrationsPerWindow) + " from one address in " + strconv.Itoa(int(RegistrationWindow.Minutes())) + " minutes.",
+		request: oauth.RegistrationRequest{}, responses: map[int]any{201: oauth.RegistrationResponse{}, 400: oauth.Error{}, 429: errorEnvelope{}}},
+	{method: "GET", path: "/oauth/authorize", handler: "handleOAuthAuthorize", tag: "oauth", public: true, redirect: true,
+		summary: "The authorization endpoint: sends the browser to the consent page with the query whole, through the sign-in when nobody is signed in. The page answers at the app's return address with code, state and iss (RFC 9207), or error.",
+		query: []param{
+			{name: "response_type", description: "code"},
+			{name: "client_id"},
+			{name: "redirect_uri", description: "One the app registered; a loopback one at any port."},
+			{name: "scope", description: "read, or read write; what the app registered when absent."},
+			{name: "state", description: "The app's own, returned with the answer."},
+			{name: "code_challenge", description: "The base64url SHA-256 of the app's verifier."},
+			{name: "code_challenge_method", description: "S256"},
+			{name: "resource", description: "The MCP endpoint (RFC 8707)."},
+		}, responses: map[int]any{}},
+	{method: "GET", path: "/oauth/consent", handler: "handleGetOAuthConsent", tag: "oauth",
+		summary:   "What the consent page shows for the authorize query it was opened with: the app, where the browser goes back to, the scopes asked, whether the app waits for an administrator and whether the caller may allow it; or redirectTo, an error answered at the app. Needs a session.",
+		query:     []param{{name: "client_id", description: "And the rest of the authorize query, as it came."}},
+		responses: map[int]any{200: consentAnswer{}, 400: errorEnvelope{}, 403: errorEnvelope{}}},
+	{method: "POST", path: "/oauth/consent", handler: "handleDecideOAuthConsent", tag: "oauth",
+		summary: "The person's decision on the consent page: allow, read alone or what was asked, for every space they see or the spaces named; or deny. Answers where the browser goes back to. An administrator allowing an app that waits allows it for everybody. Needs a session.",
+		request: consentRequest{}, responses: map[int]any{200: env{"redirectTo": ""}, 400: errorEnvelope{}, 403: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/oauth/token", handler: "handleOAuthToken", tag: "oauth", public: true, form: true,
-		summary: "The token endpoint, for a partner app with its client id and secret, by HTTP Basic or in the form. " +
-			"grant_type " + oauth.GrantTokenExchange + " trades a person's access token of the instance's identity provider, issued to the app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; " +
-			"refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, unauthorized_client, unsupported_grant_type.",
+		summary: "The token endpoint, for an app with its client id and secret, by HTTP Basic or in the form, or its client id alone for a public app. " +
+			"grant_type authorization_code redeems a code from the consent page with its PKCE verifier and return address, for a grant that acts at the MCP endpoint only; a code used twice ends that grant. " +
+			"grant_type " + oauth.GrantTokenExchange + " trades a person's access token of the instance's identity provider, issued to a partner app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; " +
+			"refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Access tokens last an hour. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, invalid_target, unauthorized_client, unsupported_grant_type.",
 		request: oauth.TokenRequest{}, responses: map[int]any{200: oauth.TokenResponse{}, 400: oauth.Error{}, 401: oauth.Error{}}},
 	{method: "POST", path: "/oauth/revoke", handler: "handleOAuthRevoke", tag: "oauth", public: true, form: true,
 		summary: "RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike.",
 		request: oauth.RevokeRequest{}, responses: map[int]any{200: nil, 400: oauth.Error{}, 401: oauth.Error{}}},
 	{method: "GET", path: "/oauth/clients", handler: "handleListOAuthClients", wholeInstance: true, tag: "oauth",
-		summary:   "The partner apps that may exchange people's identity provider tokens here, by name. For administrators.",
+		summary:   "The connected apps by name: partner apps that exchange people's identity provider tokens, and apps that registered themselves, pending or allowed. For administrators.",
 		responses: ok(env{"clients": []oauth.Client{}})},
 	{method: "POST", path: "/oauth/clients", handler: "handleCreateOAuthClient", wholeInstance: true, tag: "oauth",
 		summary: "Register a partner app with the Keycloak client it signs people in with; its secret, " + auth.ClientSecretPrefix + "..., is in this answer and never again. For administrators.",
@@ -1090,8 +1120,9 @@ var operations = append([]operation{
 		summary:   "Remove a partner app; every grant of it ends. For administrators.",
 		responses: none()},
 
-	{method: "POST", path: "/mcp", handler: "handleMCP", id: "mcp", tag: "mcp", summary: "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
-		raw: true, rawNote: "A JSON-RPC 2.0 request as the Model Context Protocol defines it.", responses: map[int]any{200: rpcResponse{}, 202: nil}},
+	{method: "POST", path: "/mcp", handler: "handleMCP", id: "mcp", tag: "mcp", summary: "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller. " +
+		"A 401 carries WWW-Authenticate: Bearer with resource_metadata, as RFC 9728 says, so a client can connect through OAuth.",
+		raw: true, rawNote: "A JSON-RPC 2.0 request as the Model Context Protocol defines it.", responses: map[int]any{200: rpcResponse{}, 202: nil, 401: errorEnvelope{}}},
 }, oldPublicOperations()...)
 
 var (

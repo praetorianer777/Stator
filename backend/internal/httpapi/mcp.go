@@ -251,7 +251,7 @@ func (t mcpTool) request(outer *http.Request, args map[string]json.RawMessage) (
 	}
 
 	// A fresh route context, or chi answers the outer route's parameters.
-	ctx := context.WithValue(outer.Context(), chi.RouteCtxKey, chi.NewRouteContext())
+	ctx := withinProcess(context.WithValue(outer.Context(), chi.RouteCtxKey, chi.NewRouteContext()))
 	inner := outer.Clone(ctx)
 	inner.Method = t.Method
 	inner.URL = &url.URL{Path: APIPrefix + path, RawQuery: query.Encode()}

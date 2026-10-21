@@ -118,6 +118,7 @@ process, which is only right for a single api process. `/readyz` and
 | Package | Responsibility |
 |---|---|
 | `auth` | sessions, argon2 passwords, personal access tokens |
+| `oauth` | Stator as an OAuth authorization server: partner apps that trade a person's Keycloak token for a grant (#461), and apps that register themselves and connect to the MCP endpoint by a person's consent, by authorization code with PKCE, their tokens good at MCP alone (#449); the worker's sweep of codes and apps nobody allowed |
 | `oidc` | the instance's OIDC relying party, group sync |
 | `perm` | global, space and page permissions, and the plan of copying one space's permissions onto another |
 | `guest` | guests: people from outside invited into one space, and taken out again |
@@ -271,7 +272,8 @@ A release builds them, with the `backup` target and `Dockerfile.render`, from
 its tag and pushes them to `ghcr.io/praetorianer777/stator-<image>`
 (`docs/releasing.md`). `Dockerfile.web` builds
 the SPA with Node and serves it from nginx (`deploy/nginx.conf`), which proxies
-`/api/`, `/healthz` and `/readyz` to the api so the browser sees one origin,
+`/api/`, `/healthz`, `/readyz` and the `/.well-known/oauth-` documents to the
+api so the browser sees one origin,
 over connections it keeps and reuses (in compose it looks the api's address
 up again while it runs, so it follows a recreated api container), and passes the shared draft's WebSocket (`/api/v1/pages/{id}/collab`) on
 with its upgrade.

@@ -17,24 +17,27 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/db"
 )
 
-// The partner apps, kept by administrators under row level security.
+// The connected apps, kept by administrators under row level security.
 
-const clientColumns = `c.id, c.name, c.scopes, c.keycloak_client_id, c.created_at, c.updated_at,
+const clientColumns = `c.id, c.name, c.scopes, c.kind, c.status, COALESCE(c.keycloak_client_id, ''), c.client_uri, c.redirect_uris,
+	c.secret_hash IS NOT NULL, c.created_at, c.updated_at,
 	(SELECT count(*)::integer FROM api_token t WHERE t.client_id = c.id AND t.expires_at > now())`
 
 func scanClient(row pgx.Row) (*Client, error) {
 	var c Client
-	if err := row.Scan(&c.ID, &c.Name, &c.Scopes, &c.KeycloakClientID, &c.CreatedAt, &c.UpdatedAt, &c.Grants); err != nil {
+	if err := row.Scan(&c.ID, &c.Name, &c.Scopes, &c.Kind, &c.Status, &c.KeycloakClientID, &c.ClientURI, &c.RedirectURIs,
+		&c.Confidential, &c.CreatedAt, &c.UpdatedAt, &c.Grants); err != nil {
 		return nil, err
 	}
 	return &c, nil
 }
 
-// Clients lists the apps by name.
+// Clients lists the apps by name, pending ones nobody allowed in time left out.
 func (s *Service) Clients(ctx context.Context) ([]Client, error) {
 	out := []Client{}
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `SELECT `+clientColumns+` FROM oauth_client c ORDER BY lower(c.name), c.id`)
+		rows, err := tx.Query(ctx, `SELECT `+clientColumns+` FROM oauth_client c
+			WHERE c.status = 'allowed' OR c.created_at >= $1 ORDER BY lower(c.name), c.id`, s.now().Add(-PendingClientTTL))
 		if err != nil {
 			return err
 		}
@@ -67,11 +70,15 @@ func validKeycloakClient(id string) (string, error) {
 	return id, nil
 }
 
-// taken is the database refusing a second app for one Keycloak client.
+// taken is the database refusing a second app for one Keycloak client, or a
+// Keycloak client for an app that registered itself.
 func taken(err error) error {
 	var pg *pgconn.PgError
-	if errors.As(err, &pg) && pg.ConstraintName == "oauth_client_keycloak_client_id_key" {
+	switch {
+	case errors.As(err, &pg) && pg.ConstraintName == "oauth_client_keycloak_client_id_key":
 		return &FieldError{Field: "keycloakClientId", Message: "Another connected app names this Keycloak client already. Change that app, or name another client."}
+	case errors.As(err, &pg) && pg.ConstraintName == "oauth_client_kind_shape":
+		return &FieldError{Field: "keycloakClientId", Message: "This app registered itself and connects people through the consent page; only a partner app names a Keycloak client."}
 	}
 	return err
 }

@@ -14,8 +14,12 @@ func TestAnAppSaysWhoItIsOneWay(t *testing.T) {
 	if err != nil || cred.ID != "0199-app" || cred.Secret != "stator_ocs_a+b" || !cred.Basic {
 		t.Fatalf("Basic reads as %+v, %v", cred, err)
 	}
-	if cred, err := ReadCredentials("", url.Values{"client_id": {"0199-app"}, "client_secret": {"s"}}); err != nil || cred.Basic || cred.Secret != "s" {
+	if cred, err := ReadCredentials("", url.Values{"client_id": {"0199-app"}, "client_secret": {"s"}}); err != nil || cred.Basic || cred.Secret != "s" || !cred.sentSecret {
 		t.Errorf("the form reads as %+v, %v", cred, err)
+	}
+	// A public app proves itself with PKCE and sends its client_id alone.
+	if cred, err := ReadCredentials("", url.Values{"client_id": {"0199-app"}}); err != nil || cred.sentSecret {
+		t.Errorf("a public app reads as %+v, %v", cred, err)
 	}
 	for why, c := range map[string]struct {
 		header string
@@ -23,7 +27,7 @@ func TestAnAppSaysWhoItIsOneWay(t *testing.T) {
 		code   string
 	}{
 		"both ways":        {basic, url.Values{"client_secret": {"s"}}, "invalid_request"},
-		"no secret":        {"", url.Values{"client_id": {"0199-app"}}, "invalid_client"},
+		"no client id":     {"", url.Values{"client_secret": {"s"}}, "invalid_client"},
 		"unreadable Basic": {"Basic !!!", url.Values{}, "invalid_client"},
 	} {
 		_, err := ReadCredentials(c.header, c.form)
@@ -79,9 +83,34 @@ func TestAnAppsScopesNameRead(t *testing.T) {
 }
 
 func TestTheMetadataNamesEveryAddressUnderTheIssuer(t *testing.T) {
-	m := NewService(nil, nil, "https://wiki.example/", nil).Metadata("/api/v1")
+	s := NewService(nil, nil, "https://wiki.example/", nil)
+	m := s.Metadata()
 	if m.Issuer != "https://wiki.example" || m.TokenEndpoint != "https://wiki.example/api/v1/oauth/token" ||
-		m.RevocationEndpoint != "https://wiki.example/api/v1/oauth/revoke" || !slices.Equal(m.GrantTypesSupported, GrantTypes) {
+		m.RevocationEndpoint != "https://wiki.example/api/v1/oauth/revoke" || !slices.Equal(m.GrantTypesSupported, GrantTypes) ||
+		m.AuthorizationEndpoint != "https://wiki.example/api/v1/oauth/authorize" || m.RegistrationEndpoint != "https://wiki.example/api/v1/oauth/register" ||
+		!slices.Equal(m.CodeChallengeMethodsSupported, []string{"S256"}) || !slices.Equal(m.ResponseTypesSupported, []string{"code"}) ||
+		!m.AuthorizationResponseIssParameter {
 		t.Errorf("the metadata is %+v", m)
+	}
+	r := s.ResourceMetadata()
+	if r.Resource != "https://wiki.example/api/v1/mcp" || !slices.Equal(r.AuthorizationServers, []string{"https://wiki.example"}) ||
+		!slices.Equal(r.BearerMethodsSupported, []string{"header"}) || !slices.Equal(r.ScopesSupported, Scopes) {
+		t.Errorf("the resource metadata is %+v", r)
+	}
+	if got := s.ResourceMetadataURL(); got != "https://wiki.example/.well-known/oauth-protected-resource/api/v1/mcp" {
+		t.Errorf("the resource metadata is at %s", got)
+	}
+}
+
+// The one resource is the MCP endpoint, with or without a trailing slash.
+func TestTheResourceIsTheMCPEndpoint(t *testing.T) {
+	s := NewService(nil, nil, "https://wiki.example", nil)
+	for asked, want := range map[string]bool{
+		"https://wiki.example/api/v1/mcp": true, "https://wiki.example/api/v1/mcp/": true,
+		"https://wiki.example/api/v1": false, "https://other.example/api/v1/mcp": false, "": false,
+	} {
+		if got := s.resourceMatches(asked); got != want {
+			t.Errorf("%q matches %v, want %v", asked, got, want)
+		}
 	}
 }

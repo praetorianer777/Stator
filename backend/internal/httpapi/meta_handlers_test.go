@@ -32,7 +32,7 @@ func TestMetaReportsTheBuildStamp(t *testing.T) {
 		"product":      "stator",
 		"build":        map[string]any{"version": "0.1.0+4.gabc1234", "commit": "abc1234", "builtAt": "2026-10-14T09:00:00Z"},
 		"apiVersion":   Spec().Info.Version,
-		"capabilities": []any{"oauth.token-exchange@1", "page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"},
+		"capabilities": []any{"oauth.partner-tokens@1", "oauth.token-exchange@1", "page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("meta =\n%s\nwant %v", raw, want)

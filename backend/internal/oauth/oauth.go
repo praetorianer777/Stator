@@ -1,7 +1,9 @@
-// Package oauth hands partner tools a person's Stator token by token
-// exchange (RFC 8693), as Armature does since Cloudster1/Armature#280: a
-// partner that signed the person in through the shared Keycloak realm trades
-// their access token for a grant, with no consent page and no pasted token.
+// Package oauth makes Stator an OAuth authorization server, as Armature is
+// since Cloudster1/Armature#280. A partner tool that signed a person in
+// through the shared Keycloak realm trades their access token for a grant by
+// token exchange (RFC 8693, #461); an app that registered itself (RFC 7591)
+// is connected by the person on a consent page, by authorization code with
+// PKCE, for the MCP endpoint alone (#449).
 package oauth
 
 import (
@@ -23,15 +25,33 @@ import (
 // Armature's carries (Dynamo's docs/compatibility.md).
 const CapabilityTokenExchange = "oauth.token-exchange@1"
 
-// RFC 8693's names, and the grants the token endpoint serves.
+// CapabilityPartnerTokens is the authorization code flow for the MCP
+// endpoint, under the name Armature and Exciter list it by.
+const CapabilityPartnerTokens = "oauth.partner-tokens@1"
+
+// The RFCs' names, and the grants the token endpoint serves.
 const (
-	GrantTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
-	GrantRefreshToken  = "refresh_token"
-	TokenTypeAccess    = "urn:ietf:params:oauth:token-type:access_token"
+	GrantAuthorizationCode = "authorization_code"
+	GrantTokenExchange     = "urn:ietf:params:oauth:grant-type:token-exchange"
+	GrantRefreshToken      = "refresh_token"
+	TokenTypeAccess        = "urn:ietf:params:oauth:token-type:access_token"
 )
 
 // GrantTypes are the grants the metadata names.
-var GrantTypes = []string{GrantTokenExchange, GrantRefreshToken}
+var GrantTypes = []string{GrantAuthorizationCode, GrantRefreshToken, GrantTokenExchange}
+
+// What an app is: a partner an administrator registered for token exchange,
+// or one that registered itself for the consent page.
+const (
+	KindPartner    = "partner"
+	KindRegistered = "registered"
+)
+
+// An app that registered itself is pending until an administrator allows it.
+const (
+	StatusPending = "pending"
+	StatusAllowed = "allowed"
+)
 
 // Scopes a partner app may hold. A grant holding read alone may only read;
 // one holding write may do whatever its person may, and no more.
@@ -48,14 +68,19 @@ const (
 	// days from the last refresh.
 	AccessTokenTTL  = time.Hour
 	RefreshTokenTTL = 90 * 24 * time.Hour
+	// CodeTTL is how long an authorization code waits to be redeemed, as
+	// Armature's; CodeKeep how long a used one is kept, so its reuse is seen.
+	CodeTTL  = 60 * time.Second
+	CodeKeep = 24 * time.Hour
+	// PendingClientTTL is how long an app that registered itself waits for
+	// an administrator before it is removed.
+	PendingClientTTL = 24 * time.Hour
+	// MaxRedirectURIs bounds the return addresses an app registers.
+	MaxRedirectURIs = 5
 	// MaxNameLength bounds an app's name, which the token list shows.
 	MaxNameLength = 60
 	// MaxKeycloakClientIDLength bounds the Keycloak client an app names.
 	MaxKeycloakClientIDLength = 255
-	// MetadataPath is RFC 8414's document, under the issuer.
-	MetadataPath = "/.well-known/oauth-authorization-server"
-	// MetadataMaxAge is how long a partner may keep the metadata, as Armature's.
-	MetadataMaxAge = 5 * time.Minute
 )
 
 // Error is a refusal in OAuth's own shape (RFC 6749 section 5.2).
@@ -78,15 +103,24 @@ func ended() *Error {
 	return refuse(http.StatusBadRequest, "invalid_grant", "This connection has ended. Connect Stator again.")
 }
 
-// Client is a partner app, as an administrator registered it.
+// Client is a connected app: a partner an administrator registered, or an
+// app that registered itself.
 type Client struct {
 	// ID is the client_id the app authenticates with.
 	ID     uuid.UUID `json:"id"`
 	Name   string    `json:"name"`
 	Scopes []string  `json:"scopes"`
-	// KeycloakClientID is the realm's client whose access tokens the app
-	// trades here; their azp names it.
+	// Kind is partner or registered, Status pending or allowed.
+	Kind   string `json:"kind"`
+	Status string `json:"status"`
+	// KeycloakClientID is the realm's client whose access tokens a partner
+	// trades here, their azp; empty for an app that registered itself.
 	KeycloakClientID string `json:"keycloakClientId"`
+	// ClientURI and RedirectURIs are what an app that registered itself said.
+	ClientURI    string   `json:"clientUri"`
+	RedirectURIs []string `json:"redirectUris"`
+	// Confidential is false for a public app, which keeps no secret.
+	Confidential bool `json:"confidential"`
 	// Grants counts the people the app holds a live grant for.
 	Grants    int       `json:"grants"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -135,6 +169,10 @@ type TokenResponse struct {
 // TokenRequest is the token endpoint's form, in OAuth's names.
 type TokenRequest struct {
 	GrantType          string `json:"grant_type"`
+	Code               string `json:"code,omitempty"`
+	RedirectURI        string `json:"redirect_uri,omitempty"`
+	CodeVerifier       string `json:"code_verifier,omitempty"`
+	Resource           string `json:"resource,omitempty"`
 	SubjectToken       string `json:"subject_token,omitempty"`
 	SubjectTokenType   string `json:"subject_token_type,omitempty"`
 	RequestedTokenType string `json:"requested_token_type,omitempty"`
@@ -152,22 +190,6 @@ type RevokeRequest struct {
 	ClientSecret  string `json:"client_secret,omitempty"`
 }
 
-// Metadata is the RFC 8414 document.
-type Metadata struct {
-	Issuer                        string   `json:"issuer"`
-	TokenEndpoint                 string   `json:"token_endpoint"`
-	RevocationEndpoint            string   `json:"revocation_endpoint"`
-	ScopesSupported               []string `json:"scopes_supported"`
-	GrantTypesSupported           []string `json:"grant_types_supported"`
-	TokenEndpointAuthMethods      []string `json:"token_endpoint_auth_methods_supported"`
-	RevocationEndpointAuthMethods []string `json:"revocation_endpoint_auth_methods_supported"`
-	ResponseTypesSupported        []string `json:"response_types_supported"`
-	ServiceDocumentation          string   `json:"service_documentation"`
-}
-
-// authMethods are how an app authenticates: HTTP Basic or the form.
-var authMethods = []string{"client_secret_basic", "client_secret_post"}
-
 // Service keeps the partner apps and serves the token endpoint.
 type Service struct {
 	db  *db.Cluster
@@ -178,28 +200,27 @@ type Service struct {
 	now    func() time.Time
 }
 
+// Resource is the MCP endpoint as RFC 8707 names it, the one resource a
+// consented grant is for.
+func (s *Service) Resource() string { return s.issuer + APIPrefix + MCPPath }
+
+// resourceMatches takes the resource with or without a trailing slash.
+func (s *Service) resourceMatches(asked string) bool {
+	return strings.TrimSuffix(asked, "/") == s.Resource()
+}
+
+// WithClock sets the time, for a test that waits out a code.
+func (s *Service) WithClock(now func() time.Time) *Service {
+	s.now = now
+	return s
+}
+
 // NewService returns the service; sso verifies the provider's tokens.
 func NewService(cluster *db.Cluster, sso *oidc.Service, issuer string, log *slog.Logger) *Service {
 	if log == nil {
 		log = slog.Default()
 	}
 	return &Service{db: cluster, sso: sso, issuer: strings.TrimSuffix(issuer, "/"), log: log, now: time.Now}
-}
-
-// Metadata is the document partners read every address from.
-func (s *Service) Metadata(apiPrefix string) Metadata {
-	return Metadata{
-		Issuer:                        s.issuer,
-		TokenEndpoint:                 s.issuer + apiPrefix + "/oauth/token",
-		RevocationEndpoint:            s.issuer + apiPrefix + "/oauth/revoke",
-		ScopesSupported:               Scopes,
-		GrantTypesSupported:           GrantTypes,
-		TokenEndpointAuthMethods:      authMethods,
-		RevocationEndpointAuthMethods: authMethods,
-		// No authorization endpoint: a person is never sent to a consent page.
-		ResponseTypesSupported: []string{},
-		ServiceDocumentation:   s.issuer + apiPrefix + "/openapi.json",
-	}
 }
 
 // splitScope reads a scope parameter, each scope once.

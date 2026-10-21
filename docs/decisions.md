@@ -3,6 +3,48 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-21: Apps connect to MCP by OAuth, for MCP alone (#449)
+
+This supersedes "there is no OAuth flow" in the MCP entry below (#106):
+Rotor and AI assistants connect to `/api/v1/mcp` as a person by the MCP
+specification's authorization, as they do to Armature and Exciter, instead
+of a person pasting a `stator_pat_`.
+
+- **Armature's server, Exciter's resource.** Registration, the consent page,
+  codes, rotation and revocation are Armature's (`docs/oauth.md`), so an app
+  meets the same answers; the protected resource is the MCP endpoint alone,
+  as in Exciter (#188), since nothing else in Stator is meant for an app
+  acting on its own. A consented grant is `mcp_only`: refused with 401 on any
+  other route, and good for the calls MCP makes in the process, which a
+  context marker tells from a request from outside, as Exciter's
+  `withinProcess` does. The partner apps of #461 keep their tokens good on
+  every route, as `docs/integration.md` promised them.
+- **An administrator allows an app by connecting it.** Registration is open,
+  as in Armature, so a self-registered app is pending; a member is told to
+  ask an administrator, whose own consent allows it, recorded. No separate
+  approval screen is needed, nor client metadata documents. A request to a
+  pending app is never redirected to it, unlike Armature, so an app anybody
+  may register cannot borrow Stator's address for a redirect. Registration is
+  braked per address and pending apps go after a day.
+- **A grant is a token, limited as one.** The person's one grant per app is
+  their `api_token` row, so the token list, revocation, the read-only rule
+  and the spaces a token is limited to (`api_token_space`, enforced by the
+  permission functions) apply unchanged; the consent page reuses the token
+  page's space picker. A consent replaces the grant rather than widening it,
+  since the person just said what it may do. With no scope named, an app may
+  ask for both and the person narrows it, where Armature defaults to `read`:
+  an assistant that writes pages would otherwise have to know to ask.
+- **The database holds the line.** A trigger refuses a code or a grant for an
+  app nobody allowed, whoever writes it; codes are reached by `stator_admin`
+  alone; a member reads no app and allows none, an administrator may change
+  only an app's status. The consent page reads the app as the admin role, as
+  the token endpoint does, since the request is checked before anybody signs
+  in; a member is shown only what the page says of it.
+- **Left for later.** Marking writes with the app (Exciter's `via`) and the
+  narrower token for one run (Armature's exchange of a grant's token) are
+  their own issues; the token exchange is accepted in a registration so
+  Rotor may ask for it, and does nothing for such an app yet.
+
 ## 2026-10-19: Exciter's documents are drawn in the browser, and a webhook clears every list (#440)
 
 - **The statement travels as Exciter wrote it.** A requirement block's
@@ -3713,7 +3755,8 @@ suite holds to the document like any other.
 
 Callers bring a personal access token as a bearer, as in Armature; there is
 no OAuth flow, since Armature has none and a token is already a person in
-one organization that the tokens page makes and revokes. The issue asks
+one organization that the tokens page makes and revokes. (Superseded by #449:
+apps now connect by OAuth, for MCP alone.) The issue asks
 that a read-only token expose only read tools, which Armature does not do:
 `tools/list` leaves out every writing tool for such a token, and a writing
 tool called anyway is refused with the read-only sentence before its call is
