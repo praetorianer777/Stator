@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/praetorianer777/stator/backend/internal/document"
+	"github.com/yuin/goldmark/text"
 )
 
 const (
@@ -547,5 +548,45 @@ func TestPathologicalMarkdownEndsQuickly(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAnHTMLPictureOnALineOfItsOwnComesIn(t *testing.T) {
+	for name, tc := range map[string]struct{ md, want string }{
+		"remote":                {`<img src="https://example.com/a.png" />`, `{"type":"paragraph","content":[{"type":"text","text":"https://example.com/a.png","marks":[{"type":"link","attrs":{"href":"https://example.com/a.png"}}]}]}`},
+		"remote with attrs":     {`<img src="https://example.com/a.png" align="right" width="150" alt="Logo" />`, `{"type":"paragraph","content":[{"type":"text","text":"Logo","marks":[{"type":"link","attrs":{"href":"https://example.com/a.png"}}]}]}`},
+		"missing file with alt": {`<img src="gone.png" alt="Gone">`, `{"type":"paragraph","content":[{"type":"text","text":"Gone"}]}`},
+		"centred pair":          {"<p align=\"center\">\n  <img src=\"https://example.com/a.png\" alt=\"A\">\n  <img src=\"plan.files/chart%20one.png\" width=\"80\">\n</p>", `{"type":"paragraph","content":[{"type":"text","text":"A","marks":[{"type":"link","attrs":{"href":"https://example.com/a.png"}}]}]},{"type":"image","attrs":{"attachmentId":"` + fileID + `","width":80}}`},
+	} {
+		got, err := Convert([]byte("# T\n\nText.\n\n"+tc.md+"\n\nAfter.\n"), testResolver)
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		want := `{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Text."}]},` + tc.want + `,{"type":"paragraph","content":[{"type":"text","text":"After."}]}]}`
+		if !reflect.DeepEqual(canon(t, got.Body), canon(t, []byte(want))) {
+			t.Errorf("%s became\n%s\nwant\n%s", name, got.Body, want)
+		}
+	}
+}
+
+func TestARefusalNamesTheLineOfItsBlock(t *testing.T) {
+	src := []byte("# T\n\nText.\n\n> quoted\n\n- item\n")
+	c := &converter{src: src}
+	root := parser.Parse(text.NewReader(src))
+	var got []int
+	for _, n := range children(root) {
+		line, ok := c.lineOf(n)
+		if !ok {
+			t.Fatalf("no line for a %s", n.Kind())
+		}
+		got = append(got, line)
+	}
+	if !reflect.DeepEqual(got, []int{1, 3, 5, 7}) {
+		t.Errorf("the blocks start on lines %v, want 1, 3, 5 and 7", got)
+	}
+	refusal := &document.InvalidError{Message: "This page is wrong."}
+	if err := c.located(refusal, root, false); err != refusal {
+		t.Errorf("a refusal no block explains became %v", err)
 	}
 }

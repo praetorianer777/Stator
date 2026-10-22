@@ -7,6 +7,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- A Markdown file with an HTML picture on a line of its own, as a README's
+  logo often is, imports again (#500): a picture from elsewhere becomes a
+  link in a paragraph, as the Markdown spelling of it does, where it used to
+  refuse the whole file. A file that still cannot be a page says on which
+  line the block it cannot place starts.
+
 ## [0.1.0] - 2026-10-21
 
 ### Added
