@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { administers, guestSpaceOf, useJoinRequests, useLogout, useMe } from "@/api/auth";
-import { Avatar, Button, IconButton, Menu, type MenuItem } from "@/components/ui";
+import { useConnectedTools } from "@/api/tools";
+import { Avatar, Button, IconButton, Menu, type MenuEntry, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { AUDIT_PATH, EXCITER_SETTINGS_PATH, STALE_PATH, TEMPLATES_PATH, WEBHOOKS_PATH } from "@/config";
+import { AUDIT_PATH, CONNECTED_TOOLS, EXCITER_SETTINGS_PATH, STALE_PATH, TEMPLATES_PATH, WEBHOOKS_PATH } from "@/config";
 import { WaitingReviewsButton } from "@/features/reviews/WaitingReviews";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { useCanAdministerSite } from "@/features/permissions/access";
@@ -46,7 +47,8 @@ export function TopBar({
   const admin = administers(me?.organization?.role);
   const orgAdmin = useCanAdministerSite();
   const waiting = useJoinRequests(admin).data?.length ?? 0;
-  const items: MenuItem[] = [
+  const tools = useConnectedTools(Boolean(me?.organization)).data ?? [];
+  const items: MenuEntry[] = [
     { label: t.account.profile, icon: <Icon.User />, onSelect: () => navigate({ to: "/settings/profile" }), attrs: { "data-action": "profile" } },
     { label: t.account.themes, icon: <Icon.Palette />, onSelect: () => navigate({ to: "/settings/themes" }), attrs: { "data-action": "themes" } },
     // A token reaches the organization as a whole, which a guest does not.
@@ -61,6 +63,22 @@ export function TopBar({
     },
     { label: t.account.watching, icon: <Icon.Eye />, onSelect: () => navigate({ to: "/settings/watching" }), attrs: { "data-action": "watching" } },
   ];
+  // Listed once the organization is connected, whether or not the person
+  // connected their own account: single sign-on signs them in over there.
+  if (tools.length > 0) {
+    items.push({
+      group: t.account.switchTo,
+      attrs: { "data-switch-to": "" },
+      items: tools.map(
+        (tool): MenuItem => ({
+          label: CONNECTED_TOOLS[tool.product].name,
+          icon: <img src={CONNECTED_TOOLS[tool.product].mark} alt="" />,
+          href: tool.url,
+          attrs: { "data-tool": tool.product },
+        }),
+      ),
+    });
+  }
   if (admin) {
     items.push({
       label: (

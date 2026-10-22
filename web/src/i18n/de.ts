@@ -106,6 +106,7 @@ export const de: Messages = {
     templates: "Vorlagen",
     stale: "Veraltete Seiten",
     signOut: "Abmelden",
+    switchTo: "Wechseln zu",
   },
   profile: {
     title: "Ihr Profil",

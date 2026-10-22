@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "./client";
 import type { components } from "./schema";
+import { connectedToolsQueryKey } from "./tools";
 
 type Wire = components["schemas"];
 
@@ -48,6 +49,7 @@ export function useSaveExciterConnection() {
     onSuccess: (connection) => {
       queryClient.setQueryData(exciterConnectionQueryKey, connection);
       void queryClient.invalidateQueries({ queryKey: exciterAccountQueryKey });
+      void queryClient.invalidateQueries({ queryKey: connectedToolsQueryKey });
       forgetRequirements(queryClient);
     },
   });
@@ -69,6 +71,7 @@ export function useRemoveExciterConnection() {
     onSuccess: () => {
       queryClient.setQueryData(exciterConnectionQueryKey, null);
       void queryClient.invalidateQueries({ queryKey: exciterAccountQueryKey });
+      void queryClient.invalidateQueries({ queryKey: connectedToolsQueryKey });
       forgetRequirements(queryClient);
     },
   });

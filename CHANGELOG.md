@@ -7,6 +7,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- The account menu links to the other tools Stator is connected to (#494):
+  under "Switch to", Armature and Exciter each open at the address an
+  administrator connected, as a plain link a browser can also open in a new
+  tab. Everyone signed in sees them, guests included, once the organization
+  is connected, whether or not they connected their own account; with no
+  tool connected the group is left out. `GET /api/v1/connected-tools` says
+  which tools those are.
+
 ### Fixed
 
 - A Markdown file with an HTML picture on a line of its own, as a README's

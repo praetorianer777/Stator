@@ -112,6 +112,20 @@ func (s *Service) endpoint(ctx context.Context, tx db.DBTX) (*endpoint, error) {
 	return &e, nil
 }
 
+// Address is where people open the connected Armature, empty when none is
+// configured; any member may read it, guests included.
+func (s *Service) Address(ctx context.Context) (string, error) {
+	var base string
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		e, err := s.endpoint(ctx, tx)
+		if e != nil {
+			base = e.BaseURL
+		}
+		return err
+	})
+	return base, err
+}
+
 // Connection is the site's connection for an administrator, or nil. It asks
 // Armature afresh what it offers, so the settings page shows an upgrade at once.
 func (s *Service) Connection(ctx context.Context) (*Connection, error) {

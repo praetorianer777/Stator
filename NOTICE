@@ -226,3 +226,10 @@ Adapted from Armature:
   portal_entry_handlers.go, with a credential for the page's API calls, a
   concurrency limit, a size limit and a running header and footer added, and
   the render templates of deploy/charts/armature in deploy/charts/stator
+- web/public/tools/armature.webp: web/public/emblem.webp, Armature's emblem
+  for the avatar menu's link to it, unchanged
+
+This product contains the mark of Exciter
+(https://github.com/Cloudster1/Exciter), licensed under the Apache License,
+Version 2.0: web/public/tools/exciter.webp is its web/public/mark-96.webp,
+unchanged, for the avatar menu's link to it.

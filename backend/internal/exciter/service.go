@@ -93,6 +93,18 @@ func (s *Service) endpoint(ctx context.Context, tx db.DBTX) (string, error) {
 	return base, nil
 }
 
+// Address is where people open the connected Exciter, empty when none is
+// configured; any member may read it, guests included.
+func (s *Service) Address(ctx context.Context) (string, error) {
+	var base string
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var err error
+		base, err = s.endpoint(ctx, tx)
+		return err
+	})
+	return base, err
+}
+
 // Connection is the site's connection for an administrator, or nil. It asks
 // Exciter afresh what it offers, so the settings page shows an upgrade at once.
 func (s *Service) Connection(ctx context.Context) (*Connection, error) {

@@ -823,3 +823,8 @@ export const EXAMPLE_SPACE_POLL_MS = 1000;
 export const EXAMPLE_SPACE_SLOW_MS = 60_000;
 /** After this long, past the API's limit on one making, the page stops asking and says what to do. */
 export const EXAMPLE_SPACE_GIVE_UP_MS = 15 * 60_000;
+/** The other tools the avatar menu links to: the name each goes by, which is never translated, and its own mark under web/public. */
+export const CONNECTED_TOOLS = {
+  armature: { name: "Armature", mark: "/tools/armature.webp" },
+  exciter: { name: "Exciter", mark: "/tools/exciter.webp" },
+} as const;
