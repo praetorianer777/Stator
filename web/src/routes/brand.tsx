@@ -5,6 +5,7 @@ import { BrandSettings } from "@/features/brand/BrandSettings";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 export const brandSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -13,7 +14,7 @@ export const brandSettingsRoute = createRoute({
     if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl">
-          <PageHeader crumb={t.settings.title} title={t.brand.title} />
+          <PageHeader crumbs={[settingsCrumb()]} title={t.brand.title} />
           <EmptyState icon={<Icon.Lock />} title={t.brand.title} description={t.brand.notAdmin} />
         </div>
       );

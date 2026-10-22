@@ -54,11 +54,12 @@ function stubShell(reviews: WaitingReview[], more: Record<string, Answer> = {}) 
 }
 
 describe("the reviews waiting for the caller", () => {
-  it("are counted in the top bar, which leads to their list", async () => {
+  it("are counted beside Reviews in the sidebar, which leads to their list", async () => {
     stubShell(two);
     const router = await renderAt("/spaces");
-    const entry = await screen.findByRole("link", { name: "2 reviews waiting for you" });
-    expect(entry).toHaveAttribute("data-action", "waiting-reviews");
+    const sidebar = document.querySelector<HTMLElement>("[data-sidebar]")!;
+    const entry = await within(sidebar).findByRole("link", { name: "Reviews 2 reviews waiting for you" });
+    expect(entry).toHaveAttribute("data-nav", "reviews");
     expect(document.querySelector("[data-waiting-badge]")).toHaveTextContent("2");
     await userEvent.click(entry);
     await waitFor(() => expect(router.state.location.pathname).toBe("/reviews"));
@@ -72,7 +73,7 @@ describe("the reviews waiting for the caller", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("show no top-bar entry while none wait, and the list says so", async () => {
+  it("show no count while none wait, and the list says so", async () => {
     stubShell([]);
     await renderAt("/reviews");
     expect(await screen.findByText("No reviews are waiting for you. When somebody submits a draft you review, it shows here.")).toBeInTheDocument();

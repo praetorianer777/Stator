@@ -11,8 +11,8 @@ why.
 
 The endpoint is `POST /api/v1/mcp` on the address people open Stator at,
 over the streamable HTTP transport without sessions: one JSON-RPC 2.0 request
-per POST, answered as JSON. Make a personal access token under Tokens in the
-account menu and give it to the client as a bearer:
+per POST, answered as JSON. Make a personal access token under Access tokens in the
+avatar menu and give it to the client as a bearer:
 
 ```json
 {

@@ -3,6 +3,28 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-22: Personal pages under the avatar, administration in a settings area (#464)
+
+Stator, Armature and Exciter put their menus in the same places
+(praetorianer777/Dynamo#12), so people moving between them find things where
+they expect them.
+
+- **The avatar menu is about the person.** It holds their own pages, the
+  other tools of the installation, Settings for site administrators and Sign
+  out. Every page of the organization's moved out of it.
+- **Administration has an area of its own.** `/settings` and everything
+  under it trade the wiki's sidebar for a settings sidebar with the person's
+  pages and, for site administrators, the organization's, headed by the way
+  back to the last page outside it. One check, `useCanAdministerSite()`,
+  decides the whole group, and every page checks again for itself.
+- **One registry feeds every menu.** `features/shell/places.ts` lists the
+  places with their rules; the rail, the sidebar, the avatar menu, the
+  settings area and the palette all read it, so a page added there is
+  reachable everywhere at once and hidden everywhere from the same people.
+- **No top bar.** Its quick-search button and its waiting-reviews button went
+  to the palette and to Reviews in the sidebar, the bell to the rail; a
+  narrow screen keeps only a strip with the drawer's button.
+
 ## 2026-10-19: Exciter's documents are drawn in the browser, and a webhook clears every list (#440)
 
 - **The statement travels as Exciter wrote it.** A requirement block's

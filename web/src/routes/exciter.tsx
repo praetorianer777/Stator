@@ -4,6 +4,7 @@ import { ExciterConnectionSettings } from "@/features/exciter/ConnectionSettings
 import { EXCITER_SETTINGS_PATH } from "@/config";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Where an administrator connects Exciter and its webhook. */
 export const exciterSettingsRoute = createRoute({
@@ -12,7 +13,7 @@ export const exciterSettingsRoute = createRoute({
   component: function ExciterSettings() {
     return (
       <div className="mx-auto max-w-3xl">
-        <PageHeader crumb={t.settings.title} title={t.exciter.title} />
+        <PageHeader crumbs={[settingsCrumb()]} title={t.exciter.title} />
         <ExciterConnectionSettings />
       </div>
     );

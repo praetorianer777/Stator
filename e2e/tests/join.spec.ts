@@ -2,7 +2,7 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { ME_PATH, authTest as test, expect, startSSO, submitKeycloak } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, openNavigation, settingsSidebar } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -18,7 +18,6 @@ const BOB = { username: "bob", password: "bob password", email: "bob@suite.test"
 // unaffected.
 const BOB_GROUP = "developers";
 
-const accountItem = (page: Page, action: string) => page.locator(`[role="menu"] [data-action="${action}"]`);
 const member = (page: Page, email: string) => page.locator(`[data-member="${email}"]`);
 const groupRole = (page: Page, group: string) => page.locator(`[data-group-role="${group}"]`);
 
@@ -31,13 +30,13 @@ async function signInFresh(browser: Browser, username: string, password: string)
   return { context, page };
 }
 
-/** The badge beside single sign-on in the account menu, read with the menu open and closed again. */
+/** The badge beside single sign-on in the settings sidebar, read on a settings page, with a phone's drawer closed again. */
 async function expectWaiting(page: Page, count: number) {
-  await page.locator('[data-action="account"]').click();
-  const badge = accountItem(page, "sso-settings").locator("[data-join-badge]");
+  const opened = await openNavigation(page);
+  const badge = settingsSidebar(page).locator('[data-nav="sso-settings"] [data-join-badge]');
   if (count === 0) await expect(badge).toHaveCount(0);
   else await expect(badge).toContainText(`${count} waiting`);
-  await page.keyboard.press("Escape");
+  if (opened) await page.keyboard.press("Escape");
 }
 
 /** Leaves carol as the demo organisation had her: no request, no membership. */

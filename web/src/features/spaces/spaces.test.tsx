@@ -238,6 +238,7 @@ describe("a space's home", () => {
     expect(await screen.findByText("Welcome to the handbook.")).toBeInTheDocument();
     const nav = document.querySelector<HTMLElement>("[data-space-nav]")!;
     expect(within(nav).getByRole("link", { name: "Space home" })).toHaveAttribute("href", "/s/DOCS");
+    await userEvent.click(within(nav).getByRole("button", { name: "Space admin" }));
     expect(within(nav).getByRole("link", { name: "Space settings" })).toHaveAttribute("href", "/s/DOCS/settings");
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);

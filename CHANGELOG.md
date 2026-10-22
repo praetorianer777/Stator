@@ -9,6 +9,23 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A settings area (#464): the avatar menu
+  now holds only the person's own pages (Your profile, Notification
+  settings, Watching, Themes, Access tokens), the tools to switch to,
+  Settings for site administrators and Sign out. Every page of the
+  organization's moved from the menu to `/settings`, whose own sidebar lists
+  the person's pages and accounts in the other tools and, for site
+  administrators, Single sign-on, Permissions, Hub page, Templates, Stale
+  pages, Example space, Export brand, Export and import, Armature, Exciter,
+  Webhooks and Audit log, headed by "Back to Stator". `/settings` itself is
+  a page with a card for each, and the Settings crumb leads there.
+- The rail holds the bell and, at its bottom, the avatar; the top bar is
+  gone, and a narrow screen keeps only a strip with the navigation's button
+  (#464). The sidebar lists Reviews with the count waiting for you, starts
+  the space with a switcher, keeps the space visited last on pages that name
+  none, and folds the space's settings, trash, archive and stale pages into
+  a Space admin group. Ctrl K finds every page of the sidebar, the avatar
+  menu and the settings area as well as the pages of the wiki.
 - The account menu links to the other tools Stator is connected to (#494):
   under "Switch to", Armature and Exciter each open at the address an
   administrator connected, as a plain link a browser can also open in a new

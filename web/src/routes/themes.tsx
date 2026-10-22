@@ -17,6 +17,7 @@ import { Icon } from "@/components/icons";
 import { FollowArmatureTheme } from "@/features/armature/FollowArmatureTheme";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 type View = "mine" | "shared";
 
@@ -61,7 +62,7 @@ function ThemesPage() {
   return (
     <div className="mx-auto max-w-4xl">
       <PageHeader
-        crumbs={[{ label: t.settings.title }]}
+        crumbs={[settingsCrumb()]}
         title={t.themes.title}
         meta={activeThemeMeta(seen, source, siteDefault)}
         actions={

@@ -5,6 +5,7 @@ import { AuditLog } from "@/features/audit/AuditLog";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Who did what to the organization, newest first, for its administrators. */
 export const auditRoute = createRoute({
@@ -14,7 +15,7 @@ export const auditRoute = createRoute({
     if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl" data-audit-refused>
-          <PageHeader crumb={t.settings.title} title={t.audit.title} />
+          <PageHeader crumbs={[settingsCrumb()]} title={t.audit.title} />
           <EmptyState icon={<Icon.Lock />} title={t.audit.title} description={t.audit.notAdmin} />
         </div>
       );

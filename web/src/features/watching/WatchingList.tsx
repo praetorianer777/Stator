@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { WATCHES_PAGE_SIZE } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 const since = localDateFormat({ dateStyle: "medium" });
 
@@ -26,7 +27,7 @@ export function WatchingList() {
 
   return (
     <div className="mx-auto max-w-3xl" data-watching-list="">
-      <PageHeader crumbs={[{ label: t.settings.title }]} title={t.watch.listTitle} meta={t.watch.listIntro} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.watch.listTitle} meta={t.watch.listIntro} />
       {stop.error && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
       {notice && (
         <p role="status" className="mb-2 text-sm text-ink-muted">

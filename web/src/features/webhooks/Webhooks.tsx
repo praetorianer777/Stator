@@ -27,6 +27,7 @@ import {
 } from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 // Adapted from Armature's webhooks page, with the secret shown as the tokens
 // page shows a new token, and the log in a dialog.
@@ -92,7 +93,7 @@ export function Webhooks() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <PageHeader crumbs={[{ label: t.settings.title }]} title={t.webhooks.title} meta={t.webhooks.intro} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.webhooks.title} meta={t.webhooks.intro} />
       {fresh?.secret && <FreshSecret name={fresh.name} secret={fresh.secret} onDone={() => setFresh(null)} />}
       <CreateWebhookForm
         onCreated={(hook) => {

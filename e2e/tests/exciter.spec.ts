@@ -5,7 +5,7 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { openPage, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, openSettingsPage } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 import { apiFromStubURL, exciterURL } from "../fixtures/stack";
 
@@ -64,8 +64,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
 
   test("an administrator connects Exciter, and alice connects her account from a chip", async ({ page, api, team }, testInfo) => {
     await page.goto("/");
-    await page.locator('[data-action="account"]').click();
-    await page.getByRole("menu", { name: "Your account" }).locator('[data-action="exciter-settings"]').click();
+    await openSettingsPage(page, "exciter-settings");
     await expect(page).toHaveURL(new RegExp(`${SETTINGS_PATH}$`));
     await expect(page.locator("main").getByRole("heading", { level: 1, name: "Exciter" })).toBeVisible();
 

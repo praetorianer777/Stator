@@ -55,8 +55,8 @@ canonical copy until Dynamo holds one. The test users:
 The seed points the `demo` organization at this realm, so on the sign-in page
 enter `demo` and choose "Sign in with SSO". The seed lets `alice` in as an
 administrator and `bob` as a member ahead of time; anybody else the realm signs
-in, such as `carol` or `dave`, waits until an administrator lets them in under Single sign-on, in the
-account menu. Their groups follow them once they are in. The seed also makes a local
+in, such as `carol` or `dave`, waits until an administrator lets them in under Settings, Single sign-on,
+reached from the avatar menu. Their groups follow them once they are in. The seed also makes a local
 administrator of `demo` for the password form: `admin@stator.test` with
 `stator admin password`. The client `stator` requires PKCE.
 

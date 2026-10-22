@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Me } from "@/api/auth";
-import { renderAt, signedIn, stubApi } from "@/test/app";
+import { renderAt, settingsSidebar, signedIn, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -83,20 +83,18 @@ describe("the people waiting to be let in", () => {
 });
 
 describe("the count of people waiting", () => {
-  it("shows beside single sign-on in an administrator's account menu", async () => {
+  it("shows beside single sign-on in an administrator's settings sidebar", async () => {
     stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol, dave] } } });
-    await renderAt("/");
-    await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-    const item = await screen.findByRole("menuitem", { name: "Single sign-on 2 waiting" });
+    await renderAt("/settings");
+    const item = await within(await settingsSidebar()).findByRole("link", { name: "Single sign-on 2 waiting" });
     expect(within(item).getByText("2")).toBeInTheDocument();
   });
 
   it("is not asked for on behalf of a member", async () => {
     const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member" } };
     const sent = stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol] } } });
-    await renderAt("/", { me: member });
-    await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-    expect(screen.queryByRole("menuitem", { name: /Single sign-on/ })).toBeNull();
+    await renderAt("/settings", { me: member });
+    expect(within(await settingsSidebar()).queryByRole("link", { name: /Single sign-on/ })).toBeNull();
     expect(sent.some((r) => r.path === "/users/requests")).toBe(false);
   });
 });

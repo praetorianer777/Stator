@@ -40,13 +40,11 @@ describe("the skip link", () => {
 });
 
 describe("the landmarks", () => {
-  it("names the banner, the main content and every navigation", async () => {
+  it("names the main content and every navigation, with no banner above the page", async () => {
     await renderAt("/");
     // A header inside main is no banner to a browser, but Testing Library
     // counts the page's own head as one; axe below knows the difference.
-    const banners = screen.getAllByRole("banner").filter((el) => !el.closest("main"));
-    expect(banners).toHaveLength(1);
-    expect(banners[0]).toHaveAttribute("data-top-bar");
+    expect(screen.queryAllByRole("banner").filter((el) => !el.closest("main"))).toHaveLength(0);
     expect(screen.getByRole("main")).toHaveAttribute("id", "main");
     const navs = screen.getAllByRole("navigation");
     expect(navs.length).toBeGreaterThan(1);
@@ -93,66 +91,21 @@ describe("the account menu", () => {
     const menu = screen.getByRole("menu", { name: "Your account" });
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(trigger).toHaveAttribute("aria-controls", menu.id);
-    const [
-      profile,
-      themes,
-      tokens,
-      notifications,
-      watching,
-      sso,
-      permissions,
-      hub,
-      brand,
-      transfer,
-      exampleSpace,
-      armature,
-      exciter,
-      audit,
-      webhooks,
-      templates,
-      stale,
-      signOut,
-    ] = within(menu).getAllByRole("menuitem");
-    expect(profile).not.toHaveAttribute("aria-disabled", "true");
-    expect(themes).not.toHaveAttribute("aria-disabled", "true");
-    expect(signOut).not.toHaveAttribute("aria-disabled", "true");
-    expect(profile).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(themes).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(tokens).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(notifications).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(watching).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(sso).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(permissions).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(hub).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(brand).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(transfer).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(exampleSpace).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(armature).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(exciter).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(audit).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(webhooks).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(templates).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(stale).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(signOut).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(profile).toHaveFocus();
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "Your profile",
+      "Notification settings",
+      "Watching",
+      "Themes",
+      "Access tokens",
+      "Settings",
+      "Sign out",
+    ]);
+    expect(items[0]).toHaveFocus();
+    for (const next of [...items.slice(1), items[0]]) {
+      await userEvent.keyboard("{ArrowDown}");
+      expect(next).toHaveFocus();
+    }
 
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).toBeNull();
@@ -246,6 +199,27 @@ describe("on a narrow screen", () => {
     await act(() => router.navigate({ to: "/search" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/search"));
     expect(drawer()).toBeNull();
+  });
+
+  it("keeps the bell, the theme and the avatar's menu in its foot", async () => {
+    setViewportWidth(PHONE);
+    await renderAt("/");
+    await userEvent.click(menuButton());
+    const panel = drawer() as HTMLElement;
+    const foot = panel.querySelector<HTMLElement>("[data-drawer-foot]")!;
+    expect(within(foot).getByRole("button", { name: "Notifications" })).toBeInTheDocument();
+    await userEvent.click(within(foot).getByRole("button", { name: "Your account" }));
+    expect(within(screen.getByRole("menu", { name: "Your account" })).getByRole("menuitem", { name: "Your profile" })).toBeInTheDocument();
+  });
+
+  it("holds the settings sidebar in the settings area", async () => {
+    setViewportWidth(PHONE);
+    await renderAt("/settings/profile");
+    await userEvent.click(menuButton());
+    const panel = drawer() as HTMLElement;
+    expect(within(panel).getByRole("link", { name: "Back to Stator" })).toBeInTheDocument();
+    expect(within(panel).getByRole("link", { name: "Single sign-on" })).toHaveAttribute("href", "/settings/sso");
+    expect(within(panel).queryByRole("button", { name: "Wiki" })).toBeNull();
   });
 
   it("goes back to the rail and the sidebar when the window widens", async () => {

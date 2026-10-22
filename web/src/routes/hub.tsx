@@ -5,6 +5,7 @@ import { HubSettings } from "@/features/hub/HubSettings";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 export const hubSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -13,7 +14,7 @@ export const hubSettingsRoute = createRoute({
     if (!useCanAdministerSite()) {
       return (
         <div className="mx-auto max-w-3xl">
-          <PageHeader crumb={t.settings.title} title={t.hub.title} />
+          <PageHeader crumbs={[settingsCrumb()]} title={t.hub.title} />
           <EmptyState icon={<Icon.Lock />} title={t.hub.title} description={t.hub.notAdmin} />
         </div>
       );

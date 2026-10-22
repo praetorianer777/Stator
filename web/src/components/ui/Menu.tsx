@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cx } from "./cx";
-import { focusables, useAnchored, useEscape, useOutsidePress } from "./overlay";
+import { focusables, useAnchored, useEscape, useOutsidePress, type AnchoredSide } from "./overlay";
 
 export interface MenuItem {
   label: ReactNode;
@@ -41,13 +41,19 @@ export function Menu({
   trigger,
   items,
   label,
+  header,
   align = "start",
+  side = "bottom",
   className,
 }: {
   trigger: (props: { open: boolean; toggle: () => void; "aria-haspopup": "menu"; "aria-expanded": boolean; "aria-controls": string | undefined }) => ReactNode;
   items: MenuEntry[];
   label: string;
+  /** Drawn above the items and outside them, such as who the menu is about. */
+  header?: ReactNode;
   align?: "start" | "end";
+  /** Where the list opens: below the trigger, flipping above near the bottom, or to its right, as from the rail. */
+  side?: AnchoredSide;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -67,7 +73,7 @@ export function Menu({
   const outside = useRef([wrapRef, listRef]);
   useOutsidePress(open, outside.current, closeFromOutside);
 
-  const place = useAnchored(open, wrapRef, listRef, { align });
+  const place = useAnchored(open, wrapRef, listRef, { align, side });
 
   function toggle() {
     setHost(wrapRef.current?.closest<HTMLElement>(LANDMARK) ?? document.body);
@@ -96,6 +102,8 @@ export function Menu({
     const options = focusables(list);
     const index = options.indexOf(document.activeElement as HTMLElement);
     const go = (i: number) => options[(i + options.length) % options.length]?.focus();
+    // A field in the header, such as a filter, keeps its own keys for the text.
+    const typing = event.target instanceof HTMLInputElement;
     switch (event.key) {
       // The list sits at the end of its landmark, so a Tab out of it would
       // land nowhere near the trigger; it closes and focus goes home instead.
@@ -112,15 +120,17 @@ export function Menu({
         go(index - 1);
         break;
       case "Home":
+        if (typing) break;
         event.preventDefault();
         go(0);
         break;
       case "End":
+        if (typing) break;
         event.preventDefault();
         go(options.length - 1);
         break;
       default:
-        if (event.key.length === 1 && /\S/.test(event.key)) {
+        if (!typing && event.key.length === 1 && /\S/.test(event.key)) {
           const found =
             options.find((el, i) => i > index && el.textContent?.trim().toLowerCase().startsWith(event.key.toLowerCase())) ??
             options.find((el) => el.textContent?.trim().toLowerCase().startsWith(event.key.toLowerCase()));
@@ -183,27 +193,29 @@ export function Menu({
       {open &&
         host &&
         createPortal(
+          // The header sits beside the menu rather than in it, since a menu
+          // holds nothing but its items and their groups.
           <div
             ref={listRef}
-            id={listId}
-            role="menu"
-            aria-label={label}
             onKeyDown={onKeyDown}
             style={place}
             className="fixed z-30 min-w-44 overflow-y-auto overscroll-contain rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
           >
-            {items.map((entry, i) =>
-              "group" in entry ? (
-                <div key={i} role="group" aria-labelledby={`${listId}-${i}`} className="mt-1 border-t border-border pt-1" {...entry.attrs}>
-                  <div id={`${listId}-${i}`} className="px-2 pt-1 pb-0.5 text-2xs font-medium text-ink-subtle">
-                    {entry.group}
+            {header}
+            <div id={listId} role="menu" aria-label={label}>
+              {items.map((entry, i) =>
+                "group" in entry ? (
+                  <div key={i} role="group" aria-labelledby={`${listId}-${i}`} className="mt-1 border-t border-border pt-1" {...entry.attrs}>
+                    <div id={`${listId}-${i}`} className="px-2 pt-1 pb-0.5 text-2xs font-medium text-ink-subtle">
+                      {entry.group}
+                    </div>
+                    {entry.items.map((item, j) => renderItem(item, j))}
                   </div>
-                  {entry.items.map((item, j) => renderItem(item, j))}
-                </div>
-              ) : (
-                renderItem(entry, i)
-              ),
-            )}
+                ) : (
+                  renderItem(entry, i)
+                ),
+              )}
+            </div>
           </div>,
           host,
         )}

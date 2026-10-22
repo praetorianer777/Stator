@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { authTest as test, expect, ME_PATH, USERS } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible, openShell } from "../fixtures/shell";
+import { expectAccessible, openAccountMenu, openShell } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -52,8 +52,7 @@ test.describe("personal access tokens", { tag: ["@auth", "@desktop"] }, () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     await openShell(page, "/");
-    await page.locator('[data-action="account"]').click();
-    await page.getByRole("menu", { name: "Your account" }).locator('[data-action="tokens"]').click();
+    await (await openAccountMenu(page)).locator('[data-action="tokens"]').click();
     await expect(page).toHaveURL(new RegExp(`${TOKENS_PATH}$`));
     await expect(page.getByRole("heading", { level: 1, name: "Personal access tokens" })).toBeVisible();
 

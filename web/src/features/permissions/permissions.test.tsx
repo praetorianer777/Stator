@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { GlobalGrant, Restrictions, SpaceGrant } from "@/api/permissions";
 import type { TreeNode } from "@/api/tree";
-import { renderAt, signedIn, stubApi, type Answer } from "@/test/app";
+import { renderAt, settingsSidebar, signedIn, stubApi, viaSettings, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { impliedPermissions } from "./SpacePermissions";
@@ -61,8 +61,7 @@ describe("the organization's permissions", () => {
       ...pickers,
     });
     await renderAt("/");
-    await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Permissions" }));
+    await viaSettings("Permissions");
     const card = (await screen.findByText("Create spaces")).closest<HTMLElement>("[data-global-permission]")!;
     expect(within(card).getByText("Nobody but the administrators.")).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
@@ -92,8 +91,10 @@ describe("the organization's permissions", () => {
     stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/settings/permissions", { me: member });
     expect(await screen.findByText("Only an administrator of the organization can see and change its permissions.")).toBeInTheDocument();
+    expect(within(await settingsSidebar()).queryByRole("link", { name: "Permissions" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Your account" }));
     expect(screen.queryByRole("menuitem", { name: "Permissions" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull();
   });
 
   it("let a member who may create spaces see the way to", async () => {

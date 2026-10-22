@@ -58,3 +58,59 @@ export async function expectAccessible(page: Page, { thirdPartyFrames = [] }: { 
 export async function scrollsSideways(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
 }
+
+// web/src/config.ts: below SIDEBAR_DRAWER_BELOW_PX the rail and the sidebar
+// give way to a drawer, whose foot holds the avatar.
+const DRAWER_BELOW_PX = 768;
+
+function narrow(page: Page): boolean {
+  return (page.viewportSize()?.width ?? DRAWER_BELOW_PX) < DRAWER_BELOW_PX;
+}
+
+/** Opens the drawer on a phone, where the rail's and the sidebar's entries live, and says whether it did; on a wide screen they are always there. */
+export async function openNavigation(page: Page): Promise<boolean> {
+  if (!narrow(page)) return false;
+  const drawer = page.locator('[role="dialog"][data-sidebar="drawer"]');
+  if (!(await drawer.isVisible())) await page.locator('[data-action="drawer"]').click();
+  await expect(drawer).toBeVisible();
+  return true;
+}
+
+/** Opens the avatar's menu, from the rail or from the drawer's foot, and answers it. */
+export async function openAccountMenu(page: Page) {
+  await expect(page.locator("main#main")).toBeVisible();
+  await openNavigation(page);
+  await page.locator('[data-action="account"]').click();
+  const menu = page.getByRole("menu", { name: "Your account" });
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/** The settings area's own sidebar, or the drawer that holds it on a phone. */
+export function settingsSidebar(page: Page) {
+  return page.locator('[data-settings-sidebar], [role="dialog"][data-sidebar="drawer"]');
+}
+
+/** Goes to a page of the settings area as a site administrator does: Settings in the avatar menu, then the page by its data-nav. */
+export async function openSettingsPage(page: Page, id: string): Promise<void> {
+  const menu = await openAccountMenu(page);
+  await menu.locator('[data-action="settings"]').click();
+  await expect(page.locator("[data-settings-home]")).toBeVisible();
+  await openNavigation(page);
+  await settingsSidebar(page).locator(`[data-nav="${id}"]`).click();
+}
+
+/** Checks a person who is no site administrator is offered neither Settings in the avatar menu nor the page in the settings sidebar. */
+export async function expectNoSettingsEntry(page: Page, id: string): Promise<void> {
+  const menu = await openAccountMenu(page);
+  await expect(menu.locator('[data-action="profile"]')).toBeVisible();
+  await expect(menu.locator('[data-action="settings"]')).toHaveCount(0);
+  await expect(menu.locator(`[data-action="${id}"]`)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await page.goto("/settings/profile");
+  await openNavigation(page);
+  const sidebar = settingsSidebar(page);
+  await expect(sidebar.locator('[data-nav="profile"]')).toBeVisible();
+  await expect(sidebar.locator(`[data-nav="${id}"]`)).toHaveCount(0);
+}
