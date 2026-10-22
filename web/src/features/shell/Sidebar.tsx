@@ -8,7 +8,6 @@ import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { LogoMark } from "@/components/Logo";
 import { APP_NAME, BRAND_LOGO_HEIGHT_PX, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
-import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { WaitingReviewsCount } from "@/features/reviews/WaitingReviews";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
 import { t } from "@/i18n";
@@ -26,7 +25,8 @@ import { ThemeButton } from "./ThemeButton";
 // listed in groups that fold. The rail beside it stays when the map is folded.
 // In the settings area the map is the settings sidebar instead. On a narrow
 // screen there is no room for either column, so the map becomes a drawer the
-// strip above the page opens, and the rail's bell, theme and avatar move into it.
+// strip above the page opens, and the rail's theme and avatar move into it;
+// the bell stays on the strip, where its count is seen without opening anything.
 export function Sidebar({
   narrow,
   drawerOpen,
@@ -175,7 +175,6 @@ function JoinRequestsBadge() {
 // of reach, focus is held inside, and it hands focus back to the menu button.
 function SidebarDrawer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { data: me } = useMe();
   useEscape(true, onClose);
   useFocusReturn(true, ref, true);
   // The scrim closes on the click, not on the press: closing on the press
@@ -205,7 +204,6 @@ function SidebarDrawer({ onClose, children }: { onClose: () => void; children: R
         </nav>
         <div className="flex items-center gap-1 border-t border-border px-2 py-2" data-drawer-foot>
           <AccountMenu side="top" />
-          {me?.organization && <NotificationBell side="top" />}
           <ThemeButton side="top" />
           <BuildStamp className="min-w-0 flex-1 truncate text-right text-2xs text-ink-subtle" />
         </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { MENU_GAP_PX } from "@/config";
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -9,17 +9,31 @@ export function focusables(root: HTMLElement): HTMLElement[] {
 
 /** Calls onClose on Escape while open. */
 export function useEscape(open: boolean, onClose: () => void) {
+  const latest = useRef(onClose);
+  useEffect(() => {
+    latest.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!open) return;
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    const entry = () => latest.current();
+    escapes.push(entry);
+    if (escapes.length === 1) document.addEventListener("keydown", onEscape);
+    return () => {
+      escapes.splice(escapes.indexOf(entry), 1);
+      if (escapes.length === 0) document.removeEventListener("keydown", onEscape);
+    };
+  }, [open]);
+}
+
+// Only the overlay opened last answers Escape, so a menu opened in the drawer
+// closes alone and leaves the drawer open around it.
+const escapes: Array<() => void> = [];
+
+function onEscape(event: KeyboardEvent) {
+  const top = escapes.at(-1);
+  if (event.key !== "Escape" || !top) return;
+  event.stopPropagation();
+  top();
 }
 
 /** Calls onClose on a pointer press outside every ref given. */

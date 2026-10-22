@@ -23,7 +23,8 @@ they expect them.
   reachable everywhere at once and hidden everywhere from the same people.
 - **No top bar.** Its quick-search button and its waiting-reviews button went
   to the palette and to Reviews in the sidebar, the bell to the rail; a
-  narrow screen keeps only a strip with the drawer's button.
+  narrow screen keeps only a strip with the drawer's button and the bell,
+  whose count a phone would otherwise hide in the drawer.
 
 ## 2026-10-19: Exciter's documents are drawn in the browser, and a webhook clears every list (#440)
 

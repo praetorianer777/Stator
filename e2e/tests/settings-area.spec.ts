@@ -110,7 +110,7 @@ test.describe("the drawer at phone width", { tag: ["@auth", "@mobile"] }, () => 
     const drawer = page.locator('[role="dialog"][data-sidebar="drawer"]');
     await expect(drawer.locator('[data-sidebar-group="wiki"] [data-nav="reviews"]')).toBeVisible();
     await expect(drawer.locator('[data-drawer-foot] [data-action="account"]')).toBeVisible();
-    await expect(drawer.locator('[data-drawer-foot] [data-action="notifications"]')).toBeVisible();
+    await expect(page.locator('[data-nav-strip] [data-action="notifications"]')).toBeVisible();
     await expectAccessible(page);
 
     await drawer.locator('[data-drawer-foot] [data-action="account"]').click();

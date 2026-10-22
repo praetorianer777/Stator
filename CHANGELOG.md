@@ -21,7 +21,7 @@ and the versioning [Semantic Versioning](https://semver.org/).
   a page with a card for each, and the Settings crumb leads there.
 - The rail holds the bell and, at its bottom, the avatar; the top bar is
   gone, and a narrow screen keeps only a strip with the navigation's button
-  (#464). The sidebar lists Reviews with the count waiting for you, starts
+  and the bell (#464). The sidebar lists Reviews with the count waiting for you, starts
   the space with a switcher, keeps the space visited last on pages that name
   none, and folds the space's settings, trash, archive and stale pages into
   a Space admin group. Ctrl K finds every page of the sidebar, the avatar

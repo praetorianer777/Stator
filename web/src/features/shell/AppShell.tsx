@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
+import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/permissions";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { ShellHeaderContext } from "@/components/ui";
 import { ReturnNotice } from "@/features/armature/connectLink";
 import { NoAccess } from "@/features/permissions/NoAccess";
@@ -48,6 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
   const drawerOpen = narrow && drawer;
   const { data: access } = useAccess();
+  const { data: me } = useMe();
   if (access && !access.use) return <NoAccess />;
 
   return (
@@ -63,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar narrow={narrow} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} settings={settings} />
       <div className="flex min-w-0 flex-1 flex-col">
         {narrow && (
-          // All that is left above the page on a narrow screen: the way into the drawer.
+          // All that is left above the page on a narrow screen: the way into the drawer, and the bell.
           <div className="flex h-10 shrink-0 items-center border-b border-border bg-surface px-2" data-nav-strip data-print-hide>
             <IconButton
               icon={<Icon.Menu />}
@@ -75,6 +78,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-controls={drawerOpen ? DRAWER_ID : undefined}
               data-action="drawer"
             />
+            {me?.organization && (
+              <div className="ml-auto">
+                <NotificationBell />
+              </div>
+            )}
           </div>
         )}
         {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}

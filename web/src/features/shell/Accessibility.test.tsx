@@ -201,15 +201,29 @@ describe("on a narrow screen", () => {
     expect(drawer()).toBeNull();
   });
 
-  it("keeps the bell, the theme and the avatar's menu in its foot", async () => {
+  it("keeps the theme and the avatar's menu in its foot, and the bell on the strip", async () => {
     setViewportWidth(PHONE);
     await renderAt("/");
     await userEvent.click(menuButton());
     const panel = drawer() as HTMLElement;
     const foot = panel.querySelector<HTMLElement>("[data-drawer-foot]")!;
-    expect(within(foot).getByRole("button", { name: "Notifications" })).toBeInTheDocument();
+    expect(within(document.querySelector<HTMLElement>("[data-nav-strip]")!).getByRole("button", { name: "Notifications" })).toBeInTheDocument();
     await userEvent.click(within(foot).getByRole("button", { name: "Your account" }));
     expect(within(screen.getByRole("menu", { name: "Your account" })).getByRole("menuitem", { name: "Your profile" })).toBeInTheDocument();
+  });
+
+  it("closes only the account menu on Escape, leaving the drawer open around it", async () => {
+    setViewportWidth(PHONE);
+    await renderAt("/");
+    await userEvent.click(menuButton());
+    const trigger = within(drawer() as HTMLElement).getByRole("button", { name: "Your account" });
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu", { name: "Your account" })).toBeNull();
+    expect(drawer()).not.toBeNull();
+    expect(trigger).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(drawer()).toBeNull();
   });
 
   it("holds the settings sidebar in the settings area", async () => {

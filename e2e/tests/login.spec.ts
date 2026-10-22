@@ -88,7 +88,7 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     });
   }
 
-  test("a session that ends on the server sends the next request to the login page and back", async ({ browser }) => {
+  test("a session that ends on the server sends the next request to the login page and back", async ({ browser, isMobile }) => {
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     const page = await context.newPage();
     await signIn(page, "bob");
@@ -100,8 +100,15 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     expect((await elsewhere.post("/api/v1/auth/logout")).ok()).toBe(true);
     await elsewhere.dispose();
 
-    await (await openAccountMenu(page)).locator('[data-action="themes"]').click();
-    await expect(page).toHaveURL(/\/login\?next=%2Fsettings%2Fthemes/);
+    if (isMobile) {
+      // Opening the drawer asks the api for the tools to switch to, which is
+      // the next request there, so the way back is the page it was opened on.
+      await page.locator('[data-action="drawer"]').click();
+      await expect(page).toHaveURL(/\/login\?next=%2Fspaces/);
+    } else {
+      await (await openAccountMenu(page)).locator('[data-action="themes"]').click();
+      await expect(page).toHaveURL(/\/login\?next=%2Fsettings%2Fthemes/);
+    }
     await context.close();
   });
 
