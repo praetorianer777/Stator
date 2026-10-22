@@ -5,13 +5,28 @@ import { focusables, useAnchored, useEscape, useOutsidePress } from "./overlay";
 
 export interface MenuItem {
   label: ReactNode;
-  onSelect: () => void;
+  /** Runs on a pick; a link may leave it out. */
+  onSelect?: () => void;
+  /** Makes the item a link, so the browser's own open in a new tab works on it. */
+  href?: string;
   icon?: ReactNode;
   danger?: boolean;
   disabled?: boolean;
   /** Forwarded to the item, for the attributes tests read. */
   attrs?: Record<string, string>;
 }
+
+/** Items under a heading, which a screen reader announces as a group. */
+export interface MenuGroup {
+  group: string;
+  items: MenuItem[];
+  attrs?: Record<string, string>;
+}
+
+export type MenuEntry = MenuItem | MenuGroup;
+
+const ITEM_CLASS =
+  "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm focus:bg-surface-raised focus-visible:-outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50";
 
 // Where a list is drawn: at the end of the landmark its trigger sits in, so a
 // screen reader finds it in the same region, and a modal dialog keeps it.
@@ -30,7 +45,7 @@ export function Menu({
   className,
 }: {
   trigger: (props: { open: boolean; toggle: () => void; "aria-haspopup": "menu"; "aria-expanded": boolean; "aria-controls": string | undefined }) => ReactNode;
-  items: MenuItem[];
+  items: MenuEntry[];
   label: string;
   align?: "start" | "end";
   className?: string;
@@ -114,6 +129,54 @@ export function Menu({
     }
   }
 
+  function renderItem(item: MenuItem, key: number) {
+    const className = cx(ITEM_CLASS, item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised");
+    const content = (
+      <>
+        {item.icon && <span className="text-ink-muted [&_svg]:size-4 [&_img]:size-4">{item.icon}</span>}
+        {item.label}
+      </>
+    );
+    if (item.href) {
+      return (
+        <a
+          key={key}
+          href={item.href}
+          role="menuitem"
+          tabIndex={-1}
+          {...item.attrs}
+          onClick={() => {
+            setOpen(false);
+            item.onSelect?.();
+          }}
+          className={cx(className, "no-underline")}
+        >
+          {content}
+        </a>
+      );
+    }
+    return (
+      <button
+        key={key}
+        type="button"
+        role="menuitem"
+        // aria-disabled rather than disabled keeps the item in the
+        // arrow order, so the reader learns it exists.
+        aria-disabled={item.disabled || undefined}
+        tabIndex={-1}
+        {...item.attrs}
+        onClick={() => {
+          if (item.disabled) return;
+          setOpen(false);
+          item.onSelect?.();
+        }}
+        className={className}
+      >
+        {content}
+      </button>
+    );
+  }
+
   return (
     <div ref={wrapRef} className={cx("relative inline-flex", className)}>
       {trigger({ open, toggle, "aria-haspopup": "menu", "aria-expanded": open, "aria-controls": open ? listId : undefined })}
@@ -129,31 +192,18 @@ export function Menu({
             style={place}
             className="fixed z-30 min-w-44 overflow-y-auto overscroll-contain rounded-overlay border border-border bg-surface-overlay p-1 shadow-2"
           >
-            {items.map((item, i) => (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                // aria-disabled rather than disabled keeps the item in the
-                // arrow order, so the reader learns it exists.
-                aria-disabled={item.disabled || undefined}
-                tabIndex={-1}
-                {...item.attrs}
-                onClick={() => {
-                  if (item.disabled) return;
-                  setOpen(false);
-                  item.onSelect();
-                }}
-                className={cx(
-                  "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm",
-                  item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised",
-                  "focus:bg-surface-raised focus-visible:-outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
-                )}
-              >
-                {item.icon && <span className="text-ink-muted [&_svg]:size-4">{item.icon}</span>}
-                {item.label}
-              </button>
-            ))}
+            {items.map((entry, i) =>
+              "group" in entry ? (
+                <div key={i} role="group" aria-labelledby={`${listId}-${i}`} className="mt-1 border-t border-border pt-1" {...entry.attrs}>
+                  <div id={`${listId}-${i}`} className="px-2 pt-1 pb-0.5 text-2xs font-medium text-ink-subtle">
+                    {entry.group}
+                  </div>
+                  {entry.items.map((item, j) => renderItem(item, j))}
+                </div>
+              ) : (
+                renderItem(entry, i)
+              ),
+            )}
           </div>,
           host,
         )}

@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, ty
 import { ARMATURE_LINKS_POLL_MS, ARMATURE_LIST_PAGE_SIZE } from "@/config";
 import { ApiError, api } from "./client";
 import type { components } from "./schema";
+import { connectedToolsQueryKey } from "./tools";
 import { armatureThemeQueryKey, themesQueryKey } from "./themes";
 
 type Wire = components["schemas"];
@@ -41,6 +42,7 @@ export function useSaveArmatureConnection() {
     onSuccess: (connection) => {
       queryClient.setQueryData(armatureConnectionQueryKey, connection);
       void queryClient.invalidateQueries({ queryKey: armatureAccountQueryKey });
+      void queryClient.invalidateQueries({ queryKey: connectedToolsQueryKey });
       forgetIssues(queryClient);
     },
   });
@@ -69,6 +71,7 @@ export function useRemoveArmatureConnection() {
     onSuccess: () => {
       queryClient.setQueryData(armatureConnectionQueryKey, null);
       void queryClient.invalidateQueries({ queryKey: armatureAccountQueryKey });
+      void queryClient.invalidateQueries({ queryKey: connectedToolsQueryKey });
       forgetIssues(queryClient);
     },
   });

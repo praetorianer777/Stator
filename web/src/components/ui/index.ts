@@ -8,7 +8,7 @@ export { PageHeader, Breadcrumbs, ShellHeaderContext, type Crumb } from "./PageH
 export { Skeleton } from "./Skeleton";
 export { Avatar, type AvatarSize } from "./Avatar";
 export { Tooltip } from "./Tooltip";
-export { Menu, type MenuItem } from "./Menu";
+export { Menu, type MenuEntry, type MenuGroup, type MenuItem } from "./Menu";
 export { Input, Textarea, Checkbox, Switch, Select, SelectInput, Labelled, control, controlClass, fieldId, type InputProps } from "./controls";
 export { Field } from "./Field";
 export { ColorField } from "./ColorField";

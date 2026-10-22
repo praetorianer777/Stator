@@ -52,6 +52,53 @@ describe("the account menu", () => {
   });
 });
 
+const guest: Me = {
+  ...signedIn,
+  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
+};
+const armature = { product: "armature", url: "https://armature.example.test" };
+const exciter = { product: "exciter", url: "https://exciter.example.test" };
+
+describe("the tools to switch to", () => {
+  it("links to each connected tool's home, as a plain link", async () => {
+    stubApi({ "GET /connected-tools": { status: 200, body: { tools: [armature, exciter] } } });
+    await renderAt("/");
+    const group = await within(await openMenu()).findByRole("group", { name: "Switch to" });
+    const links = within(group).getAllByRole("menuitem");
+    expect(links.map((l) => l.textContent)).toEqual(["Armature", "Exciter"]);
+    expect(within(group).getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", "https://armature.example.test");
+    expect(within(group).getByRole("menuitem", { name: "Exciter" })).toHaveAttribute("href", "https://exciter.example.test");
+    expect(links.every((l) => l.tagName === "A" && !l.hasAttribute("target"))).toBe(true);
+  });
+
+  it("lists only the one connected", async () => {
+    stubApi({ "GET /connected-tools": { status: 200, body: { tools: [exciter] } } });
+    await renderAt("/", { me: member });
+    const group = await within(await openMenu()).findByRole("group", { name: "Switch to" });
+    expect(
+      within(group)
+        .getAllByRole("menuitem")
+        .map((l) => l.textContent),
+    ).toEqual(["Exciter"]);
+  });
+
+  it("leaves the group out when none is connected", async () => {
+    const sent = stubApi({ "GET /connected-tools": { status: 200, body: { tools: [] } } });
+    await renderAt("/", { me: member });
+    await waitFor(() => expect(sent.some((r) => r.path === "/connected-tools")).toBe(true));
+    const menu = await openMenu();
+    expect(within(menu).queryByRole("group", { name: "Switch to" })).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: "Armature" })).toBeNull();
+  });
+
+  it("shows them to a guest too, since the other tool decides what they see", async () => {
+    stubApi({ "GET /connected-tools": { status: 200, body: { tools: [armature] } } });
+    await renderAt("/", { me: guest });
+    const group = await within(await openMenu()).findByRole("group", { name: "Switch to" });
+    expect(within(group).getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", "https://armature.example.test");
+  });
+});
+
 describe("a session that ends while the page is open", () => {
   it("sends the reader to sign in, and back to the page afterwards", async () => {
     stubApi({ "GET /oidc-provider": unauthorized, "GET /auth/me": unauthorized });

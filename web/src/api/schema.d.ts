@@ -787,6 +787,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/connected-tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The other tools of the installation Stator is connected to, each at the address people open it at, for any member including guests; the other tool decides what they may see there. */
+        get: operations["connectedTools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/example-space": {
         parameters: {
             query?: never;
@@ -4916,6 +4933,11 @@ export interface components {
             securitySchemes?: {
                 [key: string]: components["schemas"]["SecurityScheme"];
             };
+        };
+        ConnectedTool: {
+            /** @enum {string} */
+            product: "armature" | "exciter";
+            url: string;
         };
         Connection: {
             app: components["schemas"]["ConnectionApp"];
@@ -9755,6 +9777,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    connectedTools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        tools: components["schemas"]["ConnectedTool"][];
+                    };
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */

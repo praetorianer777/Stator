@@ -116,6 +116,7 @@ export const en = {
     templates: "Templates",
     stale: "Stale pages",
     signOut: "Sign out",
+    switchTo: "Switch to",
   },
   profile: {
     title: "Your profile",
