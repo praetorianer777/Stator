@@ -13,7 +13,8 @@ const PAGES = [
 for (const { path, heading } of PAGES) {
   test(`${path} draws the shell around its page`, async ({ page }) => {
     await openShell(page, path);
-    await expect(page.locator("[data-top-bar]")).toBeVisible();
+    await expect(page.locator('[data-shell="wiki"]')).toBeVisible();
+    await expect(page.locator("[data-top-bar]")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     await expect(page).toHaveTitle(/Stator/);
   });
@@ -42,17 +43,17 @@ function expectedLabel({ version, commit }: { version: string; commit?: string }
   return `v${version.replace(/\.g[0-9a-f]+$/, "")} · ${hash ? hash.slice(0, 7) : "commit unknown"}`;
 }
 
-test("the search box and Ctrl K both open quick search", async ({ page }) => {
+test("Ctrl K opens quick search, which offers the places as well as the pages", async ({ page }) => {
   const palette = page.getByRole("dialog", { name: "Quick search" });
   await openShell(page, "/spaces");
-  await page.locator('[data-action="search"]').click();
-  await expect(palette).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(palette).toHaveCount(0);
-
-  await openShell(page, "/");
   await page.keyboard.press("Control+k");
   await expect(palette.getByRole("combobox")).toBeFocused();
+  await palette.getByRole("combobox").fill("watch");
+  await expect(palette.locator('[data-quick-search-place="watching"]')).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/settings\/watching$/);
+  await expect(palette).toHaveCount(0);
 });
 
 test("an unknown path shows the not-found page inside the shell, with a way home", async ({ page }) => {
@@ -60,7 +61,7 @@ test("an unknown path shows the not-found page inside the shell, with a way home
   const notFound = page.locator("[data-not-found]");
   await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
   await expect(notFound).toBeVisible();
-  await expect(page.locator("[data-top-bar]")).toBeVisible();
+  await expect(page.locator('[data-shell="wiki"]')).toBeVisible();
 
   await notFound.locator('[data-action="home"]').click();
   await expect(page).toHaveURL(/\/$/);

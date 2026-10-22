@@ -1,5 +1,5 @@
 import { expect, test } from "../fixtures/auth";
-import { expectAccessible, openShell } from "../fixtures/shell";
+import { expectAccessible, openNavigation, openShell } from "../fixtures/shell";
 
 test("the first Tab shows the skip link, and Enter moves focus to the content", async ({ page }) => {
   await openShell(page, "/");
@@ -27,6 +27,7 @@ test("the first Tab shows the skip link, and Enter moves focus to the content", 
 
 test("the account menu works from the keyboard and passes axe while open", async ({ page }) => {
   await openShell(page, "/");
+  await openNavigation(page);
   const trigger = page.locator('[data-action="account"]');
   await trigger.focus();
   await page.keyboard.press("Enter");
@@ -38,7 +39,7 @@ test("the account menu works from the keyboard and passes axe while open", async
   await expect(items.first()).toBeFocused();
 
   await page.keyboard.press("ArrowDown");
-  await expect(menu.locator('[data-action="themes"]')).toBeFocused();
+  await expect(menu.locator('[data-action="notification-settings"]')).toBeFocused();
   await page.keyboard.press("End");
   await expect(items.last()).toBeFocused();
   await page.keyboard.press("Home");

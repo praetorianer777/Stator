@@ -5,7 +5,7 @@ import { ageQuietly, lapseVerification } from "../fixtures/db";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const STALE_PATH = "/settings/stale";
@@ -64,8 +64,7 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     const { space, guide, notes, fresh } = await quietSpace(api, testInfo, bob.id);
 
     await openUntil(page, "/", async () => {
-      await page.locator('[data-action="account"]').click();
-      await page.locator('[role="menu"] [data-action="stale-pages"]').click();
+      await openSettingsPage(page, "stale-pages");
       await expect(page).toHaveURL(/\/settings\/stale$/);
       await page.locator("#stale-space").selectOption(space.key, ONE_LOOK);
       await expect(row(page, guide.title)).toBeVisible(ONE_LOOK);
@@ -152,10 +151,8 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await member.goto(STALE_PATH);
     await expect(member.locator("[data-stale-refused]")).toContainText("Only administrators of a space, or of the organization, read which pages went stale.");
     await expect(member.locator("[data-stale-table]")).toHaveCount(0);
-    await member.locator('[data-action="account"]').click();
-    await expect(member.locator('[role="menu"]')).toBeVisible();
-    await expect(member.locator('[role="menu"] [data-action="stale-pages"]')).toHaveCount(0);
     expect(await scrollsSideways(member)).toBe(false);
+    await expectNoSettingsEntry(member, "stale-pages");
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {

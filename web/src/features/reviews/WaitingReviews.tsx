@@ -1,7 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { useWaitingReviews, type WaitingReview } from "@/api/reviews";
 import { ErrorBanner, PageHeader, Skeleton } from "@/components/ui";
-import { Icon } from "@/components/icons";
 import { UNREAD_BADGE_MAX } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
@@ -50,26 +48,19 @@ export function WaitingReviewsScreen() {
   );
 }
 
-/** The top bar's way to the reviews waiting on the caller, with their count; nothing while none wait. */
-export function WaitingReviewsButton() {
+/** How many reviews wait on the caller, beside Reviews in the sidebar; nothing while none wait. */
+export function WaitingReviewsCount() {
   const { data } = useWaitingReviews();
   const count = data?.length ?? 0;
   if (count === 0) return null;
   return (
-    <Link
-      to="/reviews"
-      aria-label={t.waitingReviews.button(count)}
-      className="relative inline-flex size-8 items-center justify-center rounded-control text-ink-muted hover:bg-surface-raised hover:text-ink"
-      data-action="waiting-reviews"
+    <span
+      className="min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent"
+      title={t.waitingReviews.button(count)}
+      data-waiting-badge={count}
     >
-      <Icon.Seal />
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent"
-        data-waiting-badge={count}
-      >
-        {count > UNREAD_BADGE_MAX ? `${UNREAD_BADGE_MAX}+` : count}
-      </span>
-    </Link>
+      <span aria-hidden="true">{count > UNREAD_BADGE_MAX ? `${UNREAD_BADGE_MAX}+` : count}</span>
+      <span className="sr-only">{t.waitingReviews.button(count)}</span>
+    </span>
   );
 }

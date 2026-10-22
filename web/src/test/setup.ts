@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { afterEach } from "vitest";
 import { collabTransport } from "@/features/collab/transport";
 import "./layout";
 
@@ -77,3 +78,7 @@ if (typeof HTMLCanvasElement !== "undefined") {
 // jsdom has a WebSocket that would try to reach a server; the editor edits
 // alone in these tests unless one hands it a socket of its own.
 collabTransport.enabled = false;
+
+// What a test leaves in storage, such as the space visited last, would draw
+// another test's sidebar differently.
+afterEach(() => localStorage.clear());

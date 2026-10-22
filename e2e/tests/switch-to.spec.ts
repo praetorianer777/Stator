@@ -3,6 +3,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { uniqueName } from "../fixtures/seed";
+import { openAccountMenu } from "../fixtures/shell";
 import { armatureURL, exciterURL, WEB_URL } from "../fixtures/stack";
 import { createPerson, removePerson, teamTest as test } from "../fixtures/team";
 
@@ -13,10 +14,9 @@ function switchTo(page: Page) {
   return page.getByRole("menu", { name: "Your account" }).getByRole("group", { name: "Switch to" });
 }
 
-async function openAccountMenu(page: Page) {
+async function openMenu(page: Page) {
   await page.goto("/");
-  await page.locator('[data-action="account"]').click();
-  await expect(page.getByRole("menu", { name: "Your account" })).toBeVisible();
+  await openAccountMenu(page);
 }
 
 test.describe("switching to the connected tools", { tag: ["@auth"] }, () => {
@@ -34,7 +34,7 @@ test.describe("switching to the connected tools", { tag: ["@auth"] }, () => {
     must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } }));
     must(await api.PUT("/exciter/connection", { body: { baseUrl: exciterURL() } }));
 
-    await openAccountMenu(page);
+    await openMenu(page);
     const group = switchTo(page);
     await expect(group.getByRole("menuitem")).toHaveText(["Armature", "Exciter"]);
     await expect(group.getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", armatureURL());
@@ -52,7 +52,7 @@ test.describe("switching to the connected tools", { tag: ["@auth"] }, () => {
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: guest.session });
     try {
       const page = await context.newPage();
-      await openAccountMenu(page);
+      await openMenu(page);
       await expect(switchTo(page).getByRole("menuitem")).toHaveText(["Exciter"]);
     } finally {
       await context.close();
@@ -65,7 +65,7 @@ test.describe("switching to the connected tools", { tag: ["@auth"] }, () => {
     must(await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } }));
     expect((await api.DELETE("/armature/connection")).response.status).toBe(204);
 
-    await openAccountMenu(page);
+    await openMenu(page);
     await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
     await expect(switchTo(page)).toHaveCount(0);
   });

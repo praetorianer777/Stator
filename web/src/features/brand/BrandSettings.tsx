@@ -5,6 +5,7 @@ import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/u
 import { Icon } from "@/components/icons";
 import { BRAND_FOOTER_MAX_LENGTH, BRAND_LOGO_MAX_BYTES } from "@/config";
 import { t } from "@/i18n";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Where an administrator sets the logo and the footer line the organization's exports carry. */
 export function BrandSettings() {
@@ -38,7 +39,7 @@ export function BrandSettings() {
 
   return (
     <div className="mx-auto max-w-3xl" data-brand-settings="">
-      <PageHeader crumb={t.settings.title} title={t.brand.title} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.brand.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.brand.intro}</p>
       {isLoading && <Skeleton />}
       {brand && (

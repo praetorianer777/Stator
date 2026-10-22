@@ -5,7 +5,7 @@ import { withDatabase } from "../fixtures/db";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
 import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const AUDIT_PATH = "/settings/audit";
@@ -76,8 +76,7 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     const space = await busySpace(api, key, uniqueName(testInfo, "Busy"));
 
     await openUntil(page, "/", async () => {
-      await page.locator('[data-action="account"]').click();
-      await page.locator('[role="menu"] [data-action="audit-log"]').click();
+      await openSettingsPage(page, "audit-log");
       await expect(page).toHaveURL(/\/settings\/audit$/);
       await expect(plantedRow(page, space.name)).toBeVisible(ONE_LOOK);
       await expect(page.locator(FACET_PLANTED)).toBeAttached(ONE_LOOK);
@@ -130,9 +129,7 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     await bob.goto(AUDIT_PATH);
     await expect(bob.locator("[data-audit-refused]")).toContainText("Only an administrator reads the audit log.");
     await expect(bob.locator("[data-audit-row]")).toHaveCount(0);
-    await bob.locator('[data-action="account"]').click();
-    await expect(bob.getByRole("menu")).toBeVisible();
-    await expect(bob.locator('[role="menu"] [data-action="audit-log"]')).toHaveCount(0);
+    await expectNoSettingsEntry(bob, "audit-log");
   });
 
   test("it is narrowed and paged from the keyboard", { tag: ["@desktop"] }, async ({ page, api }, testInfo) => {

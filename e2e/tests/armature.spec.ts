@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, openAccountMenu, openSettingsPage, startInScheme } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 const SETTINGS_PATH = "/settings/armature";
@@ -54,8 +54,7 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       const tenant = team.label;
 
       await page.goto("/");
-      await page.locator('[data-action="account"]').click();
-      await page.getByRole("menu", { name: "Your account" }).locator('[data-action="armature-settings"]').click();
+      await openSettingsPage(page, "armature-settings");
       await expect(page).toHaveURL(new RegExp(`${SETTINGS_PATH}$`));
       await expect(page.locator("main").getByRole("heading", { level: 1, name: "Armature" })).toBeVisible();
 
@@ -82,8 +81,7 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       );
       await expectAccessible(page);
 
-      await page.locator('[data-action="account"]').click();
-      await page.getByRole("menu", { name: "Your account" }).locator('[data-action="profile"]').click();
+      await (await openAccountMenu(page)).locator('[data-action="profile"]').click();
       await expect(page).toHaveURL(new RegExp(`${PROFILE_PATH}$`));
       const section = page.locator("[data-armature-account]");
       await expect(section.getByRole("heading", { name: "Armature" })).toBeVisible();

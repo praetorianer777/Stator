@@ -4,6 +4,7 @@ import { ErrorBanner, PageHeader, type Crumb } from "@/components/ui";
 import { ThemeEditor } from "@/features/themes/ThemeEditor";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 export const themeNewRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -21,7 +22,7 @@ export const themeEditRoute = createRoute({
 });
 
 const crumbs = (): Crumb[] => [
-  { label: t.settings.title },
+  settingsCrumb(),
   {
     label: t.themes.title,
     render: (label) => (
