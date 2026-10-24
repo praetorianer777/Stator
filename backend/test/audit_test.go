@@ -398,6 +398,11 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	covered[audit.ActionOAuthClientUpdated] = true
 	covered[audit.ActionOAuthClientRemoved] = true
 	covered[audit.ActionOAuthGrantCreated] = true
+	// An app registering itself, an administrator allowing it and a person's
+	// consent are held to one entry each by the consent suite (#449).
+	covered[audit.ActionOAuthClientRegistered] = true
+	covered[audit.ActionOAuthClientAllowed] = true
+	covered[audit.ActionOAuthGrantConsented] = true
 	// The partner app Exciter registered for Stator is stored and forgotten
 	// against the stub, which the Exciter suite holds to one entry each.
 	covered[audit.ActionExciterAppSaved] = true

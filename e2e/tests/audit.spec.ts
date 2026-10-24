@@ -107,7 +107,7 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     expect(csv.status()).toBe(200);
     const lines = (await csv.text()).trim().split("\n");
     expect(lines).toHaveLength(PAGE_SIZE + SPILL + 1);
-    expect(lines[0]).toBe("time,action,actor_id,actor,target_type,target_id,ip,data");
+    expect(lines[0]).toBe("time,action,actor_id,actor,target_type,target_id,ip,data,via_kind,via_name");
 
     await expect(async () => {
       const exported = (await api.GET("/audit", { params: { query: { action: "audit.exported" } } })).data!.entries;

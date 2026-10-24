@@ -103,6 +103,11 @@ export default defineConfig({
         // A page's shared draft is a WebSocket under /api too.
         ws: true,
       },
+      // The OAuth metadata lives at the origin, outside /api.
+      "/.well-known/oauth-": {
+        target: process.env.VITE_API_PROXY || "http://localhost:8080",
+        changeOrigin: true,
+      },
     },
   },
   test: {

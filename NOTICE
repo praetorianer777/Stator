@@ -7,6 +7,11 @@ This product contains code adapted from Armature
 Version 2.0, the license of Stator itself. Files derived from Armature keep
 that notice.
 
+It also contains code adapted from Exciter
+(https://github.com/Cloudster1/Exciter, Copyright (C) 2026 Tobias Kluge),
+licensed under the Apache License, Version 2.0. Files derived from Exciter
+keep that notice.
+
 The web client bundles the emoji names and descriptions of gemoji
 (https://github.com/wooorm/gemoji), under the MIT License:
 
@@ -226,8 +231,43 @@ Adapted from Armature:
   portal_entry_handlers.go, with a credential for the page's API calls, a
   concurrency limit, a size limit and a running header and footer added, and
   the render templates of deploy/charts/armature in deploy/charts/stator
+- backend/internal/oauth, backend/internal/httpapi/oauth_handlers.go and
+  oauth_consent_handlers.go, and migrations 00850 and 00870:
+  internal/oauth (oauth.go, authorize.go, clients.go, metadata.go and
+  token.go), the OAuth handlers of internal/httpapi/oauth_handlers.go and
+  migration 00945_partner_tokens, at commit 10edbd7, with the MCP endpoint as
+  the one protected resource, spaces to limit a grant to, a partner kind
+  beside apps that register themselves, and no redirect for a pending app
+  added
+- web/src/routes/oauth-authorize.tsx and web/src/features/oauth: the consent
+  page of web/src/routes/oauth-authorize.tsx, with the token page's space
+  picker added
 - web/public/tools/armature.webp: web/public/emblem.webp, Armature's emblem
   for the avatar menu's link to it, unchanged
+
+Adapted from Exciter, at commit 3b340ca (#188):
+- backend/internal/oauth/rules.go and sweep.go: internal/oauth/rules.go
+  (VerifyPKCE, the return address rules with a loopback address at any port)
+  and sweep.go, for Stator's tables
+- backend/internal/httpapi/middleware.go: requireMCPAuth and withinProcess of
+  internal/httpapi/oauth_handlers.go, the MCP endpoint's 401 challenge and the
+  mark on the calls MCP makes in the process
+- backend/test/oauth_consent_harness_test.go: the shape of
+  backend/test/oauth_harness_test.go
+- web/src/features/oauth/ConsentPage.tsx: web/src/features/oauth/ConsentPage.tsx
+
+Adapted from Exciter, at commit c0d072d (#190):
+- backend/internal/via and migration 00880: internal/via (Kind, Via and
+  Column) and migration 00820_via (via_held and the via_stamped trigger),
+  for page versions, comments, remote links, attachments, reactions and the
+  audit log, with a grant read from the token row's client_id
+- backend/internal/db/context.go and tx.go: ViaVar, WithVia and ViaFrom, and
+  app.via set in each transaction
+- backend/internal/events/events.go, webhook/payload.go and audit/service.go:
+  the event's via, the webhook actor's, and the audit export's last columns
+- backend/test/via_test.go and via_rls_test.go: the shape of
+  backend/test/via_test.go and via_rls_test.go
+- web/src/components/Through.tsx: web/src/components/Through.tsx
 
 This product contains the mark of Exciter
 (https://github.com/Cloudster1/Exciter), licensed under the Apache License,

@@ -29,7 +29,22 @@ avatar menu and give it to the client as a bearer:
 The tokens page shows the same settings with this deployment's address. A
 token acts as the person who made it. A signed-in session
 reaches the endpoint as it reaches every route, but a client holds a token.
-There is no OAuth flow, as in Armature.
+
+A client that speaks the MCP specification's authorization needs no pasted
+token (#449): given only the address, it hears 401 with
+`WWW-Authenticate: Bearer resource_metadata="..."`, reads the endpoint's
+metadata (RFC 9728) and Stator's (RFC 8414), registers itself (RFC 7591) and
+sends the person to Stator's consent page, where they choose read or write
+and the spaces it reaches. An app nobody allowed yet waits until a Stator
+administrator connects it once. The token it gets lasts an hour, refreshes,
+and works at this endpoint alone. `docs/integration.md`, "Connecting an app
+to MCP with OAuth", is the whole contract.
+
+What an app writes says so (#498). A version, a comment, a remote link, a
+file, a reaction and an audit entry written through a token or a connected
+app carry `via`, the kind and the name it had then; the history, the
+comments and the audit log show "through" and that name beside the person,
+and a token revoked keeps its name there.
 
 The methods are `initialize`, `ping`, `tools/list`, `tools/call`,
 `resources/list` and `resources/read`; notifications are accepted with 202.

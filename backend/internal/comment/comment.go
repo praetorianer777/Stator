@@ -10,6 +10,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 const (
@@ -88,6 +89,8 @@ type Comment struct {
 	Deleted   bool            `json:"deleted"`
 	CreatedAt time.Time       `json:"createdAt"`
 	EditedAt  *time.Time      `json:"editedAt"`
+	// Via is the token or connected app it was written through, null for a session (#498).
+	Via *via.Via `json:"via"`
 	// Reactions are the emoji on the comment; none once it is deleted.
 	Reactions []reaction.Reaction `json:"reactions"`
 	Can       CommentCan          `json:"can"`

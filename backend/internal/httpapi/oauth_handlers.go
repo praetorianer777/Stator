@@ -14,9 +14,9 @@ import (
 )
 
 // Stator as the authorization server partner tools exchange a person's
-// identity provider token at (#461). The token and revocation endpoints and
-// the metadata answer OAuth's own shapes; the apps' administration answers
-// Stator's envelope.
+// identity provider token at (#461), and apps connect to MCP at (#449). The
+// OAuth endpoints and the metadata answer OAuth's own shapes; the apps'
+// administration and the consent page answer Stator's envelope.
 
 // errOAuthOff is a build without the service, as the suites' smaller servers are.
 var errOAuthOff = &APIError{Status: http.StatusNotFound, Code: "not_found", Message: "Connected apps are not served here."}
@@ -64,7 +64,7 @@ func (s *Server) handleOAuthMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age="+strconv.Itoa(int(oauth.MetadataMaxAge.Seconds())))
-	respondJSON(w, r, http.StatusOK, s.OAuth.Metadata(APIPrefix))
+	respondJSON(w, r, http.StatusOK, s.OAuth.Metadata())
 }
 
 func (s *Server) handleOAuthToken(w http.ResponseWriter, r *http.Request) {

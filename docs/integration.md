@@ -12,7 +12,7 @@ promise features, not data.
   "product": "stator",
   "build": { "version": "1.3.0" },
   "apiVersion": "1",
-  "capabilities": ["oauth.token-exchange@1", "page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"]
+  "capabilities": ["oauth.partner-tokens@1", "oauth.token-exchange@1", "page-links@1", "page-remote-links@1", "theme-export@1", "webhook-receiver@1", "webhooks@1"]
 }
 ```
 
@@ -70,6 +70,24 @@ delivery and a new secret, each delivery a signed, numbered envelope as
 - `POST /webhooks/{webhookID}/test`, `POST /webhooks/{webhookID}/rotate-secret`
 - topics `page.published`, `page.moved`, `page.deleted`, `comment.created`
   and `page.remote_link.removed`
+
+### `oauth.partner-tokens@1`
+
+An app, such as Rotor or an AI assistant, connects to Stator's MCP endpoint
+as a person by OAuth 2.1, instead of the person pasting a `stator_pat_`
+(#449), as Armature and Exciter offer under the same name. The app registers
+itself (RFC 7591) and is pending until a Stator administrator allows it by
+connecting it once; a person then connects it by authorization code with
+PKCE `S256` on Stator's consent page, choosing read or write and the spaces
+it reaches. The access token lasts at most an hour and works at the MCP
+endpoint alone; the refresh token rotates at each use. See
+[Connecting an app to MCP with OAuth](#connecting-an-app-to-mcp-with-oauth).
+
+- `GET /.well-known/oauth-authorization-server` and
+  `GET /.well-known/oauth-protected-resource/api/v1/mcp`, at the origin
+- `POST /oauth/register`, `GET /oauth/authorize`
+- `GET /oauth/consent`, `POST /oauth/consent`
+- `POST /oauth/token`, `POST /oauth/revoke`, `POST /mcp`
 
 ### `oauth.token-exchange@1`
 
@@ -176,6 +194,12 @@ delivery it sees to it.
 | `topic` | `ping`, `page.published`, `page.moved`, `page.deleted`, `comment.created` or `page.remote_link.removed`. |
 | `occurredAt` | When the event happened, in UTC. |
 | `payload` | The event's own fields, read as the endpoint's owner when the attempt is sent. |
+
+The `actor` of a payload carries `via` when the change was written through
+a personal access token or a connected app (#498): `{ "kind": "token",
+"name": "Nightly script" }`, or `"oauth"` and the app's name, as the token
+was named at that moment. It is left out for a change made in the browser,
+so a receiver that does not know it reads past it.
 
 | Header | What it carries |
 | --- | --- |
@@ -633,6 +657,109 @@ for one answers the other.
   with raw SQL, and the database holds that a grant has both tokens and an
   end. The audit log records `oauth.client_created`, `oauth.client_updated`,
   `oauth.client_removed` and `oauth.grant_created`.
+- **Beside the apps that connect to MCP.** A partner app's grant stays a
+  bearer for every operation, as above; the apps of the next section and
+  their grants are another kind, listed by `GET /oauth/clients` too with
+  `kind` `registered` beside the partners' `partner`.
+
+## Connecting an app to MCP with OAuth
+
+An app such as Rotor, or an AI assistant on somebody's machine, connects to
+Stator's MCP endpoint, `/api/v1/mcp`, as a person (#449). It follows the MCP
+specification's authorization: the endpoint is an OAuth 2.1 protected
+resource and Stator its authorization server. The rules are Armature's
+`docs/oauth.md` and Exciter's #188, so a client written for one connects to
+the others; what Stator protects is its MCP endpoint alone.
+
+- **Discovery.** A request to `/api/v1/mcp` without a token, or with one that
+  is refused, answers 401 with
+  `WWW-Authenticate: Bearer resource_metadata="{issuer}/.well-known/oauth-protected-resource/api/v1/mcp", scope="read write"`,
+  and `error="invalid_token"` added when a token was sent. That document
+  (RFC 9728, also at the bare `/.well-known/oauth-protected-resource`) names
+  the resource, `{issuer}/api/v1/mcp`, Stator as its authorization server,
+  the scopes and `bearer_methods_supported: ["header"]`. The server's
+  metadata (RFC 8414) names the `authorization_endpoint`
+  (`/api/v1/oauth/authorize`), the token, revocation and
+  `registration_endpoint`s, `response_types_supported: ["code"]`,
+  `code_challenge_methods_supported: ["S256"]`, the grants
+  `authorization_code`, `refresh_token` and the token exchange,
+  `none`, `client_secret_basic` and `client_secret_post`, and
+  `authorization_response_iss_parameter_supported: true`. The issuer is
+  `STATOR_APP_URL`; nginx, the chart's nginx and its Ingress send every
+  `/.well-known/oauth-` document to the api.
+- **Registration** is `POST /api/v1/oauth/register` (RFC 7591), open to
+  anybody, at most 10 from one address in 15 minutes (429 beyond). It takes
+  `client_name` (1 to 60 characters), `redirect_uris` (1 to 5: `https`, or
+  `http` on `localhost`, `127.0.0.1` or `[::1]` at any port; no fragment),
+  optionally `client_uri`, `scope` (`read`, or `read write`; both when left
+  out, the person narrows them), `token_endpoint_auth_method` (`none` for a
+  public app, `client_secret_basic` by default, or `client_secret_post`),
+  `grant_types` (`authorization_code` among them; `refresh_token` and
+  `urn:ietf:params:oauth:grant-type:token-exchange` are accepted beside it,
+  the exchange doing nothing for such an app yet) and `response_types`
+  (`code`). 201 answers them with `client_id`, `client_id_issued_at` and a
+  `client_secret` (`stator_ocs_`, shown once) unless the app is public.
+  Refusals are 400 `invalid_redirect_uri` or `invalid_client_metadata`.
+- **Pending until an administrator allows it.** A new app is `pending`:
+  nothing it asks for works, the token endpoint refuses it as
+  `invalid_client`, and a member who tries to connect it is told "A Stator
+  administrator must allow Rotor first. Ask one to connect it once; then you
+  can connect it too." An administrator's own consent allows it (`allowed`,
+  recorded as `oauth.client_allowed`), after which members connect it. An
+  app nobody allowed within 24 hours is removed, by the worker's sweep. A
+  request to a pending app is never redirected back to it, so its return
+  address cannot borrow Stator's for a redirect.
+- **The authorization request.** The app sends the browser to
+  `GET /api/v1/oauth/authorize?response_type=code&client_id=...&redirect_uri=...&state=...&code_challenge=...&code_challenge_method=S256[&scope=read write][&resource={issuer}/api/v1/mcp]`.
+  Stator sends the browser on to the consent page, `/oauth/authorize` with the
+  query whole, through the sign-in when nobody is signed in. An unknown
+  `client_id` or a return address the app did not register is shown as a
+  sentence and never redirected to; a loopback address matches at any port.
+  Everything else wrong is answered at the return address with `error`,
+  `error_description`, `state` and `iss`: `unsupported_response_type`,
+  `invalid_request` (no `state`, no `S256` challenge), `invalid_scope`
+  (`read` is among the scopes asked, and nothing beyond the app's) and
+  `invalid_target` (a `resource` that is not the MCP endpoint, with or
+  without a trailing slash).
+- **The consent page** (`GET /api/v1/oauth/consent?<the query>`, from a
+  session) shows the app's name and address, the host the browser goes back
+  to, and what it asks: `read`, reading the pages the person can see, and
+  `write`, changing them as the person. The person may allow `read` alone
+  where both were asked, and limit the app to spaces they can see, at most
+  50, as a personal token is limited. `POST /api/v1/oauth/consent` with
+  `{query, decision: "allow" | "deny", scope?, spaces?}` answers
+  `{redirectTo}`: the return address with `code` (`stator_oac_`, good once
+  for a minute), `state` and `iss` (RFC 9207), or `error=access_denied`. A
+  guest cannot connect an app. Every consent is recorded as
+  `oauth.grant_consented`.
+- **The token** is `POST /api/v1/oauth/token` with
+  `grant_type=authorization_code`, `code`, `redirect_uri`, `code_verifier` and
+  optionally `resource`, a public app sending its `client_id` alone and a
+  confidential one authenticating as above. The answer is
+  `{access_token, token_type: "Bearer", expires_in: 3600, refresh_token, scope}`.
+  A code is good once: presented again it ends the grant it made. A wrong
+  verifier, another return address or another app is `invalid_grant`.
+- **One grant per person and app**, made afresh at each consent, replacing an
+  earlier one. It is the person's `api_token` row, "Rotor (connected app)" in
+  their token list, revoked there like any token. It acts as the person,
+  never beyond their rights, held to `read` where only reading was allowed and
+  to the spaces chosen by the same rules, in the database too, as a personal
+  token limited to spaces.
+- **At the MCP endpoint alone.** The access token (`stator_oat_`) is a bearer
+  at `POST /api/v1/mcp` and for the calls MCP makes in the same process; on
+  any other route it is 401 `mcp_only_token` with
+  `WWW-Authenticate: Bearer error="invalid_token"`. A partner app's token of
+  the previous section is not held so.
+- **Refreshing** rotates both tokens; a rotated refresh token presented again
+  ends the grant, and a `resource` sent must be the MCP endpoint
+  (`invalid_target` otherwise). `POST /api/v1/oauth/revoke` (RFC 7009) ends a
+  grant by either of its tokens.
+- **The database.** `oauth_client` gains `kind`, `status`, `redirect_uris`,
+  `client_uri` and `auth_method`, a partner keeping its Keycloak client and
+  secret; administrators alone may read it or allow an app, as `stator_app`.
+  Codes are in `oauth_code`, which only `stator_admin` reaches. A trigger
+  refuses a code or a grant for an app nobody allowed, whoever writes it, and
+  a grant for MCP alone is `mcp_only`, which only `stator_admin` may set.
 ## Connecting people to Exciter at sign-in
 
 As toward Armature above, Stator connects each person to Exciter when they

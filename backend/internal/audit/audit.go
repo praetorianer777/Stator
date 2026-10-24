@@ -136,6 +136,11 @@ const (
 	ActionOAuthClientUpdated = "oauth.client_updated"
 	ActionOAuthClientRemoved = "oauth.client_removed"
 	ActionOAuthGrantCreated  = "oauth.grant_created"
+	// Apps that registered themselves (#449): one registering, an
+	// administrator allowing it, and a person consenting on the page.
+	ActionOAuthClientRegistered = "oauth.client_registered"
+	ActionOAuthClientAllowed    = "oauth.client_allowed"
+	ActionOAuthGrantConsented   = "oauth.grant_consented"
 )
 
 // Actions is every action the log may hold, for a filter to offer and a
@@ -164,6 +169,7 @@ var Actions = []string{
 	ActionSpaceExported, ActionSpaceImported, ActionOrgExported, ActionOrgImported,
 	ActionReviewRuleSet, ActionReviewRuleRemoved, ActionReviewSkipped,
 	ActionOAuthClientCreated, ActionOAuthClientUpdated, ActionOAuthClientRemoved, ActionOAuthGrantCreated,
+	ActionOAuthClientRegistered, ActionOAuthClientAllowed, ActionOAuthGrantConsented,
 }
 
 // Redacted stands in the record for a value that looked like a credential.
@@ -171,7 +177,7 @@ const Redacted = "[redacted]"
 
 // SecretPrefixes start every credential Stator issues or stores, so a value
 // that starts with one never reaches the record whatever key it hides under.
-var SecretPrefixes = []string{"stator_pat_", "stator_whs_", "armature_pat_", "armature_whs_", "exciter_pat_", "exciter_whs_"}
+var SecretPrefixes = []string{"stator_pat_", "stator_whs_", "stator_oat_", "stator_ort_", "stator_ocs_", "stator_oac_", "armature_pat_", "armature_whs_", "exciter_pat_", "exciter_whs_"}
 
 // secretWords mark a key whose value would be a credential if it were text.
 var secretWords = []string{"secret", "password", "token", "credential"}

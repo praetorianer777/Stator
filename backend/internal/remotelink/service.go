@@ -12,6 +12,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 // Service puts links on pages and takes them off. Whether the actor may see
@@ -24,13 +25,13 @@ func NewService(cluster *db.Cluster) *Service {
 	return &Service{db: cluster}
 }
 
-const columns = `l.id, l.url, l.title, l.source, l.icon_url, l.created_by, COALESCE(u.name, ''), l.created_at, l.updated_at`
+var columns = `l.id, l.url, l.title, l.source, l.icon_url, l.created_by, COALESCE(u.name, ''), l.created_at, l.updated_at, ` + via.Column("l")
 
 const from = ` FROM page_remote_link l LEFT JOIN app_user u ON u.id = l.created_by`
 
 func scan(row pgx.Row) (Link, error) {
 	var l Link
-	err := row.Scan(&l.ID, &l.URL, &l.Title, &l.Source, &l.IconURL, &l.CreatedBy, &l.CreatedByName, &l.CreatedAt, &l.UpdatedAt)
+	err := row.Scan(&l.ID, &l.URL, &l.Title, &l.Source, &l.IconURL, &l.CreatedBy, &l.CreatedByName, &l.CreatedAt, &l.UpdatedAt, &l.Via)
 	return l, err
 }
 

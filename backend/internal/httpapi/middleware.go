@@ -13,6 +13,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 )
 
@@ -159,6 +160,10 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 			return
 		}
 		principal, err := s.Auth.Authenticate(r.Context(), secret)
+		if err == nil && principal.MCPOnly && r.URL.Path != mcpPath && !inProcessCall(r.Context()) {
+			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+			err = errMCPOnly
+		}
 		switch {
 		case err == nil:
 			ctx := context.WithValue(r.Context(), ctxPrincipal, principal)
@@ -167,6 +172,10 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 					ctx = db.WithUserInSpaces(ctx, principal.UserID, principal.TokenSpaces)
 				} else {
 					ctx = db.WithUser(ctx, principal.UserID)
+				}
+				// What is written through a token or a grant is marked so by the database (#498).
+				if principal.TokenID != nil {
+					ctx = db.WithVia(ctx, *principal.TokenID)
 				}
 				ctx = audit.WithIP(ctx, clientIP(r))
 			}
@@ -227,6 +236,42 @@ func requireWholeInstance(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+// errMCPOnly refuses a consented app's token anywhere but the MCP endpoint.
+var errMCPOnly = &APIError{Status: http.StatusUnauthorized, Code: "mcp_only_token",
+	Message: "This connected app's token works at Stator's MCP endpoint, " + mcpPath + ", and nowhere else. Use a personal access token for the rest of the API."}
+
+type ctxKeyInProcess struct{}
+
+// withinProcess marks a call MCP makes in this process, which a consented
+// app's token is good for, as Exciter's does.
+func withinProcess(ctx context.Context) context.Context {
+	return context.WithValue(ctx, ctxKeyInProcess{}, true)
+}
+
+func inProcessCall(ctx context.Context) bool {
+	on, _ := ctx.Value(ctxKeyInProcess{}).(bool)
+	return on
+}
+
+// requireMCPAuth is requireAuth for MCP, whose 401 tells a client where to
+// learn how to be let in (RFC 9728), and that a token it sent was refused.
+func (s *Server) requireMCPAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if PrincipalFrom(r.Context()) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if s.OAuth != nil {
+			challenge := `Bearer resource_metadata="` + s.OAuth.ResourceMetadataURL() + `", scope="` + strings.Join(oauth.Scopes, " ") + `"`
+			if credentialFrom(r, s.CookieName) != "" {
+				challenge += `, error="invalid_token"`
+			}
+			w.Header().Set("WWW-Authenticate", challenge)
+		}
+		respondError(w, r, ErrUnauthorized("Sign in, or send a token as Authorization: Bearer."))
 	})
 }
 

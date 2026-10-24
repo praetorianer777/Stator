@@ -19,8 +19,8 @@ const home = aPage();
 const pageId = "0195f000-0000-7000-8000-0000000000d1";
 const commentId = "0195f000-0000-7000-8000-00000000d0a1";
 const me = signedIn.user;
-const grace = { id: "u-grace", name: "Grace Hopper" };
-const alan = { id: "u-alan", name: "Alan Turing" };
+const grace = { id: "u-grace", name: "Grace Hopper", via: null };
+const alan = { id: "u-alan", name: "Alan Turing", via: null };
 
 function aReaction(over: Partial<Reaction> = {}): Reaction {
   return { emoji: "👍", count: 1, mine: false, people: [grace], ...over };
@@ -30,6 +30,7 @@ const say = (text: string): Doc => ({ type: "doc", content: [{ type: "paragraph"
 
 function aThread(reactions: Reaction[]): Thread {
   const comment: Comment = {
+    via: null,
     id: commentId,
     threadId: commentId,
     authorId: grace.id,
@@ -95,15 +96,15 @@ async function pageBar() {
 describe("who reacted", () => {
   it("names the caller first, as you, then the others, and counts the rest", () => {
     expect(whoReacted(aReaction(), me.id)).toBe("Grace Hopper reacted with 👍");
-    expect(whoReacted(aReaction({ count: 1, mine: true, people: [{ id: me.id, name: me.name }] }), me.id)).toBe("You reacted with 👍");
-    expect(whoReacted(aReaction({ count: 3, mine: true, people: [grace, { id: me.id, name: me.name }, alan] }), me.id)).toBe(
+    expect(whoReacted(aReaction({ count: 1, mine: true, people: [{ id: me.id, name: me.name, via: null }] }), me.id)).toBe("You reacted with 👍");
+    expect(whoReacted(aReaction({ count: 3, mine: true, people: [grace, { id: me.id, name: me.name, via: null }, alan] }), me.id)).toBe(
       "You, Grace Hopper and Alan Turing reacted with 👍",
     );
     expect(whoReacted(aReaction({ count: 12, people: [grace, alan] }), me.id)).toBe("Grace Hopper, Alan Turing and 10 others reacted with 👍");
     expect(whoReacted(aReaction({ count: 3, people: [grace, alan] }), me.id)).toBe("Grace Hopper, Alan Turing and 1 other reacted with 👍");
     // Past the names the API sends, the caller is still counted as you, once.
     expect(whoReacted(aReaction({ count: 12, mine: true, people: [grace, alan] }), me.id)).toBe("You, Grace Hopper, Alan Turing and 9 others reacted with 👍");
-    expect(whoReacted(aReaction({ people: [{ id: "u-gone", name: "" }] }), me.id)).toBe("a former member reacted with 👍");
+    expect(whoReacted(aReaction({ people: [{ id: "u-gone", name: "", via: null }] }), me.id)).toBe("a former member reacted with 👍");
   });
 });
 
@@ -111,7 +112,7 @@ describe("reactions on a page", () => {
   it("shows each emoji with its count and who reacted, and takes the caller's own back", async () => {
     let asked = "";
     const sent = stubPage({
-      reactions: [aReaction({ count: 2, mine: true, people: [grace, { id: me.id, name: me.name }] }), aReaction({ emoji: "🎉", people: [alan] })],
+      reactions: [aReaction({ count: 2, mine: true, people: [grace, { id: me.id, name: me.name, via: null }] }), aReaction({ emoji: "🎉", people: [alan] })],
       more: {
         [`DELETE /pages/${pageId}/reactions`]: (request) => {
           asked = new URL(request.url).searchParams.get("emoji") ?? "";
@@ -140,7 +141,7 @@ describe("reactions on a page", () => {
 
   it("adds an emoji from the picker by keyboard, and offers the ones already given as taken", async () => {
     const sent = stubPage({
-      reactions: [aReaction({ emoji: "🎉", mine: true, people: [{ id: me.id, name: me.name }] })],
+      reactions: [aReaction({ emoji: "🎉", mine: true, people: [{ id: me.id, name: me.name, via: null }] })],
       more: {
         [`POST /pages/${pageId}/reactions`]: (request) =>
           request
@@ -149,7 +150,10 @@ describe("reactions on a page", () => {
             .then((body: { emoji: string }) => ({
               status: 200,
               body: {
-                reactions: [aReaction({ emoji: "🎉", mine: true }), aReaction({ emoji: body.emoji, mine: true, people: [{ id: me.id, name: me.name }] })],
+                reactions: [
+                  aReaction({ emoji: "🎉", mine: true }),
+                  aReaction({ emoji: body.emoji, mine: true, people: [{ id: me.id, name: me.name, via: null }] }),
+                ],
               },
             })),
       },
@@ -178,7 +182,7 @@ describe("reactions on a page", () => {
       more: {
         [`POST /pages/${pageId}/reactions`]: {
           status: 200,
-          body: { reactions: [aReaction({ emoji: "🌮", mine: true, people: [{ id: me.id, name: me.name }] })] },
+          body: { reactions: [aReaction({ emoji: "🌮", mine: true, people: [{ id: me.id, name: me.name, via: null }] })] },
         },
       },
     });
@@ -244,7 +248,7 @@ describe("reactions on a comment", () => {
       more: {
         [`POST /comments/${commentId}/reactions`]: {
           status: 200,
-          body: { reactions: [aReaction({ emoji: "✅", count: 2, mine: true, people: [alan, { id: me.id, name: me.name }] })] },
+          body: { reactions: [aReaction({ emoji: "✅", count: 2, mine: true, people: [alan, { id: me.id, name: me.name, via: null }] })] },
         },
       },
     });

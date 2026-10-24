@@ -37,6 +37,7 @@ import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
 import { tokensRoute } from "./tokens";
+import { oauthAuthorizeRoute } from "./oauth-authorize";
 import { webhooksRoute } from "./webhooks";
 import { templateEditRoute, templateNewRoute, templatesRoute } from "./templates";
 
@@ -74,6 +75,7 @@ const routeTree = rootRoute.addChildren([
     themeNewRoute,
     themeEditRoute,
     tokensRoute,
+    oauthAuthorizeRoute,
     settingsRoute,
     profileRoute,
     notificationSettingsRoute,

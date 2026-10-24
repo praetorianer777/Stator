@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/config"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 func TestEveryActionIsNamedOnceAsDomainDotVerb(t *testing.T) {
@@ -99,8 +100,13 @@ func TestASpreadsheetReadsNoFormulaFromTheLog(t *testing.T) {
 		Action: ActionSpaceCreated, TargetType: "space", TargetID: &target, ActorName: "=Mallory",
 		Data: json.RawMessage(`{"key":"DOC"}`), CreatedAt: time.Date(2026, 10, 1, 8, 0, 0, 0, time.UTC),
 	})
-	if len(line) != len(CSVHeader) || line[0] != "2026-10-01T08:00:00Z" || line[2] != "" || line[3] != "'=Mallory" || line[5] != target.String() {
+	if len(line) != len(CSVHeader) || line[0] != "2026-10-01T08:00:00Z" || line[2] != "" || line[3] != "'=Mallory" || line[5] != target.String() ||
+		line[8] != "" || line[9] != "" {
 		t.Errorf("the line reads %q", line)
+	}
+	through := CSVLine(AuditEntry{Action: ActionSpaceCreated, Via: &via.Via{Kind: via.KindToken, Name: "=nightly"}})
+	if through[8] != "token" || through[9] != "'=nightly" {
+		t.Errorf("an act through a token reads %q", through[8:])
 	}
 }
 

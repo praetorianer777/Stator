@@ -13,6 +13,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 // The bounds on a link, which page_remote_link's checks repeat.
@@ -48,6 +50,8 @@ type Link struct {
 	CreatedByName string     `json:"createdByName"`
 	CreatedAt     time.Time  `json:"createdAt"`
 	UpdatedAt     time.Time  `json:"updatedAt"`
+	// Via is the token or connected app it was first put through, null for a session (#498).
+	Via *via.Via `json:"via"`
 }
 
 // Input puts a link on a page, or replaces the one at the same url.

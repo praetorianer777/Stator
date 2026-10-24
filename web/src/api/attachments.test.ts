@@ -8,6 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 const pageId = "0195f000-0000-7000-8000-000000000001";
 const aFile = (name = "notes.txt", size = 12, type = "text/plain") => new File(["x".repeat(size)], name, { type });
 const stored: Attachment = {
+  via: null,
   id: "0195f000-0000-7000-8000-0000000000f1",
   pageId,
   fileName: "notes.txt",

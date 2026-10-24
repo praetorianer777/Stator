@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/praetorianer777/stator/backend/internal/events"
+	"github.com/praetorianer777/stator/backend/internal/via"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 )
 
@@ -53,6 +54,8 @@ func TestEveryPayloadFitsTheDocumentedEnvelope(t *testing.T) {
 	schema := doc.Webhooks["event"]["post"].RequestBody.Content["application/json"].Schema
 	page := webhook.PageRef{ID: uuid.New(), Title: "Plans", Version: 2, URL: "https://wiki.example/s/DOC/p/x", Space: webhook.SpaceRef{Key: "DOC", Name: "Docs"}, Kind: "page"}
 	actor := &webhook.Person{ID: uuid.New(), Name: "Ada"}
+	// An actor who acted through a connected app says so (#498).
+	through := &webhook.Person{ID: uuid.New(), Name: "Ada", Via: &via.Via{Kind: via.KindOAuth, Name: "Rotor"}}
 	parent := uuid.New()
 	payloads := map[string]any{
 		webhook.TopicPing:                 webhook.Ping{Message: "Stator can reach this address."},
@@ -60,7 +63,7 @@ func TestEveryPayloadFitsTheDocumentedEnvelope(t *testing.T) {
 		events.TopicPageMoved:             webhook.PageMoved{Page: page, From: webhook.Place{Space: &page.Space, ParentID: &parent}, To: webhook.Place{}, Actor: nil},
 		events.TopicPageDeleted:           webhook.PageDeleted{Page: page, Actor: actor},
 		events.TopicPageRemoteLinkRemoved: webhook.RemoteLinkRemoved{Page: page, RemoteLink: webhook.RemoteLinkRef{ID: uuid.New(), URL: "https://exciter.example/r/x", Title: "REQ-1 Sign in (specifies)", Source: "Exciter"}, Actor: actor},
-		events.TopicCommentCreated:        webhook.CommentCreated{Comment: webhook.CommentRef{ID: uuid.New(), ThreadID: uuid.New(), Text: "Ship it", URL: page.URL + "?thread=x"}, Page: page, Actor: actor},
+		events.TopicCommentCreated:        webhook.CommentCreated{Comment: webhook.CommentRef{ID: uuid.New(), ThreadID: uuid.New(), Text: "Ship it", URL: page.URL + "?thread=x"}, Page: page, Actor: through},
 	}
 	for _, topic := range append([]string{webhook.TopicPing}, webhook.Topics...) {
 		payload, ok := payloads[topic]

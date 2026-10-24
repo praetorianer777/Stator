@@ -122,6 +122,7 @@ describe("a passage in a page's body", () => {
 
 function aComment(threadId: string, words: string, over: Partial<Comment> = {}): Comment {
   return {
+    via: null,
     id: threadId,
     threadId,
     authorId: "u-grace",
