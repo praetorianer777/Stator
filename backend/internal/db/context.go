@@ -29,6 +29,10 @@ const AnonymousVar = "app.anonymous"
 // anonymous reader reads through, read by current_link_digest().
 const LinkVar = "app.page_link"
 
+// ViaVar is the setting that names the token or grant the person acts
+// through, which the database stamps on what they write (#498); unset is a session.
+const ViaVar = "app.via"
+
 // acting is whom the transactions act for and, for a token limited to some
 // spaces, which; one value so that naming another person drops the limit,
 // and naming anybody drops anonymity.
@@ -39,6 +43,8 @@ type acting struct {
 	anonymous  bool
 	// link is the hex digest of a public link's token, for an anonymous reader.
 	link string
+	// via is the token or grant the person acts through, uuid.Nil for a session.
+	via uuid.UUID
 }
 
 // WithUser names the person the transactions made with ctx act for, so row
@@ -75,6 +81,23 @@ func LinkFrom(ctx context.Context) bool {
 func AnonymousFrom(ctx context.Context) bool {
 	a, _ := ctx.Value(userKey{}).(acting)
 	return a.anonymous
+}
+
+// WithVia names the token or grant the person ctx acts for acts through;
+// naming another person drops it, as it drops a token's spaces.
+func WithVia(ctx context.Context, id uuid.UUID) context.Context {
+	a, ok := ctx.Value(userKey{}).(acting)
+	if !ok || a.anonymous {
+		return ctx
+	}
+	a.via = id
+	return context.WithValue(ctx, userKey{}, a)
+}
+
+// ViaFrom is the token or grant WithVia named, if any.
+func ViaFrom(ctx context.Context) (uuid.UUID, bool) {
+	a, _ := ctx.Value(userKey{}).(acting)
+	return a.via, a.via != uuid.Nil
 }
 
 // UserFrom is the person WithUser named, if any.

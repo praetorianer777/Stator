@@ -64,6 +64,15 @@ which rows.
   token limited to some spaces, `app.anonymous` for a reader who is not
   signed in and `app.page_link` for the digest of a public link's token.
   Naming nobody binds `stator_app` to nothing.
+- **What a connected app wrote** (#498). `authenticate` puts the calling
+  token or grant on the context with `db.WithVia`, and the transaction sets
+  it as `app.via`. A trigger, `via_stamped`, on page versions, comments,
+  remote links, attachments, reactions and the audit log stamps `via_kind`
+  (`token`, or `oauth` for a grant, a token row with its app's `client_id`),
+  `via_id` and `via_name` from the token the acting person holds, read by
+  `via_held()`. Nothing else writes them, none changes, and a token revoked
+  leaves its name behind; `events.Emit` adds the same to the event, so a
+  webhook's actor says it too.
 - **The rules are `perm_*` functions.** The policies and the services call
   the same functions (`perm_space_holds`, `perm_page_viewable` and the rest),
   so both answer alike. Those that read the tables they guard are `SECURITY
@@ -120,6 +129,7 @@ process, which is only right for a single api process. `/readyz` and
 | `auth` | sessions, argon2 passwords, personal access tokens |
 | `oauth` | Stator as an OAuth authorization server: partner apps that trade a person's Keycloak token for a grant (#461), and apps that register themselves and connect to the MCP endpoint by a person's consent, by authorization code with PKCE, their tokens good at MCP alone (#449); the worker's sweep of codes and apps nobody allowed |
 | `oidc` | the instance's OIDC relying party, group sync |
+| `via` | what a row was written through, a personal token or a connected app by its name then, as the database stamps it (#498) |
 | `perm` | global, space and page permissions, and the plan of copying one space's permissions onto another |
 | `guest` | guests: people from outside invited into one space, and taken out again |
 | `public` | reading without signing in: the organization's switches, the spaces, pages and files anybody may read, and the public links that open one page each, with nobody named in them |

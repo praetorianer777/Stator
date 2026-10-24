@@ -24,6 +24,7 @@ afterEach(() => {
 
 const pageId = "0195f000-0000-7000-8000-0000000000a1";
 const stored = (over: Partial<Attachment>): Attachment => ({
+  via: null,
   id: "0195f000-0000-7000-8000-0000000000f1",
   pageId,
   fileName: "screen.png",

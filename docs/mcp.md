@@ -40,6 +40,12 @@ administrator connects it once. The token it gets lasts an hour, refreshes,
 and works at this endpoint alone. `docs/integration.md`, "Connecting an app
 to MCP with OAuth", is the whole contract.
 
+What an app writes says so (#498). A version, a comment, a remote link, a
+file, a reaction and an audit entry written through a token or a connected
+app carry `via`, the kind and the name it had then; the history, the
+comments and the audit log show "through" and that name beside the person,
+and a token revoked keeps its name there.
+
 The methods are `initialize`, `ping`, `tools/list`, `tools/call`,
 `resources/list` and `resources/read`; notifications are accepted with 202.
 The one resource, `stator://openapi.json`, is the whole API document. Batches

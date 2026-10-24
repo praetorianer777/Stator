@@ -29,6 +29,7 @@ const say = (text: string): Doc => ({ type: "doc", content: [{ type: "paragraph"
 
 function aComment(over: Partial<Comment> = {}): Comment {
   return {
+    via: null,
     id: threadId,
     threadId,
     authorId: "u-grace",
@@ -144,6 +145,16 @@ describe("the comments below a page", () => {
     expect(within(threads[1]!).queryByRole("button", { name: "Edit" })).toBeNull();
     expect(within(threads[1]!).getByRole("button", { name: "Reply" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "2 comments, go to the comments" })).toHaveAttribute("href", "#comments");
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("says which comment a connected app wrote, and through which", async () => {
+    stubPage({ threads: [aThread({ comments: [aComment({ via: { kind: "oauth", name: "Desk assistant" }, body: say("Summarised.") })] })], count: 1 });
+    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    const section = await screen.findByRole("region", { name: /Comments/ });
+    const mark = await within(section).findByText(/through Desk assistant/);
+    expect(mark).toHaveAttribute("data-via", "oauth");
+    expect(mark).toHaveTextContent("(a connected app)");
     expect(await axeViolations()).toEqual([]);
   });
 

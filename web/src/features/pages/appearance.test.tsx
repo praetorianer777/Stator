@@ -20,6 +20,7 @@ const PICTURE = "0195f000-0000-7000-8000-0000000000f2";
 const PATH = `/s/DOCS/p/${PAGE_ID}/plans`;
 const plans = aPage({ id: PAGE_ID, title: "Plans", home: false, parentId: home.id, ancestors: [{ id: home.id, title: "Handbook", home: true }] });
 const picture: Attachment = {
+  via: null,
   id: PICTURE,
   pageId: PAGE_ID,
   fileName: "harbour.png",

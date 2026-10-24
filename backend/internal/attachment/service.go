@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 // Service keeps the rows and hands the bytes to the store. Whether the actor
@@ -59,12 +60,13 @@ func (s *Service) WithLogger(log *slog.Logger) *Service {
 	return s
 }
 
-const selectAttachment = `
+var selectAttachment = `
 SELECT a.id, a.page_id, a.file_name, a.content_type, a.size_bytes, a.width, a.height,
        COALESCE(u.name, ''), a.created_at, a.version,
        (SELECT count(*) FROM attachment v WHERE v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name)),
        a.restored_from, a.edited_from, a.object_key,
-       (SELECT max(v.version) FROM attachment v WHERE v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name))
+       (SELECT max(v.version) FROM attachment v WHERE v.page_id = a.page_id AND lower(v.file_name) = lower(a.file_name)),
+       ` + via.Column("a") + `
 FROM attachment a
 LEFT JOIN app_user u ON u.id = a.uploaded_by`
 
@@ -79,7 +81,7 @@ type stored struct {
 func scan(row pgx.Row) (*stored, error) {
 	var a stored
 	err := row.Scan(&a.ID, &a.PageID, &a.FileName, &a.ContentType, &a.Size, &a.Width, &a.Height,
-		&a.UploadedByName, &a.CreatedAt, &a.Version, &a.Versions, &a.RestoredFrom, &a.EditedFrom, &a.objectKey, &a.latest)
+		&a.UploadedByName, &a.CreatedAt, &a.Version, &a.Versions, &a.RestoredFrom, &a.EditedFrom, &a.objectKey, &a.latest, &a.Via)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}

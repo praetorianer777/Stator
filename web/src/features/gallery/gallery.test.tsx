@@ -26,6 +26,7 @@ const lighthouseId = "0195f000-0000-7000-8000-0000000000f2";
 const pierId = "0195f000-0000-7000-8000-0000000000f3";
 
 const file = (over: Partial<Attachment>): Attachment => ({
+  via: null,
   id: harbourId,
   pageId,
   fileName: "harbour.png",

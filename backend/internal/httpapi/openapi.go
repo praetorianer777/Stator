@@ -46,6 +46,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/version"
+	"github.com/praetorianer777/stator/backend/internal/via"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 	"github.com/praetorianer777/stator/backend/internal/wikiread"
@@ -1275,6 +1276,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(spaceio.ImportSource(""))] = enumStrings(spaceio.ImportSources)
 	b.Enums[reflect.TypeOf(wikiread.LossKind(""))] = enumStrings(wikiread.LossKinds)
 	b.Enums[reflect.TypeOf(spaceio.ExportFormat(""))] = enumStrings(spaceio.Formats)
+	b.Enums[reflect.TypeOf(via.Kind(""))] = enumStrings(via.Kinds)
 	b.FieldOverrides["SpaceExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
 	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
 	b.FieldOverrides["SpaceExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ExportFailures)}, {Type: "null"}}}

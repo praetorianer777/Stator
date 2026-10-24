@@ -14,6 +14,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/events"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 // EnvelopeV1 is what an endpoint on version 1 receives, Armature's shape: the
@@ -80,6 +81,9 @@ type PageRef struct {
 type Person struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
+	// Via is the token or connected app they acted through, left out for a
+	// session, so a receiver that does not know it reads past it (#498).
+	Via *via.Via `json:"via,omitempty"`
 }
 
 // Place is where a moved page stood or stands: what the owner may not view
@@ -180,6 +184,20 @@ func (s *Service) body(ctx context.Context, c claimed) ([]byte, error) {
 }
 
 func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event json.RawMessage) (any, error) {
+	// Emit adds what the change was written through beside every event's own fields.
+	var through struct {
+		Via *via.Via `json:"via"`
+	}
+	if err := json.Unmarshal(event, &through); err != nil {
+		return nil, err
+	}
+	actor := func(id uuid.UUID) *Person {
+		p := person(ctx, tx, id)
+		if p != nil {
+			p.Via = through.Via
+		}
+		return p
+	}
 	switch topic {
 	case events.TopicPagePublished:
 		var in events.PagePublished
@@ -190,7 +208,7 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 		if err != nil {
 			return nil, err
 		}
-		return PagePublished{Page: *p, Actor: person(ctx, tx, in.ActorID)}, nil
+		return PagePublished{Page: *p, Actor: actor(in.ActorID)}, nil
 	case events.TopicPageMoved:
 		var in events.PageMoved
 		if err := json.Unmarshal(event, &in); err != nil {
@@ -201,7 +219,7 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 			return nil, err
 		}
 		return PageMoved{Page: *p, From: place(ctx, tx, in.FromSpaceID, in.FromParentID), To: place(ctx, tx, in.ToSpaceID, in.ToParentID),
-			Actor: person(ctx, tx, in.ActorID)}, nil
+			Actor: actor(in.ActorID)}, nil
 	case events.TopicPageDeleted:
 		var in events.PageDeleted
 		if err := json.Unmarshal(event, &in); err != nil {
@@ -211,7 +229,7 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 		if err != nil {
 			return nil, err
 		}
-		return PageDeleted{Page: *p, Actor: person(ctx, tx, in.ActorID)}, nil
+		return PageDeleted{Page: *p, Actor: actor(in.ActorID)}, nil
 	case events.TopicCommentCreated:
 		var in events.CommentCreated
 		if err := json.Unmarshal(event, &in); err != nil {
@@ -229,7 +247,7 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 			return nil, err
 		}
 		c.URL = p.URL + "?thread=" + c.ThreadID.String()
-		return CommentCreated{Comment: c, Page: *p, Actor: person(ctx, tx, in.ActorID)}, nil
+		return CommentCreated{Comment: c, Page: *p, Actor: actor(in.ActorID)}, nil
 	case events.TopicPageRemoteLinkRemoved:
 		var in events.PageRemoteLinkRemoved
 		if err := json.Unmarshal(event, &in); err != nil {
@@ -240,7 +258,7 @@ func (s *Service) payload(ctx context.Context, tx db.DBTX, topic string, event j
 			return nil, err
 		}
 		return RemoteLinkRemoved{Page: *p, RemoteLink: RemoteLinkRef{ID: in.LinkID, URL: in.URL, Title: in.Title, Source: in.Source},
-			Actor: person(ctx, tx, in.ActorID)}, nil
+			Actor: actor(in.ActorID)}, nil
 	}
 	return nil, errWithheld
 }

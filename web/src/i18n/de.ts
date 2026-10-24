@@ -2666,6 +2666,10 @@ export const de: Messages = {
     allConfirmed: "Alle, die sie lesen dürfen, haben bestätigt.",
     more: (n: number) => `und ${n} weitere`,
   },
+  via: {
+    through: (name: string) => `über ${name}`,
+    kinds: { token: "ein persönliches Zugriffstoken", oauth: "eine verbundene App" } as Record<"token" | "oauth", string>,
+  },
   notFound: {
     title: "Seite nicht gefunden",
     emptyTitle: "Unter dieser Adresse gibt es nichts",

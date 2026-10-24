@@ -19,6 +19,7 @@ const LINKS = `GET /pages/${PAGE}/remote-links`;
 
 function aLink(over: Partial<RemoteLink>): RemoteLink {
   return {
+    via: null,
     id: "0195f000-0000-7000-8000-00000000f001",
     url: "https://exciter.example/r/1",
     title: "REQ-1 Sign in with a passkey (specifies)",

@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/via"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 )
 
@@ -103,7 +104,7 @@ func settleBody(ctx context.Context, tx db.DBTX, p *Page, body json.RawMessage) 
 	return document.SettleTasksIn(body, previous)
 }
 
-const selectVersions = `
+var selectVersions = `
 SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v.restored_from, v.live, v.updated_at,
        ARRAY(SELECT e.name FROM page_version_editor pe JOIN app_user e ON e.id = pe.user_id
              WHERE pe.page_id = v.page_id AND pe.number = v.number AND pe.user_id IS DISTINCT FROM v.created_by
@@ -116,7 +117,8 @@ SELECT v.number, v.title, v.comment, u.id, COALESCE(u.name, ''), v.created_at, v
                                          WHERE d.review_id = r.id AND d.decision = 'approve'), '[]'::jsonb),
                  'skippedByName', COALESCE(su.name, ''), 'skipReason', COALESCE(r.skip_reason, ''))
         FROM page_review r LEFT JOIN app_user su ON su.id = r.skipped_by
-        WHERE r.id = v.review_id)
+        WHERE r.id = v.review_id),
+       ` + via.Column("v") + `
 FROM page_version v
 LEFT JOIN app_user u ON u.id = v.created_by`
 

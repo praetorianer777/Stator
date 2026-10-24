@@ -154,6 +154,7 @@ describe("a draft of a page held to a review", () => {
 
 describe("the history of a reviewed page", () => {
   const entry = (number: number, over: Partial<VersionEntry> = {}): VersionEntry => ({
+    via: null,
     number,
     title: "Policy",
     comment: "",
