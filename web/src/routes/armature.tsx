@@ -4,6 +4,7 @@ import { ConnectionSettings } from "@/features/armature/ConnectionSettings";
 import { ARMATURE_OUTCOME_PARAM, ARMATURE_OUTCOMES, ARMATURE_SETTINGS_PATH, type ArmatureOutcome } from "@/config";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Where an administrator connects the organization's Armature and its webhook. */
 export const armatureSettingsRoute = createRoute({
@@ -19,7 +20,7 @@ export const armatureSettingsRoute = createRoute({
     const outcome = ARMATURE_OUTCOMES.find((known) => known === search[ARMATURE_OUTCOME_PARAM]);
     return (
       <div className="mx-auto max-w-3xl">
-        <PageHeader crumb={t.settings.title} title={t.armature.title} />
+        <PageHeader crumbs={[settingsCrumb()]} title={t.armature.title} />
         <ConnectionSettings outcome={outcome} />
       </div>
     );

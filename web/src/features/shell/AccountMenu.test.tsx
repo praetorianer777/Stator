@@ -13,33 +13,71 @@ const member: Me = {
   organization: { ...signedIn.organization!, role: "member" },
 };
 
+const guest: Me = {
+  ...signedIn,
+  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
+};
+
 async function openMenu() {
   await userEvent.click(screen.getByRole("button", { name: "Your account" }));
   return screen.getByRole("menu", { name: "Your account" });
 }
 
 describe("the account menu", () => {
-  it("shows who is signed in, by name and picture", async () => {
+  it("shows who is signed in by picture, and their name, email and role at its head", async () => {
     await renderAt("/", { me: member });
-    expect(document.querySelector("[data-account-name]")).toHaveTextContent("Bob Builder");
     expect(screen.getByRole("img", { name: "Bob Builder" })).toHaveAttribute("src", "https://pictures.test/bob.png");
+    await openMenu();
+    const head = document.querySelector<HTMLElement>("[data-account-header]")!;
+    expect(head).toHaveTextContent("Bob Builder");
+    expect(head).toHaveTextContent("bob@stator.test");
+    expect(head.querySelector("[data-account-role]")).toHaveTextContent("Member");
   });
 
   it("draws initials for somebody without a picture", async () => {
     await renderAt("/");
     const trigger = screen.getByRole("button", { name: "Your account" });
     expect(within(trigger).getByText("AL")).toBeInTheDocument();
-    expect(document.querySelector("[data-account-name]")).toHaveTextContent("Ada Lovelace");
   });
 
-  it("offers single sign-on settings to administrators only", async () => {
+  it("holds an administrator's own pages, Settings and Sign out, and no page of the organization's", async () => {
     await renderAt("/");
-    expect(within(await openMenu()).getByRole("menuitem", { name: "Single sign-on" })).toBeInTheDocument();
+    const menu = await openMenu();
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Settings", "Sign out"]);
   });
 
-  it("keeps them from members", async () => {
+  it("opens the settings area from Settings", async () => {
+    const router = await renderAt("/");
+    await userEvent.click(within(await openMenu()).getByRole("menuitem", { name: "Settings" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+  });
+
+  it("gives a member their own pages without Settings", async () => {
+    stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/", { me: member });
-    expect(within(await openMenu()).queryByRole("menuitem", { name: "Single sign-on" })).toBeNull();
+    const menu = await openMenu();
+    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Settings" })).toBeNull());
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Sign out"]);
+  });
+
+  it("gives a guest no Access tokens and no Settings", async () => {
+    stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
+    await renderAt("/", { me: guest });
+    const menu = await openMenu();
+    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Settings" })).toBeNull());
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Sign out"]);
   });
 
   it("signs out and lands on the sign-in page", async () => {
@@ -49,6 +87,49 @@ describe("the account menu", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(sent.some((r) => r.method === "POST" && r.path === "/auth/logout")).toBe(true);
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+  });
+});
+
+const armature = { product: "armature", url: "https://armature.example.test" };
+const exciter = { product: "exciter", url: "https://exciter.example.test" };
+
+describe("the tools to switch to", () => {
+  it("links to each connected tool's home, as a plain link", async () => {
+    stubApi({ "GET /connected-tools": { status: 200, body: { tools: [armature, exciter] } } });
+    await renderAt("/");
+    const group = await within(await openMenu()).findByRole("group", { name: "Switch to" });
+    const links = within(group).getAllByRole("menuitem");
+    expect(links.map((l) => l.textContent)).toEqual(["Armature", "Exciter"]);
+    expect(within(group).getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", "https://armature.example.test");
+    expect(within(group).getByRole("menuitem", { name: "Exciter" })).toHaveAttribute("href", "https://exciter.example.test");
+    expect(links.every((l) => l.tagName === "A" && !l.hasAttribute("target"))).toBe(true);
+  });
+
+  it("lists only the one connected", async () => {
+    stubApi({ "GET /connected-tools": { status: 200, body: { tools: [exciter] } } });
+    await renderAt("/", { me: member });
+    const group = await within(await openMenu()).findByRole("group", { name: "Switch to" });
+    expect(
+      within(group)
+        .getAllByRole("menuitem")
+        .map((l) => l.textContent),
+    ).toEqual(["Exciter"]);
+  });
+
+  it("leaves the group out when none is connected", async () => {
+    const sent = stubApi({ "GET /connected-tools": { status: 200, body: { tools: [] } } });
+    await renderAt("/", { me: member });
+    await waitFor(() => expect(sent.some((r) => r.path === "/connected-tools")).toBe(true));
+    const menu = await openMenu();
+    expect(within(menu).queryByRole("group", { name: "Switch to" })).toBeNull();
+    expect(within(menu).queryByRole("menuitem", { name: "Armature" })).toBeNull();
+  });
+
+  it("shows them to a guest too, since the other tool decides what they see", async () => {
+    stubApi({ "GET /connected-tools": { status: 200, body: { tools: [armature] } } });
+    await renderAt("/", { me: guest });
+    const group = await within(await openMenu()).findByRole("group", { name: "Switch to" });
+    expect(within(group).getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", "https://armature.example.test");
   });
 });
 

@@ -1,14 +1,20 @@
-import { request, type Page } from "@playwright/test";
+import { request } from "@playwright/test";
 import { LOGIN_PATH, ME_PATH, authTest as test, expect, signIn, signInWithPassword, startSSO, stateFile, submitKeycloak } from "../fixtures/auth";
 import { must, type StatorApi } from "../fixtures/api";
 import { DEAD_ISSUER } from "../fixtures/db";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import {
+  type ColourScheme,
+  expectAccessible,
+  expectNoSettingsEntry,
+  openAccountMenu,
+  openNavigation,
+  openSettingsPage,
+  startInScheme,
+} from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
 const SCHEMES: ColourScheme[] = ["light", "dark"];
-
-const accountItem = (page: Page, action: string) => page.locator(`[role="menu"] [data-action="${action}"]`);
 
 /** Changes the identity provider for one test, then puts it back as it was, its stored secret kept. */
 async function withProvider(api: StatorApi, change: { issuer?: string; enabled?: boolean }, fn: () => Promise<void>): Promise<void> {
@@ -35,6 +41,8 @@ test.describe("sign-in", { tag: "@auth" }, () => {
   test("the stored session is alice's, and the shell names her with her initials", async ({ page, api }) => {
     expect((await page.request.get(ME_PATH)).status()).toBe(200);
     await page.goto("/");
+    await expect(page.locator("main#main")).toBeVisible();
+    await openNavigation(page);
     const account = page.locator('[data-action="account"]');
     await expect(account).toContainText("AA");
     await expect(account).not.toContainText("Guest");
@@ -42,17 +50,14 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     expect(response.status).toBe(200);
   });
 
-  test("an admin finds single sign-on in the account menu, and a member does not", async ({ page, pageAs }) => {
+  test("an admin finds single sign-on in the settings area, and a member does not", async ({ page, pageAs }) => {
     await page.goto("/");
-    await page.locator('[data-action="account"]').click();
-    // Contains, not equals: a count of people waiting may follow the words.
-    await expect(accountItem(page, "sso-settings")).toContainText("Single sign-on");
+    await openSettingsPage(page, "sso-settings");
+    await expect(page).toHaveURL(/\/settings\/sso$/);
 
     const bob = await pageAs("bob");
     await bob.goto("/");
-    await bob.locator('[data-action="account"]').click();
-    await expect(bob.getByRole("menu")).toBeVisible();
-    await expect(accountItem(bob, "sso-settings")).toHaveCount(0);
+    await expectNoSettingsEntry(bob, "sso-settings");
   });
 
   test("the SSO settings show the callback address, and a save with a blank secret keeps the stored one", async ({ page, browser }) => {
@@ -83,7 +88,7 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     });
   }
 
-  test("a session that ends on the server sends the next request to the login page and back", async ({ browser }) => {
+  test("a session that ends on the server sends the next request to the login page and back", async ({ browser, isMobile }) => {
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     const page = await context.newPage();
     await signIn(page, "bob");
@@ -95,9 +100,15 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     expect((await elsewhere.post("/api/v1/auth/logout")).ok()).toBe(true);
     await elsewhere.dispose();
 
-    await page.locator('[data-action="account"]').click();
-    await accountItem(page, "themes").click();
-    await expect(page).toHaveURL(/\/login\?next=%2Fsettings%2Fthemes/);
+    if (isMobile) {
+      // Opening the drawer asks the api for the tools to switch to, which is
+      // the next request there, so the way back is the page it was opened on.
+      await page.locator('[data-action="drawer"]').click();
+      await expect(page).toHaveURL(/\/login\?next=%2Fspaces/);
+    } else {
+      await (await openAccountMenu(page)).locator('[data-action="themes"]').click();
+      await expect(page).toHaveURL(/\/login\?next=%2Fsettings%2Fthemes/);
+    }
     await context.close();
   });
 
@@ -129,9 +140,9 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     test("the account menu shows Alice Admin, and signing out closes the way back in", async ({ page }) => {
       await signIn(page, "alice");
       await page.goto("/");
-      await expect(page.locator("[data-account-name]")).toHaveText("Alice Admin");
-      await page.locator('[data-action="account"]').click();
-      await accountItem(page, "sign-out").click();
+      const menu = await openAccountMenu(page);
+      await expect(page.locator("[data-account-header-name]")).toHaveText("Alice Admin");
+      await menu.locator('[data-action="sign-out"]').click();
       await expect(page).toHaveURL(new RegExp(`${LOGIN_PATH}(\\?|$)`));
       await page.goto("/");
       await expect(page).toHaveURL(new RegExp(`${LOGIN_PATH}\\?next=`));

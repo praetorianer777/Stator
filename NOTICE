@@ -242,6 +242,8 @@ Adapted from Armature:
 - web/src/routes/oauth-authorize.tsx and web/src/features/oauth: the consent
   page of web/src/routes/oauth-authorize.tsx, with the token page's space
   picker added
+- web/public/tools/armature.webp: web/public/emblem.webp, Armature's emblem
+  for the avatar menu's link to it, unchanged
 
 Adapted from Exciter, at commit 3b340ca (#188):
 - backend/internal/oauth/rules.go and sweep.go: internal/oauth/rules.go
@@ -253,3 +255,8 @@ Adapted from Exciter, at commit 3b340ca (#188):
 - backend/test/oauth_consent_harness_test.go: the shape of
   backend/test/oauth_harness_test.go
 - web/src/features/oauth/ConsentPage.tsx: web/src/features/oauth/ConsentPage.tsx
+
+This product contains the mark of Exciter
+(https://github.com/Cloudster1/Exciter), licensed under the Apache License,
+Version 2.0: web/public/tools/exciter.webp is its web/public/mark-96.webp,
+unchanged, for the avatar menu's link to it.

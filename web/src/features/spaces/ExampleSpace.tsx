@@ -17,6 +17,7 @@ import { EXAMPLE_SPACE_GIVE_UP_MS, EXAMPLE_SPACE_SLOW_MS } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The example space by its name, linked, with a word when it is archived. */
 function ExistingExample({ space }: { space: Space }) {
@@ -118,7 +119,7 @@ export function ExampleSpaceSettings() {
   if (!admin) {
     return (
       <div className="mx-auto max-w-3xl">
-        <PageHeader crumb={t.settings.title} title={t.exampleSpace.title} />
+        <PageHeader crumbs={[settingsCrumb()]} title={t.exampleSpace.title} />
         <EmptyState icon={<Icon.Lock />} title={t.exampleSpace.title} description={t.exampleSpace.notAdmin} />
       </div>
     );
@@ -126,7 +127,7 @@ export function ExampleSpaceSettings() {
   const shown = found ?? query.data?.space ?? undefined;
   return (
     <div className="mx-auto max-w-3xl space-y-4" data-example-space-settings="">
-      <PageHeader crumb={t.settings.title} title={t.exampleSpace.title} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.exampleSpace.title} />
       <p className="text-sm text-ink-muted">{t.exampleSpace.intro}</p>
       {query.isLoading && <Skeleton />}
       {query.error && <ErrorBanner>{query.error.message}</ErrorBanner>}

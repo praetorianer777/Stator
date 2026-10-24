@@ -147,6 +147,9 @@ var operations = append([]operation{
 		responses: ok(meResponse{})},
 	{method: "PATCH", path: "/auth/me", handler: "handleUpdateMe", tag: "auth", summary: "Change the caller's own settings, such as the language the interface speaks to them.",
 		request: updateMeRequest{}, responses: map[int]any{200: meResponse{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/connected-tools", handler: "handleConnectedTools", tag: "auth",
+		summary:   "The other tools of the installation Stator is connected to, each at the address people open it at, for any member including guests; the other tool decides what they may see there.",
+		responses: ok(env{"tools": []ConnectedTool{}})},
 
 	{method: "GET", path: "/oidc-provider", handler: "handleGetOIDCProvider", wholeInstance: true, tag: "access", summary: "The organization's identity provider, if one is configured. For administrators.",
 		responses: ok(providerView{})},
@@ -1302,6 +1305,7 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["SiteAPIToken.scopes"] = scopes
 	b.FieldOverrides["CreateTokenRequest.scopes"] = scopes
 	b.Enums[reflect.TypeOf(auth.Role(""))] = enumStrings(auth.Roles)
+	b.Enums[reflect.TypeOf(ToolProduct(""))] = enumStrings(ToolProducts)
 	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
 	b.Enums[reflect.TypeOf(page.Width(""))] = enumStrings(page.Widths)
 	b.Enums[reflect.TypeOf(page.Mode(""))] = enumStrings(page.Modes)

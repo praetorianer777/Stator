@@ -37,6 +37,7 @@ export const INSTANCE_SPECS = [
   "public-links",
   "sketches",
   "smart-links",
+  "switch-to",
   "team-calendar",
   "template-variables",
   "themes",

@@ -309,7 +309,7 @@ describe("the notification settings", () => {
     stubShell({ "GET /notification-preferences": { status: 200, body: { preferences: defaults } } });
     const router = await renderAt("/spaces");
     await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Notifications" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Notification settings" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/settings/notifications"));
   });
 });

@@ -71,7 +71,7 @@ test.describe("page reviews", { tag: ["@auth", "@desktop"] }, () => {
 
     // It waits on alice, who reviews the change and approves it.
     await openUntil(page, "/reviews", () => expect(page.locator("[data-waiting-review]")).toHaveCount(1, ONE_LOOK));
-    await expect(page.locator('[data-action="waiting-reviews"] [data-waiting-badge]')).toHaveAttribute("data-waiting-badge", "1");
+    await expect(page.locator('[data-sidebar] [data-nav="reviews"] [data-waiting-badge]')).toHaveAttribute("data-waiting-badge", "1");
     await expectAccessible(page);
     await page.locator("[data-waiting-review]").getByRole("link", { name: "Travel policy" }).click();
     await banner(page).locator('[data-action="open-review"]').click();

@@ -1,20 +1,26 @@
-import { useCallback, useState, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
+import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/permissions";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { ShellHeaderContext } from "@/components/ui";
 import { ReturnNotice } from "@/features/armature/connectLink";
 import { NoAccess } from "@/features/permissions/NoAccess";
 import { QuickSearch } from "@/features/search/QuickSearch";
 import { BackdropEffect } from "@/features/themes/BackdropEffect";
 import { ThemeLoader } from "@/features/themes/ThemeLoader";
+import { IconButton } from "@/components/ui";
+import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { inSettings } from "./places";
+import { useSearchShortcut } from "./searchShortcut";
+import { rememberOutsideSettings } from "./settingsReturn";
 import { Sidebar } from "./Sidebar";
-import { useNarrow } from "./state";
-import { TopBar, useSearchShortcut } from "./TopBar";
+import { DRAWER_ID, useNarrow } from "./state";
 
 const MAIN_ID = "main";
 
-/** The chrome every page sits in: rail, sidebar, top bar, and the content with its floating head. */
+/** The chrome every page sits in: rail, sidebar or the settings sidebar, and the content with its floating head. */
 export function AppShell({ children }: { children: ReactNode }) {
   const [searching, setSearching] = useState(false);
   const openSearch = useCallback(() => setSearching(true), []);
@@ -32,6 +38,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Adjusted during render rather than in an effect, so the drawer is never
   // drawn over the new page for a frame.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const href = useRouterState({ select: (s) => s.location.href });
+  const settings = inSettings(pathname);
+  useEffect(() => {
+    if (!settings) rememberOutsideSettings(href);
+  }, [settings, href]);
   const [drawerPath, setDrawerPath] = useState(pathname);
   if (drawerPath !== pathname) {
     setDrawerPath(pathname);
@@ -39,10 +50,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
   const drawerOpen = narrow && drawer;
   const { data: access } = useAccess();
+  const { data: me } = useMe();
   if (access && !access.use) return <NoAccess />;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full" data-shell={settings ? "settings" : "wiki"}>
       <a
         href={`#${MAIN_ID}`}
         onClick={skipToMain}
@@ -51,9 +63,28 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         {t.shell.skipToContent}
       </a>
-      <Sidebar narrow={narrow} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} />
+      <Sidebar narrow={narrow} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} settings={settings} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar narrow={narrow} drawerOpen={drawerOpen} onOpenDrawer={() => setDrawer(true)} searching={searching} onSearch={openSearch} />
+        {narrow && (
+          // All that is left above the page on a narrow screen: the way into the drawer, and the bell.
+          <div className="flex h-10 shrink-0 items-center border-b border-border bg-surface px-2" data-nav-strip data-print-hide>
+            <IconButton
+              icon={<Icon.Menu />}
+              label={t.nav.openDrawer}
+              size="sm"
+              onClick={() => setDrawer(true)}
+              aria-haspopup="dialog"
+              aria-expanded={drawerOpen}
+              aria-controls={drawerOpen ? DRAWER_ID : undefined}
+              data-action="drawer"
+            />
+            {me?.organization && (
+              <div className="ml-auto">
+                <NotificationBell />
+              </div>
+            )}
+          </div>
+        )}
         {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}
         <ThemeLoader />
         <main id={MAIN_ID} tabIndex={-1} className="relative isolate min-h-0 flex-1 overflow-auto bg-backdrop focus:outline-none" data-backdrop-host>

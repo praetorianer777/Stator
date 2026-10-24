@@ -3,6 +3,7 @@ import { DIGESTS, NOTIFICATION_KINDS, usePreferences, useSavePreferences, type D
 import { Button, Card, Checkbox, ErrorBanner, PageHeader, Select, Skeleton, Table, Td, Th } from "@/components/ui";
 import { DAILY_DIGEST_HOUR_UTC } from "@/config";
 import { t } from "@/i18n";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 function digestLabel(digest: Digest): string {
   return digest === "daily" ? t.notifications.digests.daily(DAILY_DIGEST_HOUR_UTC) : t.notifications.digests[digest];
@@ -13,7 +14,7 @@ export function NotificationSettings() {
   const { data, error, isLoading, refetch } = usePreferences();
   return (
     <div className="mx-auto max-w-3xl" data-notification-settings="">
-      <PageHeader crumbs={[{ label: t.settings.title }]} title={t.notifications.preferencesTitle} meta={t.notifications.preferencesIntro} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.notifications.preferencesTitle} meta={t.notifications.preferencesIntro} />
       {error ? <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner> : isLoading || !data ? <Skeleton /> : <PreferencesForm saved={data} />}
     </div>
   );

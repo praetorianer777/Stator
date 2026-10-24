@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ExampleSpaceJob } from "@/api/exampleSpace";
 import type * as config from "@/config";
-import { arrival, renderAt, signedIn, stubApi } from "@/test/app";
+import { arrival, renderAt, signedIn, stubApi, viaSettings } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -172,8 +172,7 @@ describe("the example space in the organization's settings", () => {
   it("is in the account menu of an administrator", async () => {
     stubApi({ "GET /example-space": { status: 200, body: { space: null, job: null } } });
     const router = await renderAt("/settings/example-space");
-    await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Example space" }));
+    await viaSettings("Example space");
     await arrival(router, "/settings/example-space");
   });
 });

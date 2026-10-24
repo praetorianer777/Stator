@@ -3797,6 +3797,48 @@
         }
       }
     },
+    "/connected-tools": {
+      "get": {
+        "operationId": "connectedTools",
+        "summary": "The other tools of the installation Stator is connected to, each at the address people open it at, for any member including guests; the other tool decides what they may see there.",
+        "tags": [
+          "auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tools": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ConnectedTool"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tools"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/example-space": {
       "get": {
         "operationId": "getExampleSpace",
@@ -22118,6 +22160,25 @@
         },
         "required": [
           "schemas"
+        ]
+      },
+      "ConnectedTool": {
+        "type": "object",
+        "properties": {
+          "product": {
+            "type": "string",
+            "enum": [
+              "armature",
+              "exciter"
+            ]
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "url"
         ]
       },
       "Connection": {

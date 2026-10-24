@@ -17,6 +17,7 @@ import {
 } from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The caller's profile: who they are here, and their Armature and Exciter accounts. */
 export const profileRoute = createRoute({
@@ -59,7 +60,7 @@ function ProfilePage() {
   }, [outcome, back, router]);
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader crumb={t.settings.title} title={t.profile.title} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.profile.title} />
       {me && (
         <section aria-labelledby="profile-account" className="space-y-3">
           <SectionTitle id="profile-account">{t.profile.account}</SectionTitle>

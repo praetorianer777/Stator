@@ -6,6 +6,7 @@ import { useOutline } from "@/api/tree";
 import { Button, Checkbox, ErrorBanner, PageHeader, Select, Skeleton } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 const INDENT = "   ";
 
@@ -32,7 +33,7 @@ export function HubSettings() {
 
   return (
     <div className="mx-auto max-w-3xl" data-hub-settings="">
-      <PageHeader crumb={t.settings.title} title={t.hub.title} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.hub.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.hub.intro}</p>
       {isLoading && <Skeleton />}
       {hub && (

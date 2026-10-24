@@ -1,17 +1,38 @@
+import { useMe } from "@/api/auth";
 import { IconButton } from "@/components/ui";
-import { HomeNavItem, HubNavItem } from "@/features/hub/HubNav";
 import { Icon } from "@/components/icons";
 import { SIDEBAR_RAIL_WIDTH } from "@/config";
+import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { t } from "@/i18n";
-import { NavItem, SpacesNavItem } from "./nav";
+import { AccountMenu } from "./AccountMenu";
+import { NavItem } from "./nav";
+import { usePlaces } from "./places";
 import { SIDEBAR_ID } from "./state";
 import { ThemeButton } from "./ThemeButton";
 
+// The rail's own order, which puts the bell among the places, as all three tools do.
+const BEFORE_BELL = ["home", "hub", "search"];
+const AFTER_BELL = ["spaces", "tasks"];
+
 /**
- * The rail is what is always there: the places every page reaches from, and
- * the theme at the bottom. When the sidebar is folded away, it is the whole chrome.
+ * The rail is what is always there: the places every page reaches from, the
+ * bell, and the theme and the avatar at the bottom. When the sidebar is
+ * folded away, it is the whole chrome.
  */
 export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  const { data: me } = useMe();
+  const places = usePlaces().filter((place) => place.area === "wiki");
+  const items = (ids: string[]) =>
+    ids.flatMap((id) => {
+      const place = places.find((each) => each.id === id);
+      return place
+        ? [
+            <NavItem key={id} id={id} to={place.to} exact={place.exact} icon={place.icon} rail>
+              {place.label}
+            </NavItem>,
+          ]
+        : [];
+    });
   return (
     <aside className="flex shrink-0 flex-col items-center border-r border-border bg-surface" style={{ width: SIDEBAR_RAIL_WIDTH }} data-rail data-print-hide>
       <div className="flex h-12 w-full items-center justify-center border-b border-border">
@@ -26,18 +47,13 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
         />
       </div>
       <nav aria-label={t.nav.everywhere} className="flex flex-1 flex-col items-center gap-1 py-3">
-        <HomeNavItem rail />
-        <HubNavItem rail />
-        <SpacesNavItem rail />
-        <NavItem to="/tasks" icon="Checklist" rail>
-          {t.nav.tasks}
-        </NavItem>
-        <NavItem to="/search" icon="Search" rail>
-          {t.nav.search}
-        </NavItem>
+        {items(BEFORE_BELL)}
+        {me?.organization && <NotificationBell side="right" />}
+        {items(AFTER_BELL)}
       </nav>
       <div className="flex flex-col items-center gap-1 border-t border-border py-2">
         <ThemeButton />
+        <AccountMenu />
       </div>
     </aside>
   );

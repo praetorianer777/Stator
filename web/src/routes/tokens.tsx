@@ -19,6 +19,7 @@ import {
 } from "@/config";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 // Adapted from Armature's tokens page; where Armature limits a token to
 // projects, this one limits it to spaces.
@@ -63,7 +64,7 @@ function TokensPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader crumbs={[{ label: t.settings.title }]} title={t.tokens.title} meta={t.tokens.intro} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.tokens.title} meta={t.tokens.intro} />
       {fresh?.secret && <FreshToken secret={fresh.secret} onDone={() => setFresh(null)} />}
       <CreateTokenForm
         onCreated={(token) => {

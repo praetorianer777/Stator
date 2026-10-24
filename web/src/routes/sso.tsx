@@ -6,6 +6,7 @@ import { Members } from "@/features/auth/Members";
 import { ProviderSettings } from "@/features/auth/ProviderSettings";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 export const ssoRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -13,7 +14,7 @@ export const ssoRoute = createRoute({
   component: function SingleSignOn() {
     return (
       <div className="mx-auto max-w-3xl">
-        <PageHeader crumb={t.settings.title} title={t.sso.title} />
+        <PageHeader crumbs={[settingsCrumb()]} title={t.sso.title} />
         <JoinRequests />
         <ProviderSettings />
         <GroupRoles />

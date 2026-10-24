@@ -5,6 +5,7 @@ import { Button, ButtonLink, EmptyState, ErrorBanner, Field, PageHeader, Select,
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 // Adapted from Armature's audit page: the same filters and CSV export, walked
 // by the API's keyset cursor rather than by time alone.
@@ -69,7 +70,7 @@ export function AuditLog() {
   return (
     <div className="mx-auto max-w-5xl" data-audit-log>
       <PageHeader
-        crumb={t.settings.title}
+        crumbs={[settingsCrumb()]}
         title={t.audit.title}
         meta={retention === undefined ? undefined : retention > 0 ? t.audit.keptDays(retention) : t.audit.keptForever}
         actions={

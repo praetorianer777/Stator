@@ -32,6 +32,7 @@ import { searchRoute } from "./search";
 import { staleRoute } from "./stale";
 import { reviewsRoute } from "./reviews";
 import { tasksRoute } from "./tasks";
+import { settingsRoute } from "./settings";
 import { ssoRoute } from "./sso";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
@@ -75,6 +76,7 @@ const routeTree = rootRoute.addChildren([
     themeEditRoute,
     tokensRoute,
     oauthAuthorizeRoute,
+    settingsRoute,
     profileRoute,
     notificationSettingsRoute,
     watchingRoute,

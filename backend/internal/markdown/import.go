@@ -132,9 +132,44 @@ func convert(src []byte, resolve Resolver, template bool) (*Result, error) {
 		return nil, err
 	}
 	if err := check(body, template); err != nil {
-		return nil, err
+		return nil, c.located(err, root, template)
 	}
 	return &Result{Title: title, Body: body, Warnings: c.warnings}, nil
+}
+
+// located adds to a refusal the line of the first top-level block that
+// fails on its own, so a writer finds it in a long file.
+func (c *converter) located(err error, root ast.Node, template bool) error {
+	var bad *document.InvalidError
+	if !errors.As(err, &bad) {
+		return err
+	}
+	quiet := &converter{resolve: c.resolve, seen: map[string]bool{}, template: template, src: c.src, shift: c.shift}
+	for _, n := range children(root) {
+		made, convErr := quiet.block(n, 0)
+		if convErr != nil {
+			continue
+		}
+		for _, m := range made {
+			if !validatesIn(document.Normalize(m), false, template) {
+				if line, ok := c.lineOf(n); ok {
+					return &document.InvalidError{Message: fmt.Sprintf("%s The block starts on line %d.", bad.Message, line)}
+				}
+				return err
+			}
+		}
+	}
+	return err
+}
+
+// lineOf is the line, from 1, where a block's first text starts.
+func (c *converter) lineOf(n ast.Node) (int, bool) {
+	for ; n != nil; n = n.FirstChild() {
+		if lines := n.Lines(); lines != nil && lines.Len() > 0 {
+			return bytes.Count(c.src[:lines.At(0).Start], []byte("\n")) + 1, true
+		}
+	}
+	return 0, false
 }
 
 // nestsTooDeeply looks for a line that opens more quotes and list items than
@@ -986,14 +1021,16 @@ func divNode(kind string, attrs map[string]string, words string) (document.Node,
 }
 
 // imagesOnly reads an HTML block that is nothing but img tags, perhaps in a
-// paragraph or a picture element, and spaces between them.
+// paragraph or a picture element, and spaces between them. A picture that
+// became a link or its description stands in a paragraph, as text must.
 func (c *converter) imagesOnly(raw string) ([]document.Node, bool) {
 	tok := nethtml.NewTokenizer(strings.NewReader(raw))
-	var out []document.Node
+	var read items
+	seen := false
 	for {
 		switch tok.Next() {
 		case nethtml.ErrorToken:
-			return out, len(out) > 0
+			return c.paragraphs(read), seen
 		case nethtml.TextToken:
 			if strings.TrimSpace(string(tok.Text())) != "" {
 				return nil, false
@@ -1002,7 +1039,8 @@ func (c *converter) imagesOnly(raw string) ([]document.Node, bool) {
 			e := startTag(tok)
 			switch e.name {
 			case "img":
-				out = append(out, c.imageItem(e.attrs["src"], e.attrs["alt"], e.attrs["width"]).nodes()...)
+				read = append(read, c.imageItem(e.attrs["src"], e.attrs["alt"], e.attrs["width"])...)
+				seen = true
 			case "p", "picture", "div", "a":
 			default:
 				return nil, false
@@ -1022,14 +1060,6 @@ type item struct {
 }
 
 type items []item
-
-func (it items) nodes() []document.Node {
-	out := make([]document.Node, 0, len(it))
-	for _, i := range it {
-		out = append(out, i.node)
-	}
-	return out
-}
 
 // paragraphs splits read inline content at its images: the text between
 // them is a paragraph each, the images blocks of their own.

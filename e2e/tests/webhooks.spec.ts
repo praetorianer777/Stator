@@ -5,7 +5,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 // web/src/config.ts WEBHOOKS_PATH and WEBHOOK_SIGNATURE_HEADER.
@@ -66,8 +66,7 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     const bin = binFor(testInfo);
 
     await page.goto("/");
-    await page.locator('[data-action="account"]').click();
-    await page.locator('[role="menu"] [data-action="webhooks"]').click();
+    await openSettingsPage(page, "webhooks");
     await expect(page).toHaveURL(/\/settings\/webhooks$/);
     await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText("Webhooks");
 
@@ -128,9 +127,7 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     await bob.goto(WEBHOOKS_PATH);
     await expect(bob.locator("[data-webhooks-refused]")).toContainText("Only an administrator keeps the webhooks.");
     await expect(bob.locator("[data-webhook-form]")).toHaveCount(0);
-    await bob.locator('[data-action="account"]').click();
-    await expect(bob.getByRole("menu")).toBeVisible();
-    await expect(bob.locator('[role="menu"] [data-action="webhooks"]')).toHaveCount(0);
+    await expectNoSettingsEntry(bob, "webhooks");
   });
 
   test("it is added and pinged from the keyboard", { tag: ["@desktop"] }, async ({ page }, testInfo) => {

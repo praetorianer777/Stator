@@ -12,6 +12,7 @@ import { STALE_AGE_DAYS, STALE_DEFAULT_DAYS, STALE_REVIEW_FROM } from "@/config"
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 import { pageSlug } from "@/lib/slug";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 const day = localDateFormat({ dateStyle: "medium" });
 
@@ -89,7 +90,7 @@ export function StaleReport({ space }: { space?: string }) {
   if (problem?.status === 403) {
     return (
       <div className="mx-auto max-w-3xl" data-stale-refused>
-        <PageHeader crumb={t.settings.title} title={t.stale.title} />
+        <PageHeader crumbs={[settingsCrumb()]} title={t.stale.title} />
         <EmptyState icon={<Icon.Lock />} title={t.stale.title} description={t.stale.notAdmin} />
       </div>
     );
@@ -97,7 +98,7 @@ export function StaleReport({ space }: { space?: string }) {
 
   return (
     <div className="mx-auto max-w-5xl" data-stale-report>
-      <PageHeader crumb={t.settings.title} title={t.stale.title} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.stale.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.stale.intro(filter.olderThan)}</p>
       <section aria-label={t.stale.filters} className="mb-4 space-y-3" data-stale-filters>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

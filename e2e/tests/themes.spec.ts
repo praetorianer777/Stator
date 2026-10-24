@@ -102,9 +102,10 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
 
     await page.goto("/");
     await expect(customStyle(page)).toBeAttached();
-    await expect(page.locator('[data-action="search"]')).toHaveCSS("border-radius", "0px");
+    await expect(page.locator('[data-action="sidebar"]')).toHaveCSS("border-radius", "0px");
     await page.locator('[data-action="account"]').click();
-    const shadow = await page.getByRole("menu").evaluate((el) => getComputedStyle(el).boxShadow);
+    // The shadow is on the panel around the menu, which also holds its header.
+    const shadow = await page.getByRole("menu").evaluate((el) => getComputedStyle(el.parentElement!).boxShadow);
     expect(shadow).toMatch(/\b6px 6px 0px\b/);
   });
 

@@ -5,6 +5,7 @@ import { useCanAdministerSite } from "@/features/permissions/access";
 import { TemplateList } from "@/features/templates/TemplateList";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The templates every space offers, kept by the organization's administrators. */
 export const templatesRoute = createRoute({
@@ -14,7 +15,7 @@ export const templatesRoute = createRoute({
     const canEdit = useCanAdministerSite();
     return (
       <div className="mx-auto max-w-4xl" data-templates-page="">
-        <PageHeader crumbs={[{ label: t.settings.title }]} title={t.templates.title} />
+        <PageHeader crumbs={[settingsCrumb()]} title={t.templates.title} />
         <TemplateList canEdit={canEdit} />
       </div>
     );

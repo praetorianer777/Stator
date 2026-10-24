@@ -1,36 +1,49 @@
 import { useRef, type ReactNode } from "react";
-import { HomeNavItem, HubNavItem } from "@/features/hub/HubNav";
 import { createPortal } from "react-dom";
+import { useRouter } from "@tanstack/react-router";
+import { administers, useJoinRequests, useMe } from "@/api/auth";
+import { brandLogoHref, useBrand } from "@/api/brand";
 import { IconButton } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { LogoMark } from "@/components/Logo";
-import { brandLogoHref, useBrand } from "@/api/brand";
-import { BRAND_LOGO_HEIGHT_PX } from "@/config";
-import { APP_NAME, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
-import { t } from "@/i18n";
+import { APP_NAME, BRAND_LOGO_HEIGHT_PX, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
+import { WaitingReviewsCount } from "@/features/reviews/WaitingReviews";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
+import { t } from "@/i18n";
+import { AccountMenu } from "./AccountMenu";
 import { BuildStamp } from "./BuildStamp";
-import { NavItem, SpacesNavItem } from "./nav";
+import { NavItem } from "./nav";
+import { usePlaces, type Place } from "./places";
 import { Rail } from "./Rail";
+import { settingsReturn } from "./settingsReturn";
 import { SidebarGroup } from "./SidebarGroup";
 import { DRAWER_ID, SIDEBAR_ID, useSidebarGroups, useSidebarMode } from "./state";
 import { ThemeButton } from "./ThemeButton";
 
 // The sidebar is the map: where you are is highlighted and where you can go is
 // listed in groups that fold. The rail beside it stays when the map is folded.
-// On a narrow screen there is no room for either column, so the map becomes a
-// drawer the top bar opens, and the rail's theme switch moves into it.
-export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean; drawerOpen: boolean; onCloseDrawer: () => void }) {
+// In the settings area the map is the settings sidebar instead. On a narrow
+// screen there is no room for either column, so the map becomes a drawer the
+// strip above the page opens, and the rail's theme and avatar move into it;
+// the bell stays on the strip, where its count is seen without opening anything.
+export function Sidebar({
+  narrow,
+  drawerOpen,
+  onCloseDrawer,
+  settings,
+}: {
+  narrow: boolean;
+  drawerOpen: boolean;
+  onCloseDrawer: () => void;
+  settings: boolean;
+}) {
   const [mode, toggleMode] = useSidebarMode();
   const open = mode === "open";
+  const groups = settings ? <SettingsGroups onNavigate={narrow ? onCloseDrawer : undefined} /> : <WikiGroups onNavigate={narrow ? onCloseDrawer : undefined} />;
 
   if (narrow) {
-    return drawerOpen ? (
-      <SidebarDrawer onClose={onCloseDrawer}>
-        <SidebarGroups onNavigate={onCloseDrawer} />
-      </SidebarDrawer>
-    ) : null;
+    return drawerOpen ? <SidebarDrawer onClose={onCloseDrawer}>{groups}</SidebarDrawer> : null;
   }
 
   return (
@@ -42,17 +55,16 @@ export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean
           className="flex shrink-0 flex-col border-r border-border bg-surface"
           style={{ width: SIDEBAR_WIDTH }}
           data-sidebar={mode}
+          data-settings-sidebar={settings || undefined}
           data-print-hide
-          aria-label={t.nav.whereYouAre}
+          aria-label={settings ? t.settings.navigation : t.nav.whereYouAre}
         >
           <div className="flex h-12 items-center gap-2 border-b border-border px-3">
             <SiteMark />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{APP_NAME}</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2 py-3">
-            <SidebarGroups />
-          </div>
+          <div className="flex-1 overflow-y-auto px-2 py-3">{groups}</div>
 
           <BuildStamp className="block truncate px-3 pb-2 text-2xs text-ink-subtle" />
         </nav>
@@ -61,32 +73,101 @@ export function Sidebar({ narrow, drawerOpen, onCloseDrawer }: { narrow: boolean
   );
 }
 
-function SidebarGroups({ onNavigate }: { onNavigate?: () => void }) {
+function placeItem(place: Place, onNavigate: (() => void) | undefined, trailing?: ReactNode) {
+  return (
+    <NavItem
+      key={place.id}
+      id={place.id}
+      to={place.to}
+      hash={place.hash}
+      matchHash={place.area === "you"}
+      exact={place.exact}
+      icon={place.icon}
+      rail={false}
+      onNavigate={onNavigate}
+      trailing={trailing}
+    >
+      {place.label}
+    </NavItem>
+  );
+}
+
+function WikiGroups({ onNavigate }: { onNavigate?: () => void }) {
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string, defaultOpen: boolean) => groups[id] ?? defaultOpen;
+  const { data: me } = useMe();
+  const trailing: Record<string, ReactNode> = {
+    // On the current item the hint takes the accent: subtle ink is too faint
+    // on the accent tint in the dark palette.
+    search: <kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{t.search.shortcut}</kbd>,
+    reviews: me?.organization ? <WaitingReviewsCount /> : null,
+  };
+  const places = usePlaces().filter((place) => place.area === "wiki");
   return (
     <>
       <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
-        <HomeNavItem rail={false} onNavigate={onNavigate} />
-        <HubNavItem rail={false} onNavigate={onNavigate} />
-        <SpacesNavItem rail={false} onNavigate={onNavigate} />
-        <NavItem to="/tasks" icon="Checklist" rail={false} onNavigate={onNavigate}>
-          {t.nav.tasks}
-        </NavItem>
-        <NavItem
-          to="/search"
-          icon="Search"
-          rail={false}
-          onNavigate={onNavigate}
-          // On the current item the hint takes the accent: subtle ink is too
-          // faint on the accent tint in the dark palette.
-          trailing={<kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{t.search.shortcut}</kbd>}
-        >
-          {t.nav.search}
-        </NavItem>
+        {places.map((place) => placeItem(place, onNavigate, trailing[place.id]))}
       </SidebarGroup>
-      <SpaceNav open={isOpen("space", true)} onToggle={() => toggleGroup("space", true)} onNavigate={onNavigate} />
+      <SpaceNav
+        open={isOpen("space", true)}
+        onToggle={() => toggleGroup("space", true)}
+        adminOpen={isOpen("space-admin", false)}
+        onToggleAdmin={() => toggleGroup("space-admin", false)}
+        onNavigate={onNavigate}
+      />
     </>
+  );
+}
+
+/** The settings area's own sidebar: the way back, the person's own pages, and the organization's settings for site administrators. */
+function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
+  const [groups, toggleGroup] = useSidebarGroups();
+  const isOpen = (id: string) => groups[id] ?? true;
+  const places = usePlaces();
+  const you = places.filter((place) => place.area === "you");
+  const settings = places.filter((place) => place.area === "settings");
+  const trailing: Record<string, ReactNode> = { "sso-settings": <JoinRequestsBadge /> };
+  const router = useRouter();
+  const back = settingsReturn();
+  return (
+    <>
+      <a
+        href={back}
+        onClick={(event) => {
+          // The address is a whole href, search and hash included, which the
+          // history takes as it is; the router's links take a route.
+          event.preventDefault();
+          onNavigate?.();
+          router.history.push(back);
+        }}
+        className="mb-3 flex h-8 items-center gap-2 rounded-control px-2 text-sm text-ink-muted no-underline hover:bg-surface-raised hover:text-ink"
+        data-action="leave-settings"
+      >
+        <Icon.ChevronLeft className="shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{t.settings.backTo}</span>
+      </a>
+      <SidebarGroup id="settings-you" title={t.settings.you} open={isOpen("settings-you")} onToggle={() => toggleGroup("settings-you", true)}>
+        {you.map((place) => placeItem(place, onNavigate))}
+      </SidebarGroup>
+      {settings.length > 0 && (
+        <SidebarGroup id="settings-site" title={t.settings.site} open={isOpen("settings-site")} onToggle={() => toggleGroup("settings-site", true)}>
+          {settings.map((place) => placeItem(place, onNavigate, trailing[place.id]))}
+        </SidebarGroup>
+      )}
+    </>
+  );
+}
+
+/** How many people wait to be let in, beside Single sign-on; asked only of those the list answers. */
+function JoinRequestsBadge() {
+  const { data: me } = useMe();
+  const waiting = useJoinRequests(administers(me?.organization?.role)).data?.length ?? 0;
+  if (waiting === 0) return null;
+  return (
+    <span className="rounded-full bg-accent px-1.5 text-2xs font-medium text-on-primary" data-join-badge>
+      <span aria-hidden="true">{waiting}</span>
+      <span className="sr-only">{t.sso.waitingCount(waiting)}</span>
+    </span>
   );
 }
 
@@ -121,7 +202,8 @@ function SidebarDrawer({ onClose, children }: { onClose: () => void; children: R
         <nav aria-label={t.nav.whereYouAre} className="flex-1 overflow-y-auto px-2 py-3">
           {children}
         </nav>
-        <div className="flex items-center gap-2 border-t border-border px-2 py-2">
+        <div className="flex items-center gap-1 border-t border-border px-2 py-2" data-drawer-foot>
+          <AccountMenu side="top" />
           <ThemeButton side="top" />
           <BuildStamp className="min-w-0 flex-1 truncate text-right text-2xs text-ink-subtle" />
         </div>

@@ -7,13 +7,14 @@ import { SiteAnonymousAccess, SitePublicLinks } from "@/features/public/Anonymou
 import { t } from "@/i18n";
 import { SubjectList } from "./SubjectList";
 import { SubjectPicker } from "./SubjectPicker";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The organization's global permissions, one card each; a card's changes wait for its own save. */
 export function SitePermissions() {
   const { data, error, refetch, isLoading } = useSitePermissions();
   return (
     <div className="mx-auto max-w-3xl" data-site-permissions>
-      <PageHeader crumb={t.settings.title} title={t.permissions.siteTitle} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.permissions.siteTitle} />
       <p className="mb-4 text-sm text-ink-muted">{t.permissions.siteIntro}</p>
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}

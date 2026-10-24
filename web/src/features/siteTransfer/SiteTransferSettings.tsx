@@ -15,12 +15,13 @@ import { transferOpen } from "@/api/spaceTransfers";
 import { Button, ButtonLink, Card, ErrorBanner, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { language, t } from "@/i18n";
+import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Where an administrator exports the whole organization as one archive, and fills a fresh one from such an archive. */
 export function SiteTransferSettings() {
   return (
     <div className="mx-auto max-w-3xl space-y-8" data-site-transfer="">
-      <PageHeader crumb={t.settings.title} title={t.siteTransfer.title} />
+      <PageHeader crumbs={[settingsCrumb()]} title={t.siteTransfer.title} />
       <SiteExportSection />
       <SiteImportSection />
       <NotCarried />

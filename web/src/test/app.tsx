@@ -1,4 +1,5 @@
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory } from "@tanstack/react-router";
 import { onTestFinished, vi } from "vitest";
@@ -29,7 +30,7 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
       <LocalizedRouter router={router} />
     </QueryClientProvider>,
   );
-  await waitFor(() => expect(document.querySelector("[data-top-bar], [data-login]")).not.toBeNull());
+  await waitFor(() => expect(document.querySelector("[data-shell], [data-login]")).not.toBeNull());
   // A navigation still loading at the end of a test settles, or fires the
   // router's pending timer, after jsdom has gone, and fails a later file.
   onTestFinished(() => {
@@ -38,6 +39,18 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
     }
   });
   return router;
+}
+
+/** Opens a page of the settings area as a site administrator does: Settings in the avatar menu, then the page in the settings sidebar. */
+export async function viaSettings(name: string | RegExp) {
+  await userEvent.click(screen.getByRole("button", { name: "Your account" }));
+  await userEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
+  await userEvent.click(within(await settingsSidebar()).getByRole("link", { name }));
+}
+
+/** The settings area's own sidebar. */
+export function settingsSidebar() {
+  return screen.findByRole("navigation", { name: "Settings" });
 }
 
 /** A page a connect hint is followed from, and where the hint leads from there: the token form, and back. */

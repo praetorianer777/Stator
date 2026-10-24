@@ -826,3 +826,26 @@ export const EXAMPLE_SPACE_POLL_MS = 1000;
 export const EXAMPLE_SPACE_SLOW_MS = 60_000;
 /** After this long, past the API's limit on one making, the page stops asking and says what to do. */
 export const EXAMPLE_SPACE_GIVE_UP_MS = 15 * 60_000;
+/** The other tools the avatar menu links to: the name each goes by, which is never translated, and its own mark under web/public. */
+export const CONNECTED_TOOLS = {
+  armature: { name: "Armature", mark: "/tools/armature.webp" },
+  exciter: { name: "Exciter", mark: "/tools/exciter.webp" },
+} as const;
+/** The settings area: every page under it trades the wiki's sidebar for the settings sidebar. */
+export const SETTINGS_PATH = "/settings";
+export const NOTIFICATION_SETTINGS_PATH = "/settings/notifications";
+export const WATCHING_PATH = "/settings/watching";
+export const THEMES_PATH = "/settings/themes";
+export const TOKENS_PATH = "/settings/tokens";
+export const SSO_PATH = "/settings/sso";
+export const SITE_PERMISSIONS_PATH = "/settings/permissions";
+export const HUB_SETTINGS_PATH = "/settings/hub";
+export const BRAND_PATH = "/settings/brand";
+export const SITE_TRANSFER_PATH = "/settings/transfer";
+export const EXAMPLE_SPACE_PATH = "/settings/example-space";
+/** Where the person goes back to from the settings area when nothing outside it was open in this tab. */
+export const SETTINGS_LEAVE_FALLBACK = "/";
+/** Keeps the last page outside the settings area for the tab, so "Back to Stator" survives a reload. */
+export const SETTINGS_RETURN_KEY = "stator.settings-return";
+/** Keeps the space the sidebar shows when the route names none, per browser. */
+export const LAST_SPACE_KEY = "stator.last-space";

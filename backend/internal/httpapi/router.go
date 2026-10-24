@@ -321,6 +321,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 		// What the caller may do is theirs to read even without use, so the
 		// client can say why everything else is refused.
 		r.With(requireMember).Get("/access/me", s.handleMyAccess)
+		r.With(requireMember).Get("/connected-tools", s.handleConnectedTools)
 
 		r.Group(func(r chi.Router) {
 			r.Use(requireMember, s.requireUse, requireWholeInstance)
