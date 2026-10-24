@@ -69,6 +69,15 @@ var integrationCapabilities = []capability{
 		operations: []string{"GET " + oauth.MetadataPath, "POST /oauth/token", "POST /oauth/revoke"},
 	},
 	{
+		name: oauth.CapabilityPartnerTokens,
+		promise: "An app registers itself at POST /oauth/register (RFC 7591) and is pending until a Stator administrator allows it by connecting it once; " +
+			"a person connects it by authorization code with PKCE S256 on Stator's consent page, choosing read or write and the spaces it reaches; " +
+			"the access token lasts at most an hour and works at the MCP endpoint only, within the person's rights; the refresh token rotates at each use and one used twice ends the grant; " +
+			"a 401 at the MCP endpoint names the RFC 9728 metadata, and RFC 7009 revokes a grant.",
+		operations: []string{"GET " + oauth.MetadataPath, "GET " + oauth.ResourceMetadataPath + APIPrefix + oauth.MCPPath, "POST /oauth/register", "GET /oauth/authorize",
+			"GET /oauth/consent", "POST /oauth/consent", "POST /oauth/token", "POST /oauth/revoke", "POST /mcp"},
+	},
+	{
 		name:    "theme-export@1",
 		promise: "A theme exported as one armature-theme/1 file with its pictures and fonts, and such a file imported as a theme of the caller's own.",
 		operations: []string{

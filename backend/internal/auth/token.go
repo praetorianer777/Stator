@@ -25,6 +25,8 @@ const (
 	AccessTokenPrefix  = "stator_oat_"
 	RefreshTokenPrefix = "stator_ort_"
 	ClientSecretPrefix = "stator_ocs_"
+	// CodePrefix marks an authorization code (#449), good once for a minute.
+	CodePrefix = "stator_oac_"
 	// ConnectedAppSuffix follows an app's name in its grant's name, as in
 	// "Exciter (connected app)" in the person's token list.
 	ConnectedAppSuffix = " (connected app)"

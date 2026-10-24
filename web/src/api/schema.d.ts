@@ -11,8 +11,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** RFC 8414's metadata: the issuer, the token and revocation endpoints, the scopes and grants. Lives at the origin, outside /api/v1; partners may keep it for five minutes. */
+        /** RFC 8414's metadata: the issuer, the authorization, token, revocation and registration endpoints, the scopes, grants and PKCE method. Lives at the origin, outside /api/v1; partners may keep it for five minutes. */
         get: operations["oAuthMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The MCP endpoint's metadata again, for a client that asks at the origin's well-known address. */
+        get: operations["getResourceMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/api/v1/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** RFC 9728's metadata of the MCP endpoint, the one resource a consented app's token is for: its address, Stator as its authorization server, the scopes. A 401 at the endpoint points here. Lives at the origin. */
+        get: operations["getMCPResourceMetadata"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1209,7 +1243,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller. */
+        /** The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller. A 401 carries WWW-Authenticate: Bearer with resource_metadata, as RFC 9728 says, so a client can connect through OAuth. */
         post: operations["mcp"];
         delete?: never;
         options?: never;
@@ -1303,6 +1337,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The authorization endpoint: sends the browser to the consent page with the query whole, through the sign-in when nobody is signed in. The page answers at the app's return address with code, state and iss (RFC 9207), or error. */
+        get: operations["oAuthAuthorize"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/oauth/clients": {
         parameters: {
             query?: never;
@@ -1310,7 +1361,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The partner apps that may exchange people's identity provider tokens here, by name. For administrators. */
+        /** The connected apps by name: partner apps that exchange people's identity provider tokens, and apps that registered themselves, pending or allowed. For administrators. */
         get: operations["listOAuthClients"];
         put?: never;
         /** Register a partner app with the Keycloak client it signs people in with; its secret, stator_ocs_..., is in this answer and never again. For administrators. */
@@ -1339,6 +1390,41 @@ export interface paths {
         patch: operations["updateOAuthClient"];
         trace?: never;
     };
+    "/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the consent page shows for the authorize query it was opened with: the app, where the browser goes back to, the scopes asked, whether the app waits for an administrator and whether the caller may allow it; or redirectTo, an error answered at the app. Needs a session. */
+        get: operations["getOAuthConsent"];
+        put?: never;
+        /** The person's decision on the consent page: allow, read alone or what was asked, for every space they see or the spaces named; or deny. Answers where the browser goes back to. An administrator allowing an app that waits allows it for everybody. Needs a session. */
+        post: operations["decideOAuthConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oauth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** RFC 7591: an app registers itself with its name, return addresses (https, or http on a loopback address at any port) and how it authenticates; a confidential app's secret, stator_ocs_..., is in this answer and never again. The app is pending until a Stator administrator allows it by connecting it once, and is removed after a day otherwise. grant_types holds authorization_code, and may name refresh_token and the token exchange. At most 10 from one address in 15 minutes. */
+        post: operations["oAuthRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/oauth/revoke": {
         parameters: {
             query?: never;
@@ -1365,7 +1451,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** The token endpoint, for a partner app with its client id and secret, by HTTP Basic or in the form. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to the app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, unauthorized_client, unsupported_grant_type. */
+        /** The token endpoint, for an app with its client id and secret, by HTTP Basic or in the form, or its client id alone for a public app. grant_type authorization_code redeems a code from the consent page with its PKCE verifier and return address, for a grant that acts at the MCP endpoint only; a code used twice ends that grant. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to a partner app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Access tokens last an hour. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, invalid_target, unauthorized_client, unsupported_grant_type. */
         post: operations["oAuthToken"];
         delete?: never;
         options?: never;
@@ -4706,7 +4792,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created";
+            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -4722,7 +4808,7 @@ export interface components {
             targetType: string;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created")[];
+            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -4866,15 +4952,20 @@ export interface components {
             themeId: string | null;
         };
         Client: {
+            clientUri: string;
+            confidential: boolean;
             /** Format: date-time */
             createdAt: string;
             grants: number;
             /** Format: uuid */
             id: string;
             keycloakClientId: string;
+            kind: string;
             name: string;
+            redirectUris: string[];
             scopes: string[];
             secret?: string;
+            status: string;
             /** Format: date-time */
             updatedAt: string;
         };
@@ -4975,6 +5066,33 @@ export interface components {
         ConnectionInput: {
             baseUrl: string;
             webhookSecret?: string;
+        };
+        Consent: {
+            allowsApp: boolean;
+            client: components["schemas"]["ConsentClient"];
+            mayAllow: boolean;
+            mayCancel: boolean;
+            pending: boolean;
+            person: string;
+            redirectHost: string;
+            refusal?: string;
+            scopes: string[];
+        };
+        ConsentAnswer: {
+            consent?: components["schemas"]["Consent"];
+            redirectTo?: string;
+        };
+        ConsentClient: {
+            clientUri?: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        ConsentRequest: {
+            decision: string;
+            query: string;
+            scope?: string;
+            spaces?: string[];
         };
         Contributor: {
             avatarUrl?: string;
@@ -5692,8 +5810,13 @@ export interface components {
             product: string;
         };
         Metadata: {
+            authorization_endpoint: string;
+            authorization_response_iss_parameter_supported: boolean;
+            code_challenge_methods_supported: string[];
             grant_types_supported: string[];
             issuer: string;
+            registration_endpoint: string;
+            response_modes_supported: string[];
             response_types_supported: string[];
             revocation_endpoint: string;
             revocation_endpoint_auth_methods_supported: string[];
@@ -6299,6 +6422,28 @@ export interface components {
             id: string;
             title: string;
         };
+        RegistrationRequest: {
+            client_name: string;
+            client_uri?: string;
+            grant_types?: string[];
+            redirect_uris: string[];
+            response_types?: string[];
+            scope?: string;
+            token_endpoint_auth_method?: string;
+        };
+        RegistrationResponse: {
+            client_id: string;
+            client_id_issued_at: number;
+            client_name: string;
+            client_secret?: string;
+            client_secret_expires_at: number;
+            client_uri?: string;
+            grant_types: string[];
+            redirect_uris: string[];
+            response_types: string[];
+            scope: string;
+            token_endpoint_auth_method: string;
+        };
         RenewExampleSpaceRequest: {
             language?: string;
         };
@@ -6359,6 +6504,14 @@ export interface components {
             /** @enum {string} */
             category: "draft" | "review" | "approved" | "done" | "closed";
             name: string;
+        };
+        ResourceMetadata: {
+            authorization_servers: string[];
+            bearer_methods_supported: string[];
+            resource: string;
+            resource_documentation: string;
+            resource_name: string;
+            scopes_supported: string[];
         };
         Response: {
             content?: {
@@ -7023,9 +7176,13 @@ export interface components {
         TokenRequest: {
             client_id?: string;
             client_secret?: string;
+            code?: string;
+            code_verifier?: string;
             grant_type: string;
+            redirect_uri?: string;
             refresh_token?: string;
             requested_token_type?: string;
+            resource?: string;
             scope?: string;
             subject_token?: string;
             subject_token_type?: string;
@@ -7434,6 +7591,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Metadata"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getResourceMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceMetadata"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getMCPResourceMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceMetadata"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -8934,7 +9149,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -8983,7 +9198,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -10996,6 +11211,15 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
                 headers: {
@@ -11204,6 +11428,49 @@ export interface operations {
             };
         };
     };
+    oAuthAuthorize: {
+        parameters: {
+            query?: {
+                /** @description code */
+                response_type?: string;
+                client_id?: string;
+                /** @description One the app registered; a loopback one at any port. */
+                redirect_uri?: string;
+                /** @description read, or read write; what the app registered when absent. */
+                scope?: string;
+                /** @description The app's own, returned with the answer. */
+                state?: string;
+                /** @description The base64url SHA-256 of the app's verifier. */
+                code_challenge?: string;
+                /** @description S256 */
+                code_challenge_method?: string;
+                /** @description The MCP endpoint (RFC 8707). */
+                resource?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found: the browser is sent on. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listOAuthClients: {
         parameters: {
             query?: never;
@@ -11345,6 +11612,169 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getOAuthConsent: {
+        parameters: {
+            query?: {
+                /** @description And the rest of the authorize query, as it came. */
+                client_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsentAnswer"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    decideOAuthConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConsentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        redirectTo: string;
+                    };
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    oAuthRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
