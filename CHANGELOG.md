@@ -19,6 +19,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
   app where to begin. `/api/v1/meta` lists `oauth.partner-tokens@1`, and the
   partner apps of the token exchange keep working as before. In English and
   German.
+- A narrower token for one run (#499): a connected app such as Rotor trades
+  an access token of its own grant for a shorter one that may only read,
+  reach fewer of the grant's spaces or end sooner, by token exchange
+  (RFC 8693) with `stator_expires_in` and `stator_spaces`. The person's grant
+  and its tokens stay as they were, parallel runs no longer share the
+  grant's refresh token, revoking the narrower token ends it alone, and
+  ending the grant ends every token exchanged from it.
 - A settings area (#464): the avatar menu
   now holds only the person's own pages (Your profile, Notification
   settings, Watching, Themes, Access tokens), the tools to switch to,

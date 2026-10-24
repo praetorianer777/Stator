@@ -101,6 +101,11 @@ Keycloak client id and whose `aud` holds Stator's own client, the app
 authenticating with its client id and secret. The answer is an access and a
 refresh token within the person's rights. See
 [Handing partner tools a person's token](#handing-partner-tools-a-persons-token).
+The same grant also takes, as `subject_token`, a `stator_oat_` access token
+of the calling app's own grant, partner or connected on the consent page,
+and answers a narrower access token for one run, with no refresh token
+(#499), as Armature and Exciter do; see
+[A narrower token for one run](#a-narrower-token-for-one-run).
 
 - `GET /.well-known/oauth-authorization-server`, at the origin
 - `POST /oauth/token`, `POST /oauth/revoke`
@@ -690,7 +695,7 @@ the others; what Stator protects is its MCP endpoint alone.
   public app, `client_secret_basic` by default, or `client_secret_post`),
   `grant_types` (`authorization_code` among them; `refresh_token` and
   `urn:ietf:params:oauth:grant-type:token-exchange` are accepted beside it,
-  the exchange doing nothing for such an app yet) and `response_types`
+  the exchange narrowing a token of the app's own grant, below) and `response_types`
   (`code`). 201 answers them with `client_id`, `client_id_issued_at` and a
   `client_secret` (`stator_ocs_`, shown once) unless the app is public.
   Refusals are 400 `invalid_redirect_uri` or `invalid_client_metadata`.
@@ -748,12 +753,58 @@ the others; what Stator protects is its MCP endpoint alone.
   ends the grant, and a `resource` sent must be the MCP endpoint
   (`invalid_target` otherwise). `POST /api/v1/oauth/revoke` (RFC 7009) ends a
   grant by either of its tokens.
+- **A narrower token for one run**, below, leaves the grant as it is.
 - **The database.** `oauth_client` gains `kind`, `status`, `redirect_uris`,
   `client_uri` and `auth_method`, a partner keeping its Keycloak client and
   secret; administrators alone may read it or allow an app, as `stator_app`.
   Codes are in `oauth_code`, which only `stator_admin` reaches. A trigger
   refuses a code or a grant for an app nobody allowed, whoever writes it, and
   a grant for MCP alone is `mcp_only`, which only `stator_admin` may set.
+
+### A narrower token for one run
+
+An app such as Rotor runs workflows in parallel for one person. Each run
+trades an access token of the app's own grant for a shorter one that may do
+less (#499), so a run holds only what it needs and the runs never share, nor
+fight over, the grant's refresh token. It is Armature's exchange of a grant's
+token (`docs/oauth.md`) and Exciter's #235.
+
+- **The exchange.** `POST /api/v1/oauth/token`, the app authenticating as for
+  a refresh: `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
+  `subject_token=<a stator_oat_ access token of the app's own live grant>`,
+  `subject_token_type=urn:ietf:params:oauth:token-type:access_token`,
+  optionally `requested_token_type` (the same), `resource` (the MCP endpoint,
+  for an app that registered itself), and what narrows it:
+  - `scope`: `read` from a grant that writes; `read write` or none keeps the
+    grant's. Anything wider is `invalid_scope`.
+  - `stator_spaces`: space keys, separated by spaces, at most 50, each a space
+    the grant reaches and the person may see; an unknown key and a hidden one
+    are refused alike, `invalid_scope`. None keeps the grant's spaces.
+  - `stator_expires_in`: 1 to 3600 seconds (`invalid_request` otherwise). The
+    token never outlives its subject: it lasts what is asked or what the
+    subject has left, whichever is shorter, and what the subject has left
+    when nothing is asked.
+- **The answer** is `{access_token, token_type: "Bearer", expires_in, scope,
+  issued_token_type}` with `Cache-Control: no-store` and no refresh token.
+  The grant, its scope, its spaces and its own tokens are untouched.
+- **The subject** is a live access token of the calling app's own grant,
+  whose person is still a member; another app's token, a token exchanged
+  before or one that ran out is `invalid_grant`. Any other subject goes on
+  to the partner exchange above, unchanged.
+- **What it does.** It acts as its grant narrowed: `read` where it or the
+  grant only reads, the spaces it names that the grant still reaches, at the
+  MCP endpoint alone when the grant is, and until its own end. A grant
+  narrowed later, by a refresh or by its app's scopes, narrows it too.
+- **Its end.** `POST /api/v1/oauth/revoke` with the token ends it alone; a
+  refresh of the grant leaves it; ending the grant (revocation by either of
+  its tokens, the person or an administrator revoking it, a code or refresh
+  token presented twice, a new consent, the app removed) ends every token
+  exchanged from it.
+- **The database.** Exchanged tokens are `oauth_exchanged_token` rows, their
+  SHA-256 with the grant, scope, spaces and end, reached by `stator_admin`
+  alone. A trigger refuses one that outlives the grant's access token or
+  belongs to no connected app's grant, whoever writes it, and the worker's
+  sweep removes those that ran out.
 ## Connecting people to Exciter at sign-in
 
 As toward Armature above, Stator connects each person to Exciter when they

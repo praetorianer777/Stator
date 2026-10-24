@@ -3,6 +3,28 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-24: A narrower token for one run is its grant narrowed (#499)
+
+Rotor runs workflows in parallel for one person, and a grant has one access
+token that a refresh replaces, so each run trades it for a token of its own
+(RFC 8693), as in Armature and Exciter (#235). This builds what #449 below
+left for later.
+
+- **Read as the grant, narrowed.** An exchanged token is a row of its own,
+  `oauth_exchanged_token`, which authentication reads through its grant: the
+  grant's person, membership and `mcp_only`, read where either reads, and
+  the spaces it names that the grant still reaches. Narrowing the grant
+  later narrows its exchanged tokens with no update of theirs, and ending the
+  grant ends them by the foreign key.
+- **Never past the subject.** Armature lets an exchanged token last an hour
+  from the exchange; Stator, as Exciter, caps it at what the subject has
+  left, so an exchange cannot stretch a token past its end. The database
+  holds that too.
+- **Any app's own grant.** A partner app may narrow its grant's token as an
+  app that registered itself may, as in Armature, where Exciter refuses a
+  partner: the runs that need it are the same either way, and the partner's
+  identity provider exchange is told apart by the subject's prefix alone.
+
 ## 2026-10-22: Personal pages under the avatar, administration in a settings area (#464)
 
 Stator, Armature and Exciter put their menus in the same places

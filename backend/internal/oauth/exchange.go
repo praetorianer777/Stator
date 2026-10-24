@@ -23,8 +23,7 @@ import (
 // backend/internal/oauth/token.go, for partner apps alone.
 
 // exchange trades a person's access token of the shared identity provider
-// for a grant. The administrator who named the app's Keycloak client
-// consented for everybody, so no page is shown.
+// for a grant, or narrows one of the app's own grant's (#499).
 func (s *Service) exchange(ctx context.Context, client *clientRow, form url.Values) (*TokenResponse, error) {
 	if err := required(form, "subject_token", "subject_token_type"); err != nil {
 		return nil, err
@@ -34,6 +33,11 @@ func (s *Service) exchange(ctx context.Context, client *clientRow, form url.Valu
 	}
 	if kind := form.Get("requested_token_type"); kind != "" && kind != TokenTypeAccess {
 		return nil, refuse(http.StatusBadRequest, "invalid_request", "Stator issues access tokens only: requested_token_type is "+TokenTypeAccess+".")
+	}
+	// An app's own access token is narrowed; anything else is the identity
+	// provider's, which only a partner trades.
+	if auth.IsAccessToken(form.Get("subject_token")) {
+		return s.narrow(ctx, client, form)
 	}
 	if client.KeycloakClientID == nil {
 		return nil, refuse(http.StatusBadRequest, "unauthorized_client",

@@ -121,7 +121,7 @@ func (s *Service) authenticate(ctx context.Context, tx db.DBTX, cred Credentials
 
 // singleParams may each be sent once at most.
 var singleParams = []string{"grant_type", "code", "redirect_uri", "code_verifier", "refresh_token", "scope", "subject_token",
-	"subject_token_type", "requested_token_type", "client_id", "client_secret", "resource", "audience"}
+	"subject_token_type", "requested_token_type", "client_id", "client_secret", "resource", "audience", ParamExpiresIn, ParamSpaces}
 
 // Token answers the token endpoint.
 func (s *Service) Token(ctx context.Context, cred Credentials, form url.Values) (*TokenResponse, error) {
@@ -259,8 +259,8 @@ func (s *Service) refresh(ctx context.Context, client *clientRow, form url.Value
 	return out, nil
 }
 
-// Revoke is RFC 7009: a grant's access or refresh token ends the whole grant.
-// Every token is answered alike, another app's left alone.
+// Revoke is RFC 7009: a grant's access or refresh token ends the whole grant, an exchanged
+// token only itself. Every token is answered alike, another app's left alone.
 func (s *Service) Revoke(ctx context.Context, cred Credentials, token string) error {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		client, err := s.authenticate(ctx, tx, cred)
@@ -273,7 +273,10 @@ func (s *Service) Revoke(ctx context.Context, cred Credentials, token string) er
 			DELETE FROM api_token WHERE client_id = $2 AND (token_hash = $1 OR refresh_hash = $1)
 			RETURNING id, user_id`, digest, client.ID).Scan(&id, &userID)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
+			_, err = tx.Exec(ctx, `
+				DELETE FROM oauth_exchanged_token x USING api_token t
+				WHERE x.token_hash = $1 AND t.id = x.grant_id AND t.client_id = $2`, digest, client.ID)
+			return err
 		}
 		if err != nil {
 			return err

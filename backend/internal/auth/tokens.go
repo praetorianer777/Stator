@@ -245,20 +245,33 @@ func (s *Service) revoke(ctx context.Context, owner *uuid.UUID, actor, tokenID u
 	})
 }
 
-// apiTokenPrincipalSQL resolves a token to its owner. The membership is
-// joined, not left joined: a token outlives no membership.
+// apiTokenPrincipalSQL resolves a token to its owner, an exchanged one (#499) to its grant
+// narrowed. The membership is joined, not left joined: a token outlives no membership.
 const apiTokenPrincipalSQL = `
-SELECT t.id, t.scopes, t.last_used_at, t.spaces_only, t.mcp_only,
-       ARRAY(SELECT ts.space_id FROM api_token_space ts WHERE ts.token_id = t.id ORDER BY ts.space_id),
+WITH presented AS (
+    SELECT t.id, t.scopes, NULL::uuid[] AS spaces FROM api_token t
+    WHERE t.token_hash = $1 AND (t.client_id IS NOT NULL) = $2 AND (t.client_id IS NULL OR t.access_expires_at > now())
+    UNION ALL
+    SELECT x.grant_id, x.scopes, x.spaces FROM oauth_exchanged_token x
+    WHERE $2 AND x.token_hash = $1 AND x.expires_at > now()
+)
+SELECT t.id, CASE WHEN 'read' = ANY (t.scopes || pr.scopes) THEN ARRAY['read'] ELSE t.scopes END,
+       t.last_used_at, t.spaces_only OR pr.spaces IS NOT NULL, t.mcp_only,
+       ARRAY(SELECT ts.space_id FROM api_token_space ts
+             WHERE ts.token_id = t.id AND (pr.spaces IS NULL OR (t.spaces_only AND ts.space_id = ANY (pr.spaces)))
+             UNION ALL
+             SELECT sp FROM unnest(pr.spaces) sp WHERE NOT t.spaces_only
+             ORDER BY 1),
        u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
        o.name, m.role, gs.id, gs.key, gs.name
-FROM api_token t
+FROM presented pr
+JOIN api_token t ON t.id = pr.id
 JOIN app_user u ON u.id = t.user_id
 JOIN site o ON o.archived_at IS NULL
 JOIN member m ON m.user_id = t.user_id
 LEFT JOIN space gs ON gs.id = m.guest_space_id
-WHERE t.token_hash = $1 AND (t.expires_at IS NULL OR t.expires_at > now())
-  AND (t.client_id IS NOT NULL) = $2 AND (t.client_id IS NULL OR t.access_expires_at > now())`
+WHERE t.expires_at IS NULL OR t.expires_at > now()
+LIMIT 1`
 
 func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Principal, error) {
 	if err := ParseAPIToken(secret); err != nil {

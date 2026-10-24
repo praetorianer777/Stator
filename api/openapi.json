@@ -6382,7 +6382,7 @@
     "/oauth/revoke": {
       "post": {
         "operationId": "oAuthRevoke",
-        "summary": "RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike.",
+        "summary": "RFC 7009: a grant's access or refresh token ends the whole grant, a narrower token exchanged from it only itself. Every token is answered alike.",
         "tags": [
           "oauth"
         ],
@@ -6436,7 +6436,7 @@
     "/oauth/token": {
       "post": {
         "operationId": "oAuthToken",
-        "summary": "The token endpoint, for an app with its client id and secret, by HTTP Basic or in the form, or its client id alone for a public app. grant_type authorization_code redeems a code from the consent page with its PKCE verifier and return address, for a grant that acts at the MCP endpoint only; a code used twice ends that grant. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to a partner app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Access tokens last an hour. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, invalid_target, unauthorized_client, unsupported_grant_type.",
+        "summary": "The token endpoint, for an app with its client id and secret, by HTTP Basic or in the form, or its client id alone for a public app. grant_type authorization_code redeems a code from the consent page with its PKCE verifier and return address, for a grant that acts at the MCP endpoint only; a code used twice ends that grant. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to a partner app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; the same grant with an app's own grant's access token, stator_oat_..., as subject_token answers a narrower access token for one run and no refresh token: scope read from a grant that writes, stator_spaces some of the grant's spaces by key, stator_expires_in 1 to 3600 seconds and never past the subject's end; it is never a subject itself. refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Access tokens last an hour. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, invalid_target, unauthorized_client, unsupported_grant_type.",
         "tags": [
           "oauth"
         ],
@@ -30759,6 +30759,12 @@
           "scope": {
             "type": "string"
           },
+          "stator_expires_in": {
+            "type": "string"
+          },
+          "stator_spaces": {
+            "type": "string"
+          },
           "subject_token": {
             "type": "string"
           },
@@ -30796,7 +30802,6 @@
           "access_token",
           "token_type",
           "expires_in",
-          "refresh_token",
           "scope"
         ]
       },
