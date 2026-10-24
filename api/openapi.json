@@ -152,7 +152,7 @@
     "/.well-known/oauth-authorization-server": {
       "get": {
         "operationId": "oAuthMetadata",
-        "summary": "RFC 8414's metadata: the issuer, the token and revocation endpoints, the scopes and grants. Lives at the origin, outside /api/v1; partners may keep it for five minutes.",
+        "summary": "RFC 8414's metadata: the issuer, the authorization, token, revocation and registration endpoints, the scopes, grants and PKCE method. Lives at the origin, outside /api/v1; partners may keep it for five minutes.",
         "tags": [
           "oauth"
         ],
@@ -163,6 +163,68 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Metadata"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/oauth-protected-resource": {
+      "get": {
+        "operationId": "getResourceMetadata",
+        "summary": "The MCP endpoint's metadata again, for a client that asks at the origin's well-known address.",
+        "tags": [
+          "oauth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceMetadata"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/oauth-protected-resource/api/v1/mcp": {
+      "get": {
+        "operationId": "getMCPResourceMetadata",
+        "summary": "RFC 9728's metadata of the MCP endpoint, the one resource a consented app's token is for: its address, Stator as its authorization server, the scopes. A 401 at the endpoint points here. Lives at the origin.",
+        "tags": [
+          "oauth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceMetadata"
                 }
               }
             }
@@ -2382,7 +2444,10 @@
                 "oauth.client_created",
                 "oauth.client_updated",
                 "oauth.client_removed",
-                "oauth.grant_created"
+                "oauth.grant_created",
+                "oauth.client_registered",
+                "oauth.client_allowed",
+                "oauth.grant_consented"
               ]
             }
           },
@@ -2575,7 +2640,10 @@
                 "oauth.client_created",
                 "oauth.client_updated",
                 "oauth.client_removed",
-                "oauth.grant_created"
+                "oauth.grant_created",
+                "oauth.client_registered",
+                "oauth.client_allowed",
+                "oauth.grant_consented"
               ]
             }
           },
@@ -5491,7 +5559,7 @@
     "/mcp": {
       "post": {
         "operationId": "mcp",
-        "summary": "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller.",
+        "summary": "The Model Context Protocol endpoint: the marked operations of this API as tools, run as the caller. A 401 carries WWW-Authenticate: Bearer with resource_metadata, as RFC 9728 says, so a client can connect through OAuth.",
         "tags": [
           "mcp"
         ],
@@ -5518,6 +5586,16 @@
           },
           "202": {
             "description": "Accepted"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           },
           "default": {
             "description": "An error, in the one shape every endpoint uses.",
@@ -5801,10 +5879,99 @@
         }
       }
     },
+    "/oauth/authorize": {
+      "get": {
+        "operationId": "oAuthAuthorize",
+        "summary": "The authorization endpoint: sends the browser to the consent page with the query whole, through the sign-in when nobody is signed in. The page answers at the app's return address with code, state and iss (RFC 9207), or error.",
+        "tags": [
+          "oauth"
+        ],
+        "parameters": [
+          {
+            "name": "response_type",
+            "in": "query",
+            "description": "code",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "client_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "description": "One the app registered; a loopback one at any port.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "description": "read, or read write; what the app registered when absent.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "The app's own, returned with the answer.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge",
+            "in": "query",
+            "description": "The base64url SHA-256 of the app's verifier.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code_challenge_method",
+            "in": "query",
+            "description": "S256",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resource",
+            "in": "query",
+            "description": "The MCP endpoint (RFC 8707).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found: the browser is sent on."
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/oauth/clients": {
       "get": {
         "operationId": "listOAuthClients",
-        "summary": "The partner apps that may exchange people's identity provider tokens here, by name. For administrators.",
+        "summary": "The connected apps by name: partner apps that exchange people's identity provider tokens, and apps that registered themselves, pending or allowed. For administrators.",
         "tags": [
           "oauth"
         ],
@@ -6013,10 +6180,209 @@
         }
       }
     },
+    "/oauth/consent": {
+      "get": {
+        "operationId": "getOAuthConsent",
+        "summary": "What the consent page shows for the authorize query it was opened with: the app, where the browser goes back to, the scopes asked, whether the app waits for an administrator and whether the caller may allow it; or redirectTo, an error answered at the app. Needs a session.",
+        "tags": [
+          "oauth"
+        ],
+        "parameters": [
+          {
+            "name": "client_id",
+            "in": "query",
+            "description": "And the rest of the authorize query, as it came.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentAnswer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "decideOAuthConsent",
+        "summary": "The person's decision on the consent page: allow, read alone or what was asked, for every space they see or the spaces named; or deny. Answers where the browser goes back to. An administrator allowing an app that waits allows it for everybody. Needs a session.",
+        "tags": [
+          "oauth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "redirectTo": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "redirectTo"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/register": {
+      "post": {
+        "operationId": "oAuthRegister",
+        "summary": "RFC 7591: an app registers itself with its name, return addresses (https, or http on a loopback address at any port) and how it authenticates; a confidential app's secret, stator_ocs_..., is in this answer and never again. The app is pending until a Stator administrator allows it by connecting it once, and is removed after a day otherwise. grant_types holds authorization_code, and may name refresh_token and the token exchange. At most 10 from one address in 15 minutes.",
+        "tags": [
+          "oauth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/oauth/revoke": {
       "post": {
         "operationId": "oAuthRevoke",
-        "summary": "RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike.",
+        "summary": "RFC 7009: a grant's access or refresh token ends the whole grant, a narrower token exchanged from it only itself. Every token is answered alike.",
         "tags": [
           "oauth"
         ],
@@ -6070,7 +6436,7 @@
     "/oauth/token": {
       "post": {
         "operationId": "oAuthToken",
-        "summary": "The token endpoint, for a partner app with its client id and secret, by HTTP Basic or in the form. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to the app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, unauthorized_client, unsupported_grant_type.",
+        "summary": "The token endpoint, for an app with its client id and secret, by HTTP Basic or in the form, or its client id alone for a public app. grant_type authorization_code redeems a code from the consent page with its PKCE verifier and return address, for a grant that acts at the MCP endpoint only; a code used twice ends that grant. grant_type urn:ietf:params:oauth:grant-type:token-exchange trades a person's access token of the instance's identity provider, issued to a partner app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; the same grant with an app's own grant's access token, stator_oat_..., as subject_token answers a narrower access token for one run and no refresh token: scope read from a grant that writes, stator_spaces some of the grant's spaces by key, stator_expires_in 1 to 3600 seconds and never past the subject's end; it is never a subject itself. refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Access tokens last an hour. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, invalid_target, unauthorized_client, unsupported_grant_type.",
         "tags": [
           "oauth"
         ],
@@ -20852,7 +21218,10 @@
               "oauth.client_created",
               "oauth.client_updated",
               "oauth.client_removed",
-              "oauth.grant_created"
+              "oauth.grant_created",
+              "oauth.client_registered",
+              "oauth.client_allowed",
+              "oauth.grant_consented"
             ]
           },
           "actorId": {
@@ -20983,7 +21352,10 @@
                 "oauth.client_created",
                 "oauth.client_updated",
                 "oauth.client_removed",
-                "oauth.grant_created"
+                "oauth.grant_created",
+                "oauth.client_registered",
+                "oauth.client_allowed",
+                "oauth.grant_consented"
               ]
             }
           },
@@ -21523,6 +21895,12 @@
       "Client": {
         "type": "object",
         "properties": {
+          "clientUri": {
+            "type": "string"
+          },
+          "confidential": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -21537,8 +21915,17 @@
           "keycloakClientId": {
             "type": "string"
           },
+          "kind": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
+          },
+          "redirectUris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "scopes": {
             "type": "array",
@@ -21547,6 +21934,9 @@
             }
           },
           "secret": {
+            "type": "string"
+          },
+          "status": {
             "type": "string"
           },
           "updatedAt": {
@@ -21558,7 +21948,12 @@
           "id",
           "name",
           "scopes",
+          "kind",
+          "status",
           "keycloakClientId",
+          "clientUri",
+          "redirectUris",
+          "confidential",
           "grants",
           "createdAt",
           "updatedAt"
@@ -21947,6 +22342,105 @@
         },
         "required": [
           "baseUrl"
+        ]
+      },
+      "Consent": {
+        "type": "object",
+        "properties": {
+          "allowsApp": {
+            "type": "boolean"
+          },
+          "client": {
+            "$ref": "#/components/schemas/ConsentClient"
+          },
+          "mayAllow": {
+            "type": "boolean"
+          },
+          "mayCancel": {
+            "type": "boolean"
+          },
+          "pending": {
+            "type": "boolean"
+          },
+          "person": {
+            "type": "string"
+          },
+          "redirectHost": {
+            "type": "string"
+          },
+          "refusal": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "client",
+          "redirectHost",
+          "person",
+          "scopes",
+          "pending",
+          "allowsApp",
+          "mayAllow",
+          "mayCancel"
+        ]
+      },
+      "ConsentAnswer": {
+        "type": "object",
+        "properties": {
+          "consent": {
+            "$ref": "#/components/schemas/Consent"
+          },
+          "redirectTo": {
+            "type": "string"
+          }
+        }
+      },
+      "ConsentClient": {
+        "type": "object",
+        "properties": {
+          "clientUri": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ConsentRequest": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "query",
+          "decision"
         ]
       },
       "Contributor": {
@@ -24783,6 +25277,18 @@
       "Metadata": {
         "type": "object",
         "properties": {
+          "authorization_endpoint": {
+            "type": "string"
+          },
+          "authorization_response_iss_parameter_supported": {
+            "type": "boolean"
+          },
+          "code_challenge_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "grant_types_supported": {
             "type": "array",
             "items": {
@@ -24791,6 +25297,15 @@
           },
           "issuer": {
             "type": "string"
+          },
+          "registration_endpoint": {
+            "type": "string"
+          },
+          "response_modes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "response_types_supported": {
             "type": "array",
@@ -24828,13 +25343,18 @@
         },
         "required": [
           "issuer",
+          "authorization_endpoint",
           "token_endpoint",
           "revocation_endpoint",
+          "registration_endpoint",
           "scopes_supported",
+          "response_types_supported",
+          "response_modes_supported",
           "grant_types_supported",
+          "code_challenge_methods_supported",
           "token_endpoint_auth_methods_supported",
           "revocation_endpoint_auth_methods_supported",
-          "response_types_supported",
+          "authorization_response_iss_parameter_supported",
           "service_documentation"
         ]
       },
@@ -27128,6 +27648,103 @@
           "home"
         ]
       },
+      "RegistrationRequest": {
+        "type": "object",
+        "properties": {
+          "client_name": {
+            "type": "string"
+          },
+          "client_uri": {
+            "type": "string"
+          },
+          "grant_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redirect_uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "response_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "string"
+          },
+          "token_endpoint_auth_method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_name",
+          "redirect_uris"
+        ]
+      },
+      "RegistrationResponse": {
+        "type": "object",
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "client_id_issued_at": {
+            "type": "integer"
+          },
+          "client_name": {
+            "type": "string"
+          },
+          "client_secret": {
+            "type": "string"
+          },
+          "client_secret_expires_at": {
+            "type": "integer"
+          },
+          "client_uri": {
+            "type": "string"
+          },
+          "grant_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redirect_uris": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "response_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "string"
+          },
+          "token_endpoint_auth_method": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_secret_expires_at",
+          "client_id_issued_at",
+          "client_name",
+          "redirect_uris",
+          "scope",
+          "token_endpoint_auth_method",
+          "grant_types",
+          "response_types"
+        ]
+      },
       "RenewExampleSpaceRequest": {
         "type": "object",
         "properties": {
@@ -27365,6 +27982,46 @@
         "required": [
           "name",
           "category"
+        ]
+      },
+      "ResourceMetadata": {
+        "type": "object",
+        "properties": {
+          "authorization_servers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bearer_methods_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resource": {
+            "type": "string"
+          },
+          "resource_documentation": {
+            "type": "string"
+          },
+          "resource_name": {
+            "type": "string"
+          },
+          "scopes_supported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "resource",
+          "authorization_servers",
+          "scopes_supported",
+          "bearer_methods_supported",
+          "resource_name",
+          "resource_documentation"
         ]
       },
       "Response": {
@@ -30078,7 +30735,16 @@
           "client_secret": {
             "type": "string"
           },
+          "code": {
+            "type": "string"
+          },
+          "code_verifier": {
+            "type": "string"
+          },
           "grant_type": {
+            "type": "string"
+          },
+          "redirect_uri": {
             "type": "string"
           },
           "refresh_token": {
@@ -30087,7 +30753,16 @@
           "requested_token_type": {
             "type": "string"
           },
+          "resource": {
+            "type": "string"
+          },
           "scope": {
+            "type": "string"
+          },
+          "stator_expires_in": {
+            "type": "string"
+          },
+          "stator_spaces": {
             "type": "string"
           },
           "subject_token": {
@@ -30127,7 +30802,6 @@
           "access_token",
           "token_type",
           "expires_in",
-          "refresh_token",
           "scope"
         ]
       },

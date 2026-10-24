@@ -165,7 +165,7 @@ func TestPrivilegedRolesAreRefused(t *testing.T) {
 
 // adminOnlyTables are read and written by the admin role alone, so the app
 // role has no permissive policy on them and reaches no row.
-var adminOnlyTables = map[string]bool{"user_identity": true, "user_session": true}
+var adminOnlyTables = map[string]bool{"user_identity": true, "user_session": true, "oauth_code": true, "oauth_exchanged_token": true}
 
 // A table a migration adds without forcing row level security, without the
 // admin's bypass, or without the permissive policy every restrictive access

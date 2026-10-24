@@ -49,6 +49,9 @@ type Principal struct {
 	// now be none, and never the site as a whole.
 	SpacesOnly  bool
 	TokenSpaces []uuid.UUID
+	// MCPOnly marks a connected app's grant made on the consent page, which
+	// acts at the MCP endpoint and in the calls it carries, nowhere else.
+	MCPOnly bool
 	// GuestSpace is the one space a guest reaches; nil for everybody else.
 	GuestSpace *SpaceRef
 }

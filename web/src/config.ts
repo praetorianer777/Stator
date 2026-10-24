@@ -83,6 +83,9 @@ export const TOKEN_NAME_MAX_LENGTH = 100;
 /** Where an assistant reaches the MCP endpoint, and the name its client settings give Stator. */
 export const MCP_PATH = `${API_BASE}/mcp`;
 export const MCP_SERVER_NAME = "stator";
+/** The scopes an app connected on the consent page asks for (#449): read, and write to change pages too. */
+export const OAUTH_SCOPE_READ = "read";
+export const OAUTH_SCOPE_WRITE = "write";
 /** Milliseconds in a day, for a token's expiry. */
 export const DAY_MS = 24 * 60 * 60 * 1000;
 

@@ -40,8 +40,9 @@ data:
             client_max_body_size 0;
             proxy_pass http://stator_api;
         }
-        # Partner tools read every OAuth address from here (RFC 8414).
-        location = /.well-known/oauth-authorization-server {
+        # Partner tools read every OAuth address from here (RFC 8414), and
+        # MCP clients the MCP endpoint's (RFC 9728).
+        location ^~ /.well-known/oauth- {
             proxy_pass http://stator_api;
         }
         # A page's shared draft is a WebSocket; the api pings it inside

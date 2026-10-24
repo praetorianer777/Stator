@@ -18,18 +18,19 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
-	"github.com/praetorianer777/stator/backend/internal/oidc"
 )
 
 // The token and revocation endpoints, adapted from Armature's
 // backend/internal/oauth/token.go so a partner meets the same answers.
 
-// Credentials are how an app says who it is: HTTP Basic, or both fields in
-// the form, never both ways.
+// Credentials are how an app says who it is: HTTP Basic, or the form, never
+// both ways. A public app sends its client_id alone.
 type Credentials struct {
 	ID, Secret string
 	// Basic is set when they came in the Authorization header.
 	Basic bool
+	// sentSecret tells a public app sending a secret from one sending none.
+	sentSecret bool
 }
 
 // ReadCredentials takes an app's credentials from the Authorization header
@@ -52,50 +53,75 @@ func ReadCredentials(header string, form url.Values) (Credentials, error) {
 		if form.Has("client_secret") || (form.Has("client_id") && form.Get("client_id") != id) {
 			return Credentials{}, refuse(http.StatusBadRequest, "invalid_request", "Authenticate one way: HTTP Basic or the form, not both.")
 		}
-		return Credentials{ID: id, Secret: secret, Basic: true}, nil
+		return Credentials{ID: id, Secret: secret, Basic: true, sentSecret: true}, nil
 	}
-	if form.Get("client_id") == "" || form.Get("client_secret") == "" {
-		return Credentials{}, refuse(http.StatusUnauthorized, "invalid_client", "Say which app is asking, with its client id and secret.")
+	if form.Get("client_id") == "" {
+		return Credentials{}, refuse(http.StatusUnauthorized, "invalid_client", "Say which app is asking, with its client_id, and its secret when it has one.")
 	}
-	return Credentials{ID: form.Get("client_id"), Secret: form.Get("client_secret")}, nil
+	return Credentials{ID: form.Get("client_id"), Secret: form.Get("client_secret"), sentSecret: form.Has("client_secret")}, nil
 }
 
+// clientRow is an app as the OAuth endpoints read it, with what proves it.
 type clientRow struct {
-	ID               uuid.UUID
-	Name             string
-	Scopes           []string
-	KeycloakClientID string
+	ID           uuid.UUID
+	Name         string
+	Scopes       []string
+	Kind, Status string
+	ClientURI    string
+	RedirectURIs []string
+	// KeycloakClientID is nil for an app that registered itself.
+	KeycloakClientID *string
+	// digest is nil for a public app.
+	digest []byte
 }
 
-// authenticate finds the app the credentials prove, or refuses them.
-func authenticate(ctx context.Context, tx db.DBTX, cred Credentials) (*clientRow, error) {
+// loadClient reads an app, one pending past PendingClientTTL reading as none.
+func (s *Service) loadClient(ctx context.Context, tx db.DBTX, id uuid.UUID) (*clientRow, error) {
+	var c clientRow
+	err := tx.QueryRow(ctx, `
+		SELECT id, name, scopes, kind, status, client_uri, redirect_uris, keycloak_client_id, secret_hash
+		FROM oauth_client WHERE id = $1 AND (status = 'allowed' OR created_at >= $2)`, id, s.now().Add(-PendingClientTTL)).
+		Scan(&c.ID, &c.Name, &c.Scopes, &c.Kind, &c.Status, &c.ClientURI, &c.RedirectURIs, &c.KeycloakClientID, &c.digest)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNoSuchClient
+	}
+	return &c, err
+}
+
+// authenticate finds the app the credentials prove, or refuses them; an app
+// nobody allowed yet proves nothing.
+func (s *Service) authenticate(ctx context.Context, tx db.DBTX, cred Credentials) (*clientRow, error) {
 	refused := &Error{Status: http.StatusUnauthorized, Code: "invalid_client", Basic: cred.Basic,
-		Description: "Stator does not know this app, or its secret is wrong. A Stator administrator registers it under the connected apps."}
+		Description: "Stator does not know this app, its secret is wrong, or no Stator administrator has allowed it yet."}
 	id, err := uuid.Parse(cred.ID)
 	if err != nil {
 		return nil, refused
 	}
-	var (
-		c      clientRow
-		digest []byte
-	)
-	err = tx.QueryRow(ctx, `SELECT id, name, scopes, keycloak_client_id, secret_hash FROM oauth_client WHERE id = $1`, id).
-		Scan(&c.ID, &c.Name, &c.Scopes, &c.KeycloakClientID, &digest)
-	if errors.Is(err, pgx.ErrNoRows) {
+	c, err := s.loadClient(ctx, tx, id)
+	if errors.Is(err, ErrNoSuchClient) {
 		return nil, refused
 	}
 	if err != nil {
 		return nil, err
 	}
-	if subtle.ConstantTimeCompare(auth.HashToken(cred.Secret), digest) != 1 {
+	if c.Status != StatusAllowed {
 		return nil, refused
 	}
-	return &c, nil
+	if c.digest == nil {
+		if cred.sentSecret {
+			return nil, refused
+		}
+		return c, nil
+	}
+	if cred.Secret == "" || subtle.ConstantTimeCompare(auth.HashToken(cred.Secret), c.digest) != 1 {
+		return nil, refused
+	}
+	return c, nil
 }
 
 // singleParams may each be sent once at most.
-var singleParams = []string{"grant_type", "refresh_token", "scope", "subject_token", "subject_token_type",
-	"requested_token_type", "client_id", "client_secret", "resource", "audience"}
+var singleParams = []string{"grant_type", "code", "redirect_uri", "code_verifier", "refresh_token", "scope", "subject_token",
+	"subject_token_type", "requested_token_type", "client_id", "client_secret", "resource", "audience", ParamExpiresIn, ParamSpaces}
 
 // Token answers the token endpoint.
 func (s *Service) Token(ctx context.Context, cred Credentials, form url.Values) (*TokenResponse, error) {
@@ -114,12 +140,20 @@ func (s *Service) Token(ctx context.Context, cred Credentials, form url.Values) 
 	var client *clientRow
 	if err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var err error
-		client, err = authenticate(ctx, tx, cred)
+		client, err = s.authenticate(ctx, tx, cred)
 		return err
 	}); err != nil {
 		return nil, err
 	}
-	if grant == GrantRefreshToken {
+	// A partner's tokens are for the whole API, as #461 promised; an app that
+	// registered itself is held to the one resource it may be given.
+	if resource := form.Get("resource"); client.Kind == KindRegistered && resource != "" && !s.resourceMatches(resource) {
+		return nil, refuse(http.StatusBadRequest, "invalid_target", "The one resource is Stator's MCP endpoint, "+s.Resource()+".")
+	}
+	switch grant {
+	case GrantAuthorizationCode:
+		return s.redeemCode(ctx, client, form)
+	case GrantRefreshToken:
 		return s.refresh(ctx, client, form)
 	}
 	return s.exchange(ctx, client, form)
@@ -145,102 +179,6 @@ func asked(raw string, allowed []string) ([]string, error) {
 		return nil, refuse(http.StatusBadRequest, "invalid_scope", "Ask for read and at most "+joinScope(allowed)+".")
 	}
 	return scopes, nil
-}
-
-// exchange trades a person's access token of the shared identity provider
-// for a grant. The administrator who named the app's Keycloak client
-// consented for everybody, so no page is shown.
-func (s *Service) exchange(ctx context.Context, client *clientRow, form url.Values) (*TokenResponse, error) {
-	if err := required(form, "subject_token", "subject_token_type"); err != nil {
-		return nil, err
-	}
-	if form.Get("subject_token_type") != TokenTypeAccess {
-		return nil, refuse(http.StatusBadRequest, "invalid_request", "Stator exchanges access tokens only: subject_token_type is "+TokenTypeAccess+".")
-	}
-	if kind := form.Get("requested_token_type"); kind != "" && kind != TokenTypeAccess {
-		return nil, refuse(http.StatusBadRequest, "invalid_request", "Stator issues access tokens only: requested_token_type is "+TokenTypeAccess+".")
-	}
-	scopes, err := asked(form.Get("scope"), client.Scopes)
-	if err != nil {
-		return nil, err
-	}
-	identity, err := s.sso.VerifyAccessToken(ctx, form.Get("subject_token"), client.KeycloakClientID)
-	switch {
-	case errors.Is(err, oidc.ErrNotConfigured):
-		return nil, refuse(http.StatusBadRequest, "unauthorized_client", "Single sign-on is not set up in this Stator, so there is no identity provider token to exchange.")
-	case errors.Is(err, oidc.ErrUnreachable):
-		return nil, err
-	case err != nil:
-		s.log.Info("a partner's identity provider token was refused", "client_id", client.ID, "error", err)
-		return nil, refuse(http.StatusBadRequest, "invalid_grant", "The identity provider's token was refused: "+sentence(err))
-	}
-	userID, role, err := s.sso.Admit(ctx, identity)
-	switch {
-	case errors.Is(err, oidc.ErrNotAMember) || errors.Is(err, auth.ErrUserInactive) || (err == nil && role == auth.RoleGuest):
-		return nil, refuse(http.StatusBadRequest, "invalid_grant",
-			identity.Name+" has no Stator account yet. Sign in to Stator once, or ask an administrator to let them in.")
-	case err != nil:
-		return nil, err
-	}
-	return s.grant(ctx, client, userID, scopes)
-}
-
-// sentence is a refusal's reason as the end of a sentence.
-func sentence(err error) string {
-	return strings.TrimSuffix(err.Error(), ".") + "."
-}
-
-// grant makes or renews the person's one grant for the app. A live grant
-// keeps its scopes and gains the ones asked, as Armature's does
-// (Cloudster1/Armature#298); only a narrower refresh narrows it.
-func (s *Service) grant(ctx context.Context, client *clientRow, userID uuid.UUID, scopes []string) (*TokenResponse, error) {
-	access, accessDigest, err := auth.GeneratePrefixed(auth.AccessTokenPrefix)
-	if err != nil {
-		return nil, err
-	}
-	refresh, refreshDigest, err := auth.GeneratePrefixed(auth.RefreshTokenPrefix)
-	if err != nil {
-		return nil, err
-	}
-	now := s.now()
-	var (
-		id   uuid.UUID
-		held []string
-	)
-	_, err = s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		// Held as the app may still give them, so a narrowed app gives no more.
-		var before []string
-		err := tx.QueryRow(ctx, `SELECT scopes FROM api_token WHERE user_id = $1 AND client_id = $2 AND expires_at > now()`, userID, client.ID).Scan(&before)
-		switch {
-		case err == nil:
-			for _, scope := range grantScopes(before) {
-				if !slices.Contains(scopes, scope) && slices.Contains(client.Scopes, scope) {
-					scopes = append(scopes, scope)
-				}
-			}
-		case !errors.Is(err, pgx.ErrNoRows):
-			return err
-		}
-		if err := tx.QueryRow(ctx, `
-			INSERT INTO api_token (user_id, name, token_hash, scopes, expires_at, client_id, refresh_hash, access_expires_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-			ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO UPDATE SET
-			    name = EXCLUDED.name, token_hash = EXCLUDED.token_hash, scopes = EXCLUDED.scopes,
-			    expires_at = EXCLUDED.expires_at, refresh_hash = EXCLUDED.refresh_hash,
-			    access_expires_at = EXCLUDED.access_expires_at
-			RETURNING id, scopes`,
-			userID, client.Name+auth.ConnectedAppSuffix, accessDigest, tokenScopes(scopes), now.Add(RefreshTokenTTL),
-			client.ID, refreshDigest, now.Add(AccessTokenTTL)).Scan(&id, &held); err != nil {
-			return fmt.Errorf("store the grant: %w", err)
-		}
-		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionOAuthGrantCreated, TargetType: "api_token", TargetID: &id, Actor: userID,
-			Data: map[string]any{"clientId": client.ID, "app": client.Name, "scopes": grantScopes(held)}})
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &TokenResponse{AccessToken: access, TokenType: "Bearer", ExpiresIn: int(AccessTokenTTL / time.Second),
-		RefreshToken: refresh, Scope: joinScope(grantScopes(held)), IssuedTokenType: TokenTypeAccess}, nil
 }
 
 // refresh rotates a grant's tokens. A refresh token rotated already ends the
@@ -321,11 +259,11 @@ func (s *Service) refresh(ctx context.Context, client *clientRow, form url.Value
 	return out, nil
 }
 
-// Revoke is RFC 7009: a grant's access or refresh token ends the whole grant.
-// Every token is answered alike, another app's left alone.
+// Revoke is RFC 7009: a grant's access or refresh token ends the whole grant, an exchanged
+// token only itself. Every token is answered alike, another app's left alone.
 func (s *Service) Revoke(ctx context.Context, cred Credentials, token string) error {
 	_, err := s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		client, err := authenticate(ctx, tx, cred)
+		client, err := s.authenticate(ctx, tx, cred)
 		if err != nil || token == "" {
 			return err
 		}
@@ -335,7 +273,10 @@ func (s *Service) Revoke(ctx context.Context, cred Credentials, token string) er
 			DELETE FROM api_token WHERE client_id = $2 AND (token_hash = $1 OR refresh_hash = $1)
 			RETURNING id, user_id`, digest, client.ID).Scan(&id, &userID)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
+			_, err = tx.Exec(ctx, `
+				DELETE FROM oauth_exchanged_token x USING api_token t
+				WHERE x.token_hash = $1 AND t.id = x.grant_id AND t.client_id = $2`, digest, client.ID)
+			return err
 		}
 		if err != nil {
 			return err

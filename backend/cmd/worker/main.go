@@ -28,6 +28,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/mail"
 	"github.com/praetorianer777/stator/backend/internal/netguard"
 	"github.com/praetorianer777/stator/backend/internal/notify"
+	"github.com/praetorianer777/stator/backend/internal/oauth"
 	"github.com/praetorianer777/stator/backend/internal/objectstore"
 	"github.com/praetorianer777/stator/backend/internal/observability"
 	"github.com/praetorianer777/stator/backend/internal/page"
@@ -158,6 +159,7 @@ func run() error {
 	}
 	go audit.NewRetention(cluster, cfg.RetainAudit, log).Run(ctx)
 	go pageview.NewRetention(cluster, cfg.RetainPageViews, log).Run(ctx)
+	go oauth.NewSweeper(cluster, log).Run(ctx)
 
 	build := version.Current()
 	log.Info("worker started", "env", cfg.Env, "version", build.Version, "commit", build.Commit)
