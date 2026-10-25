@@ -339,6 +339,8 @@ func TestTheOwnerIsNeverDemotedByAMapping(t *testing.T) {
 	t.Run("straight through SQL the database refuses to hand an owner to the provider", func(t *testing.T) {
 		conn := h.appConn(t)
 		aliceID := h.userID(t, "alice@suite.test")
+		// As the owner herself, since only an administrator changes a role at all.
+		actAs(t, conn, aliceID)
 		for _, sql := range []string{
 			`UPDATE member SET role = 'member', role_source = 'oidc' WHERE user_id = $1`,
 			`UPDATE member SET role_source = 'oidc' WHERE user_id = $1`,
