@@ -41,6 +41,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
   link in a paragraph, as the Markdown spelling of it does, where it used to
   refuse the whole file. A file that still cannot be a page says on which
   line the block it cannot place starts.
+- Member roles, removing members, groups and their memberships, and the
+  site's settings such as its default theme are held to administrators in
+  the database too, not only by the service (#530). Sign-in through the
+  identity provider, invitations, join requests and guests keep working as
+  before, and a member who unshares the default theme still takes it off.
 
 ## [0.1.0] - 2026-10-21
 
