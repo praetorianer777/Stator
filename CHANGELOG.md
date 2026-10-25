@@ -46,6 +46,14 @@ and the versioning [Semantic Versioning](https://semver.org/).
   the database too, not only by the service (#530). Sign-in through the
   identity provider, invitations, join requests and guests keep working as
   before, and a member who unshares the default theme still takes it off.
+- Accounts, sign-ins in progress and requests to join are held in the
+  database too, not only by the service (#535). A member changes only their
+  own settings (language, time zone and whether they appear among a page's
+  readers), never another account, nor their own address, name, picture,
+  password or whether their account is switched on; sign-ins in progress
+  are out of the application's reach; and only administrators see and
+  answer requests to join. Sign-in, invitations, created members and the
+  profile page keep working as before.
 
 ## [0.1.0] - 2026-10-21
 
