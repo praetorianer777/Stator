@@ -257,7 +257,7 @@ Adapted from Exciter, at commit 3b340ca (#188):
 - web/src/features/oauth/ConsentPage.tsx: web/src/features/oauth/ConsentPage.tsx
 
 Adapted from Exciter, at commit c0d072d (#190):
-- backend/internal/via and migration 00880: internal/via (Kind, Via and
+- backend/internal/via and migration 00920: internal/via (Kind, Via and
   Column) and migration 00820_via (via_held and the via_stamped trigger),
   for page versions, comments, remote links, attachments, reactions and the
   audit log, with a grant read from the token row's client_id
