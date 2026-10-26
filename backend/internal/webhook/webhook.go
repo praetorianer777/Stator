@@ -159,7 +159,9 @@ type WebhookDelivery struct {
 	// so a receiver can tell a repeat.
 	EventID uuid.UUID `json:"eventId"`
 	Topic   string    `json:"topic"`
-	Attempt int       `json:"attempt"`
+	// Attempt numbers the automatic tries 1 to MaxAttempts, and the sends by
+	// hand apart from them.
+	Attempt int `json:"attempt"`
 	// Manual is a test or a redelivery somebody asked for.
 	Manual        bool          `json:"manual"`
 	DeliveryState DeliveryState `json:"state"`

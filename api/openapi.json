@@ -19733,7 +19733,7 @@
     "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver": {
       "post": {
         "operationId": "redeliverWebhook",
-        "summary": "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
+        "summary": "Send a logged delivery's event again, now, as a send by hand numbered apart from the automatic attempts, with the payload read afresh as the owner. For administrators.",
         "tags": [
           "webhooks"
         ],
