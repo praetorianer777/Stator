@@ -54,6 +54,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
   are out of the application's reach; and only administrators see and
   answer requests to join. Sign-in, invitations, created members and the
   profile page keep working as before.
+- `backup restore` without `-yes`, and a command `backup` does not know,
+  are refused before it reads its settings or opens the database or object
+  storage (#532), so a refused restore touches nothing and no longer makes
+  the bucket.
 
 ## [0.1.0] - 2026-10-21
 
