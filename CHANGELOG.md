@@ -61,6 +61,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
 - `migrate` refuses a command it does not know, or `up-to` without a
   version number, at once (#533), where it used to wait up to half a minute
   for the database first.
+- Trying to change who administers the organization says to change a role
+  under Single sign-on, as the settings name that screen, instead of under
+  Users (#534).
 
 ## [0.1.0] - 2026-10-21
 

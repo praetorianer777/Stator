@@ -208,7 +208,7 @@ Changed: `POST /pages` takes `publish`, `PATCH /pages/{pageID}` publishes,
   from every route but `/auth/*` and `/access/me`. `createSpace` is making
   spaces; nobody beyond the administrators by default. `administer` is held by
   the organization's owners and administrators, `fixed: true`: it follows their
-  roles, changed under Users, and PUT on it answers 409. `PUT` replaces the
+  roles, changed under Single sign-on, and PUT on it answers 409. `PUT` replaces the
   whole subject list.
 - **Space permissions.** `view`, `addPages` (add, edit, move, copy, publish,
   restore versions, attach files), `addComments`, `delete` (move pages to the
