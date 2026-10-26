@@ -25,7 +25,7 @@ const EveryoneName = "Everyone"
 
 var (
 	// ErrFixed refuses changing administer, which follows the roles.
-	ErrFixed = errors.New("administering the organization follows the owner and admin roles; change those under Users")
+	ErrFixed = errors.New("administering the organization follows the owner and admin roles; change those under Single sign-on")
 	// ErrUnknownPermission is the answer for a permission that does not exist.
 	ErrUnknownPermission = errors.New("there is no such permission")
 )
