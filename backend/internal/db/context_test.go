@@ -71,3 +71,24 @@ func TestAnAnonymousReaderIsNobodyAndNamingSomebodyEndsIt(t *testing.T) {
 		t.Error("a context nobody made anonymous is")
 	}
 }
+
+func TestWhatAPersonActsThroughFollowsThemAndNoOther(t *testing.T) {
+	person, token := uuid.New(), uuid.New()
+	through := WithVia(WithUserInSpaces(context.Background(), person, nil), token)
+	if id, ok := ViaFrom(through); !ok || id != token {
+		t.Fatalf("the context acts through %v %v, want %v", id, ok, token)
+	}
+	if _, only := SpacesFrom(through); !only {
+		t.Error("naming the token dropped its spaces")
+	}
+	// The worker naming somebody else on the same context acts through nothing of the person before.
+	if _, ok := ViaFrom(WithUser(through, uuid.New())); ok {
+		t.Error("naming another person kept the token")
+	}
+	if _, ok := ViaFrom(WithVia(context.Background(), token)); ok {
+		t.Error("a token without a person is named")
+	}
+	if _, ok := ViaFrom(WithVia(WithAnonymous(context.Background()), token)); ok {
+		t.Error("an anonymous reader acts through a token")
+	}
+}

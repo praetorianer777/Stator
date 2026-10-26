@@ -46,8 +46,9 @@ func (h *harness) signInRows(t *testing.T, m member) {
 }
 
 // Straight through SQL as stator_app: the sign-in provider and the audit log
-// show nothing without a caller, and the tables that hold accounts' sessions
-// and identities show the application nothing at all, nor let it write them.
+// show nothing without a caller, and the tables that hold accounts' sessions,
+// identities and pending sign-ins show the application nothing at all, nor let
+// it write them.
 func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 	h := newHarness(t)
 	a := h.makeMember(t, "iota")
@@ -67,8 +68,8 @@ func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 		}
 		return n
 	}
-	orgTables := []string{"groups", "group_member", "oidc_provider", "oidc_login", "join_request", "audit_log"}
-	globalTables := []string{"user_session", "user_identity"}
+	orgTables := []string{"groups", "group_member", "oidc_provider", "join_request", "audit_log"}
+	globalTables := []string{"user_session", "user_identity", "oidc_login"}
 
 	t.Run("with nobody set nothing kept to administrators is visible", func(t *testing.T) {
 		for _, table := range append([]string{"oidc_provider", "audit_log"}, globalTables...) {

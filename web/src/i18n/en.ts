@@ -2581,6 +2581,10 @@ export const en = {
     allConfirmed: "Everybody who may read it has confirmed.",
     more: (n: number) => `and ${n} more`,
   },
+  via: {
+    through: (name: string) => `through ${name}`,
+    kinds: { token: "a personal access token", oauth: "a connected app" } as Record<"token" | "oauth", string>,
+  },
   notFound: {
     title: "Page not found",
     emptyTitle: "Nothing lives at this address",
@@ -3661,10 +3665,11 @@ export const en = {
     testDelivered: (name: string, status: number) => `The ping reached ${name}. The receiver answered ${status}.`,
     testFailed: (name: string, why: string) => `The ping did not reach ${name}. ${why}`,
     logTitle: (name: string) => `Deliveries to ${name}`,
-    logIntro: "One row per attempt, newest first. An event that fails is tried again after 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours.",
+    logIntro:
+      "One row per attempt, newest first. An event that fails is tried again after 1 minute, 5 minutes, 30 minutes, 2 hours and 12 hours. Sends by hand are counted apart and leave these retries as they are.",
     logEmpty: "Nothing has been sent here yet. Send a test ping from the webhook's actions.",
     attempt: (n: number) => `attempt ${n}`,
-    manual: "by hand",
+    byHand: (n: number) => `by hand, send ${n}`,
     states: {
       pending: "Waiting",
       delivered: "Delivered",

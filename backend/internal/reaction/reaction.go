@@ -9,6 +9,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 const (
@@ -51,6 +53,8 @@ func (e *FieldError) Unwrap() error { return e.err }
 type Reactor struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
+	// Via is the token or connected app they reacted through, null for a session (#498).
+	Via *via.Via `json:"via"`
 }
 
 // Reaction is one emoji on a page or comment: how many put it there, whether

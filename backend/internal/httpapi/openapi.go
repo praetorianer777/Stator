@@ -46,6 +46,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/theme"
 	"github.com/praetorianer777/stator/backend/internal/unfurl"
 	"github.com/praetorianer777/stator/backend/internal/version"
+	"github.com/praetorianer777/stator/backend/internal/via"
 	"github.com/praetorianer777/stator/backend/internal/watch"
 	"github.com/praetorianer777/stator/backend/internal/webhook"
 	"github.com/praetorianer777/stator/backend/internal/wikiread"
@@ -907,7 +908,7 @@ var operations = append([]operation{
 		query:     []param{{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(webhook.MaxDeliveries) + "; " + strconv.Itoa(webhook.DefaultDeliveries) + " when absent."}},
 		responses: map[int]any{200: env{"deliveries": []webhook.WebhookDelivery{}}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", wholeInstance: true, tag: "webhooks",
-		summary:   "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
+		summary:   "Send a logged delivery's event again, now, as a send by hand numbered apart from the automatic attempts, with the payload read afresh as the owner. For administrators.",
 		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
 
 	{method: "GET", path: "/armature/account", handler: "handleGetArmatureAccount", tag: "armature",
@@ -1277,6 +1278,7 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(spaceio.ImportSource(""))] = enumStrings(spaceio.ImportSources)
 	b.Enums[reflect.TypeOf(wikiread.LossKind(""))] = enumStrings(wikiread.LossKinds)
 	b.Enums[reflect.TypeOf(spaceio.ExportFormat(""))] = enumStrings(spaceio.Formats)
+	b.Enums[reflect.TypeOf(via.Kind(""))] = enumStrings(via.Kinds)
 	b.FieldOverrides["SpaceExport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ExportStates)}
 	b.FieldOverrides["SpaceImport.state"] = &openapi.Schema{Type: "string", Enum: enumStrings(spaceio.ImportStates)}
 	b.FieldOverrides["SpaceExport.failure"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: enumStrings(spaceio.ExportFailures)}, {Type: "null"}}}

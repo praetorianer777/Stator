@@ -101,6 +101,11 @@ func (c *Cluster) inTx(
 				return fmt.Errorf("apply the token's spaces: %w", err)
 			}
 		}
+		if via, ok := ViaFrom(ctx); ok {
+			if _, err := tx.Exec(ctx, setVarSQL, ViaVar, via.String()); err != nil {
+				return fmt.Errorf("apply what the person acts through: %w", err)
+			}
+		}
 	} else if AnonymousFrom(ctx) {
 		if _, err := tx.Exec(ctx, setVarSQL, AnonymousVar, "on"); err != nil {
 			return fmt.Errorf("apply the anonymous reader: %w", err)

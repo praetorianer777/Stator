@@ -6,15 +6,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
 	"github.com/praetorianer777/stator/backend/internal/events"
@@ -143,7 +147,7 @@ type deliveryRow struct {
 
 // awaitState waits until the webhook holds at least attempts attempts at an
 // event of the topic about the page and the latest is in the state wanted,
-// and returns the log.
+// and returns the log, oldest first.
 func (h *harness) awaitState(t *testing.T, webhookID, topic, pageID, want string, attempts int) []deliveryRow {
 	t.Helper()
 	deadline := time.Now().Add(deliveryWait)
@@ -151,7 +155,7 @@ func (h *harness) awaitState(t *testing.T, webhookID, topic, pageID, want string
 		rows, err := h.super.Query(context.Background(), `
 			SELECT id, attempt, state, error, manual, event::text FROM webhook_delivery
 			WHERE endpoint_id = $1 AND topic = $2 AND ($3 = '' OR event ->> 'pageId' = $3)
-			ORDER BY attempt`, webhookID, topic, pageID)
+			ORDER BY created_at, id`, webhookID, topic, pageID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -433,10 +437,10 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 		asDocumented(t, awaitTopic(t, bin, topic, page, 1)[0], plain)
 	}
 
-	t.Run("a redelivery is the same event again, as the next attempt", func(t *testing.T) {
+	t.Run("a redelivery is the same event again, as its first send by hand", func(t *testing.T) {
 		log := h.awaitState(t, id, events.TopicPagePublished, page, "delivered", 1)
 		again := obj(t, want(t, owner.post(t, path+"/deliveries/"+log[0].ID.String()+"/redeliver", nil), http.StatusOK, "redeliver"), "delivery")
-		if again["state"] != "delivered" || number(again["attempt"]) != 2 || again["manual"] != true || again["eventId"] != published.env["id"] {
+		if again["state"] != "delivered" || number(again["attempt"]) != 1 || again["manual"] != true || again["eventId"] != published.env["id"] {
 			t.Fatalf("the redelivery reads %v", again)
 		}
 		both := awaitTopic(t, bin, events.TopicPagePublished, page, 2)
@@ -444,6 +448,86 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 			t.Error("a redelivery does not repeat the event under a delivery of its own")
 		}
 	})
+}
+
+func TestARedeliveryLeavesTheEventEveryAutomaticRetry(t *testing.T) {
+	h := newHarness(t)
+	api := newAPIServer(t, h)
+	h.runStackWorker(t)
+	home := h.makeMember(t, "hooks-redeliver-retry")
+	owner := api.as(t, home.user)
+	docs := newTree(t, owner, "RDR", "Redelivered retries")
+	bin, address := hookBin(t)
+	binAnswers(t, bin, http.StatusServiceUnavailable)
+	id, _ := makeHook(t, owner, "Down", address, events.TopicPagePublished)
+	page := docs.add(docs.homeID, "Page")
+	log := h.awaitState(t, id, events.TopicPagePublished, page, "pending", 2)
+
+	again := obj(t, want(t, owner.post(t, "/api/v1/webhooks/"+id+"/deliveries/"+log[0].ID.String()+"/redeliver", nil), http.StatusOK, "redeliver"), "delivery")
+	if again["state"] != "failed" || again["manual"] != true {
+		t.Fatalf("the redelivery reads %v", again)
+	}
+	if n := number(again["attempt"]); n != 1 {
+		t.Errorf("the first send by hand is numbered %v, want 1 apart from the automatic attempts", n)
+	}
+
+	for n := 2; n <= webhook.MaxAttempts; n++ {
+		retry := h.awaitRetry(t, id, page, n)
+		h.cleanupExec(t, h.super, `UPDATE webhook_delivery SET next_attempt_at = now() WHERE id = $1`, retry)
+	}
+	log = h.awaitState(t, id, events.TopicPagePublished, page, "failed", webhook.MaxAttempts+1)
+	var automatic, every []int
+	for n := 1; n <= webhook.MaxAttempts; n++ {
+		every = append(every, n)
+	}
+	for _, d := range log {
+		if !d.Manual {
+			if d.State != "failed" {
+				t.Errorf("automatic attempt %d is %s, want failed", d.Attempt, d.State)
+			}
+			automatic = append(automatic, d.Attempt)
+		}
+	}
+	if !slices.Equal(automatic, every) {
+		t.Errorf("the automatic attempts are %v, want 1 to %d", automatic, webhook.MaxAttempts)
+	}
+	if got := awaitTopic(t, bin, events.TopicPagePublished, page, webhook.MaxAttempts+1); len(got) != webhook.MaxAttempts+1 {
+		t.Errorf("the receiver was posted %d times, want %d", len(got), webhook.MaxAttempts+1)
+	}
+
+	t.Run("the database still holds one automatic attempt per number", func(t *testing.T) {
+		_, err := h.super.Exec(context.Background(), `
+			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, state)
+			SELECT endpoint_id, event_id, topic, event, occurred_at, attempt, 'failed' FROM webhook_delivery WHERE id = $1`, log[0].ID)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "23505" || pgErr.ConstraintName != "webhook_delivery_once" {
+			t.Errorf("a second automatic attempt 1 was answered %v, want a unique violation", err)
+		}
+	})
+}
+
+// awaitRetry waits for the automatic attempt numbered n at the page's event
+// to be pending, and returns it.
+func (h *harness) awaitRetry(t *testing.T, webhookID, pageID string, n int) uuid.UUID {
+	t.Helper()
+	deadline := time.Now().Add(deliveryWait)
+	for {
+		var id uuid.UUID
+		err := h.super.QueryRow(context.Background(), `
+			SELECT id FROM webhook_delivery
+			WHERE endpoint_id = $1 AND event ->> 'pageId' = $2 AND NOT manual AND attempt = $3 AND state = 'pending'`,
+			webhookID, pageID, n).Scan(&id)
+		if err == nil {
+			return id
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			t.Fatal(err)
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("automatic attempt %d at %s was not queued within %s", n, pageID, deliveryWait)
+		}
+		time.Sleep(workerIdle * 4)
+	}
 }
 
 func TestAFailingReceiverIsRetriedThenTurnedOff(t *testing.T) {

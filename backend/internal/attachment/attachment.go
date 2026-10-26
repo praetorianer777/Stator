@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 // DefaultMaxSize is the largest file a page takes unless STATOR_UPLOAD_LIMIT
@@ -39,6 +41,8 @@ type Attachment struct {
 	EditedFrom *int `json:"editedFrom"`
 	// Preview says whether the file can be shown in place as a PDF, and how.
 	Preview PreviewKind `json:"preview"`
+	// Via is the token or connected app it was uploaded through, null for a session (#498).
+	Via *via.Via `json:"via"`
 }
 
 var (

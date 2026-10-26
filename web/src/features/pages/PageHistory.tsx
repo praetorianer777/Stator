@@ -18,6 +18,7 @@ import {
 } from "@/api/versions";
 import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, cx, type Crumb } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { Through } from "@/components/Through";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocDiffView, DocView } from "@/features/editor/DocView";
 import { HISTORY_PAGE_SIZE } from "@/config";
@@ -202,6 +203,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                     </Td>
                     <Td className="text-ink-muted">
                       {entry ? t.history.published(entry.authorName, when(entry.createdAt)) : ""}
+                      <Through via={entry?.via} className="block" />
                       {entry?.originalAuthor && (
                         <span className="block text-xs" data-original-author="">
                           {t.history.originalAuthor(entry.originalAuthor)}
@@ -300,7 +302,7 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
         meta={
           version && (
             <>
-              {t.history.published(version.authorName, when(version.createdAt))}
+              {t.history.published(version.authorName, when(version.createdAt))} <Through via={version.via} />
               {version.originalAuthor && <span className="block">{t.history.originalAuthor(version.originalAuthor)}</span>}
               {version.review && <ReviewNote review={version.review} />}
               {version.comment && <span className="block text-ink">{version.comment}</span>}

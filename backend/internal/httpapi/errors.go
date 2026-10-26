@@ -540,7 +540,7 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, comment.ErrNotYours):
 		return ErrForbidden("You can only change or delete your own comments. Ask an administrator of the space to delete somebody else's.")
 	case errors.Is(err, perm.ErrFixed):
-		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Users instead.")
+		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Single sign-on in the settings instead.")
 	case errors.Is(err, perm.ErrUnknownPermission):
 		return ErrNotFound("There is no such global permission. Choose use, createSpace or administer.")
 	case errors.Is(err, page.ErrNotStewardable):

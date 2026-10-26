@@ -25,6 +25,27 @@ left for later.
   partner: the runs that need it are the same either way, and the partner's
   identity provider exchange is told apart by the subject's prefix alone.
 
+## 2026-10-24: The database marks what a connected app wrote (#498)
+
+A reader of a page's history tells what a person wrote from what a script
+or an assistant wrote for them, as Exciter shows it since
+Cloudster1/Exciter#190.
+
+- **The database writes it.** A trigger stamps `via` from `app.via`, which
+  the transaction sets from the token the request rode on, and only when the
+  acting person holds that token. A value sent by hand is overwritten and a
+  change is refused, so neither a service bug nor a raw statement can make
+  a person's own words look like an app's, or the other way round.
+- **The name is copied, not referenced.** No key points at the token: a
+  token revoked or a grant ended keeps its name on what it wrote, as the
+  history must not change when somebody tidies their tokens.
+- **A grant is named by its app.** A connected app's grant is a token row
+  with the app's `client_id`; it reads as `oauth` and the app's name, a
+  personal token as `token` and its own name.
+- **Work done later carries none.** A scheduled publish, an import the
+  worker finishes or a notification names no token of the person's, so it
+  is not marked, as Exciter's worker is not.
+
 ## 2026-10-22: Personal pages under the avatar, administration in a settings area (#464)
 
 Stator, Armature and Exciter put their menus in the same places

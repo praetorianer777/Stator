@@ -200,6 +200,12 @@ delivery it sees to it.
 | `occurredAt` | When the event happened, in UTC. |
 | `payload` | The event's own fields, read as the endpoint's owner when the attempt is sent. |
 
+The `actor` of a payload carries `via` when the change was written through
+a personal access token or a connected app (#498): `{ "kind": "token",
+"name": "Nightly script" }`, or `"oauth"` and the app's name, as the token
+was named at that moment. It is left out for a change made in the browser,
+so a receiver that does not know it reads past it.
+
 | Header | What it carries |
 | --- | --- |
 | `X-Stator-Event` | The topic, as in the body. |

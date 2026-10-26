@@ -14,6 +14,7 @@ const spaceId = "0199a000-0000-7000-8000-00000000005a";
 const pageId = "0199a000-0000-7000-8000-0000000000aa";
 
 const entry = (over: Partial<AuditEntry>): AuditEntry => ({
+  via: null,
   id: crypto.randomUUID(),
   action: "space.created",
   targetType: "space",
@@ -30,7 +31,7 @@ const first = [
   entry({ action: "page.exported", targetType: "page", targetId: pageId, data: { title: "Plans", space: "DOC", scope: "subtree", pages: 3 }, ip: "10.0.0.7" }),
   entry({ action: "member.joined", targetType: "user", actorId: null, actorName: "", targetId: "0199a000-0000-7000-8000-0000000000b0" }),
   entry({ action: "token.revoked", targetType: "api_token", actorId: "0199a000-0000-7000-8000-0000000000c0", actorName: "", data: { owner: "x" } }),
-  entry({ action: "space.created", data: { key: "DOC", name: "Docs" } }),
+  entry({ action: "space.created", data: { key: "DOC", name: "Docs" }, via: { kind: "token", name: "Nightly script" } }),
 ];
 const second = [
   entry({ action: "sso.provider_saved", targetType: "oidc_provider", targetId: null, data: { issuer: "https://id.test", clientSecret: "kept" } }),
@@ -76,6 +77,8 @@ describe("the audit log", () => {
     expect(rows[1]).toHaveTextContent("from 10.0.0.7");
     expect(rows[2]).toHaveTextContent("System");
     expect(rows[3]).toHaveTextContent("Former member");
+    expect(rows[4]!.querySelector('[data-via="token"]')).toHaveTextContent("through Nightly script");
+    expect(rows[1]!.querySelector("[data-via]")).toBeNull();
     expect(screen.getByText("Each entry is kept for 365 days.")).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });

@@ -5,6 +5,7 @@ import { useDeleteComment, useEditComment, useReply, useStartThread, useThreads,
 import type { Page } from "@/api/pages";
 import { Avatar, Button, ErrorBanner, SectionTitle, Skeleton, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { Through } from "@/components/Through";
 import { COMMENT_HIGHLIGHT_MS } from "@/config";
 import { DocView } from "@/features/editor/DocView";
 import { CommentReactions } from "@/features/reactions/Reactions";
@@ -251,6 +252,7 @@ function CommentView({ pageId, comment, canReact }: { pageId: string; comment: C
           <span className="font-medium text-ink" data-comment-author="">
             {author}
           </span>
+          <Through via={comment.via} />
           <time dateTime={comment.createdAt}>{when.format(new Date(comment.createdAt))}</time>
           {comment.editedAt && !comment.deleted && <span data-comment-edited="">· {t.comments.edited}</span>}
           {comment.originalAuthor && <span data-comment-original="">· {t.comments.originalAuthor(comment.originalAuthor)}</span>}
