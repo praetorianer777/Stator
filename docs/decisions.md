@@ -3,6 +3,136 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-26: PlantUML, C4, Graphviz, D2 and BPMN through a Kroki inside the installation (#466)
+
+Authors ask for PlantUML, C4 and BPMN next to Mermaid. Kroki draws these
+and many more through one HTTP API, `POST /{language}/svg`, so a spike ran
+Kroki 0.34.0 with its mermaid, bpmn and excalidraw companions in a compose
+project of its own, on a network with no way out, `KROKI_SAFE_MODE=secure`,
+and drew one diagram in each language from a client on that network. The
+answer is yes, for a named set, drawn by Kroki inside the installation and
+never at kroki.io.
+
+| Image (size on disk) | Idle | Peak, one at a time | Peak, four at once | First drawing, then each after |
+| --- | --- | --- | --- | --- |
+| `kroki` (4.1 GB) | 95 MiB, under 0.5 % CPU | 253 MiB, 1 core | 222 MiB, 1.7 cores | PlantUML 0.15 s, then 0.03 s; C4-PlantUML 0.18 s; Structurizr 0.09 s, then 0.05 s; Graphviz 0.02 s; D2 0.08 s; ditaa 0.04 s; WaveDrom 0.07 s; Vega-Lite 0.19 s |
+| `kroki-bpmn` (1.6 GB, headless browser) | 177 MiB, under 1 % | 201 MiB, 1 core | 269 MiB, 4.3 cores | 0.19 s, then 0.09 s |
+| `kroki-mermaid` (1.6 GB, headless browser) | 21 MiB until the first drawing, 190 MiB after | 289 MiB, 1.8 cores | 367 MiB, 5.1 cores | 0.89 s, then 0.53 s |
+| `kroki-excalidraw` (2.1 GB, headless browser) | 170 MiB | not sampled | 367 MiB, 0.7 cores | 10.1 s, then under 0.01 s for the same scene, up to 5.3 s four at once |
+
+Four at once is four clients drawing the same language fifteen times each;
+the PlantUML of Stator's longest diagram, 20,000 characters, drew in 0.5 s
+to an SVG of 445 KB. Measured with `docker stats` on one workstation.
+
+- **Languages: PlantUML, Structurizr, Graphviz, D2 and BPMN.** PlantUML
+  covers sequence, class, state and the rest, and C4 through the C4 library
+  it carries (`!include <C4/C4_Container>`), which needs no network.
+  Structurizr is C4 written as a model. All but BPMN are in the main image;
+  BPMN needs its companion. ditaa, WaveDrom, Vega-Lite and the other
+  languages of the main image cost nothing more to run but are left out
+  until authors ask: each one is another output to check, and Vega-Lite
+  overlaps the table chart. Adding one later is a value of `language` and a
+  fence name.
+- **What it costs.** The named set is the main image and the bpmn
+  companion: about 270 MiB and no CPU to speak of at rest, about 520 MiB and
+  a few cores for a moment while several people draw. Both images are large
+  on disk, like the render service's, so Kroki is off by default in the
+  chart as render is, and a server without it offers Mermaid alone.
+- **The mermaid and excalidraw companions are not run.** Mermaid stays in
+  the browser (below), and a sketch already keeps the SVG its canvas drew
+  when it was saved, so Kroki drawing a scene again, ten seconds the first
+  time, adds nothing for export.
+- **Inside the installation only.** Kroki and its companions are services
+  of the compose stack and the chart with no published port, reached by the
+  api alone at `STATOR_KROKI_URL`. Every language drew with no network out
+  of the spike, so Kroki needs no egress: the chart gives it a network
+  policy that lets in only the api and lets out only to the bpmn companion.
+  The address is the operator's, like `STATOR_RENDER_URL` and the
+  converter's, so it is not held to `STATOR_OUTBOUND_ALLOW`, which guards
+  addresses somebody else chose; what keeps page content in is that Kroki
+  cannot reach out. Kroki logs no diagram text for a drawing, only a
+  refusal's reason, which may quote the line at fault, and runs as a user,
+  not root.
+- **One Kroki per installation.** In Dynamo's deployment Kroki is a shared
+  service like the identity provider, on the network `suite` as `kroki`.
+  Armature and Exciter draw no diagrams today; when they do, they use the
+  same one.
+- **Secure mode closes PlantUML's reach.** `!include /etc/passwd`,
+  `!include https://...`, `!includeurl`, `!includesub` and `%load_json` of a
+  file or an address are dropped without a word, and the rest of the diagram
+  draws; `!theme ... from` an address is refused with 400. A web server on
+  the spike's network saw no request from any of them. The same Kroki with
+  `KROKI_SAFE_MODE=unsafe` read `/etc/passwd` and `/etc/hostname`, so Stator
+  never runs it otherwise. Structurizr refuses `!include` and Vega-Lite a
+  data address, each with 400, in secure mode.
+- **The SVG is shown as an image, never put into the page.** No output had
+  a `<script>` or an event handler, but each language writes different SVG:
+  Mermaid through Kroki keeps HTML labels in `foreignObject`, with an
+  `<img src>` from a label kept and only its `onerror` dropped; PlantUML
+  turns `[[https://...]]` into a link with `target="_top"`; C4 embeds PNG
+  pictures as data; D2, WaveDrom and Mermaid carry `<style>`. Shown through
+  `<img>`, a browser runs nothing, loads nothing and follows no link in it,
+  whatever a language writes, so Stator keeps no table per language as it
+  does for a sketch's drawing. The api answers the SVG as `image/svg+xml`
+  with `Content-Security-Policy: default-src 'none'; style-src
+  'unsafe-inline'; img-src data:`, so the file saved and opened on its own
+  is as tame. The cost is that text in the drawing cannot be selected and
+  the drawing keeps Kroki's colours, shown on a light panel in the dark
+  theme.
+- **Size and time.** The 20,000 characters of `MaxDiagramLength` stay, for
+  every language, and the api checks them before Kroki sees anything.
+  Kroki itself refuses a body over about 10 MB with 413, the mermaid
+  companion text over 50,000 characters with 400, and PlantUML a loop that
+  never ends with 400. A drawing that runs past about nine seconds is cut
+  off with a bare 500 and no reason, so the api gives each call ten seconds,
+  says "took too long to draw" for either, limits the SVG it takes to 2 MB
+  and draws a bounded number at once, as it prints PDFs.
+- **Drawn when read, kept in Valkey.** The api draws a diagram when a
+  reader's page asks for it and keeps the SVG in Valkey under a hash of the
+  language and the text, for thirty days, and a failure for a minute, as
+  link previews keep cards; a Valkey that fails is a miss. Nothing drawn is
+  stored in the document: the page stays text, Markdown and history stay as
+  they are, no SVG comes from a browser to be checked, and a newer Kroki
+  draws again. Saving does not draw, since a page edited together is saved
+  all the time and a version in the history is read long after.
+- **When Kroki is down.** A diagram not in Valkey shows its source with a
+  sentence saying it cannot be drawn right now, as a Mermaid diagram that
+  cannot be drawn shows its source and why. Drawings already kept still
+  show.
+- **Export needs no Kroki.** A PDF prints the page as readers see it, so it
+  has the drawing when the api has one and the source with that sentence
+  when not. Word export writes a diagram's source with its note, as it does
+  for Mermaid today, for every language; Markdown export writes the source.
+- **Mermaid stays in the browser.** It keeps the live preview without a
+  round trip, the page's colours, drawing with the api away, and the strict
+  settings Stator chose (#46), which turn off the HTML labels Kroki's
+  companion keeps. Moving it would cost half a second a drawing and a
+  headless browser for the one language that draws well where it is.
+- **Live preview through the api.** The block sends the text, debounced as
+  Mermaid's preview is, to `POST /api/v1/diagrams` with its language; the
+  api checks the person may edit, brakes requests per person, and answers
+  from Valkey or Kroki. A warm drawing takes 20 to 200 ms, so a pause in
+  typing shows the drawing about as quickly as Mermaid's. Readers' pages
+  ask for the page's diagrams by page and hash, so what a reader may read is
+  checked against the page, guests and public pages included.
+- **Why a diagram cannot be drawn.** Kroki answers 400 with `Error 400:`,
+  the reason and often the line; the api passes the first line on and the
+  block shows it above the source, as the Mermaid block does. An outage or
+  a cut off drawing gets a sentence of Stator's own.
+- **The diagram node grows `language`.** Missing or `mermaid` is Mermaid, so
+  every page keeps reading as it does with no migration. The allowlist
+  takes the named set whether or not this server runs Kroki, so a page
+  moves between servers unchanged; the editor offers only the languages the
+  server says it draws.
+- **Markdown fences are named by language.** Export writes `plantuml`,
+  `structurizr`, `graphviz`, `d2` and `bpmn` as Mermaid writes `mermaid`;
+  import reads those and `puml` and `dot` as well, and any other fence stays
+  a code block.
+- **Search reads the text, BPMN by its names.** The indexed text of a
+  diagram is its source, as now, which suits every language but BPMN,
+  whose XML would fill the index with tags: for it the `name` attributes
+  are indexed, as a sketch is indexed by its words.
+
 ## 2026-10-24: A narrower token for one run is its grant narrowed (#499)
 
 Rotor runs workflows in parallel for one person, and a grant has one access
