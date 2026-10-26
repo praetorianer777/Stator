@@ -356,11 +356,7 @@ function DeliveryLog({ hook, onClose }: { hook: Webhook; onClose: () => void }) 
                 <Tag className={cx(d.state === "failed" && "text-danger")}>{t.webhooks.states[d.state]}</Tag>
                 <span className="min-w-0 flex-1">
                   <span className="block text-ink">
-                    {topicName(d.topic)}{" "}
-                    <span className="text-ink-subtle">
-                      {t.webhooks.attempt(d.attempt)}
-                      {d.manual && `, ${t.webhooks.manual}`}
-                    </span>
+                    {topicName(d.topic)} <span className="text-ink-subtle">{d.manual ? t.webhooks.byHand(d.attempt) : t.webhooks.attempt(d.attempt)}</span>
                   </span>
                   <span className="block text-xs break-words text-ink-muted">{deliveryDetail(d)}</span>
                 </span>

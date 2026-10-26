@@ -58,6 +58,12 @@ and the versioning [Semantic Versioning](https://semver.org/).
   are out of the application's reach; and only administrators see and
   answer requests to join. Sign-in, invitations, created members and the
   profile page keep working as before.
+- Sending a webhook delivery again by hand while its next retry is waiting
+  no longer cuts the event's retries short (#531). The automatic attempts
+  are numbered 1 to 6 as before, and the sends by hand apart from them: the
+  log reads "by hand, send 1" for the first, and a redelivery's `attempt`
+  in the API counts the event's sends by hand. Sends by hand already in the
+  log are renumbered so.
 - `backup restore` without `-yes`, and a command `backup` does not know,
   are refused before it reads its settings or opens the database or object
   storage (#532), so a refused restore touches nothing and no longer makes
