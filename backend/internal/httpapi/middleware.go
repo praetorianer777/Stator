@@ -173,6 +173,10 @@ func (s *Server) authenticate(next http.Handler) http.Handler {
 				} else {
 					ctx = db.WithUser(ctx, principal.UserID)
 				}
+				// What is written through a token or a grant is marked so by the database (#498).
+				if principal.TokenID != nil {
+					ctx = db.WithVia(ctx, *principal.TokenID)
+				}
 				ctx = audit.WithIP(ctx, clientIP(r))
 			}
 			r = r.WithContext(ctx)

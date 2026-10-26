@@ -9,6 +9,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- What a connected app wrote says so (#498): a version, a comment, a remote
+  link, a file, a reaction or an audit entry written through a personal
+  access token or a connected app carries `via`, the token's or the app's
+  name at that moment, and the API answers it on each, null for what a
+  person did in the browser. The page history, the comments and the audit
+  log show "through" and the name beside the person, the audit export gains
+  `via_kind` and `via_name` as its last columns, and webhooks carry `via` on
+  their actor. The database writes it and nobody can set or change it, and
+  a token revoked keeps its name on what it wrote. In English and German.
 - Connecting an app to the MCP endpoint with OAuth (#449): Rotor and AI
   assistants connect to Stator as a person without anybody pasting a token.
   An app registers itself, waits until a Stator administrator allows it by

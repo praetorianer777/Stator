@@ -4783,6 +4783,7 @@ export interface components {
             uploadedByName: string;
             version: number;
             versions: number;
+            via: components["schemas"]["Via"] | null;
             width: number | null;
         };
         AuditActor: {
@@ -4806,6 +4807,7 @@ export interface components {
             /** Format: uuid */
             targetId: string | null;
             targetType: string;
+            via: components["schemas"]["Via"] | null;
         };
         AuditFacets: {
             actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented")[];
@@ -4997,6 +4999,7 @@ export interface components {
             reactions: components["schemas"]["Reaction"][];
             /** Format: uuid */
             threadId: string;
+            via: components["schemas"]["Via"] | null;
         };
         CommentCan: {
             delete: boolean;
@@ -6060,6 +6063,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             url: string;
+            via: components["schemas"]["Via"] | null;
         };
         PageRemoteLinkInput: {
             iconUrl?: string;
@@ -6359,6 +6363,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            via: components["schemas"]["Via"] | null;
         };
         ReadConfirmation: {
             /** Format: date-time */
@@ -7302,6 +7307,7 @@ export interface components {
             title: string;
             /** Format: date-time */
             updatedAt: string;
+            via: components["schemas"]["Via"] | null;
         };
         VersionEntry: {
             /** Format: uuid */
@@ -7319,6 +7325,7 @@ export interface components {
             title: string;
             /** Format: date-time */
             updatedAt: string;
+            via: components["schemas"]["Via"] | null;
         };
         VersionReview: {
             approvedBy: string[];
@@ -7326,6 +7333,11 @@ export interface components {
             reviewId: string;
             skipReason: string;
             skippedByName: string;
+        };
+        Via: {
+            /** @enum {string} */
+            kind: "token" | "oauth";
+            name: string;
         };
         ViewCounts: {
             canListReaders: boolean;
@@ -7497,6 +7509,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
+            via?: components["schemas"]["Via"];
         };
         WebhookPing: {
             message: string;

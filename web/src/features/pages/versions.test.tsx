@@ -405,6 +405,7 @@ describe("an unpublished page", () => {
 });
 
 const entry = (number: number, over: Partial<VersionEntry> = {}): VersionEntry => ({
+  via: null,
   number,
   title: "Plans",
   comment: "",
@@ -431,6 +432,16 @@ function stubHistory(more: Record<string, Answer | ((request: Request) => Answer
 }
 
 describe("a page's history", () => {
+  it("marks a version published through a token with the token's name, and none published by hand", async () => {
+    const through = [entry(3, { via: { kind: "token", name: "Nightly script" } }), entry(2), entry(1)];
+    stubHistory({ [`GET /pages/${PAGE_ID}/versions`]: { status: 200, body: { versions: through, total: 3, limit: 20, offset: 0 } } });
+    await renderAt(HISTORY_PATH);
+    await waitFor(() => expect(document.querySelector('[data-version-row="3"] [data-via]')).not.toBeNull());
+    expect(document.querySelector('[data-version-row="3"] [data-via="token"]')).toHaveTextContent("through Nightly script");
+    expect(document.querySelector('[data-version-row="2"] [data-via]')).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+  });
+
   it("lists every version with who published it, when and why", async () => {
     stubHistory();
     await renderAt(HISTORY_PATH);

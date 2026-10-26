@@ -2581,6 +2581,10 @@ export const en = {
     allConfirmed: "Everybody who may read it has confirmed.",
     more: (n: number) => `and ${n} more`,
   },
+  via: {
+    through: (name: string) => `through ${name}`,
+    kinds: { token: "a personal access token", oauth: "a connected app" } as Record<"token" | "oauth", string>,
+  },
   notFound: {
     title: "Page not found",
     emptyTitle: "Nothing lives at this address",

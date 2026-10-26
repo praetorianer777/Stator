@@ -17,6 +17,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/events"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/reaction"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 var (
@@ -114,9 +115,10 @@ func cleanBody(body json.RawMessage) (json.RawMessage, error) {
 	return body, nil
 }
 
-const selectComments = `
+var selectComments = `
 SELECT t.id, t.page_id, t.kind, t.quote, t.detached_at IS NOT NULL, t.resolved_at, COALESCE(r.name, ''),
-       c.id, c.author_id, COALESCE(u.name, ''), c.original_author, c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at
+       c.id, c.author_id, COALESCE(u.name, ''), c.original_author, c.body, c.deleted_at IS NOT NULL, c.created_at, c.edited_at,
+       ` + via.Column("c") + `
 FROM comment_thread t
 JOIN comment c ON c.thread_id = t.id
 LEFT JOIN app_user u ON u.id = c.author_id
@@ -143,7 +145,7 @@ func threads(ctx context.Context, tx db.DBTX, actor perm.Actor, p *onPage, where
 			body             []byte
 		)
 		if err := rows.Scan(&threadID, &pageID, &kind, &quote, &detached, &resolvedAt, &resolvedBy,
-			&c.ID, &c.AuthorID, &c.AuthorName, &c.OriginalAuthor, &body, &c.Deleted, &c.CreatedAt, &c.EditedAt); err != nil {
+			&c.ID, &c.AuthorID, &c.AuthorName, &c.OriginalAuthor, &body, &c.Deleted, &c.CreatedAt, &c.EditedAt, &c.Via); err != nil {
 			return nil, err
 		}
 		c.ThreadID = threadID

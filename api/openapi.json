@@ -21099,6 +21099,16 @@
           "versions": {
             "type": "integer"
           },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "width": {
             "type": [
               "integer",
@@ -21120,7 +21130,8 @@
           "versions",
           "restoredFrom",
           "editedFrom",
-          "preview"
+          "preview",
+          "via"
         ]
       },
       "AuditActor": {
@@ -21257,6 +21268,16 @@
           },
           "targetType": {
             "type": "string"
+          },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -21268,7 +21289,8 @@
           "actorName",
           "data",
           "ip",
-          "createdAt"
+          "createdAt",
+          "via"
         ]
       },
       "AuditFacets": {
@@ -22050,6 +22072,16 @@
           "threadId": {
             "type": "string",
             "format": "uuid"
+          },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -22062,6 +22094,7 @@
           "deleted",
           "createdAt",
           "editedAt",
+          "via",
           "reactions",
           "can"
         ]
@@ -26247,6 +26280,16 @@
           },
           "url": {
             "type": "string"
+          },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -26258,7 +26301,8 @@
           "createdBy",
           "createdByName",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "via"
         ]
       },
       "PageRemoteLinkInput": {
@@ -27412,11 +27456,22 @@
           },
           "name": {
             "type": "string"
+          },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
-          "name"
+          "name",
+          "via"
         ]
       },
       "ReadConfirmation": {
@@ -31176,6 +31231,16 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -31191,6 +31256,7 @@
           "coEditors",
           "originalAuthor",
           "review",
+          "via",
           "body"
         ]
       },
@@ -31254,6 +31320,16 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "via": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Via"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -31268,7 +31344,8 @@
           "updatedAt",
           "coEditors",
           "originalAuthor",
-          "review"
+          "review",
+          "via"
         ]
       },
       "VersionReview": {
@@ -31296,6 +31373,25 @@
           "approvedBy",
           "skippedByName",
           "skipReason"
+        ]
+      },
+      "Via": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "token",
+              "oauth"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
         ]
       },
       "ViewCounts": {
@@ -31996,6 +32092,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "via": {
+            "$ref": "#/components/schemas/Via"
           }
         },
         "required": [

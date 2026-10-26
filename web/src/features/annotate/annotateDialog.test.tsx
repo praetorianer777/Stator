@@ -10,6 +10,7 @@ import { AnnotateDialog } from "./AnnotateDialog";
 const PICTURE = { width: 400, height: 300 };
 
 const shot: Attachment = {
+  via: null,
   id: "0195f000-0000-7000-8000-0000000000f2",
   pageId: "0195f000-0000-7000-8000-0000000000a1",
   fileName: "login.png",

@@ -10,6 +10,7 @@ import (
 
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/praetorianer777/stator/backend/internal/via"
 )
 
 // Service puts reactions on and takes them off. Reading them is OnPage and
@@ -187,16 +188,16 @@ func of(ctx context.Context, tx db.DBTX, viewer uuid.UUID, on target) ([]Reactio
 
 // summarise reads reaction rows, ordered by target, then by each emoji's
 // first use, then by when each person reacted, into one list per target.
-const summarise = `
+var summarise = `
 WITH r AS (
-	SELECT r.comment_id, r.emoji, r.user_id, r.created_at, r.id,
+	SELECT r.comment_id, r.emoji, r.user_id, r.created_at, r.id, r.via_kind, r.via_name,
 	       min(r.created_at) OVER (PARTITION BY r.comment_id, r.emoji) AS first_at,
 	       row_number() OVER (PARTITION BY r.comment_id, r.emoji ORDER BY r.created_at, r.id) AS nth,
 	       count(*) OVER (PARTITION BY r.comment_id, r.emoji) AS total
 	FROM reaction r
 	WHERE %s
 )
-SELECT r.comment_id, r.emoji, r.total, r.user_id, COALESCE(u.name, ''), r.nth, r.user_id = $1
+SELECT r.comment_id, r.emoji, r.total, r.user_id, COALESCE(u.name, ''), r.nth, r.user_id = $1, ` + via.Column("r") + `
 FROM r LEFT JOIN app_user u ON u.id = r.user_id
 WHERE r.nth <= $3 OR r.user_id = $1
 ORDER BY r.comment_id, r.first_at, r.emoji, r.nth`
@@ -213,7 +214,7 @@ func collect(rows pgx.Rows) (map[uuid.UUID][]Reaction, error) {
 			nth     int
 			mine    bool
 		)
-		if err := rows.Scan(&comment, &emoji, &total, &p.ID, &p.Name, &nth, &mine); err != nil {
+		if err := rows.Scan(&comment, &emoji, &total, &p.ID, &p.Name, &nth, &mine, &p.Via); err != nil {
 			return nil, err
 		}
 		key := uuid.Nil

@@ -256,6 +256,19 @@ Adapted from Exciter, at commit 3b340ca (#188):
   backend/test/oauth_harness_test.go
 - web/src/features/oauth/ConsentPage.tsx: web/src/features/oauth/ConsentPage.tsx
 
+Adapted from Exciter, at commit c0d072d (#190):
+- backend/internal/via and migration 00920: internal/via (Kind, Via and
+  Column) and migration 00820_via (via_held and the via_stamped trigger),
+  for page versions, comments, remote links, attachments, reactions and the
+  audit log, with a grant read from the token row's client_id
+- backend/internal/db/context.go and tx.go: ViaVar, WithVia and ViaFrom, and
+  app.via set in each transaction
+- backend/internal/events/events.go, webhook/payload.go and audit/service.go:
+  the event's via, the webhook actor's, and the audit export's last columns
+- backend/test/via_test.go and via_rls_test.go: the shape of
+  backend/test/via_test.go and via_rls_test.go
+- web/src/components/Through.tsx: web/src/components/Through.tsx
+
 This product contains the mark of Exciter
 (https://github.com/Cloudster1/Exciter), licensed under the Apache License,
 Version 2.0: web/public/tools/exciter.webp is its web/public/mark-96.webp,
