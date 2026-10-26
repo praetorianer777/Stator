@@ -46,11 +46,44 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- With `telemetry.serviceMonitor.enabled`, the chart's ServiceMonitor scrapes
+  the worker's metrics as well as the api's (#538), so its pools and liveness
+  are no longer missing: the worker has a headless Service for its metrics
+  port.
 - A Markdown file with an HTML picture on a line of its own, as a README's
   logo often is, imports again (#500): a picture from elsewhere becomes a
   link in a paragraph, as the Markdown spelling of it does, where it used to
   refuse the whole file. A file that still cannot be a page says on which
   line the block it cannot place starts.
+- Member roles, removing members, groups and their memberships, and the
+  site's settings such as its default theme are held to administrators in
+  the database too, not only by the service (#530). Sign-in through the
+  identity provider, invitations, join requests and guests keep working as
+  before, and a member who unshares the default theme still takes it off.
+- Accounts, sign-ins in progress and requests to join are held in the
+  database too, not only by the service (#535). A member changes only their
+  own settings (language, time zone and whether they appear among a page's
+  readers), never another account, nor their own address, name, picture,
+  password or whether their account is switched on; sign-ins in progress
+  are out of the application's reach; and only administrators see and
+  answer requests to join. Sign-in, invitations, created members and the
+  profile page keep working as before.
+- Sending a webhook delivery again by hand while its next retry is waiting
+  no longer cuts the event's retries short (#531). The automatic attempts
+  are numbered 1 to 6 as before, and the sends by hand apart from them: the
+  log reads "by hand, send 1" for the first, and a redelivery's `attempt`
+  in the API counts the event's sends by hand. Sends by hand already in the
+  log are renumbered so.
+- `backup restore` without `-yes`, and a command `backup` does not know,
+  are refused before it reads its settings or opens the database or object
+  storage (#532), so a refused restore touches nothing and no longer makes
+  the bucket.
+- `migrate` refuses a command it does not know, or `up-to` without a
+  version number, at once (#533), where it used to wait up to half a minute
+  for the database first.
+- Trying to change who administers the organization says to change a role
+  under Single sign-on, as the settings name that screen, instead of under
+  Users (#534).
 
 ## [0.1.0] - 2026-10-21
 

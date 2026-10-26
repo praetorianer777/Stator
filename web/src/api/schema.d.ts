@@ -4528,7 +4528,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators. */
+        /** Send a logged delivery's event again, now, as a send by hand numbered apart from the automatic attempts, with the payload read afresh as the owner. For administrators. */
         post: operations["redeliverWebhook"];
         delete?: never;
         options?: never;

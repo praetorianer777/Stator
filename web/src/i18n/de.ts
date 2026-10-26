@@ -3775,10 +3775,10 @@ export const de: Messages = {
     testFailed: (name: string, why: string) => `Die Testsendung hat ${name} nicht erreicht. ${why}`,
     logTitle: (name: string) => `Zustellungen an ${name}`,
     logIntro:
-      "Eine Zeile je Versuch, die neuesten zuerst. Ein Ereignis, das fehlschlägt, wird nach 1 Minute, 5 Minuten, 30 Minuten, 2 Stunden und 12 Stunden erneut versucht.",
+      "Eine Zeile je Versuch, die neuesten zuerst. Ein Ereignis, das fehlschlägt, wird nach 1 Minute, 5 Minuten, 30 Minuten, 2 Stunden und 12 Stunden erneut versucht. Sendungen von Hand werden davon getrennt gezählt und lassen diese Wiederholungen bestehen.",
     logEmpty: "Hierhin wurde noch nichts gesendet. Schicken Sie eine Testsendung über die Aktionen des Webhooks.",
     attempt: (n: number) => `Versuch ${n}`,
-    manual: "von Hand",
+    byHand: (n: number) => `von Hand, Sendung ${n}`,
     states: {
       pending: "Wartet",
       delivered: "Zugestellt",

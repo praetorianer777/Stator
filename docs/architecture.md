@@ -300,7 +300,8 @@ settings every workload shares and the credentials by reference from Secrets.
 A hook Job generates the database and Valkey passwords once, as basic-auth
 Secrets; the roles Job makes `stator_app` and `stator_admin`; the migrate Job
 applies the migrations as the schema's owner; the seed Job is for
-development only. A ServiceMonitor scrapes the api's metrics port.
+development only. A ServiceMonitor scrapes the metrics port of the api and
+of the worker, which has a headless Service for nothing else.
 
 With `cnpg.enabled` the chart renders a CloudNativePG `Cluster` from
 `cnpg.spec` (instances, storage, resources, backup and anything else the
