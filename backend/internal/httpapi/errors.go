@@ -333,6 +333,14 @@ func toAPIError(err error) *APIError {
 	if errors.Is(err, oauth.ErrNoSuchClient) {
 		return ErrNotFound("That connected app is not registered. It may have been removed already; reload the list.")
 	}
+	if errors.Is(err, oauth.ErrUnknownApp) {
+		return &APIError{Status: http.StatusBadRequest, Code: "unknown_app",
+			Message: "Stator does not know this app, or the app asked to be sent back to an address it did not register. Ask its maker to register it again."}
+	}
+	var oauthRefused *oauth.RefusedError
+	if errors.As(err, &oauthRefused) {
+		return ErrForbidden(oauthRefused.Sentence)
+	}
 	var outdated *armature.OutdatedError
 	if errors.As(err, &outdated) {
 		return &APIError{Status: http.StatusConflict, Code: "armature_outdated", Message: outdated.Error()}

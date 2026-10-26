@@ -9,6 +9,16 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Connecting an app to the MCP endpoint with OAuth (#449): Rotor and AI
+  assistants connect to Stator as a person without anybody pasting a token.
+  An app registers itself, waits until a Stator administrator allows it by
+  connecting it once, and is then connected by each person on a consent
+  page, by authorization code with PKCE, choosing read or write and the
+  spaces it reaches. Its token lasts an hour, refreshes, works at the MCP
+  endpoint alone and never exceeds the person's rights; a 401 there tells the
+  app where to begin. `/api/v1/meta` lists `oauth.partner-tokens@1`, and the
+  partner apps of the token exchange keep working as before. In English and
+  German.
 - A settings area (#464): the avatar menu
   now holds only the person's own pages (Your profile, Notification
   settings, Watching, Themes, Access tokens), the tools to switch to,

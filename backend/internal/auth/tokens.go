@@ -248,7 +248,7 @@ func (s *Service) revoke(ctx context.Context, owner *uuid.UUID, actor, tokenID u
 // apiTokenPrincipalSQL resolves a token to its owner. The membership is
 // joined, not left joined: a token outlives no membership.
 const apiTokenPrincipalSQL = `
-SELECT t.id, t.scopes, t.last_used_at, t.spaces_only,
+SELECT t.id, t.scopes, t.last_used_at, t.spaces_only, t.mcp_only,
        ARRAY(SELECT ts.space_id FROM api_token_space ts WHERE ts.token_id = t.id ORDER BY ts.space_id),
        u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), u.show_in_readers, u.is_active,
        o.name, m.role, gs.id, gs.key, gs.name
@@ -273,7 +273,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret), IsAccessToken(secret)).Scan(
-			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.TokenSpaces,
+			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.MCPOnly, &p.TokenSpaces,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.ShowInReaders, &active,
 			&p.SiteName, &p.Role, &guest.id, &guest.key, &guest.name,
 		)

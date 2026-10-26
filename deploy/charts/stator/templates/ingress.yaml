@@ -41,6 +41,14 @@ spec:
                 name: {{ include "stator.fullname" . }}-api
                 port:
                   name: http
+          # The MCP endpoint's metadata, bare and with the endpoint's path.
+          - path: /.well-known/oauth-protected-resource
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "stator.fullname" . }}-api
+                port:
+                  name: http
           - path: /
             pathType: Prefix
             backend:
