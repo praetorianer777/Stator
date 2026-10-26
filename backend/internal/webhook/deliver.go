@@ -80,7 +80,7 @@ func (s *Service) Handle(ctx context.Context, e events.Event) error {
 			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, next_attempt_at, version)
 			SELECT id, $1, $2, $3, $4, now(), version FROM webhook_endpoint
 			WHERE enabled AND ($2 = ANY (topics) OR $5 = ANY (topics))
-			ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
+			ON CONFLICT (endpoint_id, event_id, attempt) WHERE NOT manual DO NOTHING`,
 			e.ID, e.Topic, payload, occurred, TopicAny)
 		return err
 	})
@@ -175,8 +175,8 @@ func (s *Service) Test(ctx context.Context, id uuid.UUID) (*WebhookDelivery, db.
 	return sent, max(lsn, recorded), err
 }
 
-// Redeliver tries a logged delivery's event again, now, as the next attempt.
-// The payload is read afresh, as the owner may view it now.
+// Redeliver tries a logged delivery's event again, now, numbered among the
+// event's sends by hand. The payload is read afresh, as the owner may view it now.
 func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID) (*WebhookDelivery, db.LSN, error) {
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		var found bool
@@ -192,10 +192,12 @@ func (s *Service) Redeliver(ctx context.Context, webhookID, deliveryID uuid.UUID
 	var made uuid.UUID
 	system := asSystem(ctx)
 	lsn, err := s.db.WriteAdmin(system, func(ctx context.Context, tx db.DBTX) error {
+		// The automatic chain's next number is its pending retry's to take
+		// when that fails; a send by hand holding it dropped the retry (#531).
 		err := tx.QueryRow(ctx, `
 			INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, manual, next_attempt_at, version)
 			SELECT d.endpoint_id, d.event_id, d.topic, d.event, d.occurred_at,
-			       (SELECT max(attempt) FROM webhook_delivery x WHERE x.endpoint_id = d.endpoint_id AND x.event_id = d.event_id) + 1,
+			       COALESCE((SELECT max(attempt) FROM webhook_delivery x WHERE x.endpoint_id = d.endpoint_id AND x.event_id = d.event_id AND x.manual), 0) + 1,
 			       true, now() + make_interval(secs => $2), d.version
 			FROM webhook_delivery d WHERE d.id = $1
 			RETURNING id`, deliveryID, ClaimLease.Seconds()).Scan(&made)
@@ -363,7 +365,7 @@ func (s *Service) record(ctx context.Context, id uuid.UUID, c claimed, o outcome
 				if _, err := tx.Exec(ctx, `
 					INSERT INTO webhook_delivery (endpoint_id, event_id, topic, event, occurred_at, attempt, next_attempt_at, version)
 					VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-					ON CONFLICT (endpoint_id, event_id, attempt) DO NOTHING`,
+					ON CONFLICT (endpoint_id, event_id, attempt) WHERE NOT manual DO NOTHING`,
 					c.endpointID, c.eventID, c.topic, c.event, c.occurred, c.attempt+1, s.now().Add(NextWait(c.attempt)), c.version); err != nil {
 					return err
 				}

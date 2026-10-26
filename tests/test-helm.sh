@@ -36,6 +36,16 @@ migrate_url() { # rendered
     grep -A1 -- '- name: STATOR_DB_PRIMARY_URL$' <<<"$1" | grep -F DB_OWNER_PASSWORD | sed -n 's/^ *value: "\(.*\)"$/\1/p' | sort -u
 }
 
+# Each Service offering a port of the given name, as name=component.
+services_with_port() { # rendered port
+    awk -v RS='\n---\n' -v port="$2" '
+        /(^|\n)kind: Service\n/ && index($0, "\n    - name: " port "\n") {
+            match($0, /\n  name: [^\n]+/); name = substr($0, RSTART + 9, RLENGTH - 9)
+            match($0, /\n    app.kubernetes.io\/component: [^\n]+/); comp = substr($0, RSTART + 34, RLENGTH - 34)
+            print name "=" comp
+        }' <<<"$1" | sort | paste -sd ' '
+}
+
 # lint and template with the same settings, which must both succeed.
 render() { # description args...
     local what="$1"
@@ -301,6 +311,16 @@ check "the restore reads that archive from the volume" "$(grep -c 'args: \["rest
 check "no claim is made" "$(grep -c '^kind: PersistentVolumeClaim$' <<<"${RENDERED}")" "0"
 check "both mount the claim given" "$(grep -c 'claimName: nas$' <<<"${RENDERED}")" "2"
 check "the backup runs on its schedule" "$(grep -c '^  suspend: false$' <<<"${RENDERED}")" "1"
+
+echo "⎈ Monitoring"
+render "the ServiceMonitor, with every optional Service" -f /chart/values-demo.yaml --set render.enabled=true --set telemetry.serviceMonitor.enabled=true
+WORKER_SVC=$(awk -v RS='\n---\n' -v name="  name: ${FULL}-worker" '/(^|\n)kind: Service\n/ && index($0, "\n" name "\n")' <<<"${RENDERED}")
+check "the worker's metrics have a headless Service of the worker's pods" \
+    "$(grep -cE '^  clusterIP: None$|^    - name: metrics$|^      targetPort: metrics$|^    app.kubernetes.io/component: worker$' <<<"${WORKER_SVC}")" "5"
+check "the ServiceMonitor selects the api and the worker by their metrics port" \
+    "$(awk -v RS='\n---\n' '/(^|\n)kind: ServiceMonitor\n/' <<<"${RENDERED}" | grep -cE '^        values: \[api, worker\]$|^    - port: metrics$')" "2"
+check "the Services with a metrics port are the api's and the worker's" \
+    "$(services_with_port "${RENDERED}" metrics)" "${FULL}-api=api ${FULL}-worker=worker"
 
 if [[ ${FAILED} -ne 0 ]]; then
     echo "❌ chart tests failed"

@@ -908,7 +908,7 @@ var operations = append([]operation{
 		query:     []param{{name: "limit", schema: intParam, description: "1 to " + strconv.Itoa(webhook.MaxDeliveries) + "; " + strconv.Itoa(webhook.DefaultDeliveries) + " when absent."}},
 		responses: map[int]any{200: env{"deliveries": []webhook.WebhookDelivery{}}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/webhooks/{webhookID}/deliveries/{deliveryID}/redeliver", handler: "handleRedeliverWebhook", wholeInstance: true, tag: "webhooks",
-		summary:   "Send a logged delivery's event again, now, as its next attempt, with the payload read afresh as the owner. For administrators.",
+		summary:   "Send a logged delivery's event again, now, as a send by hand numbered apart from the automatic attempts, with the payload read afresh as the owner. For administrators.",
 		responses: ok(env{"delivery": webhook.WebhookDelivery{}})},
 
 	{method: "GET", path: "/armature/account", handler: "handleGetArmatureAccount", tag: "armature",

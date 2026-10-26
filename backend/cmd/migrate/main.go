@@ -30,13 +30,35 @@ const (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Args[1:]); err != nil {
 		slog.Error("migration failed", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(args []string) error {
+	if len(args) == 0 {
+		args = []string{"up"}
+	}
+	command := args[0]
+	// The command is checked before the database is waited for, which can
+	// take connectAttempts seconds when it is not there.
+	var target int64
+	switch command {
+	case "up", "down", "status", "version":
+	case "up-to":
+		if len(args) < 2 {
+			return errors.New("up-to needs a version, such as: migrate up-to 1")
+		}
+		v, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("%q is not a migration version; give its number, such as 1", args[1])
+		}
+		target = v
+	default:
+		return fmt.Errorf("%q is not a migrate command; use up, up-to, down, status or version", command)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -44,12 +66,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
-	args := os.Args[1:]
-	if len(args) == 0 {
-		args = []string{"up"}
-	}
-	command := args[0]
 
 	pool, err := waitForPrimary(ctx, cfg.DB.PrimaryURL)
 	if err != nil {
@@ -76,14 +92,7 @@ func run() error {
 			return err
 		}
 	case "up-to":
-		if len(args) < 2 {
-			return errors.New("up-to needs a version, such as: migrate up-to 1")
-		}
-		v, err := strconv.ParseInt(args[1], 10, 64)
-		if err != nil {
-			return fmt.Errorf("%q is not a migration version; give its number, such as 1", args[1])
-		}
-		if err := goose.UpToContext(ctx, sqlDB, ".", v, allowMissing); err != nil {
+		if err := goose.UpToContext(ctx, sqlDB, ".", target, allowMissing); err != nil {
 			return err
 		}
 	case "down":
@@ -100,8 +109,6 @@ func run() error {
 		}
 		fmt.Println(v)
 		return nil
-	default:
-		return fmt.Errorf("%q is not a migrate command; use up, up-to, down, status or version", command)
 	}
 
 	v, err := goose.GetDBVersionContext(ctx, sqlDB)
