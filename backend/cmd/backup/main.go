@@ -57,6 +57,17 @@ func run(args []string, out io.Writer) error {
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
+	// Refusals come before config, the database and storage, so a refused
+	// restore touches nothing and needs none of them reachable.
+	switch args[0] {
+	case "create":
+	case "restore":
+		if !*yes {
+			return errors.New("A restore replaces every page, person and file of the site with the backup's. Run it again with -yes to go ahead.")
+		}
+	default:
+		return fmt.Errorf("%q is not a backup command.\n%s", args[0], usage)
+	}
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -72,17 +83,10 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 
-	switch args[0] {
-	case "create":
+	if args[0] == "create" {
 		return create(ctx, out, pool, store, cfg, *dir)
-	case "restore":
-		if !*yes {
-			return errors.New("A restore replaces every page, person and file of the site with the backup's. Run it again with -yes to go ahead.")
-		}
-		return restore(ctx, out, pool, store, cfg, *dir, *from)
-	default:
-		return fmt.Errorf("%q is not a backup command.\n%s", args[0], usage)
 	}
+	return restore(ctx, out, pool, store, cfg, *dir, *from)
 }
 
 func openStore(ctx context.Context, cfg config.S3) (objectstore.Store, error) {
