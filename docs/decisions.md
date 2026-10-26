@@ -3,15 +3,15 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
-## 2026-10-26: PlantUML, C4, Graphviz, D2 and BPMN through a Kroki inside the installation (#466)
+## 2026-10-26: PlantUML, C4, Graphviz and D2 through a Kroki inside the installation (#466)
 
 Authors ask for PlantUML, C4 and BPMN next to Mermaid. Kroki draws these
 and many more through one HTTP API, `POST /{language}/svg`, so a spike ran
 Kroki 0.34.0 with its mermaid, bpmn and excalidraw companions in a compose
 project of its own, on a network with no way out, `KROKI_SAFE_MODE=secure`,
 and drew one diagram in each language from a client on that network. The
-answer is yes, for a named set, drawn by Kroki inside the installation and
-never at kroki.io.
+answer is yes, for a named set that the main image draws alone, drawn by
+Kroki inside the installation and never at kroki.io.
 
 | Image (size on disk) | Idle | Peak, one at a time | Peak, four at once | First drawing, then each after |
 | --- | --- | --- | --- | --- |
@@ -24,29 +24,34 @@ Four at once is four clients drawing the same language fifteen times each;
 the PlantUML of Stator's longest diagram, 20,000 characters, drew in 0.5 s
 to an SVG of 445 KB. Measured with `docker stats` on one workstation.
 
-- **Languages: PlantUML, Structurizr, Graphviz, D2 and BPMN.** PlantUML
-  covers sequence, class, state and the rest, and C4 through the C4 library
-  it carries (`!include <C4/C4_Container>`), which needs no network.
-  Structurizr is C4 written as a model. All but BPMN are in the main image;
-  BPMN needs its companion. ditaa, WaveDrom, Vega-Lite and the other
-  languages of the main image cost nothing more to run but are left out
-  until authors ask: each one is another output to check, and Vega-Lite
-  overlaps the table chart. Adding one later is a value of `language` and a
-  fence name.
-- **What it costs.** The named set is the main image and the bpmn
-  companion: about 270 MiB and no CPU to speak of at rest, about 520 MiB and
-  a few cores for a moment while several people draw. Both images are large
-  on disk, like the render service's, so Kroki is off by default in the
-  chart as render is, and a server without it offers Mermaid alone.
-- **The mermaid and excalidraw companions are not run.** Mermaid stays in
-  the browser (below), and a sketch already keeps the SVG its canvas drew
-  when it was saved, so Kroki drawing a scene again, ten seconds the first
-  time, adds nothing for export.
-- **Inside the installation only.** Kroki and its companions are services
-  of the compose stack and the chart with no published port, reached by the
-  api alone at `STATOR_KROKI_URL`. Every language drew with no network out
-  of the spike, so Kroki needs no egress: the chart gives it a network
-  policy that lets in only the api and lets out only to the bpmn companion.
+- **Languages: PlantUML, Structurizr, Graphviz and D2.** PlantUML covers
+  sequence, class, state and the rest, and C4 through the C4 library it
+  carries (`!include <C4/C4_Container>`), which needs no network.
+  Structurizr is C4 written as a model. All four are in the main image.
+  ditaa, WaveDrom, Vega-Lite and the other languages of the main image cost
+  nothing more to run but are left out until authors ask: each one is
+  another output to check, and Vega-Lite overlaps the table chart. Adding
+  one later is a value of `language` and a fence name.
+- **No BPMN.** Kroki draws BPMN from its XML, which nobody writes by hand:
+  a process is drawn in a modeller, so a text block would only ever hold
+  XML pasted from one. That is not worth the companion's 177 MiB at rest
+  and four cores under load. If authors want process diagrams, they want a
+  block that edits them on a canvas, as a sketch does, which is a feature of
+  its own.
+- **What it costs.** The named set is the main image alone: about 100 MiB
+  and no CPU to speak of at rest, about 250 MiB and up to two cores for a
+  moment while several people draw. The image is large on disk, like the
+  render service's, so Kroki is off by default in the chart as render is,
+  and a server without it offers Mermaid alone.
+- **No companion is run.** Mermaid stays in the browser (below), and a
+  sketch already keeps the SVG its canvas drew when it was saved, so Kroki
+  drawing a scene again, ten seconds the first time, adds nothing for
+  export.
+- **Inside the installation only.** Kroki is a service of the compose stack
+  and the chart with no published port, reached by the api alone at
+  `STATOR_KROKI_URL`. Every language drew with no network out of the spike,
+  so Kroki needs no egress: the chart gives it a network policy that lets in
+  only the api and lets nothing out.
   The address is the operator's, like `STATOR_RENDER_URL` and the
   converter's, so it is not held to `STATOR_OUTBOUND_ALLOW`, which guards
   addresses somebody else chose; what keeps page content in is that Kroki
@@ -125,13 +130,11 @@ to an SVG of 445 KB. Measured with `docker stats` on one workstation.
   moves between servers unchanged; the editor offers only the languages the
   server says it draws.
 - **Markdown fences are named by language.** Export writes `plantuml`,
-  `structurizr`, `graphviz`, `d2` and `bpmn` as Mermaid writes `mermaid`;
-  import reads those and `puml` and `dot` as well, and any other fence stays
-  a code block.
-- **Search reads the text, BPMN by its names.** The indexed text of a
-  diagram is its source, as now, which suits every language but BPMN,
-  whose XML would fill the index with tags: for it the `name` attributes
-  are indexed, as a sketch is indexed by its words.
+  `structurizr`, `graphviz` and `d2` as Mermaid writes `mermaid`; import
+  reads those and `puml` and `dot` as well, and any other fence stays a
+  code block.
+- **Search reads the text.** The indexed text of a diagram is its source,
+  as now, which suits every language of the set.
 
 ## 2026-10-24: A narrower token for one run is its grant narrowed (#499)
 
