@@ -58,6 +58,9 @@ and the versioning [Semantic Versioning](https://semver.org/).
   are refused before it reads its settings or opens the database or object
   storage (#532), so a refused restore touches nothing and no longer makes
   the bucket.
+- `migrate` refuses a command it does not know, or `up-to` without a
+  version number, at once (#533), where it used to wait up to half a minute
+  for the database first.
 
 ## [0.1.0] - 2026-10-21
 
