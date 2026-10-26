@@ -1106,10 +1106,12 @@ var operations = append([]operation{
 		summary: "The token endpoint, for an app with its client id and secret, by HTTP Basic or in the form, or its client id alone for a public app. " +
 			"grant_type authorization_code redeems a code from the consent page with its PKCE verifier and return address, for a grant that acts at the MCP endpoint only; a code used twice ends that grant. " +
 			"grant_type " + oauth.GrantTokenExchange + " trades a person's access token of the instance's identity provider, issued to a partner app's Keycloak client and naming Stator's client in aud, for a grant within the person's rights; " +
+			"the same grant with an app's own grant's access token, " + auth.AccessTokenPrefix + "..., as subject_token answers a narrower access token for one run and no refresh token: scope read from a grant that writes, " +
+			oauth.ParamSpaces + " some of the grant's spaces by key, " + oauth.ParamExpiresIn + " 1 to 3600 seconds and never past the subject's end; it is never a subject itself. " +
 			"refresh_token rotates a grant's tokens, and a rotated refresh token presented again ends the grant. Access tokens last an hour. Refusals are OAuth's: invalid_request, invalid_client, invalid_grant, invalid_scope, invalid_target, unauthorized_client, unsupported_grant_type.",
 		request: oauth.TokenRequest{}, responses: map[int]any{200: oauth.TokenResponse{}, 400: oauth.Error{}, 401: oauth.Error{}}},
 	{method: "POST", path: "/oauth/revoke", handler: "handleOAuthRevoke", tag: "oauth", public: true, form: true,
-		summary: "RFC 7009: a grant's access or refresh token ends the whole grant. Every token is answered alike.",
+		summary: "RFC 7009: a grant's access or refresh token ends the whole grant, a narrower token exchanged from it only itself. Every token is answered alike.",
 		request: oauth.RevokeRequest{}, responses: map[int]any{200: nil, 400: oauth.Error{}, 401: oauth.Error{}}},
 	{method: "GET", path: "/oauth/clients", handler: "handleListOAuthClients", wholeInstance: true, tag: "oauth",
 		summary:   "The connected apps by name: partner apps that exchange people's identity provider tokens, and apps that registered themselves, pending or allowed. For administrators.",

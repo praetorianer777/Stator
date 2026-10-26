@@ -242,6 +242,12 @@ Adapted from Armature:
 - web/src/routes/oauth-authorize.tsx and web/src/features/oauth: the consent
   page of web/src/routes/oauth-authorize.tsx, with the token page's space
   picker added
+- backend/internal/oauth/narrow.go, the revocation of an exchanged token in
+  token.go, apiTokenPrincipalSQL in backend/internal/auth/tokens.go and
+  migration 00930: narrow and Revoke of internal/oauth/token.go,
+  apiTokenPrincipalSQL of internal/auth/service.go and oauth_exchanged_token
+  of migration 00945_partner_tokens, at commit 10edbd7, with spaces to narrow
+  to, an end never past the subject's and a trigger holding both added
 - web/public/tools/armature.webp: web/public/emblem.webp, Armature's emblem
   for the avatar menu's link to it, unchanged
 
@@ -268,6 +274,12 @@ Adapted from Exciter, at commit c0d072d (#190):
 - backend/test/via_test.go and via_rls_test.go: the shape of
   backend/test/via_test.go and via_rls_test.go
 - web/src/components/Through.tsx: web/src/components/Through.tsx
+
+Adapted from Exciter, at commit d3fddbf (#235):
+- backend/internal/oauth/narrow.go: the scope, lifetime and project checks of
+  internal/oauth/narrow.go, for spaces
+- backend/test/oauth_narrow_test.go: the shape of
+  backend/test/oauth_narrow_test.go
 
 This product contains the mark of Exciter
 (https://github.com/Cloudster1/Exciter), licensed under the Apache License,

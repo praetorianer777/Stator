@@ -14,8 +14,8 @@ import (
 // SweepInterval is how often the worker removes what has run out.
 const SweepInterval = 10 * time.Minute
 
-// Sweeper removes used and expired codes, apps nobody allowed in time and
-// refresh tokens rotated longer ago than any could still be presented.
+// Sweeper removes used and expired codes and exchanged tokens, apps nobody
+// allowed in time and refresh tokens rotated past any use.
 type Sweeper struct {
 	db       *db.Cluster
 	log      *slog.Logger
@@ -53,6 +53,9 @@ func (s *Sweeper) Once(ctx context.Context) error {
 			return err
 		}
 		if _, err := tx.Exec(ctx, `DELETE FROM oauth_rotated_refresh WHERE rotated_at < $1`, now.Add(-RefreshTokenTTL)); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM oauth_exchanged_token WHERE expires_at < $1`, now); err != nil {
 			return err
 		}
 		return deletePending(ctx, tx, now)

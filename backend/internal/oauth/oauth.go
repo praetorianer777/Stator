@@ -158,10 +158,11 @@ var ErrNoSuchClient = errors.New("that connected app is not registered")
 // TokenResponse is the token endpoint's answer (RFC 6749 section 5.1,
 // RFC 8693 section 2.2.1).
 type TokenResponse struct {
-	AccessToken     string `json:"access_token"`
-	TokenType       string `json:"token_type"`
-	ExpiresIn       int    `json:"expires_in"`
-	RefreshToken    string `json:"refresh_token"`
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
+	// RefreshToken is left out of a narrower token's answer (#499).
+	RefreshToken    string `json:"refresh_token,omitempty"`
 	Scope           string `json:"scope"`
 	IssuedTokenType string `json:"issued_token_type,omitempty"`
 }
@@ -180,6 +181,9 @@ type TokenRequest struct {
 	Scope              string `json:"scope,omitempty"`
 	ClientID           string `json:"client_id,omitempty"`
 	ClientSecret       string `json:"client_secret,omitempty"`
+	// StatorExpiresIn and StatorSpaces narrow an exchanged token of the app's own grant (#499).
+	StatorExpiresIn string `json:"stator_expires_in,omitempty"`
+	StatorSpaces    string `json:"stator_spaces,omitempty"`
 }
 
 // RevokeRequest is the revocation endpoint's form (RFC 7009).
