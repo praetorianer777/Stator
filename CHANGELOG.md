@@ -36,6 +36,10 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- With `telemetry.serviceMonitor.enabled`, the chart's ServiceMonitor scrapes
+  the worker's metrics as well as the api's (#538), so its pools and liveness
+  are no longer missing: the worker has a headless Service for its metrics
+  port.
 - A Markdown file with an HTML picture on a line of its own, as a README's
   logo often is, imports again (#500): a picture from elsewhere becomes a
   link in a paragraph, as the Markdown spelling of it does, where it used to
