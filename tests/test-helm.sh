@@ -172,6 +172,36 @@ check "the renderer prints the web pods' pages inside the cluster" \
     "$(grep -A1 -- '- name: RENDER_APP_URL$' <<<"${RENDER_ON}" | sed -n 's/^ *value: "\(.*\)"$/\1/p')" "http://${FULL}-web"
 check "the renderer keeps nothing but its scratch space" \
     "$(awk -v RS='---' -v name="name: ${FULL}-render" '/kind: Deployment/ && index($0, name "\n")' <<<"${RENDER_ON}" | grep -cE 'readOnlyRootFilesystem: true|mountPath: /tmp')" "2"
+# One rendered document, by kind and name.
+document() { # rendered kind name
+    awk -v RS='\n---\n' -v kind="kind: $2" -v name="  name: $3" \
+        'index("\n" $0 "\n", "\n" kind "\n") && index($0 "\n", "\n" name "\n")' <<<"$1"
+}
+
+check "Kroki is off until it is enabled" \
+    "$(grep -c 'STATOR_KROKI_URL' <<<"${RENDERED}") $(grep -c "name: ${FULL}-kroki\$" <<<"${RENDERED}")" \
+    "0 0"
+KROKI_ON=$(helm template "${RELEASE}" /chart --set cnpg.enabled=true "${VALKEY[@]}" --set kroki.enabled=true 2>&1)
+KROKI_DEPLOY=$(document "${KROKI_ON}" Deployment "${FULL}-kroki")
+KROKI_POLICY=$(document "${KROKI_ON}" NetworkPolicy "${FULL}-kroki")
+check "the api draws through Kroki's Service" \
+    "$(config_value "${KROKI_ON}" STATOR_KROKI_URL) $(document "${KROKI_ON}" Service "${FULL}-kroki" | grep -cE '^    - name: http$|^      port: 8000$')" \
+    "http://${FULL}-kroki:8000 2"
+check "Kroki runs the pinned image" \
+    "$(grep -c 'image: yuzutech/kroki:0.34.0$' <<<"${KROKI_DEPLOY}")" "1"
+# Unsafe mode lets PlantUML include the container's files and any address.
+check "Kroki runs in secure mode, and nothing sets it otherwise" \
+    "$(grep -A1 -- '- name: KROKI_SAFE_MODE$' <<<"${KROKI_DEPLOY}" | grep -c 'value: secure$') $(grep -c 'KROKI_SAFE_MODE' <<<"${KROKI_ON}")" "1 1"
+check "Kroki runs as its own user, keeping nothing but its scratch space" \
+    "$(grep -cE '^        runAsNonRoot: true$|^        runAsUser: 1001$|readOnlyRootFilesystem: true$|allowPrivilegeEscalation: false$|mountPath: /tmp$' <<<"${KROKI_DEPLOY}")" "5"
+check "Kroki asks for 256Mi and is held to 1Gi" \
+    "$(grep -A5 '^          resources:$' <<<"${KROKI_DEPLOY}" | tr -d ' ' | paste -sd ' ')" "resources: limits: memory:1Gi requests: cpu:100m memory:256Mi"
+check "Kroki's network policy governs both directions of its pods" \
+    "$(grep -cE '^      app.kubernetes.io/component: kroki$|^  policyTypes: \[Ingress, Egress\]$' <<<"${KROKI_POLICY}")" "2"
+check "it lets nothing out of Kroki" "$(grep -c 'egress' <<<"${KROKI_POLICY}")" "0"
+check "it lets in the api's pods alone, on Kroki's port" \
+    "$(grep -c 'podSelector:' <<<"${KROKI_POLICY}") $(grep -c 'app.kubernetes.io/component:' <<<"${KROKI_POLICY}") $(grep -cE '^ +app.kubernetes.io/component: api$|^ +port: 8000$|^ +- from:$' <<<"${KROKI_POLICY}") $(grep -cE 'namespaceSelector|ipBlock' <<<"${KROKI_POLICY}")" \
+    "2 3 3 0"
 check "the web's nginx logs and caches no print view" \
     "$(grep -A3 -F 'location ^~ /print/ {' <<<"${RENDERED}" | grep -cE 'access_log off|Cache-Control "no-store"')" "2"
 
@@ -313,7 +343,7 @@ check "both mount the claim given" "$(grep -c 'claimName: nas$' <<<"${RENDERED}"
 check "the backup runs on its schedule" "$(grep -c '^  suspend: false$' <<<"${RENDERED}")" "1"
 
 echo "⎈ Monitoring"
-render "the ServiceMonitor, with every optional Service" -f /chart/values-demo.yaml --set render.enabled=true --set telemetry.serviceMonitor.enabled=true
+render "the ServiceMonitor, with every optional Service" -f /chart/values-demo.yaml --set render.enabled=true --set kroki.enabled=true --set telemetry.serviceMonitor.enabled=true
 WORKER_SVC=$(awk -v RS='\n---\n' -v name="  name: ${FULL}-worker" '/(^|\n)kind: Service\n/ && index($0, "\n" name "\n")' <<<"${RENDERED}")
 check "the worker's metrics have a headless Service of the worker's pods" \
     "$(grep -cE '^  clusterIP: None$|^    - name: metrics$|^      targetPort: metrics$|^    app.kubernetes.io/component: worker$' <<<"${WORKER_SVC}")" "5"

@@ -9,6 +9,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Kroki inside the installation (#545), to draw PlantUML (C4 included),
+  Structurizr, Graphviz and D2 once the api does (#546). The compose stack
+  runs `yuzutech/kroki:0.34.0` in secure mode on a read-only root filesystem,
+  on an internal network only the api joins, and tells the api of it in
+  `STATOR_KROKI_URL`; the new `test-kroki` layer checks that the api's
+  container gets an SVG from it, that a PlantUML include of a file is
+  dropped, and that Kroki reaches nothing else. The chart runs it with
+  `kroki.enabled`, off by default: as its own user, asking for 256Mi and held
+  to 1Gi, with a NetworkPolicy that lets in the api's pods and lets nothing
+  out. The chart's README says how to turn it on and why secure mode is
+  never turned off.
 - What a connected app wrote says so (#498): a version, a comment, a remote
   link, a file, a reaction or an audit entry written through a personal
   access token or a connected app carries `via`, the token's or the app's

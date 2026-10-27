@@ -307,13 +307,13 @@ expect_layers "documentation, full"       "shell check-format"                  
 expect_layers "web only, quick"           "shell check-format check-web"                          quick web/src/App.tsx
 expect_layers "web only, full"            "shell check-format check-web test-e2e"                 full  web/src/App.tsx
 expect_layers "backend only, quick"       "shell check-format check-go"                           quick backend/internal/page/page.go
-expect_layers "backend only, full"        "shell check-format check-go test-integration test-backup test-e2e" full  backend/internal/page/page.go
+expect_layers "backend only, full"        "shell check-format check-go test-integration test-backup test-kroki test-e2e" full  backend/internal/page/page.go
 expect_layers "the API document"          "shell check-format check-go check-web"                 quick api/openapi.json
 expect_layers "browser tests alone, full" "shell check-format test-e2e"                           full  e2e/tests/tasks.spec.ts
 expect_layers "the chart"                 "shell check-format"                                    quick deploy/charts/stator/values.yaml
 expect_layers "a path nobody listed"      "shell check-format check-go check-web"                 quick something/new.txt
 expect_layers "a mix"                     "shell check-format check-go check-web"                 quick docs/a.md web/src/a.ts backend/a.go
-expect_layers "no files known, full"      "shell check-format check-go check-web test-integration test-backup test-e2e" full
+expect_layers "no files known, full"      "shell check-format check-go check-web test-integration test-backup test-kroki test-e2e" full
 "$LAYERS" bogus < /dev/null > /dev/null 2>&1 && { echo "FAIL  an unknown mode was accepted"; fail=1; }
 
 echo "== the gate is given those layers, and says what it skipped"
@@ -330,7 +330,7 @@ printf '#!/bin/sh\necho "$@" > "$GATE_ARGS"\n' > run-tests.sh; chmod +x run-test
 export GATE_ARGS="$W3/args"
 push_json() { jq -nc --arg cwd "$W3/r" --arg cmd "${1:-git push -u origin HEAD}" '{tool_name:"Bash",cwd:$cwd,tool_input:{command:$cmd}}'; }
 LOG3="$W3/r/.git/branch-guard.log"
-FULL="shell check-format check-go test-integration test-backup test-e2e"
+FULL="shell check-format check-go test-integration test-backup test-kroki test-e2e"
 ran() { # label expected-layers
   if [[ "$(cat "$GATE_ARGS" 2>/dev/null)" == "$2" ]]; then echo "ok    gate  $1"; else echo "FAIL  gate  $1 ran '$(cat "$GATE_ARGS" 2>/dev/null)'"; fail=1; fi
 }

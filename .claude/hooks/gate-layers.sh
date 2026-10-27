@@ -37,10 +37,10 @@ skipped=()
 if (( need_go )); then run+=(check-go); else skipped+=("check-go (no backend or API file changed)"); fi
 if (( need_web )); then run+=(check-web); else skipped+=("check-web (no web or API file changed)"); fi
 if [[ "$mode" == full ]]; then
-  if (( need_integration )); then run+=(test-integration test-backup); else skipped+=("test-integration and test-backup (no backend or API file changed)"); fi
+  if (( need_integration )); then run+=(test-integration test-backup test-kroki); else skipped+=("test-integration, test-backup and test-kroki (no backend or API file changed)"); fi
   if (( need_e2e )); then run+=(test-e2e); else skipped+=("test-e2e (no file the browser suite reads changed)"); fi
 else
-  skipped+=("test-integration, test-backup and test-e2e (left to CI; STATOR_GATE=full git push runs them)")
+  skipped+=("test-integration, test-backup, test-kroki and test-e2e (left to CI; STATOR_GATE=full git push runs them)")
 fi
 
 echo "run: ${run[*]}"

@@ -1,0 +1,29 @@
+{{- if .Values.kroki.enabled }}
+{{- /*
+What keeps page content inside the installation is that Kroki cannot reach
+out: secure mode drops PlantUML's includes, and this drops whatever it misses.
+No egress rule at all, not even DNS, because no language needs the network.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "stator.fullname" . }}-kroki
+  labels:
+    {{- include "stator.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kroki
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "stator.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kroki
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "stator.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 8000
+{{- end }}

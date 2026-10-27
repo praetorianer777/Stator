@@ -13,6 +13,7 @@ browser ──> web (nginx, React SPA) ──> api (Go) ──> PostgreSQL (prim
                                         │  ├──> S3-compatible storage (attachments, theme assets)
                                         │  ├──> converter (office documents to PDF, for previews)
                                         │  ├──> render (headless Chromium: a page's print view to PDF) ──> web
+                                        │  ├──> kroki (PlantUML, Structurizr, Graphviz and D2 to SVG; no way out)
                                         │  └──> Armature API (as the viewing user)
                                         └── outbox ──> worker (Go) ──> mail, Armature link sync, webhooks, scheduled publishes, example spaces, space and organization exports and imports, Word imports
 Keycloak / any OIDC provider <── login ──┘
@@ -265,6 +266,9 @@ into PDF for previews (a headless office suite behind an HTTP API, reached
 by the api alone), `render`, Armature's PDF renderer (headless Chromium
 with puppeteer in the public Chrome image, `render/server.mjs` mounted in),
 which the api alone calls and which opens the web container's print views,
+`kroki`, which draws PlantUML, Structurizr, Graphviz and D2 in secure mode
+on the internal network `kroki`, which only the api joins, so it reaches
+nothing else (`tests/test-kroki.sh`, the `test-kroki` layer, checks both),
 the one-shot `migrate` and `seed`, `api`,
 `worker`, `web`, and `armature-stub` in Armature's place, which only the
 stack lets the SSRF guard through to. Every service has a health check and the dependencies
@@ -336,6 +340,13 @@ With `render.enabled` the chart runs the PDF renderer as in Armature's
 chart: the image `deploy/Dockerfile.render` builds, behind a Service of its
 own, reaching the web pods inside the cluster; without it a PDF download
 is refused with a sentence.
+
+With `kroki.enabled` the chart runs Kroki in secure mode behind a Service of
+its own, as its own user on a read-only root filesystem, with a NetworkPolicy
+that lets in the api's pods and lets nothing out; the chart's README says
+why secure mode is never turned off. The api is told where it is in
+`STATOR_KROKI_URL`, which it reads once it draws through Kroki (#546);
+without it, a server offers Mermaid alone.
 
 For a trial, `values-demo.yaml` brings one Postgres pod and one Valkey pod of
 the chart's own. The chart refuses to render with both `cnpg.enabled` and
