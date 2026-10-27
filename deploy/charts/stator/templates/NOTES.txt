@@ -35,3 +35,7 @@ app only. Set mail.smtpAddr to send them by mail too.
 PDF export is off: a PDF download is refused saying so. Set render.enabled to
 turn it on.
 {{ end }}
+{{- if not .Values.kroki.enabled }}
+Diagrams other than Mermaid are off: PlantUML, Structurizr, Graphviz and D2
+need Kroki. Set kroki.enabled to turn them on.
+{{ end }}

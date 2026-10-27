@@ -181,6 +181,10 @@ restore: ## Replace the stack's database and files with the newest backup, or FR
 	docker compose run --rm --build --quiet-pull -u $(UID_GID) backup restore -yes $(if $(FROM),-from /backups/$(notdir $(FROM))); \
 		status=$$?; docker compose start api worker; exit $$status
 
+.PHONY: test-kroki
+test-kroki: ## Check that the running stack's api draws through Kroki and that Kroki reaches nothing else
+	$(ROOT)/tests/test-kroki.sh
+
 .PHONY: test-backup
 test-backup: ## Back up the running stack, restore it beside the site and compare
 	$(ROOT)/tests/test-backup.sh

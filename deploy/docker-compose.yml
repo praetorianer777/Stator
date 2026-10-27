@@ -269,6 +269,27 @@ services:
       start_period: 120s
       start_interval: 1s
 
+  # Draws PlantUML, Structurizr, Graphviz and D2 for the api, which alone
+  # reaches it: it sits on the internal network kroki and no other, so it has
+  # no way out. Secure mode keeps PlantUML from reading files and addresses;
+  # unsafe mode would let a page read this container's files, so never here
+  # or anywhere else.
+  kroki:
+    image: yuzutech/kroki:0.34.0
+    environment:
+      KROKI_SAFE_MODE: secure
+    networks: [kroki]
+    # PlantUML, Graphviz and Vert.x write scratch files to /tmp alone.
+    read_only: true
+    tmpfs: [/tmp]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 60s
+      start_interval: 1s
+
   # The identity provider, with the suite's realm dynamo: the same file
   # Armature and Exciter import, so one sign-in works in all three; Stator
   # uses only its own client. The realm is imported afresh on every start, so
@@ -367,6 +388,8 @@ services:
         condition: service_healthy
       converter:
         condition: service_healthy
+      kroki:
+        condition: service_healthy
       armature-stub:
         condition: service_healthy
       exciter-stub:
@@ -382,10 +405,13 @@ services:
       <<: [*app-db-env, *s3-env, *auth-env, *bootstrap-env, *armature-env]
       STATOR_HTTP_ADDR: ":8080"
       STATOR_LOG_LEVEL: debug
+      # Only the api is on Kroki's network, so only the api is told of it.
+      STATOR_KROKI_URL: http://kroki:8000
       # The browser suite makes its people and resets the settings through these;
       # the Helm chart never sets them.
       STATOR_TEST_ENDPOINTS: "1"
       STATOR_TEST_ENDPOINTS_TOKEN: ${STATOR_TEST_ENDPOINTS_TOKEN:-stator-dev-test-endpoints-token}
+    networks: [default, kroki]
     ports:
       - "127.0.0.1:${API_PORT:-8080}:8080"
     healthcheck:
@@ -488,6 +514,12 @@ services:
       retries: 5
       start_period: 30s
       start_interval: 1s
+
+networks:
+  default:
+  # Internal: no gateway out of the host, so Kroki reaches nothing but the api.
+  kroki:
+    internal: true
 
 volumes:
   primary-data:

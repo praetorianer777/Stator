@@ -15,6 +15,9 @@ images:
   # deploy/Dockerfile.render: the public Chrome image with the render
   # service's script baked in, for PDF export.
   render: { repository: ghcr.io/praetorianer777/stator-render, tag: "" }
+  # Draws PlantUML, Structurizr, Graphviz and D2 diagrams for the api. Its
+  # tag is pinned here, not the chart's appVersion: it is not built by Stator.
+  kroki: { repository: yuzutech/kroki, tag: 0.34.0 }
   # deploy/Dockerfile.backend built with --target backup: the backup command
   # beside pg_dump and psql of the server's major version.
   backup: { repository: ghcr.io/praetorianer777/stator-backup, tag: "" }
@@ -182,6 +185,23 @@ render:
   resources:
     requests: { cpu: 200m, memory: 512Mi }
     limits: { memory: 2Gi }
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+kroki:
+  # Draws diagrams written as text, inside the installation and never at a
+  # public service. Off by default: the image is 4.1 GB, and without it a
+  # server offers Mermaid alone. It always runs in secure mode, which keeps
+  # PlantUML from reading files and addresses; the chart has no switch for it.
+  enabled: false
+  replicas: 1
+  # About 100 MiB at rest and 250 MiB while several people draw at once,
+  # measured in the spike of docs/decisions.md (#466).
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 1Gi }
   podAnnotations: {}
   nodeSelector: {}
   tolerations: []

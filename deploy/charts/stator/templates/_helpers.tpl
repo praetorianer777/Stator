@@ -253,6 +253,9 @@ STATOR_RENDER_TIMEOUT: {{ .Values.render.timeout | quote }}
 STATOR_RENDER_CONCURRENCY: {{ .Values.render.concurrency | quote }}
 STATOR_RENDER_MAX_SIZE: {{ .Values.render.maxSize | quote }}
 {{- end }}
+{{- if .Values.kroki.enabled }}
+STATOR_KROKI_URL: {{ printf "http://%s-kroki:8000" (include "stator.fullname" .) | quote }}
+{{- end }}
 STATOR_RETAIN_AUDIT: {{ .Values.retention.audit | quote }}
 STATOR_RETAIN_PAGE_VIEWS: {{ .Values.retention.pageViews | quote }}
 STATOR_VERIFICATION_CHECK_INTERVAL: {{ .Values.verification.checkInterval | quote }}

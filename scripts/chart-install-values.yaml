@@ -30,6 +30,11 @@ seaweedfs:
 
 render:
   enabled: false
+# Its image is 4.1 GB, longer to load into the node than the rest of the test
+# takes; tests/test-helm.sh checks what the chart renders for it, and the
+# stack's test-kroki that it draws and reaches nothing.
+kroki:
+  enabled: false
 
 jobs:
   bootstrap:
