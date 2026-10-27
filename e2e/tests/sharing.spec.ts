@@ -69,7 +69,11 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await openPage(page, space.key, runbook);
     await shareButton(page).click();
     await expect(dialog(page).getByRole("heading", { name: `Share ${runbook.title}` })).toBeVisible();
-    await expect(dialog(page).locator("[data-viewers-everyone]")).toHaveText("Everyone in the organization can view this page.");
+    // Every spec shares the one organization, and a guest another spec has let in
+    // cannot view this space, so the open page may read as everyone or as a count.
+    await expect(dialog(page).locator("[data-viewers-everyone], [data-viewers-total]")).toHaveText(
+      /^(Everyone in the organization can view this page\.|\d+ (person|people) can view this page:)$/,
+    );
     await pick(page, BOB, BOB);
     await expect(async () => {
       await picker(page).fill(groupName.slice(0, -3));
