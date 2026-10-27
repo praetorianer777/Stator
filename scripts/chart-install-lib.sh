@@ -64,15 +64,46 @@ build_images() {
   kind load docker-image --name "$CLUSTER" "stator-test/backend:$tag" "stator-test/web:$tag"
 }
 
-# Every Job in the namespace has succeeded; the hook Jobs are kept until the
-# next run of the same hook replaces them.
-jobs_succeeded() {
-  local name
-  for name in "$@"; do
-    kubectl get jobs -n "$NS" -o name | grep -q -- "-$name\$" || fail "no $name Job was run"
+# How long the Jobs are given to appear and complete. Helm deletes a hook Job
+# before it makes the next run of it, so for a moment there is none.
+JOB_WAIT_S="${JOB_WAIT_S:-300}"
+JOB_POLL_S="${JOB_POLL_S:-2}"
+
+unfinished_jobs() {
+  kubectl get jobs -n "$NS" -o json | jq -r '[.items[] | select((.status.succeeded // 0) < 1) | .metadata.name] | join(", ")'
+}
+
+# job_complete <name> <deadline>: the Job named <release>-<name> exists and
+# has completed by then; one that has failed fails at once.
+job_complete() {
+  local name="$1" deadline="$2" job=""
+  while ((SECONDS < deadline)); do
+    job="$(kubectl get jobs -n "$NS" -o name | grep -m1 -- "-$name\$" || true)"
+    if [[ -n "$job" ]]; then
+      [[ "$(kubectl get "$job" -n "$NS" -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null || true)" != True ]] \
+        || fail "the $name Job failed: kubectl logs -n $NS $job"
+      kubectl wait "$job" -n "$NS" --for=condition=complete --timeout="${JOB_POLL_S}s" >/dev/null 2>&1 && return 0
+    else
+      sleep "$JOB_POLL_S"
+    fi
   done
-  kubectl get jobs -n "$NS" -o json | jq -e '[.items[] | select((.status.succeeded // 0) < 1)] | length == 0' >/dev/null \
-    || fail "these Jobs did not succeed: $(kubectl get jobs -n "$NS" -o json | jq -r '[.items[] | select((.status.succeeded // 0) < 1) | .metadata.name] | join(", ")')"
+  [[ -n "$job" ]] || fail "no $name Job was run within ${JOB_WAIT_S}s"
+  fail "the $name Job did not complete within ${JOB_WAIT_S}s"
+}
+
+# The named Jobs have run and every Job in the namespace has succeeded; the
+# hook Jobs are kept until the next run of the same hook replaces them.
+jobs_succeeded() {
+  local name deadline=$((SECONDS + JOB_WAIT_S)) left
+  for name in "$@"; do
+    job_complete "$name" "$deadline"
+  done
+  while true; do
+    left="$(unfinished_jobs)"
+    [[ -n "$left" ]] || return 0
+    ((SECONDS < deadline)) || fail "these Jobs did not succeed within ${JOB_WAIT_S}s: $left"
+    sleep "$JOB_POLL_S"
+  done
 }
 
 # The api and worker start before the hooks have made the database and crash
