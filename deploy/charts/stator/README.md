@@ -24,8 +24,8 @@ about 100 MiB at rest and up to 250 MiB and two cores for a moment while
 several people draw; `kroki.resources` asks for 256Mi and holds it to 1Gi.
 
 Kroki publishes nothing outside the cluster. Its Service is reached by the
-api alone, at `STATOR_KROKI_URL` (which the api reads once it draws through
-Kroki, #546), and a NetworkPolicy lets in the api's pods
+api alone, at the `STATOR_KROKI_URL` the chart sets for it, and a
+NetworkPolicy lets in the api's pods
 on port 8000 and lets nothing out, not even DNS: no language it draws needs
 the network. The policy only holds where the cluster's network plugin
 enforces policies, so check that yours does.

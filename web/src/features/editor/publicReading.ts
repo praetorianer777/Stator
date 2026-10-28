@@ -15,6 +15,13 @@ export function usePublicLink(): string | null {
   return useContext(PublicLinkContext);
 }
 
+/** The id of the page read in the public pages, which its diagrams are drawn for; null for every other reading. */
+export const PublicPageContext = createContext<string | null>(null);
+
+export function usePublicPageId(): string | null {
+  return useContext(PublicPageContext);
+}
+
 /** The reading view of the one page a public link opens. */
 export function publicLinkPath(token: string): string {
   return `${PUBLIC_PATH}/${PUBLIC_LINK_SEGMENT}/${encodeURIComponent(token)}`;

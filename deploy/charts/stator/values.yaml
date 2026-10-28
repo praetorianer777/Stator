@@ -193,8 +193,9 @@ render:
 kroki:
   # Draws diagrams written as text, inside the installation and never at a
   # public service. Off by default: the image is 4.1 GB, and without it a
-  # server offers Mermaid alone. It always runs in secure mode, which keeps
-  # PlantUML from reading files and addresses; the chart has no switch for it.
+  # server offers Mermaid alone. On, the chart tells the api where it is in
+  # STATOR_KROKI_URL. It always runs in secure mode, which keeps PlantUML
+  # from reading files and addresses; the chart has no switch for it.
   enabled: false
   replicas: 1
   # About 100 MiB at rest and 250 MiB while several people draw at once,

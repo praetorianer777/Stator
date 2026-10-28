@@ -21,7 +21,7 @@ import { Passage, usePassages, type BlockPath } from "./passages";
 import { DATE_NODE, DateChip, STATUS_NODE, StatusLabel, isoDay, statusColor, statusLabel } from "./InlineValueViews";
 import { Blank, TEMPLATE_VARIABLE_NODE, variableName } from "./blanks";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE, MathFormula, mathSource } from "./MathViews";
-import { DIAGRAM_NODE, DiagramFigure, diagramSource } from "./DiagramViews";
+import { DIAGRAM_NODE, DiagramFigure, KrokiFigure, diagramSource, krokiLanguage } from "./DiagramViews";
 import { SketchFigure } from "@/features/sketch/SketchViews";
 import { SKETCH_NODE } from "@/features/sketch/scene";
 import { LINK_CARD_NODE, LinkCard, linkCardView, webAddress } from "./LinkCardViews";
@@ -466,7 +466,9 @@ function Block({ node, copy, path }: { node: DocNode; copy: Copy; path: BlockPat
     }
     case DIAGRAM_NODE: {
       const source = diagramSource(node.attrs?.source);
-      return source ? <DiagramFigure source={source} /> : null;
+      const language = krokiLanguage(node.attrs?.language);
+      if (!source) return null;
+      return language ? <KrokiFigure language={language} source={source} /> : <DiagramFigure source={source} />;
     }
     case SKETCH_NODE:
       return <SketchFigure attrs={node.attrs} />;

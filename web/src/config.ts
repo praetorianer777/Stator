@@ -633,6 +633,8 @@ export const DIAGRAM_SOURCE_ROWS = 6;
 export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draft] --> published[Published]";
 /** The name a downloaded diagram is saved under. */
 export const DIAGRAM_FILE_NAME = "diagram.svg";
+/** The diagram languages the API draws through Kroki; a diagram in any other is Mermaid, drawn in the browser. */
+export const DIAGRAM_KROKI_LANGUAGES: readonly string[] = ["plantuml", "structurizr", "graphviz", "d2"];
 /** The longest scene a sketch keeps, as JSON, matching the API's MaxSketchSceneLength. */
 export const SKETCH_SCENE_MAX_LENGTH = 500_000;
 /** The longest SVG drawn from a sketch, matching the API's MaxSketchDrawingLength. */

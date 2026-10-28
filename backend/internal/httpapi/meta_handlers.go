@@ -22,13 +22,17 @@ type metaResponse struct {
 	APIVersion string       `json:"apiVersion"`
 	// Capabilities are the integration features this build offers, as name@version.
 	Capabilities []string `json:"capabilities"`
+	// DiagramLanguages are the languages this server draws diagrams in:
+	// mermaid always, and plantuml, structurizr, graphviz and d2 with Kroki.
+	DiagramLanguages []string `json:"diagramLanguages"`
 }
 
 func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusOK, metaResponse{
-		Product:      ProductName,
-		Build:        version.Current(),
-		APIVersion:   APIVersion,
-		Capabilities: capabilities(),
+		Product:          ProductName,
+		Build:            version.Current(),
+		APIVersion:       APIVersion,
+		Capabilities:     capabilities(),
+		DiagramLanguages: s.Diagrams.Languages(),
 	})
 }

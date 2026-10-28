@@ -19,6 +19,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/comment"
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/diagram"
 	"github.com/praetorianer777/stator/backend/internal/example"
 	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/guest"
@@ -132,6 +133,9 @@ type Server struct {
 	// Brand keeps the logo and footer lines the organization's exports carry.
 	Brand  *brand.Service
 	Unfurl *unfurl.Service
+	// Diagrams draws PlantUML, Structurizr, Graphviz and D2 through Kroki;
+	// nil, or one without Kroki, offers Mermaid alone.
+	Diagrams *diagram.Service
 	// PageViews reads how often pages were read and by whom;
 	// PageViewRetention is how long the worker keeps named views, zero forever.
 	PageViews         *pageview.Service
@@ -256,6 +260,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/pages/{pageID}", s.handlePublicPage)
 			r.Get("/public/pages/{pageID}/pdf", s.handlePublicPagePDF)
 			r.Get("/public/pages/{pageID}/docx", s.handlePublicPageWord)
+			r.Get("/public/pages/{pageID}/diagrams/{hash}", s.handlePublicPageDiagram)
 			r.Get("/public/attachments/{attachmentID}", s.handlePublicAttachment)
 			r.Get("/public/logo", s.handlePublicLogo)
 			r.Get("/public/search", s.handlePublicSearch)
@@ -265,6 +270,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/public/links/{token}", s.handleLinkedPage)
 			r.Get("/public/links/{token}/pdf", s.handleLinkedPagePDF)
 			r.Get("/public/links/{token}/docx", s.handleLinkedPageWord)
+			r.Get("/public/links/{token}/diagrams/{hash}", s.handleLinkedPageDiagram)
 			r.Get("/public/links/{token}/attachments/{attachmentID}", s.handleLinkedAttachment)
 			r.Get("/public/links/{token}/logo", s.handleLinkedLogo)
 		})
@@ -497,6 +503,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/pages/{pageID}/markdown", s.handleGetPageMarkdown)
 			r.Get("/pages/{pageID}/pdf", s.handlePagePDF)
 			r.Get("/pages/{pageID}/docx", s.handlePageWord)
+			r.Get("/pages/{pageID}/diagrams/{hash}", s.handlePageDiagram)
 			r.Put("/pages/{pageID}/markdown", s.handleReplacePageMarkdown)
 			r.Post("/pages/{pageID}/import", s.handleImportMarkdown)
 			r.Post("/pages/{pageID}/import/docx", s.handleImportWord)
@@ -608,6 +615,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Get("/site/brand", s.handleGetBrand)
 			r.Get("/site/brand/logo", s.handleBrandLogo)
 			r.Get("/link-preview", s.handleLinkPreview)
+			r.Post("/diagrams", s.handlePreviewDiagram)
 			r.Get("/home/edited", s.handleHomeEdited)
 			r.Get("/stale-pages", s.handleListStalePages)
 			r.Get("/tasks", s.handleListMyTasks)

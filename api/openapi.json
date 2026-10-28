@@ -40,6 +40,9 @@
       "name": "comments"
     },
     {
+      "name": "diagrams"
+    },
+    {
       "name": "docx"
     },
     {
@@ -3822,6 +3825,88 @@
                   "required": [
                     "tools"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diagrams": {
+      "post": {
+        "operationId": "previewDiagram",
+        "summary": "Draw a PlantUML, Structurizr, Graphviz or D2 diagram from its text as SVG, for an author's preview, through the installation's Kroki; GET /meta names the languages this server draws. For people who may edit pages somewhere, and at most 120 a minute for each, then too_many_requests. Answered and refused as GET /pages/{pageID}/diagrams/{hash} is, and with validation_failed for another language or a text that is blank or longer than 20,000 characters, which Kroki never sees.",
+        "tags": [
+          "diagrams"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiagramRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -7789,6 +7874,87 @@
                   "required": [
                     "page"
                   ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{pageID}/diagrams/{hash}": {
+      "get": {
+        "operationId": "pageDiagram",
+        "summary": "The drawing of one of the page's PlantUML, Structurizr, Graphviz or D2 diagrams as SVG, drawn by the installation's Kroki and kept thirty days. hash is the hex SHA-256 of the diagram's language, a line break and its text; a hash the published page does not hold is not found. Answered as image/svg+xml under a Content-Security-Policy that runs nothing, to be shown as an image. Refused with diagram_unreadable and the reason Kroki gives, diagram_timeout, diagram_too_large or diagram_language_off, and with diagram_unavailable or diagram_busy when it cannot be drawn right now.",
+        "tags": [
+          "diagrams"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -12508,6 +12674,86 @@
         }
       }
     },
+    "/public/links/{token}/diagrams/{hash}": {
+      "get": {
+        "operationId": "linkedPageDiagram",
+        "summary": "The drawing of one of the diagrams of the page a public link opens, for whoever holds the link, as GET /pages/{pageID}/diagrams/{hash} answers it. Not found, as link_gone, when the link no longer opens the page; never cached.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/public/links/{token}/docx": {
       "get": {
         "operationId": "linkedPageWord",
@@ -12835,6 +13081,87 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/pages/{pageID}/diagrams/{hash}": {
+      "get": {
+        "operationId": "publicPageDiagram",
+        "summary": "The drawing of one of the diagrams of a published page anybody may read, as GET /pages/{pageID}/diagrams/{hash} answers it.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "name": "pageID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -23008,6 +23335,21 @@
           "themeId"
         ]
       },
+      "DiagramRequest": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "language",
+          "source"
+        ]
+      },
       "DiffBlock": {
         "type": "object",
         "properties": {
@@ -25296,6 +25638,12 @@
               "type": "string"
             }
           },
+          "diagramLanguages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "product": {
             "type": "string"
           }
@@ -25304,7 +25652,8 @@
           "product",
           "build",
           "apiVersion",
-          "capabilities"
+          "capabilities",
+          "diagramLanguages"
         ]
       },
       "Metadata": {

@@ -209,14 +209,20 @@ describe("galleries", () => {
 
 describe("diagrams", () => {
   it("are read back from what the editor copies, their lines and spaces kept", async () => {
-    const doc: DocNode = { type: "doc", content: [{ type: "diagram", attrs: { source: 'flowchart LR\n  a["<b>Draft</b>"] --> b\n\n  b --> c' } }] };
+    const doc: DocNode = {
+      type: "doc",
+      content: [
+        { type: "diagram", attrs: { source: 'flowchart LR\n  a["<b>Draft</b>"] --> b\n\n  b --> c', language: "mermaid" } },
+        { type: "diagram", attrs: { source: "@startuml\nAlice -> Bob\n@enduml", language: "plantuml" } },
+      ],
+    };
     const e = await make(doc);
     const html = e.getHTML();
     expect(html).not.toContain("<b>");
     e.destroy();
     const back = await make();
     back.commands.setContent(html);
-    expect(back.getJSON().content?.slice(0, 1)).toEqual(doc.content);
+    expect(back.getJSON().content?.slice(0, 2)).toEqual(doc.content);
   });
 });
 

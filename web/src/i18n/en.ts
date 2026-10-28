@@ -2698,6 +2698,7 @@ export const en = {
       source: "Diagram source in Mermaid",
       drawing: "Diagram",
       unreadable: (reason: string) => `This diagram cannot be drawn: ${reason} Its source is shown instead.`,
+      notNow: "This diagram cannot be drawn right now. Its source is shown instead.",
       empty: "Write the diagram in Mermaid, such as flowchart LR followed by A --> B.",
       download: "Download as SVG",
     },

@@ -23,7 +23,15 @@ import { Icon } from "@/components/icons";
 import { APP_NAME, PUBLIC_PATH } from "@/config";
 import { DocView } from "@/features/editor/DocView";
 import { pageSheet } from "@/features/pages/pageSheet";
-import { PublicLinkContext, PublicReadingContext, publicPagePath, publicSitePath, publicSpacePath, signInPath } from "@/features/editor/publicReading";
+import {
+  PublicLinkContext,
+  PublicPageContext,
+  PublicReadingContext,
+  publicPagePath,
+  publicSitePath,
+  publicSpacePath,
+  signInPath,
+} from "@/features/editor/publicReading";
 import type { DocNode } from "@/features/editor/schema";
 import { coverPosition } from "@/features/pages/AppearanceDialog";
 import { t } from "@/i18n";
@@ -356,7 +364,13 @@ function PageArticle({ pageId }: { pageId: string }) {
         meta={<span>{t.publicReading.updated(updatedAt.format(new Date(page.updatedAt)))}</span>}
         actions={page.kind !== "folder" && <ExportButtons pdf={publicPdfHref(page.id)} docx={publicWordHref(page.id)} title={page.title} />}
       />
-      {page.kind === "folder" ? <FolderChildren page={page} /> : <DocView doc={page.body as DocNode} />}
+      {page.kind === "folder" ? (
+        <FolderChildren page={page} />
+      ) : (
+        <PublicPageContext value={page.id}>
+          <DocView doc={page.body as DocNode} />
+        </PublicPageContext>
+      )}
     </article>
   );
 }

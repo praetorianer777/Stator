@@ -90,6 +90,35 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
     expect(alerted).toBe(false);
   });
 
+  test("a PlantUML diagram is drawn by the installation's Kroki, for an author, a reader and the print", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Kroki");
+    const word = `Kroki${Date.now().toString(36)}`;
+    const source = `@startuml\nAlice -> Bob: ${word}\n@enduml`;
+
+    const { data, response } = await api.POST("/diagrams", { body: { language: "plantuml", source }, parseAs: "text" });
+    expect(response.status, String(data)).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/svg+xml");
+    expect(response.headers.get("content-security-policy")).toBe("default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+    expect(data).toContain(word);
+
+    const unreadable = await api.POST("/diagrams", { body: { language: "plantuml", source: "@startuml\nthis is not a diagram\n@enduml" } });
+    expect(unreadable.response.status).toBe(422);
+    expect(unreadable.error).toMatchObject({ error: { code: "diagram_unreadable" } });
+
+    const notes = await createPage(api, space.homePageId, "Sequence", { type: "doc", content: [{ type: "diagram", attrs: { language: "plantuml", source } }] });
+    const drawing = (scope: Page) => scope.locator('[data-diagram-language="plantuml"] img[data-diagram-image]');
+    const loaded = (scope: Page) => drawing(scope).evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0);
+    await openUntil(page, `/s/${space.key}/p/${notes.id}/sequence`, () => expect(drawing(page)).toBeVisible(ONE_LOOK));
+    await expect.poll(() => loaded(page)).toBe(true);
+    await expect(shown(page).locator("[data-diagram-error]")).toHaveCount(0);
+
+    // The render service prints once the page says it is ready, which waits for the drawing.
+    await page.goto(`/print/p/${notes.id}`);
+    await expect(page.locator("html")).toHaveAttribute("data-print-ready", "", { timeout: 30_000 });
+    expect(await loaded(page)).toBe(true);
+    await expect(page.locator('[data-diagram-state="drawing"]')).toHaveCount(0);
+  });
+
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`diagrams pass axe in ${scheme}, a broken one too`, async ({ page, api }, testInfo) => {
       const space = await freshSpace(api, testInfo, "Axe");

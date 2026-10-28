@@ -4,7 +4,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tip
 import { Textarea } from "@/components/ui";
 import { DIAGRAM_DEFAULT_SOURCE, DIAGRAM_MAX_LENGTH, DIAGRAM_PREVIEW_DELAY_MS, DIAGRAM_SOURCE_ROWS } from "@/config";
 import { t } from "@/i18n";
-import { DIAGRAM_NODE, DiagramDrawing, diagramSource, useDiagram } from "./DiagramViews";
+import { DIAGRAM_NODE, DiagramDrawing, diagramSource, krokiLanguage, useDiagram } from "./DiagramViews";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -59,6 +59,13 @@ export const Diagram = Node.create({
         default: DIAGRAM_DEFAULT_SOURCE,
         parseHTML: (el) => diagramSource(el.textContent) ?? DIAGRAM_DEFAULT_SOURCE,
         rendered: false,
+      },
+      // Kept as it came, so a diagram Kroki draws stays in its language when
+      // the page is edited; a new diagram is Mermaid.
+      language: {
+        default: "mermaid",
+        parseHTML: (el) => krokiLanguage(el.getAttribute("data-language")) ?? "mermaid",
+        renderHTML: (attrs) => (krokiLanguage(attrs.language) ? { "data-language": attrs.language } : {}),
       },
     };
   },

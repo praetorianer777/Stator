@@ -57,6 +57,23 @@ func (s *Service) Mine(ctx context.Context, actor Actor) (GlobalCan, error) {
 	return out, err
 }
 
+// MayEditSomewhere reports whether the actor may edit pages anywhere: in a
+// space of their own, which every member with use may make, or in a space
+// that lets them add pages.
+func (s *Service) MayEditSomewhere(ctx context.Context, actor Actor) (bool, error) {
+	var out bool
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		f, err := LoadFacts(ctx, tx, actor, uuid.Nil)
+		if err != nil || Decide(f, CreatePersonalSpace) {
+			out = err == nil
+			return err
+		}
+		return tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM space s WHERE s.archived_at IS NULL AND perm_space_holds($1::uuid, s.id, $2))`,
+			actor.UserID, string(SpaceAddPages)).Scan(&out)
+	})
+	return out, err
+}
+
 // requireAdmin refuses anybody but an owner or administrator.
 func requireAdmin(ctx context.Context, tx db.DBTX, actor Actor) error {
 	f, err := LoadFacts(ctx, tx, actor, uuid.Nil)

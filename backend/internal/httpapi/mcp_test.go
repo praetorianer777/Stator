@@ -39,6 +39,7 @@ const (
 	whyWord         = "a Word document is a file for a person to edit offline or hand on; get_page and get_page_markdown carry the same words to a model"
 	whyWordImport   = "a Word document is a file a person uploads, and several are imported by the worker; import_markdown carries a model's words into a new page"
 	whyReview       = "a review is a person's judgement of a draft, and confirming a page was read is a person's own word; both are given in the page, beside what they are about"
+	whyDiagram      = "a drawing is a picture for a person's eyes; get_page and get_page_markdown carry a diagram's text, which a model reads better"
 	whyLinks        = "opens a page to anybody outside the organization, a decision its editors make in the share dialog; the token is shown once, to a person"
 )
 
@@ -118,6 +119,10 @@ var notTools = map[string]string{
 	"PUT /pages/{pageID}/appearance":                               whyBrowser,
 	"GET /pages/{pageID}/included":                                 whyBrowser,
 	"GET /link-preview":                                            whyBrowser,
+	"POST /diagrams":                                               whyDiagram,
+	"GET /pages/{pageID}/diagrams/{hash}":                          whyDiagram,
+	"GET /public/pages/{pageID}/diagrams/{hash}":                   whyPublic,
+	"GET /public/links/{token}/diagrams/{hash}":                    whyPublic,
 	"PUT /site/hub":                                                whyAdmin,
 	"GET /site/brand":                                              whyAdmin,
 	"PUT /site/brand/footer":                                       whyAdmin,

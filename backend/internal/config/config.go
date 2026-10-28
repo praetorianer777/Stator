@@ -115,7 +115,10 @@ type Config struct {
 	ConverterURL string
 	// Render is the service that prints pages as PDF; a blank URL turns
 	// PDF export off.
-	Render    Render
+	Render Render
+	// KrokiURL is the Kroki that draws PlantUML, Structurizr, Graphviz and
+	// D2 diagrams; blank offers Mermaid alone.
+	KrokiURL  string
 	Bootstrap Bootstrap
 	// TestEndpoints serves the people and resets of the browser suite.
 	TestEndpoints TestEndpoints
@@ -370,6 +373,7 @@ func Load() (Config, error) {
 		},
 		UploadLimit:  l.size("STATOR_UPLOAD_LIMIT", DefaultUploadLimit),
 		ConverterURL: strings.TrimSuffix(l.str("STATOR_CONVERTER_URL", ""), "/"),
+		KrokiURL:     strings.TrimSuffix(l.str("STATOR_KROKI_URL", ""), "/"),
 		Render: Render{
 			URL:         strings.TrimSuffix(l.str("STATOR_RENDER_URL", ""), "/"),
 			Timeout:     l.duration("STATOR_RENDER_TIMEOUT", DefaultRenderTimeout),
@@ -536,6 +540,11 @@ func Load() (Config, error) {
 	if c.ConverterURL != "" {
 		if u, err := url.Parse(c.ConverterURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 			l.problem(fmt.Sprintf("STATOR_CONVERTER_URL is %q; set it to the conversion service's address, such as http://converter:3000, or leave it blank to turn office previews off.", c.ConverterURL))
+		}
+	}
+	if c.KrokiURL != "" {
+		if u, err := url.Parse(c.KrokiURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			l.problem(fmt.Sprintf("STATOR_KROKI_URL is %q; set it to the address of the installation's Kroki, such as http://kroki:8000, or leave it blank to offer Mermaid diagrams alone.", c.KrokiURL))
 		}
 	}
 	if c.Render.URL != "" {
