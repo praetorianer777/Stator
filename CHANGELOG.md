@@ -7,6 +7,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-28
+
 ### Added
 
 - Picking a diagram's language in the block (#547): Mermaid, and the
