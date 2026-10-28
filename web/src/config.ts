@@ -635,6 +635,15 @@ export const DIAGRAM_DEFAULT_SOURCE = "flowchart LR\n  idea[Idea] --> draft[Draf
 export const DIAGRAM_FILE_NAME = "diagram.svg";
 /** The diagram languages the API draws through Kroki; a diagram in any other is Mermaid, drawn in the browser. */
 export const DIAGRAM_KROKI_LANGUAGES: readonly string[] = ["plantuml", "structurizr", "graphviz", "d2"];
+/** What a diagram holds when its author picks a language before writing their own, a sketch of each language's syntax. */
+export const DIAGRAM_STARTERS: Readonly<Record<string, string>> = {
+  mermaid: DIAGRAM_DEFAULT_SOURCE,
+  plantuml: "@startuml\nAuthor -> Wiki: Save the page\nWiki --> Author: Saved\n@enduml",
+  structurizr:
+    'workspace {\n  model {\n    author = person "Author"\n    wiki = softwareSystem "Wiki"\n    author -> wiki "Writes pages in"\n  }\n  views {\n    systemContext wiki {\n      include *\n      autolayout lr\n    }\n  }\n}',
+  graphviz: "digraph {\n  rankdir=LR\n  idea -> draft -> published\n}",
+  d2: "idea -> draft -> published",
+};
 /** The longest scene a sketch keeps, as JSON, matching the API's MaxSketchSceneLength. */
 export const SKETCH_SCENE_MAX_LENGTH = 500_000;
 /** The longest SVG drawn from a sketch, matching the API's MaxSketchDrawingLength. */

@@ -2781,12 +2781,15 @@ export const de: Messages = {
       insert: "Einfügen",
     },
     diagram: {
-      source: "Diagrammquelle in Mermaid",
+      source: (language: string) => `Diagrammquelle in ${language}`,
+      language: "Diagrammsprache",
       drawing: "Diagramm",
       unreadable: (reason: string) => `Dieses Diagramm kann nicht gezeichnet werden: ${reason} Stattdessen wird seine Quelle gezeigt.`,
       notNow: "Dieses Diagramm kann gerade nicht gezeichnet werden. Stattdessen wird seine Quelle gezeigt.",
       empty: "Schreiben Sie das Diagramm in Mermaid, etwa flowchart LR gefolgt von A --> B.",
       download: "Als SVG herunterladen",
+      emptyIn: (language: string) => `Schreiben Sie das Diagramm in ${language}.`,
+      languages: { mermaid: "Mermaid", plantuml: "PlantUML", structurizr: "Structurizr", graphviz: "Graphviz", d2: "D2" } as Record<string, string>,
     },
     sketch: {
       name: (title: string) => (title ? `Skizze: ${title}` : "Skizze ohne Titel"),

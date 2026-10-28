@@ -4,6 +4,7 @@ import { Button } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { API_BASE, DIAGRAM_FILE_NAME, DIAGRAM_KROKI_LANGUAGES, DIAGRAM_MAX_EDGES, DIAGRAM_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
+import { ApiError, api } from "@/api/client";
 import { sha256Hex } from "@/lib/sha256";
 import { DocPageContext } from "./BlockViews";
 import { usePublicLink, usePublicPageId, usePublicReading } from "./publicReading";
@@ -197,7 +198,7 @@ function KrokiDrawing({ url, source }: { url: string; source: string }) {
   const [state, setState] = useState<"drawing" | "drawn" | "failed">("drawing");
   if (state === "failed") return <KrokiSource source={source} />;
   return (
-    <div className="doc-diagram-svg" data-diagram-state={state === "drawing" ? "drawing" : undefined}>
+    <div className="doc-diagram-svg doc-diagram-image" data-diagram-state={state === "drawing" ? "drawing" : undefined}>
       <img src={url} alt={t.editor.diagram.drawing} data-diagram-image="" onLoad={() => setState("drawn")} onError={() => setState("failed")} />
     </div>
   );
@@ -209,6 +210,67 @@ function KrokiSource({ source }: { source: string }) {
       <p className="doc-diagram-error" data-diagram-error="">
         {t.editor.diagram.notNow}
       </p>
+      <pre>
+        <code>{source}</code>
+      </pre>
+    </div>
+  );
+}
+
+/** An author's preview of a diagram Kroki draws: the drawing as an image's address, or the sentence saying why there is none. */
+export type KrokiPreview = { src: string; error: null } | { src: null; error: string };
+
+function previewError(err: unknown): string {
+  if (!(err instanceof ApiError)) return t.editor.diagram.notNow;
+  if (err.code === "diagram_unreadable") return t.editor.diagram.unreadable(err.message);
+  return err.fields.source ?? err.fields.language ?? err.message;
+}
+
+/** Asks the api to draw a diagram for its author, as an image never put into the page. */
+export async function previewKroki(language: string, source: string, signal?: AbortSignal): Promise<KrokiPreview> {
+  try {
+    const { data } = await api.POST("/diagrams", { body: { language, source }, parseAs: "text", signal });
+    return { src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(String(data ?? ""))}`, error: null };
+  } catch (err) {
+    return { src: null, error: previewError(err) };
+  }
+}
+
+/** The preview for a source in a language Kroki draws, asked for once the source has stood still for the delay given. */
+export function useKrokiPreview(language: string, source: string, delay: number): KrokiPreview | null {
+  const [out, setOut] = useState<KrokiPreview | null>(null);
+  useEffect(() => {
+    const abort = new AbortController();
+    const timer = setTimeout(() => {
+      void previewKroki(language, source, abort.signal).then((result) => {
+        if (!abort.signal.aborted) setOut(result);
+      });
+    }, delay);
+    return () => {
+      abort.abort();
+      clearTimeout(timer);
+    };
+  }, [language, source, delay]);
+  // While a new drawing is on its way the last one stays, so the preview does not flicker.
+  return out;
+}
+
+/** An author's preview of a diagram Kroki draws, or its source while it is drawn and when it cannot be, saying why. */
+export function KrokiPreviewDrawing({ source, preview }: { source: string; preview: KrokiPreview | null }) {
+  if (preview?.src) {
+    return (
+      <div className="doc-diagram-svg doc-diagram-image">
+        <img src={preview.src} alt={t.editor.diagram.drawing} data-diagram-image="" />
+      </div>
+    );
+  }
+  return (
+    <div className="doc-diagram-source" data-diagram-state={preview ? "error" : "drawing"}>
+      {preview?.error && (
+        <p className="doc-diagram-error" data-diagram-error="">
+          {preview.error}
+        </p>
+      )}
       <pre>
         <code>{source}</code>
       </pre>

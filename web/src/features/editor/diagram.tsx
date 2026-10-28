@@ -1,10 +1,11 @@
 import { useId } from "react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
-import { Textarea } from "@/components/ui";
-import { DIAGRAM_DEFAULT_SOURCE, DIAGRAM_MAX_LENGTH, DIAGRAM_PREVIEW_DELAY_MS, DIAGRAM_SOURCE_ROWS } from "@/config";
+import { SelectInput, Textarea } from "@/components/ui";
+import { useDiagramLanguages } from "@/api/meta";
+import { DIAGRAM_DEFAULT_SOURCE, DIAGRAM_MAX_LENGTH, DIAGRAM_PREVIEW_DELAY_MS, DIAGRAM_SOURCE_ROWS, DIAGRAM_STARTERS } from "@/config";
 import { t } from "@/i18n";
-import { DIAGRAM_NODE, DiagramDrawing, diagramSource, krokiLanguage, useDiagram } from "./DiagramViews";
+import { DIAGRAM_NODE, DiagramDrawing, KrokiPreviewDrawing, diagramSource, krokiLanguage, useDiagram, useKrokiPreview } from "./DiagramViews";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -21,12 +22,40 @@ function DiagramNodeView({ node, updateAttributes, editor }: NodeViewProps) {
   const id = useId();
   const source = typeof node.attrs.source === "string" ? node.attrs.source : "";
   const kept = diagramSource(source);
-  const drawn = useDiagram(kept ?? "", DIAGRAM_PREVIEW_DELAY_MS);
+  const kroki = krokiLanguage(node.attrs.language);
+  const language = kroki ?? "mermaid";
+  const served = useDiagramLanguages();
+  // A diagram keeps a language this server does not draw, so it is offered too.
+  const offered = served.includes(language) ? served : [...served, language];
+  const name = languageName(language);
+  const pick = (next: string) => {
+    // A starter nobody has changed follows the language; anything written is kept.
+    const untouched = !source.trim() || source === DIAGRAM_STARTERS[language];
+    updateAttributes(untouched ? { language: next, source: DIAGRAM_STARTERS[next] ?? source } : { language: next });
+  };
   return (
-    <NodeViewWrapper className="doc-diagram doc-diagram-edit" data-diagram-edit="" contentEditable={false}>
-      <label htmlFor={`${id}-source`} className="doc-diagram-label">
-        {t.editor.diagram.source}
-      </label>
+    <NodeViewWrapper className="doc-diagram doc-diagram-edit" data-diagram-edit="" data-diagram-language={language} contentEditable={false}>
+      <div className="doc-diagram-head">
+        <label htmlFor={`${id}-source`} className="doc-diagram-label">
+          {t.editor.diagram.source(name)}
+        </label>
+        {offered.length > 1 && (
+          <SelectInput
+            aria-label={t.editor.diagram.language}
+            controlSize="sm"
+            value={language}
+            disabled={!editor.isEditable}
+            data-diagram-language-picker=""
+            onChange={(event) => pick(event.target.value)}
+          >
+            {offered.map((each) => (
+              <option key={each} value={each}>
+                {languageName(each)}
+              </option>
+            ))}
+          </SelectInput>
+        )}
+      </div>
       <Textarea
         id={`${id}-source`}
         value={source}
@@ -40,13 +69,31 @@ function DiagramNodeView({ node, updateAttributes, editor }: NodeViewProps) {
         onChange={(event) => updateAttributes({ source: event.target.value })}
       />
       <div className="doc-diagram-preview" data-diagram-preview="" aria-live="polite">
-        {kept ? <DiagramDrawing source={kept} drawn={drawn} /> : <p className="doc-diagram-error">{t.editor.diagram.empty}</p>}
+        {!kept ? (
+          <p className="doc-diagram-error">{kroki ? t.editor.diagram.emptyIn(name) : t.editor.diagram.empty}</p>
+        ) : kroki ? (
+          <KrokiBlockPreview language={kroki} source={kept} />
+        ) : (
+          <MermaidBlockPreview source={kept} />
+        )}
       </div>
     </NodeViewWrapper>
   );
 }
 
-/** A diagram written as Mermaid text, drawn for each reader. */
+function languageName(language: string): string {
+  return t.editor.diagram.languages[language] ?? language;
+}
+
+function MermaidBlockPreview({ source }: { source: string }) {
+  return <DiagramDrawing source={source} drawn={useDiagram(source, DIAGRAM_PREVIEW_DELAY_MS)} />;
+}
+
+function KrokiBlockPreview({ language, source }: { language: string; source: string }) {
+  return <KrokiPreviewDrawing source={source} preview={useKrokiPreview(language, source, DIAGRAM_PREVIEW_DELAY_MS)} />;
+}
+
+/** A diagram written as text in Mermaid, drawn for each reader, or in a language the installation's Kroki draws. */
 export const Diagram = Node.create({
   name: DIAGRAM_NODE,
   group: "block",
