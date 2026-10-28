@@ -7,6 +7,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- The web app takes the fixed releases of DOMPurify (3.4.17, a critical
+  advisory), seroval (1.7.3), source-map-js, Vite and Zod (#555).
+
 ## [0.2.0] - 2026-10-28
 
 ### Added
