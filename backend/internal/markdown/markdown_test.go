@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -423,6 +424,43 @@ func TestASketchIsAnExcalidrawFence(t *testing.T) {
 	}
 	if out := string(typed.Body); !strings.Contains(out, `"title":"Typed by hand"`) || !strings.Contains(out, `"type":"codeBlock","attrs":{"language":"excalidraw"}`) {
 		t.Errorf("read as %s", out)
+	}
+}
+
+func TestADiagramIsAFenceNamedAfterItsLanguage(t *testing.T) {
+	for _, c := range []struct{ language, fence, source string }{
+		{"", "mermaid", "flowchart LR\n  a --> b"},
+		{"plantuml", "plantuml", "@startuml\nAlice -> Bob: `hi`\n@enduml"},
+		{"structurizr", "structurizr", "workspace {\n  model {\n    u = person \"User\"\n  }\n}"},
+		{"graphviz", "graphviz", "digraph {\n  a -> b\n}"},
+		{"d2", "d2", "a -> b: ```"},
+	} {
+		attrs := `{"source":` + quoted(c.source)
+		if c.language != "" {
+			attrs += `,"language":` + quoted(c.language)
+		}
+		body := doc(`{"type":"diagram","attrs":` + attrs + `}}`)
+		md, got := roundTrip(t, body)
+		if !regexp.MustCompile("(?m)^```+" + c.fence + "$").MatchString(md) {
+			t.Errorf("%s was written as\n%s", c.fence, md)
+		}
+		if !reflect.DeepEqual(canon(t, []byte(body)), canon(t, got.Body)) {
+			t.Errorf("%s came back as %s from\n%s", c.fence, got.Body, md)
+		}
+	}
+
+	read, err := Convert([]byte("```puml\nA -> B\n```\n\n```DOT\ndigraph { a }\n```\n\n```bpmn\n<definitions/>\n```\n\n```plantuml\n\n```\n"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := doc(
+		`{"type":"diagram","attrs":{"source":"A -> B","language":"plantuml"}}`,
+		`{"type":"diagram","attrs":{"source":"digraph { a }","language":"graphviz"}}`,
+		`{"type":"codeBlock","attrs":{"language":"bpmn"},"content":[{"type":"text","text":"<definitions/>"}]}`,
+		`{"type":"codeBlock","attrs":{"language":"plantuml"}}`,
+	)
+	if !reflect.DeepEqual(canon(t, []byte(want)), canon(t, read.Body)) {
+		t.Errorf("read as %s", read.Body)
 	}
 }
 

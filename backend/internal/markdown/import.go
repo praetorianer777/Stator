@@ -491,8 +491,8 @@ func (c *converter) block(n ast.Node, depth int) ([]document.Node, error) {
 						return []document.Node{n}, nil
 					}
 				}
-				if lang == diagramLanguage {
-					if n, ok := diagram(c.lines(n)); ok {
+				if language, ok := diagramFences[lang]; ok {
+					if n, ok := diagram(c.lines(n), language); ok {
 						return []document.Node{n}, nil
 					}
 				}
@@ -543,14 +543,30 @@ func mathBlock(code string) (document.Node, bool) {
 	return document.Node{Type: document.NodeMathBlock, Attrs: map[string]any{"latex": latex}}, true
 }
 
-// diagram reads a mermaid fence as a diagram; one too long or empty to be a
-// diagram stays a code block.
-func diagram(code string) (document.Node, bool) {
+// diagramFences are the fence languages read as a diagram, and the language
+// each is written in; puml and dot are the names their files go by.
+var diagramFences = map[string]string{
+	document.DiagramMermaid:     document.DiagramMermaid,
+	document.DiagramPlantUML:    document.DiagramPlantUML,
+	"puml":                      document.DiagramPlantUML,
+	document.DiagramStructurizr: document.DiagramStructurizr,
+	document.DiagramGraphviz:    document.DiagramGraphviz,
+	"dot":                       document.DiagramGraphviz,
+	document.DiagramD2:          document.DiagramD2,
+}
+
+// diagram reads a diagram's fence as one; one too long or empty to be a
+// diagram stays a code block. Mermaid names no language, as before there were others.
+func diagram(code, language string) (document.Node, bool) {
 	source := strings.TrimSuffix(code, "\n")
 	if strings.TrimSpace(source) == "" || utf8.RuneCountInString(source) > document.MaxDiagramLength {
 		return document.Node{}, false
 	}
-	return document.Node{Type: document.NodeDiagram, Attrs: map[string]any{"source": source}}, true
+	attrs := map[string]any{"source": source}
+	if language != document.DiagramMermaid {
+		attrs["language"] = language
+	}
+	return document.Node{Type: document.NodeDiagram, Attrs: attrs}, true
 }
 
 // sketch reads an Excalidraw file as a sketch, drawn again when it is next

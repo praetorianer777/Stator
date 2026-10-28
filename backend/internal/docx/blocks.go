@@ -212,8 +212,8 @@ func (w *writer) mathBlock(n document.Node, f frame, _ int) {
 	w.para(f, paraProps{style: "Formula"}, func() { w.text(stringAttr(n, "latex"), runProps{}) })
 }
 
-// diagram writes a diagram's source, said to be one: it is drawn in the
-// reader's browser, which a document has none of.
+// diagram writes a diagram's source, said to be one, in whichever language:
+// it is drawn in the reader's browser or by Kroki, and a document has neither.
 func (w *writer) diagram(n document.Node, f frame, _ int) {
 	w.para(f, paraProps{style: "Note", keepNext: true}, func() { w.text(w.words.diagram, runProps{}) })
 	w.code(stringAttr(n, "source"), f)
