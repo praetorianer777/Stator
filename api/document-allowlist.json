@@ -342,6 +342,16 @@
     },
     "diagram": {
       "attrs": {
+        "language": {
+          "kind": "string",
+          "enum": [
+            "mermaid",
+            "plantuml",
+            "structurizr",
+            "graphviz",
+            "d2"
+          ]
+        },
         "source": {
           "kind": "string",
           "maxLength": 20000,

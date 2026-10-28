@@ -20,7 +20,7 @@ func clean(t *testing.T) {
 		"STATOR_VALKEY_URL", "STATOR_SESSION_COOKIE",
 		"STATOR_SECURE_COOKIES", "STATOR_OTEL_ENDPOINT", "STATOR_OTEL_SAMPLE_RATIO",
 		"STATOR_S3_ENDPOINT", "STATOR_S3_BUCKET", "STATOR_S3_ACCESS_KEY", "STATOR_S3_SECRET_KEY",
-		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT", "STATOR_CONVERTER_URL",
+		"STATOR_S3_REGION", "STATOR_S3_USE_SSL", "STATOR_UPLOAD_LIMIT", "STATOR_CONVERTER_URL", "STATOR_KROKI_URL",
 		"STATOR_RENDER_URL", "STATOR_RENDER_TIMEOUT", "STATOR_RENDER_CONCURRENCY", "STATOR_RENDER_MAX_SIZE",
 		"STATOR_SESSION_TTL", "STATOR_OIDC_REDIRECT_URL", "STATOR_OIDC_BACKCHANNEL", "STATOR_SECRET_KEY",
 		"STATOR_BOOTSTRAP_ADMIN_EMAIL", "STATOR_BOOTSTRAP_ADMIN_PASSWORD",
@@ -51,6 +51,24 @@ func TestTheConverterIsAnHTTPAddressOrNothing(t *testing.T) {
 	for _, bad := range []string{"converter:3000", "ftp://converter", "http://"} {
 		t.Setenv("STATOR_CONVERTER_URL", bad)
 		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_CONVERTER_URL") {
+			t.Errorf("%q should be refused by name, got %v", bad, err)
+		}
+	}
+}
+
+// Kroki is optional as well: without it a server offers Mermaid alone.
+func TestKrokiIsAnHTTPAddressOrNothing(t *testing.T) {
+	clean(t)
+	if cfg, err := Load(); err != nil || cfg.KrokiURL != "" {
+		t.Fatalf("no Kroki reads as %q, %v", cfg.KrokiURL, err)
+	}
+	t.Setenv("STATOR_KROKI_URL", "http://kroki:8000/")
+	if cfg, err := Load(); err != nil || cfg.KrokiURL != "http://kroki:8000" {
+		t.Errorf("Kroki reads as %q, %v", cfg.KrokiURL, err)
+	}
+	for _, bad := range []string{"kroki:8000", "ftp://kroki", "http://"} {
+		t.Setenv("STATOR_KROKI_URL", bad)
+		if _, err := Load(); err == nil || !strings.Contains(err.Error(), "STATOR_KROKI_URL") {
 			t.Errorf("%q should be refused by name, got %v", bad, err)
 		}
 	}

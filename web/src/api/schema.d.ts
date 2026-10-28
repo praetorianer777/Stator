@@ -838,6 +838,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/diagrams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draw a PlantUML, Structurizr, Graphviz or D2 diagram from its text as SVG, for an author's preview, through the installation's Kroki; GET /meta names the languages this server draws. For people who may edit pages somewhere, and at most 120 a minute for each, then too_many_requests. Answered and refused as GET /pages/{pageID}/diagrams/{hash} is, and with validation_failed for another language or a text that is blank or longer than 20,000 characters, which Kroki never sees. */
+        post: operations["previewDiagram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/example-space": {
         parameters: {
             query?: never;
@@ -1752,6 +1769,23 @@ export interface paths {
         put?: never;
         /** Copy a page, with or without the pages below it, under a parent in its space or another. */
         post: operations["copyPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{pageID}/diagrams/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The drawing of one of the page's PlantUML, Structurizr, Graphviz or D2 diagrams as SVG, drawn by the installation's Kroki and kept thirty days. hash is the hex SHA-256 of the diagram's language, a line break and its text; a hash the published page does not hold is not found. Answered as image/svg+xml under a Content-Security-Policy that runs nothing, to be shown as an image. Refused with diagram_unreadable and the reason Kroki gives, diagram_timeout, diagram_too_large or diagram_language_off, and with diagram_unavailable or diagram_busy when it cannot be drawn right now. */
+        get: operations["pageDiagram"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2726,6 +2760,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/public/links/{token}/diagrams/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The drawing of one of the diagrams of the page a public link opens, for whoever holds the link, as GET /pages/{pageID}/diagrams/{hash} answers it. Not found, as link_gone, when the link no longer opens the page; never cached. */
+        get: operations["linkedPageDiagram"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/public/links/{token}/docx": {
         parameters: {
             query?: never;
@@ -2803,6 +2854,23 @@ export interface paths {
         };
         /** A published page anybody may read, with the people it mentions unnamed and nothing about who wrote or read it. */
         get: operations["publicPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/public/pages/{pageID}/diagrams/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The drawing of one of the diagrams of a published page anybody may read, as GET /pages/{pageID}/diagrams/{hash} answers it. */
+        get: operations["publicPageDiagram"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5232,6 +5300,10 @@ export interface components {
             /** Format: uuid */
             themeId: string | null;
         };
+        DiagramRequest: {
+            language: string;
+            source: string;
+        };
         DiffBlock: {
             /** @enum {string} */
             change: "equal" | "inserted" | "deleted" | "modified";
@@ -5810,6 +5882,7 @@ export interface components {
             apiVersion: string;
             build: components["schemas"]["BuildInfo"];
             capabilities: string[];
+            diagramLanguages: string[];
             product: string;
         };
         Metadata: {
@@ -10051,6 +10124,75 @@ export interface operations {
             };
         };
     };
+    previewDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiagramRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     getExampleSpace: {
         parameters: {
             query?: {
@@ -12776,6 +12918,65 @@ export interface operations {
                     "application/json": {
                         page: components["schemas"]["Page"];
                     };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    pageDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description An error, in the one shape every endpoint uses. */
@@ -15865,6 +16066,65 @@ export interface operations {
             };
         };
     };
+    linkedPageDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     linkedPageWord: {
         parameters: {
             query?: never;
@@ -16128,6 +16388,65 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    publicPageDiagram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pageID: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

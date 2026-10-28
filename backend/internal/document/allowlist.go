@@ -344,8 +344,8 @@ const PropertyKeyPattern = `^\S(?:.{0,58}\S)?$`
 // SpaceKeyPattern is a space's key, as space.ValidKey reads it.
 const SpaceKeyPattern = `^[A-Z][A-Z0-9]{1,9}$`
 
-// NodeDiagram is a diagram written as Mermaid text, drawn by each reader's
-// browser.
+// NodeDiagram is a diagram written as text in one of DiagramLanguages:
+// Mermaid, drawn by each reader's browser, or a language Kroki draws.
 const NodeDiagram = "diagram"
 
 // DatePattern is a day as a date node stores it; the validator also checks
@@ -643,7 +643,11 @@ var Allowed = Allowlist{
 			"url":  {Kind: KindString, MaxLength: MaxHrefLength, URL: true, Pattern: `^[Hh][Tt][Tt][Pp][Ss]?://`},
 			"view": {Kind: KindString, Enum: LinkCardViews},
 		}},
-		NodeDiagram: {Attrs: map[string]Attr{"source": {Kind: KindString, MaxLength: MaxDiagramLength, Pattern: `\S`}}},
+		NodeDiagram: {Attrs: map[string]Attr{
+			"source": {Kind: KindString, MaxLength: MaxDiagramLength, Pattern: `\S`},
+			// Missing is Mermaid, so the pages written before languages read on unchanged.
+			"language": {Kind: KindString, Enum: DiagramLanguages},
+		}},
 		// The scene is what is edited and kept; the drawing is made from it on
 		// each save, so readers see it without the editor, and is checked as SVG.
 		NodeSketch: {Attrs: map[string]Attr{

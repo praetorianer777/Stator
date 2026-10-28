@@ -26,6 +26,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/config"
 	"github.com/praetorianer777/stator/backend/internal/convert"
 	"github.com/praetorianer777/stator/backend/internal/db"
+	"github.com/praetorianer777/stator/backend/internal/diagram"
 	"github.com/praetorianer777/stator/backend/internal/example"
 	"github.com/praetorianer777/stator/backend/internal/exciter"
 	"github.com/praetorianer777/stator/backend/internal/freshness"
@@ -225,6 +226,7 @@ func run() error {
 		Hub:               hub.NewService(cluster),
 		Brand:             brand.NewService(cluster, store),
 		Unfurl:            unfurlService(cfg, valkey, log),
+		Diagrams:          diagramService(cfg, valkey, log),
 		Home:              home.NewService(cluster),
 		Stale:             stale.NewService(cluster),
 		Templates:         template.NewService(cluster),
@@ -342,6 +344,15 @@ func unfurlService(cfg config.Config, valkey *redis.Client, log *slog.Logger) *u
 		return unfurl.NewService(client, nil, log)
 	}
 	return unfurl.NewService(client, valkey, log)
+}
+
+// diagramService draws through the installation's Kroki, keeping the
+// drawings in Valkey when there is one.
+func diagramService(cfg config.Config, valkey *redis.Client, log *slog.Logger) *diagram.Service {
+	if valkey == nil {
+		return diagram.New(cfg.KrokiURL, nil, log)
+	}
+	return diagram.New(cfg.KrokiURL, valkey, log)
 }
 
 // openValkey connects to STATOR_VALKEY_URL, or returns nil when it is blank.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -15,6 +16,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/calendar"
 	"github.com/praetorianer777/stator/backend/internal/comment"
+	"github.com/praetorianer777/stator/backend/internal/diagram"
 	"github.com/praetorianer777/stator/backend/internal/document"
 	"github.com/praetorianer777/stator/backend/internal/docx"
 	"github.com/praetorianer777/stator/backend/internal/exciter"
@@ -181,6 +183,7 @@ func toAPIError(err error) *APIError {
 	}
 	var alreadyLatest *attachment.AlreadyLatestError
 	var editType *attachment.EditTypeError
+	var unreadableDiagram *diagram.UnreadableError
 	var scheduled *page.ScheduleTakenError
 	if errors.As(err, &scheduled) {
 		return &APIError{Status: http.StatusConflict, Code: "schedule_taken", Message: scheduled.Error()}
@@ -576,6 +579,29 @@ func toAPIError(err error) *APIError {
 	case errors.Is(err, docx.ErrTooLarge):
 		return &APIError{Status: http.StatusUnprocessableEntity, Code: "docx_too_large",
 			Message: "The Word file came out larger than this server hands out. Make the pictures on the page smaller, or split the page, and export it again.", cause: err}
+	case errors.As(err, &unreadableDiagram):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "diagram_unreadable", Message: sentence(unreadableDiagram.Reason)}
+	case errors.Is(err, diagram.ErrLanguage):
+		return ErrValidation(map[string]string{"language": "Choose plantuml, structurizr, graphviz or d2. Mermaid diagrams are drawn in the browser."})
+	case errors.Is(err, diagram.ErrEmpty):
+		return ErrValidation(map[string]string{"source": "Write the diagram's text."})
+	case errors.Is(err, diagram.ErrTooLong):
+		return ErrValidation(map[string]string{"source": fmt.Sprintf("Keep a diagram under %d characters, or split it into several diagrams.", document.MaxDiagramLength)})
+	case errors.Is(err, diagram.ErrOff):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "diagram_language_off",
+			Message: "This server draws Mermaid diagrams alone. Write the diagram in Mermaid, or ask whoever runs Stator to set up Kroki."}
+	case errors.Is(err, diagram.ErrTimeout):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "diagram_timeout",
+			Message: "This diagram took too long to draw. Make it smaller, or split it into several diagrams.", cause: err}
+	case errors.Is(err, diagram.ErrTooLarge):
+		return &APIError{Status: http.StatusUnprocessableEntity, Code: "diagram_too_large",
+			Message: "This diagram's drawing is larger than this server hands out. Split it into several smaller diagrams.", cause: err}
+	case errors.Is(err, diagram.ErrBusy):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "diagram_busy",
+			Message: "Too many diagrams are being drawn right now. Try again in a moment.", cause: err}
+	case errors.Is(err, diagram.ErrUnavailable):
+		return &APIError{Status: http.StatusServiceUnavailable, Code: "diagram_unavailable",
+			Message: "This diagram cannot be drawn right now. Try again in a minute; its text is kept as written.", cause: err}
 	case errors.Is(err, render.ErrUnavailable):
 		return &APIError{Status: http.StatusServiceUnavailable, Code: "render_unavailable",
 			Message: "PDF export is not set up on this server. Export the page as Markdown instead, or ask whoever runs Stator to start the render service.", cause: err}
