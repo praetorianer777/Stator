@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Kroki in the running stack: the api's container draws a PlantUML diagram
 # through it, secure mode keeps a diagram from reading a file, and Kroki itself
-# reaches nothing outside its network. Drawing through the api's own route
-# comes with the api's side of the diagrams (#546). Run through make
+# reaches nothing outside its network. Drawing through the api's own routes
+# is the browser suite's (e2e/tests/diagrams.spec.ts). Run through make
 # test-kroki, which names the compose project.
 set -uo pipefail
 

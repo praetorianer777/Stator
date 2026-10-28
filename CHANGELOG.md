@@ -9,6 +9,24 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- PlantUML, Structurizr, Graphviz and D2 diagrams drawn by the
+  installation's Kroki (#546), named in `STATOR_KROKI_URL`, which the
+  compose stack and the chart's `kroki.enabled` set; without it a server
+  offers Mermaid alone, and `/api/v1/meta` names the languages it draws in
+  `diagramLanguages`. `POST /api/v1/diagrams` draws an author's preview from
+  a language and its text, for people who may edit pages somewhere and at
+  most 120 a minute each; `GET /api/v1/pages/{id}/diagrams/{hash}`, and
+  the same under a public page and a public link, draws a reader's diagram
+  only when the page holds it. A drawing is kept in Valkey for thirty days
+  and a failure for a minute, the 20,000 characters of a diagram are
+  checked before Kroki sees them, each drawing gets ten seconds and four
+  slots, and the SVG is capped at 2 MB and served as an image under a
+  Content-Security-Policy that runs nothing. Kroki's first line says why a
+  diagram cannot be read; "took too long to draw" and "cannot be drawn
+  right now" say the rest. The diagram node gains `language`, Mermaid when
+  missing, and the editor keeps it through an edit. Readers, public pages,
+  links and PDFs show the drawing, or the source with a sentence while it
+  cannot be drawn; picking a language in the block comes with #547.
 - Kroki inside the installation (#545), to draw PlantUML (C4 included),
   Structurizr, Graphviz and D2 once the api does (#546). The compose stack
   runs `yuzutech/kroki:0.34.0` in secure mode on a read-only root filesystem,

@@ -345,8 +345,11 @@ With `kroki.enabled` the chart runs Kroki in secure mode behind a Service of
 its own, as its own user on a read-only root filesystem, with a NetworkPolicy
 that lets in the api's pods and lets nothing out; the chart's README says
 why secure mode is never turned off. The api is told where it is in
-`STATOR_KROKI_URL`, which it reads once it draws through Kroki (#546);
-without it, a server offers Mermaid alone.
+`STATOR_KROKI_URL`, through which it draws PlantUML, Structurizr, Graphviz
+and D2 (#546): `POST /api/v1/diagrams` for an author's preview and
+`/pages/{id}/diagrams/{hash}`, with its public and linked twins, for
+readers, each drawing kept in Valkey under the hash of its language and
+text. Without it, a server offers Mermaid alone.
 
 For a trial, `values-demo.yaml` brings one Postgres pod and one Valkey pod of
 the chart's own. The chart refuses to render with both `cnpg.enabled` and
