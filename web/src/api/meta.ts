@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useContext } from "react";
+import { QueryClient, QueryClientContext, useQuery } from "@tanstack/react-query";
 import { api } from "./client";
 import type { components } from "./schema";
 
@@ -16,4 +17,18 @@ export const metaQuery = {
 
 export function useMeta() {
   return useQuery(metaQuery);
+}
+
+const MERMAID_ONLY: readonly string[] = ["mermaid"];
+
+// The editor draws diagrams wherever it is mounted, some places without the
+// application's client around it; those ask in one of their own.
+let ownClient: QueryClient | null = null;
+
+/** The languages this server draws diagrams in; Mermaid alone until it says. */
+export function useDiagramLanguages(): readonly string[] {
+  const app = useContext(QueryClientContext);
+  ownClient ??= app ? null : new QueryClient();
+  const { data } = useQuery(metaQuery, app ?? ownClient!);
+  return data?.diagramLanguages ?? MERMAID_ONLY;
 }

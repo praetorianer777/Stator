@@ -9,6 +9,18 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Picking a diagram's language in the block (#547): Mermaid, and the
+  PlantUML, Structurizr, Graphviz and D2 that the server names in
+  `diagramLanguages`, besides a diagram's own language when this server
+  does not draw it. A language Kroki draws previews through
+  `POST /api/v1/diagrams` after the same pause as Mermaid's, as an image
+  never put into the page, with Kroki's reason above the source when the
+  text cannot be drawn; a starter nobody has changed follows the language
+  picked. Kroki's drawings sit on a light panel in the dark theme.
+  Markdown export writes `plantuml`, `structurizr`, `graphviz` and `d2`
+  fences, and import reads those, `puml` and `dot` back as diagrams while
+  any other fence stays a code block. Word export writes every diagram's
+  source with its note.
 - PlantUML, Structurizr, Graphviz and D2 diagrams drawn by the
   installation's Kroki (#546), named in `STATOR_KROKI_URL`, which the
   compose stack and the chart's `kroki.enabled` set; without it a server

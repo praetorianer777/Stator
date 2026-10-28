@@ -2695,12 +2695,15 @@ export const en = {
       insert: "Insert",
     },
     diagram: {
-      source: "Diagram source in Mermaid",
+      source: (language: string) => `Diagram source in ${language}`,
+      language: "Diagram language",
       drawing: "Diagram",
       unreadable: (reason: string) => `This diagram cannot be drawn: ${reason} Its source is shown instead.`,
       notNow: "This diagram cannot be drawn right now. Its source is shown instead.",
       empty: "Write the diagram in Mermaid, such as flowchart LR followed by A --> B.",
       download: "Download as SVG",
+      emptyIn: (language: string) => `Write the diagram in ${language}.`,
+      languages: { mermaid: "Mermaid", plantuml: "PlantUML", structurizr: "Structurizr", graphviz: "Graphviz", d2: "D2" } as Record<string, string>,
     },
     sketch: {
       name: (title: string) => (title ? `Sketch: ${title}` : "Sketch without a title"),

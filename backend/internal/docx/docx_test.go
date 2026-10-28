@@ -435,6 +435,16 @@ func TestBlocksWithoutWordsOfTheirOwnAreSaidInTheReadersLanguage(t *testing.T) {
 	}
 }
 
+func TestADiagramInAnyLanguageIsItsSourceWithItsNote(t *testing.T) {
+	for _, language := range document.DiagramLanguages {
+		source := "@startuml\nAda -> Bob: " + language + "\n@enduml"
+		got := write(t, doc(node(document.NodeDiagram, map[string]any{"source": source, "language": language})), Reader{}).doc()
+		if !strings.Contains(got, "A diagram, drawn in Stator from this source:") || !strings.Contains(got, "Ada -&gt; Bob: "+language) {
+			t.Errorf("a %s diagram was written as %s", language, got)
+		}
+	}
+}
+
 func TestAnIncludeTheReaderMayNotReadIsASentence(t *testing.T) {
 	missing := uuid.New()
 	parts := write(t, doc(node(document.NodeInclude, map[string]any{"pageId": missing.String()})), Reader{

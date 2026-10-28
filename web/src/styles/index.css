@@ -1950,6 +1950,19 @@
     margin: 0 auto;
     height: auto;
   }
+  /* Kroki draws dark lines on no background, for a light page; in the dark
+   * theme the drawing keeps a light panel of its own rather than vanish. */
+  .doc-diagram-image {
+    background: #ffffff;
+    border-radius: var(--radius-control);
+    padding: 0.5rem;
+  }
+  .doc-diagram-image img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
   .doc-diagram-tools {
     display: flex;
     justify-content: flex-end;
@@ -1965,6 +1978,13 @@
     border-radius: var(--radius-control);
     background: var(--color-surface);
     padding: 0.5rem 0.75rem;
+  }
+  .doc-diagram-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
   }
   .doc-diagram-label {
     font-size: var(--text-sm);

@@ -116,10 +116,10 @@ func (r renderer) block(n document.Node, depth int) (string, bool) {
 	// own line, and the import reads it back as one.
 	case document.NodeMathBlock:
 		return codeFence(stringAttr(n, "latex"), mathLanguage), true
-	// A mermaid fence is drawn as a diagram where Markdown draws them, and
-	// reads as its source everywhere else.
+	// A diagram's fence is named after its language, so Markdown that draws
+	// diagrams draws it, and it reads as its source everywhere else.
 	case document.NodeDiagram:
-		return codeFence(stringAttr(n, "source"), diagramLanguage), true
+		return codeFence(stringAttr(n, "source"), document.DiagramLanguage(n)), true
 	// An excalidraw fence holds the scene as an Excalidraw file, which
 	// Excalidraw opens, and its title after the language.
 	case document.NodeSketch:
@@ -769,12 +769,11 @@ func (r renderer) atom(n document.Node, ctx inlineCtx) string {
 	return ""
 }
 
-// mathLanguage, diagramLanguage and sketchLanguage are the fence languages a
-// formula on its own line, a diagram and a sketch are written with.
+// mathLanguage and sketchLanguage are the fence languages a formula on its
+// own line and a sketch are written with; a diagram's is its language.
 const (
-	mathLanguage    = "math"
-	diagramLanguage = "mermaid"
-	sketchLanguage  = "excalidraw"
+	mathLanguage   = "math"
+	sketchLanguage = "excalidraw"
 )
 
 // sketchInfo is a sketch fence's info: the language, then the title as a

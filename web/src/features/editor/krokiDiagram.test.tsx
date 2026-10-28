@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { allowlist } from "@/test/allowlist";
-import { DIAGRAM_KROKI_LANGUAGES } from "@/config";
+import { allowlist, problems } from "@/test/allowlist";
+import { axeViolations } from "@/test/axe";
+import { DIAGRAM_DEFAULT_SOURCE, DIAGRAM_KROKI_LANGUAGES, DIAGRAM_STARTERS } from "@/config";
+import { Editor } from "./Editor";
+import type { Doc } from "./schema";
 import { sha256Hex } from "@/lib/sha256";
 import { DocPageContext } from "./BlockViews";
 import { DocView } from "./DocView";
@@ -10,7 +14,10 @@ import { krokiLanguage } from "./DiagramViews";
 import { PublicLinkContext, PublicPageContext, PublicReadingContext } from "./publicReading";
 import type { DocNode } from "./schema";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 const PAGE = "6f1c2b9e-0d4a-4c51-9a77-1f0e3b2d4c5a";
 const source = "@startuml\nAlice -> Bob: hello\n@enduml";
@@ -79,5 +86,116 @@ describe("the editor", () => {
       { language: "mermaid", source: "graph TD" },
     ]);
     editor.destroy();
+  });
+});
+
+describe("the diagram block", () => {
+  const broken = "@startuml\nthis is not a diagram\n@enduml";
+
+  // The api as Kroki answers it: a drawing as SVG, or why it cannot read the text.
+  function stubKroki(languages: string[]) {
+    const previews: { language: string; source: string }[] = [];
+    vi.stubGlobal("fetch", async (request: Request) => {
+      const path = new URL(request.url).pathname.replace(/^\/api\/v1/, "");
+      const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+      if (path === "/meta") return json(200, { product: "stator", build: "test", apiVersion: "1", capabilities: [], diagramLanguages: languages });
+      if (path === "/diagrams" && request.method === "POST") {
+        const asked = (await request.json()) as { language: string; source: string };
+        previews.push(asked);
+        if (!languages.includes(asked.language)) {
+          return json(422, { error: { code: "diagram_language_off", message: "This server draws Mermaid diagrams alone." } });
+        }
+        if (asked.source.includes("not a diagram")) {
+          return json(422, { error: { code: "diagram_unreadable", message: "Syntax Error? (Assumed diagram type: sequence)." } });
+        }
+        return new Response(`<svg xmlns="http://www.w3.org/2000/svg"><text>${asked.language}</text></svg>`, {
+          status: 200,
+          headers: { "Content-Type": "image/svg+xml" },
+        });
+      }
+      return json(404, { error: { code: "not_found", message: "Not stubbed." } });
+    });
+    return previews;
+  }
+
+  function setup(value: Doc) {
+    const onChange = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <main>
+          <h1>Notes</h1>
+          <Editor id="page-body" value={value} onChange={onChange} />
+        </main>
+      </QueryClientProvider>,
+    );
+    const box = document.getElementById("page-body")!;
+    return { box, last: () => onChange.mock.calls.at(-1)?.[0] as Doc | undefined };
+  }
+
+  const mermaid: Doc = { type: "doc", content: [{ type: "diagram", attrs: { source: DIAGRAM_DEFAULT_SOURCE } }] };
+
+  it("offers only the languages the server draws, and none to pick where it draws Mermaid alone", async () => {
+    stubKroki(["mermaid"]);
+    const { box } = setup(mermaid);
+    await screen.findByLabelText("Diagram source in Mermaid");
+    await new Promise((settle) => setTimeout(settle, 50));
+    expect(within(box).queryByRole("combobox", { name: "Diagram language" })).toBeNull();
+    cleanup();
+
+    stubKroki(["mermaid", "plantuml", "graphviz"]);
+    setup(mermaid);
+    const picker = await screen.findByRole("combobox", { name: "Diagram language" });
+    expect([...(picker as HTMLSelectElement).options].map((o) => o.textContent)).toEqual(["Mermaid", "PlantUML", "Graphviz"]);
+  });
+
+  it("previews a language Kroki draws as an image through the api, and says why broken text cannot be drawn", async () => {
+    const previews = stubKroki(["mermaid", ...DIAGRAM_KROKI_LANGUAGES]);
+    const { box, last } = setup(mermaid);
+    fireEvent.change(await screen.findByRole("combobox", { name: "Diagram language" }), { target: { value: "plantuml" } });
+
+    const source = await screen.findByLabelText("Diagram source in PlantUML");
+    expect(source).toHaveValue(DIAGRAM_STARTERS.plantuml);
+    const image = await waitFor(() => within(box).getByRole("img", { name: "Diagram" }));
+    expect(image.getAttribute("src")).toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
+    expect(decodeURIComponent(image.getAttribute("src")!)).toContain("<text>plantuml</text>");
+    // The drawing is an image, never part of the page.
+    expect(box.querySelector("[data-diagram-preview] svg")).toBeNull();
+    expect(previews.at(-1)).toEqual({ language: "plantuml", source: DIAGRAM_STARTERS.plantuml });
+    await waitFor(() => expect(last()?.content?.[0]?.attrs).toEqual({ language: "plantuml", source: DIAGRAM_STARTERS.plantuml }));
+    expect(problems(last()!)).toEqual([]);
+
+    fireEvent.change(source, { target: { value: broken } });
+    await waitFor(() =>
+      expect(box.querySelector("[data-diagram-preview] [data-diagram-error]")).toHaveTextContent(
+        "This diagram cannot be drawn: Syntax Error? (Assumed diagram type: sequence). Its source is shown instead.",
+      ),
+    );
+    expect(box.querySelector("[data-diagram-preview] code")).toHaveTextContent("this is not a diagram");
+
+    // Text of the author's own stays when the language changes.
+    fireEvent.change(screen.getByRole("combobox", { name: "Diagram language" }), { target: { value: "d2" } });
+    await waitFor(() => expect(last()?.content?.[0]?.attrs).toEqual({ language: "d2", source: broken }));
+    fireEvent.change(screen.getByLabelText("Diagram source in D2"), { target: { value: " " } });
+    await waitFor(() => expect(box.querySelector("[data-diagram-preview]")).toHaveTextContent("Write the diagram in D2."));
+  });
+
+  it("keeps a language this server does not draw, and says so", async () => {
+    stubKroki(["mermaid"]);
+    const { box } = setup({ type: "doc", content: [{ type: "diagram", attrs: { language: "structurizr", source: DIAGRAM_STARTERS.structurizr } }] });
+    const picker = await screen.findByRole("combobox", { name: "Diagram language" });
+    await waitFor(() => expect([...(picker as HTMLSelectElement).options].map((o) => o.value)).toEqual(["mermaid", "structurizr"]));
+    expect(picker).toHaveValue("structurizr");
+    await waitFor(() =>
+      expect(box.querySelector("[data-diagram-preview] [data-diagram-error]")).toHaveTextContent("This server draws Mermaid diagrams alone."),
+    );
+  });
+
+  it("passes axe with its picker and a drawing", async () => {
+    stubKroki(["mermaid", ...DIAGRAM_KROKI_LANGUAGES]);
+    const { box } = setup({ type: "doc", content: [{ type: "diagram", attrs: { language: "graphviz", source: DIAGRAM_STARTERS.graphviz } }] });
+    await waitFor(() => within(box).getByRole("img", { name: "Diagram" }));
+    await screen.findByRole("combobox", { name: "Diagram language" });
+    expect(await axeViolations()).toEqual([]);
   });
 });
