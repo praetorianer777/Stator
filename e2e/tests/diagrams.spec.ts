@@ -90,6 +90,46 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
     expect(alerted).toBe(false);
   });
 
+  test("an author picks PlantUML, sees it drawn and why broken text is not, and a reader sees the drawing", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Picked");
+    const notes = await createPage(api, space.homePageId, "Sequence", { type: "doc", content: [paragraph("How a page is saved."), { type: "paragraph" }] });
+    const word = `Picked${Date.now().toString(36)}`;
+
+    await openEditor(page, `/s/${space.key}/p/${notes.id}/sequence`, "How a page is saved.");
+    await caretTo(editorBox(page), "end");
+    await page.keyboard.type("/diagram");
+    await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
+    await page.keyboard.press("Enter");
+
+    const block = editorBox(page).locator("[data-diagram-edit]");
+    const preview = block.locator("[data-diagram-preview]");
+    await block.getByRole("combobox", { name: "Diagram language" }).selectOption({ label: "PlantUML" });
+    const source = block.getByLabel("Diagram source in PlantUML");
+    await expect(source).toHaveValue(/^@startuml/);
+    const image = preview.locator("img[data-diagram-image]");
+    await expect(image).toBeVisible();
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    // Kroki's drawing stays an image; nothing it wrote is part of the page.
+    await expect(preview.locator("svg")).toHaveCount(0);
+
+    await source.fill("@startuml\nthis is not a diagram\n@enduml");
+    await expect(preview.locator("[data-diagram-error]")).toContainText("This diagram cannot be drawn:");
+    await expect(preview.locator("code")).toContainText("this is not a diagram");
+    await source.fill(`@startuml\nAuthor -> Api: ${word}\n@enduml`);
+    await expect.poll(() => image.getAttribute("src").then((src) => decodeURIComponent(src ?? ""))).toContain(word);
+    await expect(preview.locator("[data-diagram-error]")).toHaveCount(0);
+
+    await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
+    await publishFromEditor(page);
+
+    const drawing = shown(page).locator('[data-diagram-language="plantuml"] img[data-diagram-image]');
+    await expect(drawing).toBeVisible();
+    await expect.poll(() => drawing.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    await expect(shown(page).locator("[data-diagram-error]")).toHaveCount(0);
+    const { data } = await api.GET("/pages/{pageID}", { params: { path: { pageID: notes.id } } });
+    expect(JSON.stringify(data)).toContain(`"language":"plantuml"`);
+  });
+
   test("a PlantUML diagram is drawn by the installation's Kroki, for an author, a reader and the print", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Kroki");
     const word = `Kroki${Date.now().toString(36)}`;
@@ -134,6 +174,25 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
         expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Save the page", ONE_LOOK),
       );
       await expect(shown(page).locator("[data-diagram-error]")).toContainText("This diagram cannot be drawn");
+      await expectAccessible(page);
+    });
+
+    test(`the diagram block passes axe in ${scheme}, with Kroki's drawing and its error`, async ({ page, api }, testInfo) => {
+      const space = await freshSpace(api, testInfo, "Block");
+      const notes = await createPage(api, space.homePageId, "Block", {
+        type: "doc",
+        content: [
+          paragraph("Two diagrams."),
+          { type: "diagram", attrs: { language: "plantuml", source: "@startuml\nAda -> Stator: Save the page\n@enduml" } },
+          { type: "diagram", attrs: { language: "graphviz", source: "digraph {" } },
+        ],
+      });
+      await startInScheme(page, scheme);
+      await openEditor(page, `/s/${space.key}/p/${notes.id}/block`, "Two diagrams.");
+      const blocks = editorBox(page).locator("[data-diagram-edit]");
+      await expect(blocks.first().locator("[data-diagram-preview] img[data-diagram-image]")).toBeVisible();
+      await expect(blocks.nth(1).locator("[data-diagram-preview] [data-diagram-error]")).toContainText("This diagram cannot be drawn:");
+      await expect(blocks.first().getByRole("combobox", { name: "Diagram language" })).toHaveValue("plantuml");
       await expectAccessible(page);
     });
   }
