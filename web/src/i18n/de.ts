@@ -2784,6 +2784,7 @@ export const de: Messages = {
       source: "Diagrammquelle in Mermaid",
       drawing: "Diagramm",
       unreadable: (reason: string) => `Dieses Diagramm kann nicht gezeichnet werden: ${reason} Stattdessen wird seine Quelle gezeigt.`,
+      notNow: "Dieses Diagramm kann gerade nicht gezeichnet werden. Stattdessen wird seine Quelle gezeigt.",
       empty: "Schreiben Sie das Diagramm in Mermaid, etwa flowchart LR gefolgt von A --> B.",
       download: "Als SVG herunterladen",
     },

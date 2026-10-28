@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import type MermaidAPI from "mermaid";
 import { Button } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { DIAGRAM_FILE_NAME, DIAGRAM_MAX_EDGES, DIAGRAM_MAX_LENGTH } from "@/config";
+import { API_BASE, DIAGRAM_FILE_NAME, DIAGRAM_KROKI_LANGUAGES, DIAGRAM_MAX_EDGES, DIAGRAM_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
+import { sha256Hex } from "@/lib/sha256";
+import { DocPageContext } from "./BlockViews";
+import { usePublicLink, usePublicPageId, usePublicReading } from "./publicReading";
 
 // Kept apart from the editor's node, so the read-only view draws a diagram
 // without bringing the editor along.
@@ -157,5 +160,58 @@ export function DiagramFigure({ source }: { source: string }) {
         </figcaption>
       )}
     </figure>
+  );
+}
+
+/** The language Kroki draws a diagram in, or null for Mermaid, which is drawn here. */
+export function krokiLanguage(value: unknown): string | null {
+  return typeof value === "string" && DIAGRAM_KROKI_LANGUAGES.includes(value) ? value : null;
+}
+
+/** Where the api serves a diagram of the page being read, by its language and source; null outside a page. */
+function useDiagramUrl(language: string, source: string): string | null {
+  const reading = usePublicReading();
+  const token = usePublicLink();
+  const publicPage = usePublicPageId();
+  const page = useContext(DocPageContext);
+  const hash = sha256Hex(`${language}\n${source}`);
+  if (reading && token) return `${API_BASE}/public/links/${encodeURIComponent(token)}/diagrams/${hash}`;
+  if (reading) return publicPage ? `${API_BASE}/public/pages/${encodeURIComponent(publicPage)}/diagrams/${hash}` : null;
+  return page ? `${API_BASE}/pages/${encodeURIComponent(page.id)}/diagrams/${hash}` : null;
+}
+
+/**
+ * A diagram Kroki draws, as readers and prints see it: the api's drawing as
+ * an image, never put into the page, or its source while that cannot be had.
+ */
+export function KrokiFigure({ language, source }: { language: string; source: string }) {
+  const url = useDiagramUrl(language, source);
+  return (
+    <figure className="doc-diagram" data-diagram="" data-diagram-language={language}>
+      {url ? <KrokiDrawing key={url} url={url} source={source} /> : <KrokiSource source={source} />}
+    </figure>
+  );
+}
+
+function KrokiDrawing({ url, source }: { url: string; source: string }) {
+  const [state, setState] = useState<"drawing" | "drawn" | "failed">("drawing");
+  if (state === "failed") return <KrokiSource source={source} />;
+  return (
+    <div className="doc-diagram-svg" data-diagram-state={state === "drawing" ? "drawing" : undefined}>
+      <img src={url} alt={t.editor.diagram.drawing} data-diagram-image="" onLoad={() => setState("drawn")} onError={() => setState("failed")} />
+    </div>
+  );
+}
+
+function KrokiSource({ source }: { source: string }) {
+  return (
+    <div className="doc-diagram-source" data-diagram-state="error">
+      <p className="doc-diagram-error" data-diagram-error="">
+        {t.editor.diagram.notNow}
+      </p>
+      <pre>
+        <code>{source}</code>
+      </pre>
+    </div>
   );
 }

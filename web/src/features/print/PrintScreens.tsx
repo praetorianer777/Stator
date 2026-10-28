@@ -9,7 +9,7 @@ import { footerLine, publicLogoHref, useBrandPicture, useSitePrintBrand } from "
 import { KnownAttachmentsContext } from "@/features/editor/attachmentIndex";
 import { DocPageContext } from "@/features/editor/BlockViews";
 import { DocView } from "@/features/editor/DocView";
-import { PublicLinkContext, PublicReadingContext } from "@/features/editor/publicReading";
+import { PublicLinkContext, PublicPageContext, PublicReadingContext } from "@/features/editor/publicReading";
 import type { DocNode } from "@/features/editor/schema";
 import { coverPosition } from "@/features/pages/AppearanceDialog";
 import { pageSheet } from "@/features/pages/pageSheet";
@@ -198,7 +198,9 @@ export function PrintPublicPageScreen({ pageId }: { pageId: string }) {
             byline: t.pdf.header([p.space.name, meta.footer]),
           }}
         >
-          <DocView doc={p.body as DocNode} />
+          <PublicPageContext value={p.id}>
+            <DocView doc={p.body as DocNode} />
+          </PublicPageContext>
         </PrintArticle>
       </PublicReadingContext>
     </PrintFrame>
