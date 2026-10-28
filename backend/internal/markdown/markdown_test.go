@@ -488,9 +488,13 @@ func TestHostileMarkdownStaysText(t *testing.T) {
 	}
 }
 
-// pathologicalBudget is how long the worst input may take, generous for a
-// busy machine running the race detector.
-const pathologicalBudget = 10 * time.Second
+// Wall time alone fails on a busy runner under the race detector, so the
+// test compares each input with a quarter of it: linear work grows about 4
+// times, quadratic work 16 times.
+const (
+	pathologicalGrowth = 8.0
+	pathologicalQuick  = time.Second
+)
 
 func TestOversizedAndBrokenInputIsRefusedOrRepaired(t *testing.T) {
 	if _, err := Convert(make([]byte, MaxSourceBytes+1), nil); !errors.Is(err, ErrTooLarge) {
@@ -520,24 +524,41 @@ func nestedByIndent(levels int) string {
 
 func TestPathologicalMarkdownEndsQuickly(t *testing.T) {
 	half := MaxSourceBytes / 2
-	for name, src := range map[string]string{
-		"quotes":    strings.Repeat(">", half),
-		"lists":     strings.Repeat("- ", half/2),
-		"brackets":  strings.Repeat("[", half),
-		"emphasis":  strings.Repeat("*a", half/2),
-		"links":     strings.Repeat("[a](", half/4),
-		"backticks": strings.Repeat("`a", half/2),
-		"html":      strings.Repeat("<a ", half/3),
-		"spans":     strings.Repeat(`<span data-stator="issue">`, half/30),
-		"details":   strings.Repeat("<details>\n\n", half/12),
-		"indented":  nestedByIndent(1000),
-		"mixed":     strings.Repeat("> - 1. ", half/7),
+	repeat := func(unit string) func(int) string {
+		return func(quarters int) string { return strings.Repeat(unit, half/len(unit)*quarters/4) }
+	}
+	for name, input := range map[string]func(quarters int) string{
+		"quotes":    repeat(">"),
+		"lists":     repeat("- "),
+		"brackets":  repeat("["),
+		"emphasis":  repeat("*a"),
+		"links":     repeat("[a]("),
+		"backticks": repeat("`a"),
+		"html":      repeat("<a "),
+		"spans":     func(quarters int) string { return strings.Repeat(`<span data-stator="issue">`, half/30*quarters/4) },
+		"details":   func(quarters int) string { return strings.Repeat("<details>\n\n", half/12*quarters/4) },
+		"indented":  func(quarters int) string { return nestedByIndent(250 * quarters) },
+		"mixed":     func(quarters int) string { return strings.Repeat("> - 1. ", half/7*quarters/4) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			start := time.Now()
-			got, err := Convert([]byte(src), nil)
-			if took := time.Since(start); took > pathologicalBudget {
-				t.Errorf("took %v", took)
+			timed := func(src string) (*Result, time.Duration, error) {
+				start := time.Now()
+				got, err := Convert([]byte(src), nil)
+				return got, time.Since(start), err
+			}
+			src := input(4)
+			got, took, err := timed(src)
+			if took > pathologicalQuick {
+				_, quarter, _ := timed(input(1))
+				growth := float64(took) / float64(quarter)
+				// A busy runner can slow one run alone, so a second run decides.
+				if growth > pathologicalGrowth {
+					_, took, _ = timed(src)
+					growth = float64(took) / float64(quarter)
+				}
+				if growth > pathologicalGrowth {
+					t.Errorf("took %v, %.1f times a quarter of it (%v)", took, growth, quarter)
+				}
 			}
 			if err != nil && !errors.Is(err, ErrTooDeep) && !errors.Is(err, ErrTooTangled) && !errors.Is(err, document.ErrInvalid) {
 				t.Errorf("refused for the wrong reason: %v", err)
