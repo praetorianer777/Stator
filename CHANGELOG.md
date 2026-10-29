@@ -7,6 +7,11 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- The backend takes go-jose 4.1.6, which no longer stalls or panics on
+  crafted key sets and tokens, and chi 5.4.0 (#564).
+
 ## [0.2.1] - 2026-10-29
 
 ### Security
