@@ -1,0 +1,36 @@
+# The audit of what the web app ships. A new advisory must not block unrelated
+# work, so this is no part of the gate in ci.yml; the nightly run says when an
+# upgrade is due, and a change to the dependencies has to pass it.
+name: Deps
+
+on:
+  pull_request:
+    paths:
+      - web/package.json
+      - web/package-lock.json
+      - .github/workflows/deps.yml
+  schedule:
+    - cron: "47 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: deps-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit-npm:
+    name: audit-npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Made by the runner's user first: a directory docker makes for a mount belongs to root.
+      - name: Make the npm cache directory
+        run: mkdir -p .cache/npm
+
+      - name: Look for known vulnerabilities in what the web app ships
+        run: make audit-npm

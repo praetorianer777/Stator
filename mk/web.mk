@@ -53,6 +53,14 @@ test-web: | $(NPM_CACHE) ## Run the web client's unit tests
 web-build: | $(NPM_CACHE) ## Production build of the web client into web/dist
 	$(DOCKER_NODE) sh -c 'npm ci --no-audit --no-fund && npm run build'
 
+# Only what the web app ships: the test and build tooling never reaches a
+# reader. Advisories at this level or above fail the audit.
+NPM_AUDIT_LEVEL ?= high
+
+.PHONY: audit-npm
+audit-npm: | $(NPM_CACHE) ## Look for known vulnerabilities in what the web app ships
+	$(DOCKER_NODE) npm audit --omit=dev --audit-level=$(NPM_AUDIT_LEVEL)
+
 .PHONY: web-dev
 web-dev: | $(NPM_CACHE) ## Vite dev server on a port derived from this checkout's path
 	@echo "Stator web on http://localhost:$(WEB_DEV_PORT)"

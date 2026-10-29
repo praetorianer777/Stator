@@ -11,6 +11,15 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 - The backend takes go-jose 4.1.6, which no longer stalls or panics on
   crafted key sets and tokens, and chi 5.4.0 (#564).
+- The web app takes the fixed releases of lodash-es (4.18.1) and nanoid
+  (3.3.20 and 5.1.16) under Excalidraw and Mermaid, and Mermaid draws with
+  the same KaTeX as the editor (#556).
+
+### Changed
+
+- CI audits what the web app ships every night and on every change to its
+  dependencies, and fails on high or critical advisories (`make audit-npm`)
+  (#556).
 
 ## [0.2.1] - 2026-10-29
 
