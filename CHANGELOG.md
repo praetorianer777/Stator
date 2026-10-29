@@ -7,6 +7,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-29
+
 ### Security
 
 - The web app takes the fixed releases of DOMPurify (3.4.17, a critical
