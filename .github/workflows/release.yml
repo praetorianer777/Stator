@@ -45,7 +45,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
@@ -85,7 +85,7 @@ jobs:
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ steps.name.outputs.tag }}
           fetch-depth: 0
@@ -136,7 +136,7 @@ jobs:
             dockerfile: deploy/Dockerfile.render
             target: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ needs.resolve.outputs.tag }}
 
@@ -175,7 +175,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ needs.resolve.outputs.tag }}
 
@@ -206,7 +206,7 @@ jobs:
       VERSION: ${{ needs.resolve.outputs.version }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ needs.resolve.outputs.tag }}
           fetch-depth: 0
