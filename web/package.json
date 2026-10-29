@@ -35,7 +35,7 @@
     "@tiptap/suggestion": "^3.31.3",
     "@tiptap/y-tiptap": "^3.0.9",
     "gemoji": "^8.1.0",
-    "katex": "^0.16.47",
+    "katex": "^0.18.2",
     "lib0": "^0.2.119",
     "lowlight": "^3.3.0",
     "mermaid": "^11.17.2",
