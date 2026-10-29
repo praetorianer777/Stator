@@ -188,7 +188,7 @@ jobs:
           REGISTRY_TOKEN: ${{ github.token }}
         run: make chart-push
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: chart
           path: dist/stator-${{ needs.resolve.outputs.version }}.tgz
