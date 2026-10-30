@@ -396,6 +396,10 @@ func (oi *siteImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
 			return err
 		}
 		oi.groups[g.Ref] = id
+		// Everyone is there already and fills itself; only its grants travel.
+		if g.Builtin != "" {
+			continue
+		}
 		oi.report.Groups++
 		for _, member := range g.Members {
 			user := oi.person(member)

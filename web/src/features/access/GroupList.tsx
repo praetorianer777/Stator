@@ -62,7 +62,12 @@ function GroupCard({ group }: { group: Group }) {
         body: t.accessAdmin.groups.deleteBody(group.name, group.roleCount),
       })
     ) {
-      deleteGroup.mutate(group.id, { onSuccess: () => toast.success(t.accessAdmin.groups.deleted(group.name)) });
+      // The card leaves the list before a callback of its own could run, so
+      // the toast waits on the promise, which outlives it.
+      await deleteGroup.mutateAsync(group.id).then(
+        () => toast.success(t.accessAdmin.groups.deleted(group.name)),
+        () => undefined,
+      );
     }
   }
 

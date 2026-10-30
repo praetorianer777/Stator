@@ -263,6 +263,11 @@ func (s *Service) Revoke(ctx context.Context, actor Actor, id uuid.UUID) (db.LSN
 		}
 		a, err := pgx.CollectExactlyOneRow(rows, scanAssignment)
 		if errors.Is(err, pgx.ErrNoRows) {
+			// Row level security hides the grants across the installation from
+			// anybody but its administrators, who alone are told one is gone.
+			if err := requireAdmin(ctx, tx, actor); err != nil {
+				return err
+			}
 			return ErrNoSuchAssignment
 		}
 		if err != nil {

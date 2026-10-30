@@ -254,6 +254,29 @@ describe("the Groups tab", () => {
   });
 });
 
+describe("deleting a group", () => {
+  it("says so once the group and its card are gone", async () => {
+    let current = groups;
+    stubAccess({
+      "GET /groups": () => ({ status: 200, body: { groups: current } }),
+      [`DELETE /groups/${ids.writers}`]: () => {
+        current = current.filter((group) => group.id !== ids.writers);
+        return { status: 204 };
+      },
+    });
+    await renderAt("/admin/access/groups");
+    const writers = await waitFor(() => {
+      const card = document.querySelector<HTMLElement>('[data-group="Writers"]');
+      expect(card).not.toBeNull();
+      return card!;
+    });
+    await userEvent.click(within(writers).getByRole("button", { name: "Delete" }));
+    await answerConfirm(true);
+    expect(await screen.findByText("Writers was deleted.")).toBeInTheDocument();
+    expect(document.querySelector('[data-group="Writers"]')).toBeNull();
+  });
+});
+
 describe("the Members tab", () => {
   it("shows each person's standing and the roles they hold, by name or through a group", async () => {
     stubAccess({
