@@ -623,7 +623,7 @@ func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 
 	// Ann made it while an administrator; she is a member now, and the
 	// payloads are read as she may read them when they are sent.
-	h.cleanupExec(t, h.super, `UPDATE member SET role = 'member' WHERE user_id = $1`, annID)
+	h.cleanupExec(t, h.super, `DELETE FROM role_assignment WHERE user_id = $1 AND space_id IS NULL AND role = 'administrator'`, annID)
 	h.settle(t)
 
 	open := docs.add(docs.homeID, "Open")

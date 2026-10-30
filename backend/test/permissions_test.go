@@ -422,7 +422,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("every change is in the audit log", func(t *testing.T) {
-		rows, err := h.super.Query(context.Background(), `SELECT DISTINCT action FROM audit_log WHERE action LIKE '%permission%' OR action LIKE '%restriction%'`)
+		rows, err := h.super.Query(context.Background(), `SELECT DISTINCT action FROM audit_log WHERE action LIKE 'grant.%' OR action LIKE '%restriction%'`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -430,7 +430,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, wanted := range []string{"org.permission_set", "space.permissions_set", "page.restrictions_set"} {
+		for _, wanted := range []string{"grant.added", "grant.removed", "page.restrictions_set"} {
 			found := false
 			for _, a := range actions {
 				found = found || a == wanted

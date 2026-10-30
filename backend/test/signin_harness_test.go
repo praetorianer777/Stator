@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
+	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 )
 
@@ -97,6 +98,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration, tweaks ...fun
 		OIDCCallbackURL: base + httpapi.APIPrefix + "/auth/oidc/callback",
 		Log:             discard(),
 		Audit:           audit.NewService(h.cluster),
+		Perms:           perm.NewService(h.cluster),
 		CookieName:      h.cfg.Auth.SessionCookie,
 		AppBaseURL:      "http://" + appHost,
 	}

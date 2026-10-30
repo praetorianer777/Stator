@@ -31,7 +31,7 @@ func (h *harness) signInRows(t *testing.T, m member) {
 		args  []any
 	}{
 		{`INSERT INTO groups (name, source, external_ref) VALUES ('staff', 'oidc', 'staff')`, nil},
-		{`INSERT INTO group_member (group_id, user_id) SELECT id, $1 FROM groups`, []any{m.user}},
+		{`INSERT INTO group_member (group_id, user_id) SELECT id, $1 FROM groups WHERE builtin IS NULL`, []any{m.user}},
 		{`INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://id.test', 'stator', '\x01'::bytea)`, nil},
 		{`INSERT INTO oidc_login (state, nonce, code_verifier, expires_at) VALUES (gen_random_uuid()::text, 'n', 'v', now() + interval '1 hour')`, nil},
 		{`INSERT INTO join_request (user_id) VALUES ($1)`, []any{m.user}},

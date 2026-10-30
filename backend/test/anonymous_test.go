@@ -310,7 +310,8 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 		untouched(t, conn, "deleting the guide's file", `DELETE FROM attachment WHERE id = $1`, file)
 		denied(t, conn, "a comment", `INSERT INTO comment (page_id, body) VALUES ($1, '{"type":"doc"}')`, guide)
 		denied(t, conn, "a view", `INSERT INTO page_view (page_id) VALUES ($1)`, guide)
-		denied(t, conn, "a grant", `INSERT INTO role_assignment (role, space_id, group_id) SELECT 'editor', $1, id FROM groups WHERE builtin = 'everyone'`, openID)
+		// Everyone's id is fixed, since the reader cannot read the groups to find it.
+		denied(t, conn, "a grant", `INSERT INTO role_assignment (role, space_id, group_id) VALUES ('editor', $1, '00000000-0000-7000-8000-00000000e0e0')`, openID)
 		untouched(t, conn, "closing the open space to anybody", `UPDATE space SET anonymous_view = false WHERE key = 'OPEN'`)
 		denied(t, conn, "an event", `INSERT INTO outbox_event (topic, payload) VALUES ('page.published', '{}')`)
 		untouched(t, conn, "turning the switch", `UPDATE site SET anonymous_access = false`)

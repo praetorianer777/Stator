@@ -371,6 +371,8 @@ func TestTheDatabaseKeepsTheGuardsOfAccess(t *testing.T) {
 		refusedAt(t, db, member, "installation_keeps_administrator", "the last administrator taken out of their group",
 			`DELETE FROM group_member WHERE user_id = $1 AND group_id = (SELECT id FROM groups WHERE name = 'Keepers')`, member)
 		ranAs(t, db, member, "hand it back", `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', '`+admin.String()+`')`)
+		// Bob is a member again for what follows, administering nothing.
+		ranAs(t, db, admin, "take the group's administering", `DELETE FROM role_assignment WHERE group_id = (SELECT id FROM groups WHERE name = 'Keepers')`)
 	})
 
 	t.Run("roles and Everyone stay what they are", func(t *testing.T) {

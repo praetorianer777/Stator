@@ -192,7 +192,8 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		if slices.Contains(people, "Oscar Outsider") || !slices.Contains(people, "Ina Insider") || !slices.Contains(people, "Person of guests") {
 			t.Errorf("the guest's people are %v", people)
 		}
-		if got := list(t, want(t, owner.get(t, "/api/v1/groups"), http.StatusOK, "the owner's groups"), "groups"); len(got) != 1 {
+		// Everyone, which holds every member, and the one group of the test.
+		if got := list(t, want(t, owner.get(t, "/api/v1/groups"), http.StatusOK, "the owner's groups"), "groups"); len(got) != 2 {
 			t.Errorf("the owner's groups are %v", got)
 		}
 		if got := list(t, want(t, gwen.get(t, "/api/v1/groups"), http.StatusOK, "the guest's groups"), "groups"); len(got) != 0 {
