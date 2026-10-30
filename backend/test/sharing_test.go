@@ -185,6 +185,7 @@ func TestSharingOverTheAPI(t *testing.T) {
 		}{
 			"nobody":                   {owner, runbook, []any{}, "", http.StatusUnprocessableEntity},
 			"everyone":                 {owner, runbook, []any{everyone}, "", http.StatusUnprocessableEntity},
+			"the Everyone group":       {owner, runbook, []any{group(h.everyoneGroup(t))}, "", http.StatusUnprocessableEntity},
 			"only oneself":             {owner, runbook, []any{user(home.user)}, "", http.StatusUnprocessableEntity},
 			"a stranger":               {owner, runbook, []any{user(uuid.New())}, "", http.StatusUnprocessableEntity},
 			"a note too long":          {owner, runbook, []any{user(annID)}, strings.Repeat("a", share.MaxMessageLength+1), http.StatusUnprocessableEntity},

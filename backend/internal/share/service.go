@@ -72,7 +72,7 @@ func (s *Service) Recipients(ctx context.Context, actor perm.Actor, pageID uuid.
 			SELECT g.id, g.name, count(gm.user_id)::int, g.source = 'oidc',
 			       count(gm.user_id) FILTER (WHERE perm_page_viewable($1, gm.user_id))::int
 			FROM groups g LEFT JOIN group_member gm ON gm.group_id = g.id
-			WHERE g.name ILIKE $2 OR g.name ILIKE '% ' || $2
+			WHERE (g.name ILIKE $2 OR g.name ILIKE '% ' || $2) AND g.builtin IS NULL
 			GROUP BY g.id
 			ORDER BY lower(g.name), g.id LIMIT $3`, pageID, perm.LikePrefix(q), perm.PickerLimit(limit))
 		if err != nil {
@@ -144,6 +144,9 @@ func (s *Service) Share(ctx context.Context, actor perm.Actor, pageID uuid.UUID,
 		}
 		subjects, err := perm.ResolveSubjects(ctx, tx, "recipients", in.Recipients)
 		if err != nil {
+			return err
+		}
+		if err := notEveryone(ctx, tx, subjects); err != nil {
 			return err
 		}
 		people, err := resolvePeople(ctx, tx, actor.UserID, pageID, subjects)
@@ -283,4 +286,23 @@ func braked(err error) error {
 		return &RateLimitedError{RetryAfter: RateWindow}
 	}
 	return err
+}
+
+// notEveryone refuses sharing a page with the group that holds every member,
+// which would tell everybody at once.
+func notEveryone(ctx context.Context, tx db.DBTX, subjects []perm.Subject) error {
+	var ids []uuid.UUID
+	for _, s := range subjects {
+		if s.Type == perm.SubjectGroup && s.ID != nil {
+			ids = append(ids, *s.ID)
+		}
+	}
+	var everyone bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM groups WHERE id = ANY ($1) AND builtin IS NOT NULL)`, ids).Scan(&everyone); err != nil {
+		return err
+	}
+	if everyone {
+		return &FieldError{Field: "recipients", Message: "A page is shared with people and groups. Pick them by name instead of everyone."}
+	}
+	return nil
 }

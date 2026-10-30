@@ -233,10 +233,10 @@ func loadCopy(ctx context.Context, tx db.DBTX, actor perm.Actor, key string, in 
 // space permissions of the roles granted to them there.
 func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGrant, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT t.subject_type, t.subject_id, t.name, t.guest, t.permission FROM (
+		SELECT t.subject_type, t.subject_id, t.name, t.guest, t.builtin, t.permission FROM (
 		    SELECT CASE WHEN a.user_id IS NOT NULL THEN 'user' ELSE 'group' END AS subject_type,
 		           COALESCE(a.user_id, a.group_id) AS subject_id, COALESCE(u.name, gr.name, '') AS name,
-		           COALESCE(m.role = 'guest', false) AS guest, p.word AS permission,
+		           COALESCE(m.role = 'guest', false) AS guest, COALESCE(gr.builtin, '') AS builtin, p.word AS permission,
 		           CASE WHEN gr.builtin IS NOT NULL THEN 1 WHEN a.group_id IS NOT NULL THEN 2 ELSE 3 END AS rank
 		    FROM role_assignment a
 		    JOIN role r ON r.key = a.role
@@ -246,7 +246,7 @@ func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGr
 		    LEFT JOIN member m ON m.user_id = a.user_id
 		    WHERE a.space_id = $1 AND p.word IN ('view', 'addPages', 'addComments', 'delete', 'administer')
 		    UNION ALL
-		    SELECT 'anonymous', NULL, $2, false, 'view', 0 FROM space WHERE id = $1 AND anonymous_view
+		    SELECT 'anonymous', NULL, $2, false, '', 'view', 0 FROM space WHERE id = $1 AND anonymous_view
 		) AS t
 		ORDER BY t.rank, lower(t.name), t.subject_id`, space, perm.AnonymousName)
 	if err != nil {
@@ -259,7 +259,7 @@ func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGr
 			sub perm.CopySubject
 			p   perm.SpacePermission
 		)
-		if err := rows.Scan(&sub.Type, &sub.ID, &sub.Name, &sub.Guest, &p); err != nil {
+		if err := rows.Scan(&sub.Type, &sub.ID, &sub.Name, &sub.Guest, &sub.Builtin, &p); err != nil {
 			return nil, err
 		}
 		if n := len(out); n > 0 && out[n-1].Subject.Key() == sub.Key() {

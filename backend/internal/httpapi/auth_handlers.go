@@ -76,7 +76,7 @@ func me(p *auth.Principal) *meResponse {
 		User: auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL, Locale: p.Locale, Timezone: p.Timezone, ShowInReaders: p.ShowInReaders},
 	}
 	if p.IsMember() {
-		out.Organization = &auth.Standing{Name: p.SiteName, Role: p.Role, GuestSpace: p.GuestSpace}
+		out.Organization = &auth.Standing{Name: p.SiteName, Role: p.Role, Administers: p.CanAdminister(), GuestSpace: p.GuestSpace}
 	}
 	return out
 }

@@ -23686,6 +23686,12 @@
       "CopySubject": {
         "type": "object",
         "properties": {
+          "builtin": {
+            "type": "string",
+            "enum": [
+              "everyone"
+            ]
+          },
           "guest": {
             "type": "boolean"
           },
@@ -26288,6 +26294,12 @@
       "MemberRole": {
         "type": "object",
         "properties": {
+          "groupBuiltin": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "groupId": {
             "type": [
               "string",
@@ -26312,7 +26324,8 @@
           "role",
           "name",
           "groupId",
-          "groupName"
+          "groupName",
+          "groupBuiltin"
         ]
       },
       "Mentionable": {
@@ -31181,6 +31194,9 @@
       "Standing": {
         "type": "object",
         "properties": {
+          "administers": {
+            "type": "boolean"
+          },
           "guestSpace": {
             "oneOf": [
               {
@@ -31205,6 +31221,7 @@
         "required": [
           "name",
           "role",
+          "administers",
           "guestSpace"
         ]
       },

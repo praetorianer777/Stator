@@ -47,6 +47,8 @@ type CopySubject struct {
 	// Guest marks a person from outside, let into the one space whose grant
 	// names them.
 	Guest bool `json:"guest"`
+	// Builtin marks a group the installation keeps itself, "everyone".
+	Builtin string `json:"builtin,omitempty"`
 }
 
 // Key tells two subjects apart.

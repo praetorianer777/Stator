@@ -5318,6 +5318,8 @@ export interface components {
             subject: components["schemas"]["CopySubject"];
         };
         CopySubject: {
+            /** @enum {string} */
+            builtin?: "everyone";
             guest: boolean;
             /** Format: uuid */
             id: string | null;
@@ -5982,6 +5984,7 @@ export interface components {
             userId: string;
         };
         MemberRole: {
+            groupBuiltin: string | null;
             /** Format: uuid */
             groupId: string | null;
             groupName: string | null;
@@ -7198,6 +7201,7 @@ export interface components {
             viewedAt: string | null;
         };
         Standing: {
+            administers: boolean;
             guestSpace: components["schemas"]["SpaceRef"] | null;
             name: string;
             /** @enum {string} */

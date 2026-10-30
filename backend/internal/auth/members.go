@@ -20,7 +20,7 @@ func (s *Service) Members(ctx context.Context) ([]Member, error) {
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
 		rows, err := tx.Query(ctx, `
 			SELECT u.id, u.email::text, u.name, m.role, u.is_active, m.created_at, gs.id, gs.key, gs.name,
-			       COALESCE((SELECT jsonb_agg(jsonb_build_object('role', r.key, 'name', r.name, 'groupId', g.id, 'groupName', g.name)
+			       COALESCE((SELECT jsonb_agg(jsonb_build_object('role', r.key, 'name', r.name, 'groupId', g.id, 'groupName', g.name, 'groupBuiltin', g.builtin)
 			                                  ORDER BY r.sort_order, lower(r.name), g.name NULLS FIRST)
 			                 FROM role_assignment a
 			                 JOIN role r ON r.key = a.role

@@ -55,6 +55,8 @@ type MemberRole struct {
 	// GroupID and GroupName name the group the grant is to; null for one by name.
 	GroupID   *uuid.UUID `json:"groupId"`
 	GroupName *string    `json:"groupName"`
+	// GroupBuiltin marks Everyone, "everyone"; null for any other group.
+	GroupBuiltin *string `json:"groupBuiltin"`
 }
 
 // SpaceRef names a space by its id, key and name.
@@ -101,6 +103,9 @@ type Standing struct {
 	Name string `json:"name"`
 	// Role is the standing, member or guest; what the caller may do is /access/me's.
 	Role Role `json:"role"`
+	// Administers says a grant lets the caller administer the installation,
+	// so the web app draws its menus before /access/me answers.
+	Administers bool `json:"administers"`
 	// GuestSpace is where a guest lands and all they reach; null for everybody else.
 	GuestSpace *SpaceRef `json:"guestSpace"`
 }

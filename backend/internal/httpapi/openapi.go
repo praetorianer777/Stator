@@ -1362,6 +1362,7 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["Group.source"] = &openapi.Schema{Type: "string", Enum: []string{"local", "oidc"}}
 	b.FieldOverrides["Group.builtin"] = &openapi.Schema{Type: "string", Enum: []string{perm.EveryoneGroup}}
 	b.FieldOverrides["Assignment.groupBuiltin"] = &openapi.Schema{Type: "string", Enum: []string{perm.EveryoneGroup}}
+	b.FieldOverrides["CopySubject.builtin"] = &openapi.Schema{Type: "string", Enum: []string{perm.EveryoneGroup}}
 	b.Enums[reflect.TypeOf(perm.CopyMode(""))] = enumStrings(perm.CopyModes)
 	b.Enums[reflect.TypeOf(perm.CopyChangeKind(""))] = enumStrings(perm.CopyChangeKinds)
 	b.Enums[reflect.TypeOf(perm.CopySkipReason(""))] = enumStrings(perm.CopySkipReasons)
