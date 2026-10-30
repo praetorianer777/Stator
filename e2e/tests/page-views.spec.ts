@@ -6,6 +6,7 @@ import { ONE_LOOK, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const MAX_TABS = 40;
 
@@ -55,12 +56,7 @@ test.describe("page views", { tag: ["@auth"] }, () => {
     const key = uniqueKey(testInfo);
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Read"));
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
     const guide = await createPage(api, space.homePageId, uniqueName(testInfo, "Guide"), doc("How we work."));
     return { space, guide };
   }

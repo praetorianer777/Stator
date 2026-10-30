@@ -1,11 +1,12 @@
 import type { Locator, Page } from "@playwright/test";
-import type { StatorApi } from "../fixtures/api";
+import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, toast, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { everyoneGroup } from "../fixtures/grants";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const NOT_FOUND = /not found/i;
@@ -51,7 +52,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     for (const key of made.splice(0)) await deleteSpace(api, key);
   });
 
-  test("an administrator takes a space from everyone and gives it to bob", async ({ page, api, apiAs, pageAs }, testInfo) => {
+  test("an administrator takes a space from Everyone and grants it to bob", async ({ page, api, apiAs, pageAs }, testInfo) => {
     const key = uniqueKey(testInfo);
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Closed"));
@@ -59,24 +60,27 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(200);
 
     await page.goto(`/s/${key}/settings?tab=permissions`);
-    const grid = page.getByRole("table", { name: "Permissions in this space" });
-    await expect(grid.locator('[data-grant-type="everyone"]')).toBeVisible();
+    const grants = page.getByRole("table", { name: "Roles granted in this space" });
+    const everyone = grants.locator('[data-grant="Everyone"][data-grant-role="editor"]');
+    await expect(everyone).toBeVisible();
     await expectAccessible(page);
-    await grid.locator('[data-grant-type="everyone"] [data-action="remove-grant"]').click();
-    await page.locator('[data-action="save-space-permissions"]').click();
-    await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    await everyone.locator('[data-action="revoke-grant"]').click();
+    await page.locator("[data-confirm]").locator('[data-action="confirm"]').click();
+    await expect(page.getByText("Everyone no longer holds Editor here.", { exact: true })).toBeVisible();
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(404);
 
     const bob = await pageAs("bob");
     await openWithout(bob, "/spaces", bob.locator(`[data-space-row="${key}"]`), bob.locator("[data-space-directory]"));
 
-    await pick(page.locator("[data-space-permissions] [data-subject-picker]"), BOB, BOB);
-    await expect(grid.locator(`[data-grant="${BOB}"] [data-permission-cell="view"]`)).toBeChecked();
-    await page.locator('[data-action="save-space-permissions"]').click();
-    await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
+    const form = page.locator("[data-grant-form]");
+    await pick(form.locator("[data-subject-picker]"), BOB, BOB);
+    await form.locator("[data-grant-role-choice]").selectOption("viewer");
+    await form.locator('[data-action="grant-role"]').click();
+    await expect(page.getByText(`${BOB} holds Viewer here now.`, { exact: true })).toBeVisible();
+    await expect(grants.locator(`[data-grant="${BOB}"][data-grant-role="viewer"]`)).toBeVisible();
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(200);
     await openUntil(bob, `/s/${key}`, () => expect(bob.locator("[data-page-home]")).toBeAttached(ONE_LOOK));
-    // Viewing is all he was given, so nothing on the page offers to change it.
+    // A viewer views and nothing more, so nothing on the page offers to change it.
     await expect(bob.locator('[data-action="edit-page"]')).toHaveCount(0);
   });
 
@@ -161,25 +165,24 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await expect(bob.locator('[data-page-restricted="edit"]')).toBeVisible();
   });
 
-  test("a member the organization does not let in is told why", async ({ page, api, pageAs }) => {
-    const everyone = [{ type: "everyone" as const }];
+  test("a member no role lets use Stator is told why", async ({ page, api, pageAs }) => {
+    const everyone = await everyoneGroup(api);
     try {
-      await page.goto("/settings/permissions");
-      const use = page.locator('[data-global-permission="use"]');
-      await expect(use.locator('[data-subject-type="everyone"]')).toBeVisible();
+      await page.goto("/settings/access/roles");
+      const use = page.locator(`[data-grant="Everyone"][data-grant-role="member"]`);
+      await expect(use).toBeVisible();
       await expectAccessible(page);
-      await use.locator('[data-subject-type="everyone"] [data-action="remove-subject"]').click();
-      await pick(use, ALICE, ALICE);
-      await use.locator('[data-action="save-global"]').click();
-      await expect(toast(page, "Saved.")).toBeVisible();
+      await use.locator('[data-action="revoke-grant"]').click();
+      await page.locator("[data-confirm]").locator('[data-action="confirm"]').click();
+      await expect(page.getByText("Everyone no longer holds Member.", { exact: true })).toBeVisible();
 
       const bob = await pageAs("bob");
       await openShowing(bob, "/spaces", bob.locator("[data-no-access]"));
       await expect(bob.getByRole("heading", { level: 1 })).toContainText("You do not have access to");
-      await expect(bob.getByText(/Ask an administrator to add you under Permissions/)).toBeVisible();
+      await expect(bob.getByText(/Ask an administrator to grant you one under Access/)).toBeVisible();
       await expectAccessible(bob);
     } finally {
-      await api.PUT("/site/permissions/{permission}", { params: { path: { permission: "use" } }, body: { subjects: everyone } });
+      must(await api.POST("/role-assignments", { body: { role: "member", spaceKey: "", userId: null, groupId: everyone } }));
     }
   });
 
@@ -193,12 +196,12 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await api.PUT("/pages/{pageID}/restrictions", { params: { path: { pageID: page2.id } }, body: { view: [{ type: "user", id: alice.id }], edit: [] } });
       await startInScheme(page, scheme);
 
-      await page.goto("/settings/permissions");
-      await expect(page.locator('[data-global-permission="administer"] [data-fixed]')).toBeVisible();
+      await page.goto("/settings/access/matrix");
+      await expect(page.locator('[data-permission-cell="administrator:administerSite"]')).toBeDisabled();
       await expectAccessible(page);
 
       await page.goto(`/s/${key}/settings?tab=permissions`);
-      await expect(page.getByRole("table", { name: "Permissions in this space" })).toBeVisible();
+      await expect(page.getByRole("table", { name: "Roles granted in this space" })).toBeVisible();
       await page.locator("[data-space-permissions] [data-subject-picker] input").fill("b");
       await expect(page.locator("[data-space-permissions] [data-subject-options] [role=option]").first()).toBeVisible();
       await expectAccessible(page);

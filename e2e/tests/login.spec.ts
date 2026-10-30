@@ -51,18 +51,20 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     expect(response.status).toBe(200);
   });
 
-  test("an admin finds single sign-on in the settings area, and a member does not", async ({ page, pageAs }) => {
+  test("an admin finds access, single sign-on among it, in the settings area, and a member does not", async ({ page, pageAs }) => {
     await page.goto("/");
-    await openSettingsPage(page, "sso-settings");
-    await expect(page).toHaveURL(/\/settings\/sso$/);
+    await openSettingsPage(page, "access");
+    await expect(page).toHaveURL(/\/settings\/access\/roles$/);
+    await page.getByRole("tab", { name: "Single sign-on" }).click();
+    await expect(page).toHaveURL(/\/settings\/access\/sso$/);
 
     const bob = await pageAs("bob");
     await bob.goto("/");
-    await expectNoSettingsEntry(bob, "sso-settings");
+    await expectNoSettingsEntry(bob, "access");
   });
 
   test("the SSO settings show the callback address, and a save with a blank secret keeps the stored one", async ({ page, browser }) => {
-    await page.goto("/settings/sso");
+    await page.goto("/settings/access/sso");
     await expect(page.getByText("Register this redirect address with the provider:")).toBeVisible();
     await expect(page.locator("form code").first()).toContainText("/api/v1/auth/oidc/callback");
     const secret = page.getByLabel("Client secret", { exact: true });
@@ -81,9 +83,9 @@ test.describe("sign-in", { tag: "@auth" }, () => {
   });
 
   for (const scheme of SCHEMES) {
-    test(`/settings/sso passes axe in ${scheme}`, async ({ page }) => {
+    test(`/settings/access/sso passes axe in ${scheme}`, async ({ page }) => {
       await startInScheme(page, scheme);
-      await page.goto("/settings/sso");
+      await page.goto("/settings/access/sso");
       await expect(page.locator('[data-action="save-sso"]')).toBeVisible();
       await expectAccessible(page);
     });

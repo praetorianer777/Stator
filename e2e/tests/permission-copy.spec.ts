@@ -5,6 +5,7 @@ import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 test.describe("copying space permissions", { tag: ["@auth"] }, () => {
   const made: string[] = [];
@@ -22,20 +23,13 @@ test.describe("copying space permissions", { tag: ["@auth"] }, () => {
     const bobApi = await apiAs("bob");
     const bobId = must(await bobApi.GET("/auth/me")).user.id;
     const aliceId = must(await api.GET("/auth/me")).user.id;
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: source } },
-        body: {
-          grants: [
-            { subject: { type: "user", id: aliceId }, permissions: ["administer"] },
-            { subject: { type: "user", id: bobId }, permissions: ["view"] },
-          ],
-        },
-      }),
-    );
+    await setSpaceGrants(api, source, [
+      { subject: { type: "user", id: aliceId }, permissions: ["administer"] },
+      { subject: { type: "user", id: bobId }, permissions: ["view"] },
+    ]);
 
-    const grid = page.getByRole("table", { name: "Permissions in this space" });
-    await openShowing(page, `/s/${target}/settings?tab=permissions`, grid.locator('[data-grant-type="everyone"]'));
+    const grid = page.getByRole("table", { name: "Roles granted in this space" });
+    await openShowing(page, `/s/${target}/settings?tab=permissions`, grid.locator('[data-grant="Everyone"]'));
     await page.locator('[data-action="copy-permissions"]').click();
     const dialog = page.locator("[data-permission-copy-dialog]");
     await dialog.getByLabel("Copy from").selectOption(source);
@@ -50,10 +44,10 @@ test.describe("copying space permissions", { tag: ["@auth"] }, () => {
     await dialog.locator('[data-action="apply-permission-copy"]').click();
     await expect(page.getByText(`Copied the permissions of ${sourceName}.`, { exact: true })).toBeVisible();
     await expect(dialog).toHaveCount(0);
-    await expect(grid.locator(`[data-grant="${team.people.bob.name}"] [data-permission-cell="view"]`)).toBeChecked();
-    await expect(grid.locator('[data-grant-type="everyone"]')).toHaveCount(0);
+    await expect(grid.locator(`[data-grant="${team.people.bob.name}"][data-grant-role="viewer"]`)).toBeVisible();
+    await expect(grid.locator('[data-grant="Everyone"]')).toHaveCount(0);
 
-    // Bob could add pages as one of everyone, and may now only read.
+    // Bob could add pages through Everyone, and may now only read.
     await expect.poll(async () => must(await bobApi.GET("/spaces/{spaceKey}", { params: { path: { spaceKey: target } } })).space.can.editPages).toBe(false);
 
     await page.locator('[data-action="copy-permissions"]').click();

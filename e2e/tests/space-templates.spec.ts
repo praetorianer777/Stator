@@ -45,8 +45,10 @@ test.describe("space templates", { tag: ["@auth"] }, () => {
     expect(await childTitles(api, key, space.homePageId)).toEqual(["How-to articles", "Troubleshooting", "Frequently asked questions", "Contributing"]);
     const { pages } = must(await api.GET("/labels/{labelName}/pages", { params: { path: { labelName: "faq" }, query: { space: key } } }));
     expect(pages.map((each) => each.title)).toEqual(["Frequently asked questions"]);
-    const { grants } = must(await api.GET("/spaces/{spaceKey}/permissions", { params: { path: { spaceKey: key } } }));
-    expect(grants.find((g) => g.subject.type === "everyone")?.permissions).toEqual(["view", "addPages", "addComments"]);
+    const { assignments } = must(await api.GET("/role-assignments", { params: { query: { space: key } } }));
+    const everyone = assignments.find((each) => each.groupBuiltin === "everyone");
+    const { roles } = must(await api.GET("/roles"));
+    expect(roles.find((role) => role.role === everyone?.role)?.permissions.toSorted()).toEqual(["addComments", "addPages", "view"]);
 
     // Everybody in the organization reads it.
     const bob = await pageAs("bob");

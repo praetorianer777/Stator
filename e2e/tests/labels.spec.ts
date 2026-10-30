@@ -6,6 +6,7 @@ import { ONE_LOOK, openShowing } from "../fixtures/replica";
 import { uniqueName, uniqueWord } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const labelBox = (page: Page) => page.locator("[data-page-labels]").getByRole("combobox", { name: "Add a label" });
@@ -119,12 +120,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Read only");
     const target = await createPage(api, space.homePageId, "Charter");
     await addLabel(api, target.id, "governance");
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
     const bobApi = await apiAs("bob");
     await expect.poll(async () => (await bobApi.GET("/pages/{pageID}", { params: { path: { pageID: target.id } } })).data?.page.can.edit).toBe(false);
     expect((await bobApi.POST("/pages/{pageID}/labels", { params: { path: { pageID: target.id } }, body: { name: "mine" } })).response.status).toBe(403);

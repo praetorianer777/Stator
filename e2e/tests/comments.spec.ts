@@ -7,6 +7,7 @@ import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme, confirm } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
@@ -124,12 +125,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Read");
     const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Read only"), doc("Read me."));
     must(await api.POST("/pages/{pageID}/comments", { params: { path: { pageID: plan.id } }, body: { body: doc("Alice was here.") } }));
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
 
     const bob = await pageAs("bob");
     await openPage(bob, space.key, plan, () => expect(comments(bob).locator("[data-comments-read-only]").first()).toBeVisible(ONE_LOOK));
@@ -155,12 +151,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(comments(bob).locator('[data-action="reply"]')).toBeVisible();
     await expect(alices.locator('[data-action="delete-comment"]')).toHaveCount(0);
 
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [everyoneMay, { subject: { type: "user", id: bobId }, permissions: ["administer"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [everyoneMay, { subject: { type: "user", id: bobId }, permissions: ["administer"] }]);
     await openPage(bob, space.key, plan, () => expect(alices.locator('[data-action="delete-comment"]')).toBeVisible(ONE_LOOK));
     await expectAccessible(bob);
     await alices.locator('[data-action="delete-comment"]').click();

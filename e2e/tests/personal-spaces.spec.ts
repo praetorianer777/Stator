@@ -1,10 +1,10 @@
 import type { Page } from "@playwright/test";
-import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const personal = (page: Page) => page.locator("[data-personal-spaces]");
@@ -43,12 +43,7 @@ test.describe("personal spaces", { tag: ["@auth"] }, () => {
     await bob.goto(`/s/${key}`);
     await expect(bob.getByText(/not found/i).first()).toBeVisible();
 
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
     await openShowing(bob, "/spaces", personal(bob).locator(`[data-space-row="${key}"]`));
     await expect(personal(bob).locator(`[data-space-row="${key}"]`)).not.toContainText("You");
     await bob.goto(`/s/${key}`);

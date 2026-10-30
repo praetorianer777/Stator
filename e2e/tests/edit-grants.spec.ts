@@ -7,6 +7,7 @@ import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 
@@ -30,17 +31,10 @@ async function readOnlySpace(api: StatorApi, key: string, name: string) {
   const guide = await createPage(api, space.homePageId, "Guide");
   const sibling = await createPage(api, space.homePageId, "Sibling");
   const alice = must(await api.GET("/auth/me")).user;
-  must(
-    await api.PUT("/spaces/{spaceKey}/permissions", {
-      params: { path: { spaceKey: key } },
-      body: {
-        grants: [
-          { subject: { type: "everyone" }, permissions: ["view", "addComments"] },
-          { subject: { type: "user", id: alice.id }, permissions: ["administer"] },
-        ],
-      },
-    }),
-  );
+  await setSpaceGrants(api, key, [
+    { subject: { type: "everyone" }, permissions: ["view", "addComments"] },
+    { subject: { type: "user", id: alice.id }, permissions: ["administer"] },
+  ]);
   return { space, guide, sibling };
 }
 

@@ -7,6 +7,7 @@ import { ONE_LOOK, openEditor, openShowing, openUntil } from "../fixtures/replic
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const doc = (...lines: string[]) => ({ type: "doc" as const, content: lines.map((text) => ({ type: "paragraph", content: [{ type: "text", text }] })) });
 const banner = (page: Page) => page.locator("[data-review-banner]");
@@ -30,17 +31,10 @@ test.describe("page reviews", { tag: ["@auth", "@desktop"] }, () => {
     const policy = await createPage(api, space.homePageId, "Travel policy", doc("Book the train."));
     const path = `/s/${space.key}/p/${policy.id}/travel-policy`;
     const aliceId = String(must(await api.GET("/auth/me")).user.id);
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: {
-          grants: [
-            { subject: { type: "everyone" }, permissions: ["view", "addPages", "addComments"] },
-            { subject: { type: "user", id: aliceId }, permissions: ["administer"] },
-          ],
-        },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [
+      { subject: { type: "everyone" }, permissions: ["view", "addPages", "addComments"] },
+      { subject: { type: "user", id: aliceId }, permissions: ["administer"] },
+    ]);
 
     // Alice holds the page to her own review.
     must(

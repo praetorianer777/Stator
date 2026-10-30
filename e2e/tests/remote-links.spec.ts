@@ -6,6 +6,7 @@ import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const panel = (page: Page) => page.locator("[data-remote-links]");
 const row = (page: Page, url: string) => page.locator(`[data-remote-links] [data-remote-link="${url}"]`);
@@ -67,12 +68,7 @@ test.describe("remote links", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Read only");
     const target = await createPage(api, space.homePageId, "Charter");
     await putLink(api, target.id, requirement(3));
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
     const bobApi = await apiAs("bob");
     await expect.poll(async () => (await bobApi.GET("/pages/{pageID}", { params: { path: { pageID: target.id } } })).data?.page.can.edit).toBe(false);
     expect((await bobApi.POST("/pages/{pageID}/remote-links", { params: { path: { pageID: target.id } }, body: requirement(4) })).response.status).toBe(403);

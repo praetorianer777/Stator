@@ -6,6 +6,7 @@ import { ONE_LOOK, openPage, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const pageBar = (page: Page) => page.getByRole("list", { name: "Reactions to this page" });
 const toggle = (page: Page, emoji: string) => pageBar(page).locator(`[data-reaction="${emoji}"]`);
@@ -78,12 +79,7 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Read");
     const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Read only"), doc("Read me."));
     must(await api.POST("/pages/{pageID}/reactions", { params: { path: { pageID: plan.id } }, body: { emoji: "👀" } }));
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
 
     const bob = await pageAs("bob");
     await openPage(bob, space.key, plan, () => expect(toggle(bob, "👀")).toHaveAttribute("aria-disabled", "true", ONE_LOOK));

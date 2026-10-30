@@ -45,7 +45,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
     });
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     try {
-      await page.goto("/settings/permissions");
+      await page.goto("/settings/access/roles");
       const org = page.locator("[data-anonymous-access]");
       await org.locator('[data-action="anonymous-access"]').click();
       await expect(toast(page, "Saved.")).toBeVisible();

@@ -11,8 +11,7 @@ import { createPerson, removePerson, teamTest as test } from "../fixtures/team";
 
 const OWN = ["profile", "notification-settings", "watching", "themes", "tokens"];
 const SITE = [
-  "sso-settings",
-  "site-permissions",
+  "access",
   "site-hub",
   "templates",
   "stale-pages",
