@@ -48,7 +48,7 @@ func scanTasks(rows pgx.Rows) ([]Task, error) {
 			&t.AssigneeID, &t.AssigneeName, &t.AssignedByName, &t.AssignedAt, &t.DoneAt, &t.CanEdit); err != nil {
 			return nil, err
 		}
-		t.Path = fmt.Sprintf("/s/%s/p/%s#task-%s", t.Page.SpaceKey, t.Page.ID, t.ID)
+		t.Path = fmt.Sprintf("/spaces/%s/p/%s#task-%s", t.Page.SpaceKey, t.Page.ID, t.ID)
 		out = append(out, t)
 	}
 	return out, rows.Err()

@@ -224,7 +224,7 @@ func (s *Server) publicPicture(locate func(context.Context, uuid.UUID) (*attachm
 
 // appPagePath is a page's address in the web client.
 func appPagePath(spaceKey string, id uuid.UUID, title string) string {
-	return "/s/" + url.PathEscape(spaceKey) + "/p/" + id.String() + "/" + url.PathEscape(document.Slug(title))
+	return "/spaces/" + url.PathEscape(spaceKey) + "/p/" + id.String() + "/" + url.PathEscape(document.Slug(title))
 }
 
 // appURL is an address of the web client, or empty when it has none set.

@@ -370,7 +370,7 @@ Uses `GET /armature/issues/{issueKey}` from #28.
 - **Filing.** The server files the items one at a time, in order, with
   Armature's `POST /issues` `{projectKey, typeId, summary, description}` as
   the caller. The description is one paragraph, "From {page title} in Stator",
-  the title linked to `{STATOR_APP_URL}/s/{spaceKey}/p/{pageId}`, which
+  the title linked to `{STATOR_APP_URL}/spaces/{spaceKey}/p/{pageId}`, which
   Armature's description allowlist takes. It stops at the first item Armature
   refuses: 201 with the issues made so far and `failed: {index, code,
   message}`; when the first item is refused, the refusal itself is the answer.
@@ -433,7 +433,7 @@ Uses `GET /armature/issues/{issueKey}` from #28.
   when it runs, so an event that waited is never stale, and two events for a
   page do the same thing.
 - **What is wanted.** For a published page out of the trash, one remote link
-  per key: `url` `{STATOR_APP_URL}/s/{spaceKey}/p/{pageId}` (no slug, so a
+  per key: `url` `{STATOR_APP_URL}/spaces/{spaceKey}/p/{pageId}` (no slug, so a
   rename keeps the address that Armature keys its links by), `title` the
   page's title, and `source` `Stator` (`armature.LinkSource`). A page not every
   member with `use` may view is linked as "A restricted page in Stator":

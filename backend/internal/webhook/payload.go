@@ -274,7 +274,7 @@ func (s *Service) page(ctx context.Context, tx db.DBTX, id uuid.UUID) (*PageRef,
 	if err != nil {
 		return nil, err
 	}
-	p.URL = s.opts.AppURL + "/s/" + p.Space.Key + "/p/" + p.ID.String()
+	p.URL = s.opts.AppURL + "/spaces/" + p.Space.Key + "/p/" + p.ID.String()
 	return &p, nil
 }
 

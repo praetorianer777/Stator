@@ -195,7 +195,7 @@ func TestAnHTMLExportIsReadWithItsTreeFilesLabelsAndComments(t *testing.T) {
 		`"type":"tableHeader"`,
 		`{"type":"codeBlock","attrs":{"language":"bash"},"content":[{"type":"text","text":"tar czf trip.tgz .\necho done"}]}`,
 		`{"type":"taskItem","attrs":{"checked":true}`,
-		`"href":"/s/TRIP/p/` + pages["Routes"].ID.String() + `"`,
+		`"href":"/spaces/TRIP/p/` + pages["Routes"].ID.String() + `"`,
 		`{"type":"attachment","attrs":{"attachmentId":"` + plan.ID.String() + `","fileName":"plan.pdf"}}`,
 		`{"type":"text","text":" and a page we lost."}`,
 		`{"type":"text","text":"The sun","marks":[{"type":"link","attrs":{"href":"https://pictures.example.com/sun.png"}}]}`,
@@ -211,7 +211,7 @@ func TestAnHTMLExportIsReadWithItsTreeFilesLabelsAndComments(t *testing.T) {
 			t.Errorf("Packing holds %q:\n%s", gone, body)
 		}
 	}
-	if !strings.Contains(current(home), `"href":"/s/TRIP/p/`+packing.ID.String()+`"`) {
+	if !strings.Contains(current(home), `"href":"/spaces/TRIP/p/`+packing.ID.String()+`"`) {
 		t.Errorf("Home's link to Packing is not rewritten: %s", current(home))
 	}
 	if !strings.Contains(current(pages["Checklist"]), `"start":3`) {
@@ -433,7 +433,7 @@ func TestAnXMLExportIsReadWithItsHistory(t *testing.T) {
 			t.Errorf("Build lacks %s:\n%s", want, body)
 		}
 	}
-	if !strings.Contains(current(home), `"href":"/s/ENG/p/`+build.ID.String()+`"`) || !strings.Contains(current(home), `"childPages"`) {
+	if !strings.Contains(current(home), `"href":"/spaces/ENG/p/`+build.ID.String()+`"`) || !strings.Contains(current(home), `"childPages"`) {
 		t.Errorf("the home page reads %s", current(home))
 	}
 	if !slices.Equal(build.Labels, []string{"build"}) {

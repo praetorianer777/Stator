@@ -64,7 +64,7 @@ func TestRewritePointsADocumentAtTheImportsIds(t *testing.T) {
 	}
 	got := string(out)
 	for _, want := range []string{
-		"/s/NEW/p/" + r.pages[pageA].String() + "/intro#top",
+		"/spaces/NEW/p/" + r.pages[pageA].String() + "/intro#top",
 		"/s/OTHER/p/" + outside.String(),
 		"/api/v1/attachments/" + r.files[file].String() + "?download=1",
 		`"id":"` + newAlice.String() + `"`,

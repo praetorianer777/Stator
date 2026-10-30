@@ -23,7 +23,7 @@ func TestOnlyPublishedWordsAreExportedToWord(t *testing.T) {
 func TestAnExportedPageLinksToItsAddressWhenTheServerKnowsIt(t *testing.T) {
 	id := uuid.MustParse("6f1c2b1e-0000-4000-8000-000000000001")
 	s := &Server{AppBaseURL: "https://stator.example"}
-	if got := s.appURL(appPagePath("DOC", id, "Setting up")); got != "https://stator.example/s/DOC/p/"+id.String()+"/setting-up" {
+	if got := s.appURL(appPagePath("DOC", id, "Setting up")); got != "https://stator.example/spaces/DOC/p/"+id.String()+"/setting-up" {
 		t.Errorf("got %q", got)
 	}
 	if got := (&Server{}).appURL("/s/DOC"); got != "" {

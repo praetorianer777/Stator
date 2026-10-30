@@ -76,7 +76,7 @@ func TestSharingOverTheAPI(t *testing.T) {
 			t.Errorf("the mail is called %q", caught[0].Subject)
 		}
 		text := mails.text(t, caught[0].ID)
-		for _, part := range []string{"Read the rollback part before Friday.", "/s/SHR/p/" + runbook} {
+		for _, part := range []string{"Read the rollback part before Friday.", "/spaces/SHR/p/" + runbook} {
 			if !strings.Contains(text, part) {
 				t.Errorf("the mail lacks %q:\n%s", part, text)
 			}

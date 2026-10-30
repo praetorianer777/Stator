@@ -124,7 +124,7 @@ func TestAMailSaysWhatHappenedAndWhere(t *testing.T) {
 	if m.Subject != `Alice published a new version of "Runbook"` {
 		t.Errorf("the subject is %q", m.Subject)
 	}
-	for _, want := range []string{"Added the budget.", "https://wiki.example/s/OPS/p/" + page.String(), "https://wiki.example" + PreferencesPath} {
+	for _, want := range []string{"Added the budget.", "https://wiki.example/spaces/OPS/p/" + page.String(), "https://wiki.example" + PreferencesPath} {
 		if !strings.Contains(m.Body, want) {
 			t.Errorf("the body lacks %q:\n%s", want, m.Body)
 		}
@@ -133,7 +133,7 @@ func TestAMailSaysWhatHappenedAndWhere(t *testing.T) {
 		t.Errorf("a thread's link is %s", got)
 	}
 	task := uuid.New()
-	if got := PageURL("https://wiki.example", "OPS", Subject{PageID: page, TaskID: &task}); got != "https://wiki.example/s/OPS/p/"+page.String()+"#task-"+task.String() {
+	if got := PageURL("https://wiki.example", "OPS", Subject{PageID: page, TaskID: &task}); got != "https://wiki.example/spaces/OPS/p/"+page.String()+"#task-"+task.String() {
 		t.Errorf("a task's link is %s", got)
 	}
 	if got := Sentence(KindCreated, "", "Plans", false); got != `Somebody created "Plans"` {
@@ -159,7 +159,7 @@ func TestASharedPageIsMailedWithItsNote(t *testing.T) {
 	if m.Subject != `Alice shared "Runbook" with you` {
 		t.Errorf("the subject is %q", m.Subject)
 	}
-	for _, want := range []string{"Read the rollback part before Friday.", "https://wiki.example/s/OPS/p/" + page.String()} {
+	for _, want := range []string{"Read the rollback part before Friday.", "https://wiki.example/spaces/OPS/p/" + page.String()} {
 		if !strings.Contains(m.Body, want) {
 			t.Errorf("the body lacks %q:\n%s", want, m.Body)
 		}

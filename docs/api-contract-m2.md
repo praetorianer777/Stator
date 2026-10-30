@@ -342,7 +342,7 @@ as publish stores it.
   `notify.DailyDigestHour`, 08:00 UTC. A bundle is one mail listing what
   came since the last, leaving out what was read in the app meanwhile, and
   nothing is sent when nothing is left. Each mail is plain text in English
-  with the page's link (`STATOR_APP_URL/s/{spaceKey}/p/{pageId}`, the client
+  with the page's link (`STATOR_APP_URL/spaces/{spaceKey}/p/{pageId}`, the client
   puts the slug right) and a link to the preferences.
 - **The database** lets `stator_app` read, and mark read, only the actor's
   own notifications, and read and write only their own preferences. The

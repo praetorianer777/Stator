@@ -271,7 +271,7 @@ func TestEveryAnswerFitsArmaturesDocument(t *testing.T) {
 		Description: armature.Description("Review notes", armature.PageURL("https://stator.example", "ENG", uuid.New()))}
 	filed := c.expect("POST", "/issues", alice, page, 201)["issue"].(map[string]any)
 	kept := c.expect("GET", stubPrefix+"/acme/issues/"+filed["key"].(string), "", nil, 200)["issue"].(map[string]any)
-	if desc, _ := json.Marshal(kept["description"]); !bytes.Contains(desc, []byte(`"href":"https://stator.example/s/ENG/p/`)) {
+	if desc, _ := json.Marshal(kept["description"]); !bytes.Contains(desc, []byte(`"href":"https://stator.example/spaces/ENG/p/`)) {
 		t.Errorf("the stub keeps the description %s", desc)
 	}
 	c.expect("PUT", stubPrefix+"/acme/people/alice/read-only-projects", "", map[string]any{"projects": []string{"CP"}}, 204)

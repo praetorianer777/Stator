@@ -400,7 +400,7 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 		t.Error("a published page's delivery is not signed with the secret")
 	}
 	p := published.payload()["page"].(map[string]any)
-	if p["title"] != "Plans" || p["space"].(map[string]any)["key"] != "HOOK" || !strings.HasSuffix(p["url"].(string), "/s/HOOK/p/"+page) {
+	if p["title"] != "Plans" || p["space"].(map[string]any)["key"] != "HOOK" || !strings.HasSuffix(p["url"].(string), "/spaces/HOOK/p/"+page) {
 		t.Errorf("the published page reads %s", published.Body)
 	}
 	if actor := published.payload()["actor"].(map[string]any); actor["id"] != home.user.String() {

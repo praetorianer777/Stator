@@ -56,7 +56,7 @@ func TestACreateIsCheckedBeforeArmatureIsAsked(t *testing.T) {
 func TestAnIssueDescriptionLinksBackToItsPage(t *testing.T) {
 	id := uuid.MustParse("0195f000-0000-7000-8000-000000000001")
 	url := PageURL("https://wiki.example.com/", "ENG", id)
-	if url != "https://wiki.example.com/s/ENG/p/0195f000-0000-7000-8000-000000000001" {
+	if url != "https://wiki.example.com/spaces/ENG/p/0195f000-0000-7000-8000-000000000001" {
 		t.Errorf("the page's address is %s", url)
 	}
 	raw, _ := json.Marshal(Description("Review notes", url))

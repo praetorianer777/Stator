@@ -71,7 +71,7 @@ func TestAnExportTakesTheShapesOfAnArchive(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(body)
-	if !strings.Contains(got, "/s/TEAM/p/"+im.r.pages[a.ID].String()) || !strings.Contains(got, im.r.files[home.Files[0].ID].String()) {
+	if !strings.Contains(got, "/spaces/TEAM/p/"+im.r.pages[a.ID].String()) || !strings.Contains(got, im.r.files[home.Files[0].ID].String()) {
 		t.Errorf("the home page is not pointed at the new ids: %s", got)
 	}
 	if err := document.Validate(body); err != nil {

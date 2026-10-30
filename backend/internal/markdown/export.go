@@ -719,7 +719,8 @@ func (r renderer) closer(m document.Mark) string {
 }
 
 var (
-	pageHref = regexp.MustCompile(`^/s/[^/?#]+/p/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:/[^?#]*)?(#.*)?$`)
+	// Documents written before spaces moved to /spaces/ still link to /s/.
+	pageHref = regexp.MustCompile(`^/(?:s|spaces)/[^/?#]+/p/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:/[^?#]*)?(#.*)?$`)
 	fileHref = regexp.MustCompile(`^/api/v1/attachments/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\?[^#]*)?$`)
 )
 

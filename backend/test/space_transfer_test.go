@@ -446,7 +446,7 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 		}
 		body := string(want(t, landedOwner.get(t, pagePath(nestedThere, "/versions/2")), http.StatusOK, "version 2").Raw)
 		if !strings.Contains(body, annThereID.String()) || strings.Contains(body, from.user.String()) || !strings.Contains(body, "@The Organizer") ||
-			!strings.Contains(body, "/s/LANDED/p/"+ids["Top"]) || strings.Contains(body, second["id"].(string)) {
+			!strings.Contains(body, "/spaces/LANDED/p/"+ids["Top"]) || strings.Contains(body, second["id"].(string)) {
 			t.Errorf("version 2 reads %s", body)
 		}
 	})

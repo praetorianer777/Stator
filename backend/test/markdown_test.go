@@ -118,7 +118,7 @@ func TestMarkdownImportAndExport(t *testing.T) {
 			t.Errorf("the imported page is not published: %v", read)
 		}
 		body := fmt.Sprint(read["body"])
-		if !strings.Contains(body, "/s/MD/p/"+setup["id"].(string)+"#install") {
+		if !strings.Contains(body, "/spaces/MD/p/"+setup["id"].(string)+"#install") {
 			t.Errorf("the link does not lead to the imported page: %s", body)
 		}
 		files := list(t, want(t, member.get(t, pagePath(handbook["id"].(string), "/attachments")), http.StatusOK, "the handbook's files"), "attachments")

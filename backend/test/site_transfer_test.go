@@ -355,7 +355,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	t.Run("a link from one space to another finds its page", func(t *testing.T) {
 		_, opsIDs := outline(t, landed, "OPS")
 		body := string(want(t, landed.get(t, pagePath(opsIDs["Pointer"])), http.StatusOK, "the pointer").Raw)
-		if !strings.Contains(body, "/s/TRIP/p/"+topThere) || strings.Contains(body, top) {
+		if !strings.Contains(body, "/spaces/TRIP/p/"+topThere) || strings.Contains(body, top) {
 			t.Errorf("the pointer reads %s", body)
 		}
 	})

@@ -21,7 +21,7 @@ type PageLink struct {
 // PageURL is where an issue's description sends people back to a page: no
 // slug, so a rename keeps the address.
 func PageURL(appURL, spaceKey string, pageID uuid.UUID) string {
-	return strings.TrimSuffix(appURL, "/") + "/s/" + spaceKey + "/p/" + pageID.String()
+	return strings.TrimSuffix(appURL, "/") + "/spaces/" + spaceKey + "/p/" + pageID.String()
 }
 
 // Summary is raw with every run of white space made one space, and whether
