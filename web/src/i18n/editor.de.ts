@@ -124,7 +124,7 @@ export const editorDe: typeof editorEn = {
     cancel: "Abbrechen",
     loading: "Die Zeichenfläche wird geladen.",
     loadFailed: "Die Zeichenfläche konnte nicht geladen werden. Prüfen Sie Ihre Verbindung, schließen Sie dies und öffnen Sie die Skizze erneut.",
-    confirmDiscard: "Ihre Änderungen an dieser Skizze verwerfen?",
+    confirmDiscard: "Ihre Änderungen an dieser Skizze gehen verloren.",
     picturesLeftOut: "Bilder können noch nicht in eine Skizze, daher wurden sie weggelassen. Setzen Sie das Bild stattdessen neben die Skizze auf die Seite.",
     tooLarge: "Diese Skizze ist zu groß zum Speichern. Nehmen Sie einige Formen heraus oder teilen Sie sie auf zwei Skizzen auf.",
     canvasHint: "Escape in der Zeichenfläche hebt die Auswahl auf; Tab verlässt sie zu Fertig und Abbrechen.",

@@ -23,8 +23,8 @@ export const staleEn = {
   selectAll: "Select every page shown",
   select: (title: string) => `Select ${title}`,
   archiveSelected: (n: number) => (n === 0 ? "Archive selected pages" : n === 1 ? "Archive 1 page" : `Archive ${n} pages`),
-  confirmArchive: (n: number) =>
-    `Archive ${n === 1 ? "this page" : `these ${n} pages`} and every page below them? They stay readable and keep their addresses, but nobody can change them until an administrator of the space unarchives them.`,
+  confirmArchive:
+    "They and every page below them stay readable and keep their addresses, but nobody can change them until an administrator of the space unarchives them.",
   archivedCount: (n: number) => (n === 1 ? "Archived 1 page." : `Archived ${n} pages.`),
   archiveStopped: (done: number, reason: string) => `Archived ${done} of the pages, then stopped: ${reason}`,
   columnPage: "Page",

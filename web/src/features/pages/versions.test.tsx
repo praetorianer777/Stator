@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { TreeNode } from "@/api/tree";
 import type { Comparison, Draft, VersionEntry } from "@/api/versions";
 import { DRAFT_AUTOSAVE_MS } from "@/config";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { renderAt, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -356,16 +356,19 @@ describe("the editor", () => {
   it(
     "discards the draft after asking, and shows the page as published",
     async () => {
-      const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
       const sent = stubPage({ [`DELETE /pages/${PAGE_ID}/draft`]: { status: 204 } }, { draft: aDraft() });
       const router = await renderAt(EDIT_PATH);
       const discard = await screen.findByRole("button", { name: "Discard draft" });
       await userEvent.click(discard);
+      const asked = await confirmDialog();
+      expect(asked).toHaveAccessibleName("Discard draft?");
+      expect(asked).toHaveTextContent("The page stays as it was last published.");
+      await answerConfirm(false);
       expect(sent.some((r) => r.method === "DELETE")).toBe(false);
       await userEvent.click(discard);
+      await answerConfirm(true);
       await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans`));
       expect(sent.filter((r) => r.method === "DELETE").map((r) => r.path)).toEqual([`/pages/${PAGE_ID}/draft`]);
-      expect(confirm).toHaveBeenCalledWith("Throw your draft away? The page stays as it was last published.");
     },
     EDITOR_TEST_MS,
   );
@@ -513,29 +516,30 @@ describe("a page's history", () => {
   });
 
   it("restores a version after asking, as a new version", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     const sent = stubHistory({
       [`POST /pages/${PAGE_ID}/versions/2/restore`]: { status: 200, body: { page: aPage({ ...plans, version: 4 }), version: entry(4, { restoredFrom: 2 }) } },
     });
     await renderAt(HISTORY_PATH);
     const restore = await screen.findByRole("button", { name: "Restore version 2" });
     await userEvent.click(restore);
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Restore version 2?");
+    expect(asked).toHaveTextContent("It is published again as a new version on top of the history");
+    await answerConfirm(false);
     expect(sent.some(isChange)).toBe(false);
     await userEvent.click(restore);
+    await answerConfirm(true);
     expect(await screen.findByText("Restored version 2 as version 4.")).toBeInTheDocument();
     expect(sent.find(isChange)?.body).toEqual({ baseVersion: 3, notifyWatchers: true });
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Restore version 2? It is published again as a new version on top of the history, nothing in the history is lost, and the people watching the page are told.",
-    );
   });
 
   it("says what to do when the history changed under a restore", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     stubHistory({
       [`POST /pages/${PAGE_ID}/versions/2/restore`]: { status: 409, body: { error: { code: "conflict", message: "Stale." } } },
     });
     await renderAt(HISTORY_PATH);
     await userEvent.click(await screen.findByRole("button", { name: "Restore version 2" }));
+    await answerConfirm(true);
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Somebody published this page while you were looking, so the history has changed. Look at the latest version, then restore again if you still want to.",
     );

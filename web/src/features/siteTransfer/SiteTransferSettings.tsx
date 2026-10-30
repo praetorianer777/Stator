@@ -12,21 +12,20 @@ import {
   type SiteImportReport,
 } from "@/api/siteTransfers";
 import { transferOpen } from "@/api/spaceTransfers";
-import { Button, ButtonLink, Card, ErrorBanner, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, ButtonLink, Card, ErrorBanner, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Where an administrator exports the whole organization as one archive, and fills a fresh one from such an archive. */
 export function SiteTransferSettings() {
   return (
-    <div className="mx-auto max-w-3xl space-y-8" data-site-transfer="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.siteTransfer.title} />
+    <Page width="narrow" className="space-y-8" data-site-transfer="">
+      <PageHeader title={t.siteTransfer.title} />
       <SiteExportSection />
       <SiteImportSection />
       <NotCarried />
-    </div>
+    </Page>
   );
 }
 

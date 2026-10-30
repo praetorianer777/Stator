@@ -3,7 +3,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, confirm, toast } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 // Connecting one's account with one click (#428), through the stub's consent
@@ -83,10 +83,9 @@ test.describe("connecting Armature with one click", { tag: ["@auth"] }, () => {
     await expect(section.locator("[data-armature-via]")).toHaveAttribute("data-armature-via", "app");
     await expectAccessible(page);
     expect((await grantsOf(request, tenant, "admin")).filter((g) => !g.ended)).toHaveLength(1);
-
-    page.once("dialog", (dialog) => dialog.accept());
     await section.locator('[data-action="disconnect-armature-account"]').click();
-    await expect(section.getByText("Your Armature account is disconnected.")).toBeVisible();
+    await confirm(page);
+    await expect(toast(page, "Your Armature account is disconnected.")).toBeVisible();
     await expect(section.locator('[data-action="connect-armature-app"]')).toBeVisible();
     await expect.poll(async () => (await grantsOf(request, tenant, "admin")).every((g) => g.ended)).toBe(true);
   });

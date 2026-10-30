@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { auditExportHref, useAuditFacets, useAuditLog, type AuditEntry, type AuditFilter } from "@/api/audit";
 import { ApiError } from "@/api/client";
-import { Button, ButtonLink, EmptyState, ErrorBanner, Field, PageHeader, Select, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Table, Page, PageHeader, Button, ButtonLink, Td, Field, Th, EmptyState, ErrorBanner, Select, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { Through } from "@/components/Through";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 // Adapted from Armature's audit page: the same filters and CSV export, walked
 // by the API's keyset cursor rather than by time alone.
@@ -69,9 +68,8 @@ export function AuditLog() {
 
   const retention = facets.data?.retentionDays;
   return (
-    <div className="mx-auto max-w-5xl" data-audit-log>
+    <Page width="narrow" data-audit-log>
       <PageHeader
-        crumbs={[settingsCrumb()]}
         title={t.audit.title}
         meta={retention === undefined ? undefined : retention > 0 ? t.audit.keptDays(retention) : t.audit.keptForever}
         actions={
@@ -249,6 +247,6 @@ export function AuditLog() {
           </Button>
         </nav>
       )}
-    </div>
+    </Page>
   );
 }

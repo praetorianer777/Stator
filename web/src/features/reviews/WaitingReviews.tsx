@@ -1,5 +1,5 @@
 import { useWaitingReviews, type WaitingReview } from "@/api/reviews";
-import { ErrorBanner, PageHeader, Skeleton } from "@/components/ui";
+import { Page, PageHeader, ErrorBanner, Skeleton } from "@/components/ui";
 import { UNREAD_BADGE_MAX } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
@@ -28,7 +28,7 @@ export function WaitingReviewRow({ waiting, className }: { waiting: WaitingRevie
 export function WaitingReviewsScreen() {
   const { data, error, refetch, isLoading } = useWaitingReviews();
   return (
-    <div className="mx-auto max-w-3xl" data-waiting-reviews="">
+    <Page width="narrow" data-waiting-reviews="">
       <PageHeader title={t.waitingReviews.title} meta={t.waitingReviews.intro} />
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -44,7 +44,7 @@ export function WaitingReviewsScreen() {
             ))}
           </ul>
         ))}
-    </div>
+    </Page>
   );
 }
 

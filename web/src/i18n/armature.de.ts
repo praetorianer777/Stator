@@ -43,7 +43,7 @@ export const armatureDe: typeof armatureEn = {
   disconnectIntro:
     "Beim Trennen werden die Adresse, das Webhook-Geheimnis und die Tokens aller Mitglieder verworfen. Seiten zeigen dann nur noch Vorgangsschlüssel.",
   disconnect: "Armature trennen",
-  confirmDisconnect: "Armature trennen? Die Tokens aller Mitglieder werden verworfen, und Seiten zeigen nur noch Vorgangsschlüssel.",
+  confirmDisconnect: "Die Tokens aller Mitglieder werden verworfen, und Seiten zeigen nur noch Vorgangsschlüssel.",
   disconnected: "Armature ist getrennt.",
   check: "Prüfen",
   checking: "Diese Adresse wird gefragt...",
@@ -86,7 +86,7 @@ export const armatureDe: typeof armatureEn = {
     refused: "Armature kann Stator nicht erreichen und hat den Webhook deshalb nicht angelegt. Armature sagt:",
     test: "Testen",
     rotate: "Neues Geheimnis",
-    confirmRotate: "Dem Webhook ein neues Geheimnis geben? Armature signiert sofort nicht mehr mit dem alten, und Stator speichert das neue.",
+    confirmRotate: "Armature signiert sofort nicht mehr mit dem alten, und Stator speichert das neue.",
     rotated: "Der Webhook hat ein neues Geheimnis, das Stator gespeichert hat.",
     tested: (status: number) => `Armature hat Stator erreicht, und Stator hat mit ${status} geantwortet.`,
     testFailed: (error: string) => `Armature konnte nicht an Stator zustellen: ${error}`,
@@ -127,6 +127,7 @@ export const armatureDe: typeof armatureEn = {
     },
   },
   account: {
+    thing: "Ihr Armature-Konto",
     intro: "Verbinden Sie Ihr Armature-Konto, damit Seiten Ihnen die Vorgänge zeigen, die Sie in Armature sehen dürfen.",
     notConfigured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",
     steps:
@@ -142,7 +143,7 @@ export const armatureDe: typeof armatureEn = {
     check: "Erneut prüfen",
     checked: "Armature akzeptiert Ihr Token.",
     disconnect: "Trennen",
-    confirmDisconnect: "Ihr Armature-Konto trennen? Seiten zeigen nur noch Vorgangsschlüssel, bis Sie es wieder verbinden.",
+    confirmDisconnect: "Seiten zeigen nur noch Vorgangsschlüssel, bis Sie es wieder verbinden.",
     disconnected: "Ihr Armature-Konto ist getrennt.",
     rejected: "Armature akzeptiert Ihr Token nicht mehr. Erstellen Sie in Armature unter Tokens ein neues und fügen Sie es hier ein.",
     unreachable: "Armature hat auf die letzte Prüfung nicht geantwortet. Prüfen Sie gleich noch einmal.",
@@ -155,8 +156,7 @@ export const armatureDe: typeof armatureEn = {
     useToken: "Stattdessen ein Token verwenden",
     viaApp: "Verbunden über die verbundenen Apps von Armature.",
     rejectedApp: "Armature hat diese Verbindung beendet, weil sie dort getrennt wurde oder Stator nicht mehr erlaubt ist. Verbinden Sie Armature erneut.",
-    confirmDisconnectApp:
-      "Ihr Armature-Konto trennen? Stator beendet auch seinen Zugang in Armature. Seiten zeigen nur noch Vorgangsschlüssel, bis Sie es wieder verbinden.",
+    confirmDisconnectApp: "Stator beendet auch seinen Zugang in Armature. Seiten zeigen nur noch Vorgangsschlüssel, bis Sie es wieder verbinden.",
     outcomes: {
       connected: "Ihr Armature-Konto ist verbunden.",
       denied: "Sie haben Stator in Armature nicht erlaubt, also ist nichts verbunden. Verbinden Sie Armature erneut, wenn Sie es sich anders überlegen.",
@@ -200,7 +200,7 @@ export const armatureDe: typeof armatureEn = {
     save: "App speichern",
     saved: "Die App ist gespeichert.",
     remove: "App vergessen",
-    confirmRemove: "Die App vergessen? Jedes darüber verbundene Mitglied verbindet sich erneut.",
+    confirmRemove: "Jedes darüber verbundene Mitglied verbindet sich erneut.",
     removed: "Die App ist vergessen. Das nächste Mitglied, das sich verbindet, registriert Stator erneut.",
   },
   links: {

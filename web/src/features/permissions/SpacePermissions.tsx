@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMe } from "@/api/auth";
 import { SPACE_PERMISSIONS, subjectKey, useSetSpacePermissions, useSpacePermissions, type SpaceGrant, type SpacePermission } from "@/api/permissions";
 import type { Space } from "@/api/spaces";
-import { Button, ErrorBanner, IconButton, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Button, ErrorBanner, IconButton, Skeleton, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { CopyPermissions } from "./CopyPermissions";
@@ -30,7 +30,7 @@ export function SpacePermissions({ space }: { space: Space }) {
   const { data, error, refetch } = useSpacePermissions(space.key, allowed);
   // A copy rewrites the saved table, so the grid starts again from it.
   const [copies, setCopies] = useState(0);
-  const [copied, setCopied] = useState("");
+  const toast = useToast();
   if (!allowed) return <p className="text-sm text-ink-muted">{t.permissions.notSpaceAdmin}</p>;
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
   if (!data) return <Skeleton />;
@@ -39,25 +39,23 @@ export function SpacePermissions({ space }: { space: Space }) {
       key={`${space.key}:${copies}`}
       space={space}
       saved={data}
-      copied={copied}
       onCopied={(from) => {
-        setCopied(t.permissionCopy.copied(from));
+        toast.success(t.permissionCopy.copied(from));
         setCopies((n) => n + 1);
       }}
     />
   );
 }
 
-function Grid({ space, saved, copied, onCopied }: { space: Space; saved: SpaceGrant[]; copied: string; onCopied: (from: string) => void }) {
+function Grid({ space, saved, onCopied }: { space: Space; saved: SpaceGrant[]; onCopied: (from: string) => void }) {
   const { data: me } = useMe();
   const save = useSetSpacePermissions(space.key);
   const [grants, setGrants] = useState<SpaceGrant[]>(saved);
-  const [notice, setNotice] = useState(copied);
+  const toast = useToast();
   const dirty = shape(grants) !== shape(saved);
   const hasEmpty = grants.some((grant) => grant.permissions.length === 0);
 
   const change = (next: SpaceGrant[]) => {
-    setNotice("");
     save.reset();
     setGrants(next);
   };
@@ -78,7 +76,7 @@ function Grid({ space, saved, copied, onCopied }: { space: Space; saved: SpaceGr
       {
         onSuccess: (stored) => {
           setGrants(stored);
-          setNotice(t.permissions.saved);
+          toast.success(t.permissions.saved);
         },
       },
     );
@@ -162,7 +160,7 @@ function Grid({ space, saved, copied, onCopied }: { space: Space; saved: SpaceGr
         exclude={grants.map((grant) => subjectKey(grant.subject))}
         onPick={(subject) => {
           change([...grants, { subject, permissions: ["view"] }]);
-          setNotice(t.permissions.added(subject.name));
+          toast.success(t.permissions.added(subject.name));
         }}
       />
       {hasEmpty && <p className="text-sm text-ink-subtle">{t.permissions.rowDropped}</p>}
@@ -177,7 +175,7 @@ function Grid({ space, saved, copied, onCopied }: { space: Space; saved: SpaceGr
           </Button>
         )}
         <span role="status" className="text-sm text-ink-muted">
-          {notice || (dirty ? t.permissions.unsaved : "")}
+          {dirty ? t.permissions.unsaved : ""}
         </span>
       </div>
       {!space.owner && <CopyPermissions space={space} blocked={dirty || save.isPending} onCopied={onCopied} />}

@@ -1,21 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { Card, PageHeader, type Crumb } from "@/components/ui";
+import { Page, PageHeader, Card } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { SETTINGS_PATH } from "@/config";
 import { usePlaces, type Place } from "@/features/shell/places";
 import { t } from "@/i18n";
-
-/** The settings area's first crumb, which leads to its hub. */
-export function settingsCrumb(): Crumb {
-  return {
-    label: t.settings.title,
-    render: (label) => (
-      <Link to={SETTINGS_PATH} data-crumb="settings">
-        {label}
-      </Link>
-    ),
-  };
-}
 
 /** /settings: a card of the person's own pages, and one of the organization's settings for site administrators. */
 export function SettingsHome() {
@@ -23,13 +10,13 @@ export function SettingsHome() {
   const you = places.filter((place) => place.area === "you");
   const settings = places.filter((place) => place.area === "settings");
   return (
-    <div className="mx-auto max-w-3xl" data-settings-home>
+    <Page width="narrow" data-settings-home>
       <PageHeader title={t.settings.title} />
       <div className="grid gap-4 shell:grid-cols-2">
         <PlaceCard id="you" title={t.settings.you} intro={t.settings.youIntro} places={you} />
         {settings.length > 0 && <PlaceCard id="site" title={t.settings.site} intro={t.settings.siteIntro} places={settings} />}
       </div>
-    </div>
+    </Page>
   );
 }
 

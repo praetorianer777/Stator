@@ -79,4 +79,5 @@ export const routeErrorEn = {
 
 export const apiEn = {
   unexpected: (status: number) => `The server answered with status ${status}. Try again in a moment.`,
+  unsaved: "That change could not be saved. Check your connection and try again.",
 };

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { TrashItem } from "@/api/trash";
-import { renderAt, signedIn, stubApi } from "@/test/app";
+import { renderAt, signedIn, stubApi, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -55,7 +55,6 @@ describe("the trash", () => {
   });
 
   it("lets an administrator purge an item and empty the trash, after asking", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     const sent = stubApi({
       "GET /spaces/DOCS": { status: 200, body: { space } },
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
@@ -66,12 +65,16 @@ describe("the trash", () => {
     await renderAt("/s/DOCS/settings?tab=trash");
     const purge = await screen.findByRole("button", { name: "Delete Old plans for good" });
     await userEvent.click(purge);
+    expect(await confirmDialog()).toHaveAccessibleName("Delete page Old plans?");
+    await answerConfirm(false);
     expect(sent.some((r) => r.method === "DELETE")).toBe(false);
     await userEvent.click(purge);
+    await answerConfirm(true);
     expect(await screen.findByText("Deleted Old plans for good.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Empty trash" }));
+    expect(await confirmDialog()).toHaveAccessibleName("Empty trash?");
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === "/spaces/DOCS/trash")).toBe(true));
-    expect(confirm).toHaveBeenCalledTimes(3);
   });
 
   it("offers a member restoring but not purging", async () => {
@@ -92,7 +95,6 @@ describe("the trash", () => {
 
 describe("moving a page to the trash", () => {
   it("asks first and lands on the page it was under", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const parent = { id: "0195f000-0000-7000-8000-0000000000f1", title: "Plans", home: false };
     const page = aPage({
       id: "0195f000-0000-7000-8000-0000000000f2",
@@ -112,6 +114,8 @@ describe("moving a page to the trash", () => {
     const router = await renderAt(`/s/DOCS/p/${page.id}/old-plans`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Move to trash" }));
+    expect(await confirmDialog()).toHaveTextContent("It and every page below it go to the trash");
+    await answerConfirm(true);
     await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${parent.id}/plans`));
     expect(sent.some((r) => r.method === "DELETE" && r.path === `/pages/${page.id}`)).toBe(true);
   });

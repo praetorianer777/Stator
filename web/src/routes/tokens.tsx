@@ -4,8 +4,9 @@ import { createRoute } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { useSpaces } from "@/api/spaces";
 import { useCreateToken, useRevokeToken, useTokens, type ApiToken } from "@/api/tokens";
-import { Button, Card, Checkbox, EmptyState, ErrorBanner, Field, PageHeader, Select, Table, Tag, Td, Th } from "@/components/ui";
+import { Table, Tag, Page, PageHeader, Button, Card, Checkbox, Td, Field, Th, EmptyState, ErrorBanner, Select, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { SpacePicker } from "@/features/spaces/SpacePicker";
 import {
   COPY_FEEDBACK_MS,
@@ -19,7 +20,6 @@ import {
 } from "@/config";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 // Adapted from Armature's tokens page; where Armature limits a token to
 // projects, this one limits it to spaces.
@@ -47,41 +47,39 @@ function TokensPage() {
   const { data, isLoading, error } = useTokens();
   const revoke = useRevokeToken();
   const [fresh, setFresh] = useState<ApiToken | null>(null);
-  const [notice, setNotice] = useState("");
+  const confirm = useConfirm();
+  const toast = useToast();
   const tokens = data ?? [];
   const failure = error ?? revoke.error;
   const now = new Date();
 
-  function revokeToken(token: ApiToken) {
-    if (!window.confirm(t.tokens.confirmRevoke(token.name))) return;
+  async function revokeToken(token: ApiToken) {
+    if (
+      !(await confirm({
+        noun: t.kit.confirm.things.named(t.kit.confirm.things.token, token.name),
+        verb: t.kit.confirm.verbs.revoke,
+        body: t.tokens.confirmRevoke,
+      }))
+    )
+      return;
     revoke.mutate(token.id, {
       onSuccess: () => {
-        setNotice(t.tokens.revoked(token.name));
+        toast.success(t.tokens.revoked(token.name));
         if (fresh?.id === token.id) setFresh(null);
       },
     });
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.tokens.title} meta={t.tokens.intro} />
+    <Page width="narrow">
+      <PageHeader title={t.tokens.title} meta={t.tokens.intro} />
       {fresh?.secret && <FreshToken secret={fresh.secret} onDone={() => setFresh(null)} />}
-      <CreateTokenForm
-        onCreated={(token) => {
-          setNotice("");
-          setFresh(token);
-        }}
-      />
+      <CreateTokenForm onCreated={setFresh} />
       <section aria-labelledby="tokens-yours" className="space-y-3">
         <h2 id="tokens-yours" className="text-sm font-semibold text-ink">
           {t.tokens.yours}
         </h2>
         {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
-        {notice && (
-          <p role="status" className="text-sm text-ink-muted" data-tokens-notice>
-            {notice}
-          </p>
-        )}
         {isLoading ? null : tokens.length === 0 ? (
           <EmptyState icon={<Icon.Key />} title={t.tokens.empty} description={t.tokens.emptyBody} />
         ) : (
@@ -120,7 +118,7 @@ function TokensPage() {
                       size="sm"
                       aria-label={t.tokens.revokeLabel(token.name)}
                       loading={revoke.isPending && revoke.variables === token.id}
-                      onClick={() => revokeToken(token)}
+                      onClick={() => void revokeToken(token)}
                       data-action="revoke-token"
                     >
                       {t.tokens.revoke}
@@ -133,7 +131,7 @@ function TokensPage() {
         )}
       </section>
       <ConnectAssistant />
-    </div>
+    </Page>
   );
 }
 

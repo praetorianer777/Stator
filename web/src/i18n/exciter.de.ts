@@ -42,7 +42,7 @@ export const exciterDe: typeof exciterEn = {
   disconnectTitle: "Trennen",
   disconnectIntro: "Trennen vergisst die Adresse, das Webhook-Geheimnis und die Tokens aller Mitglieder. Seiten zeigen dann nur Anforderungsschlüssel.",
   disconnect: "Exciter trennen",
-  confirmDisconnect: "Exciter trennen? Die Tokens aller Mitglieder werden vergessen, und Seiten zeigen nur Anforderungsschlüssel.",
+  confirmDisconnect: "Die Tokens aller Mitglieder werden vergessen, und Seiten zeigen nur Anforderungsschlüssel.",
   disconnected: "Exciter ist getrennt.",
   app: {
     title: "Verbinden bei der Anmeldung",
@@ -61,7 +61,7 @@ export const exciterDe: typeof exciterEn = {
     save: "App speichern",
     saved: "Die App ist gespeichert.",
     remove: "App vergessen",
-    confirmRemove: "Die App vergessen? Alle bei der Anmeldung Verbundenen werden getrennt und fügen wieder ein Token ein.",
+    confirmRemove: "Alle bei der Anmeldung Verbundenen werden getrennt und fügen wieder ein Token ein.",
     removed: "Die App ist vergessen.",
   },
   members: {
@@ -89,6 +89,7 @@ export const exciterDe: typeof exciterEn = {
     },
   },
   account: {
+    thing: "Ihr Exciter-Konto",
     intro: "Verbinden Sie Ihr Exciter-Konto, damit Seiten Ihnen die Anforderungen zeigen, die Sie in Exciter sehen dürfen.",
     notConfigured:
       "Stator ist noch nicht mit Exciter verbunden. Bitten Sie eine Administratorin oder einen Administrator, es unter Einstellungen, Exciter zu verbinden.",
@@ -104,7 +105,7 @@ export const exciterDe: typeof exciterEn = {
     check: "Erneut prüfen",
     checked: "Exciter nimmt Ihr Token an.",
     disconnect: "Trennen",
-    confirmDisconnect: "Ihr Exciter-Konto trennen? Seiten zeigen nur Anforderungsschlüssel, bis Sie sich wieder verbinden.",
+    confirmDisconnect: "Seiten zeigen nur Anforderungsschlüssel, bis Sie sich wieder verbinden.",
     disconnected: "Ihr Exciter-Konto ist getrennt.",
     rejected: "Exciter nimmt Ihr Token nicht mehr an. Erstellen Sie in Exciter unter Ihr Konto, Zugriffstokens ein neues und fügen Sie es hier ein.",
     unreachable: "Exciter hat auf die letzte Prüfung nicht geantwortet. Prüfen Sie gleich noch einmal.",

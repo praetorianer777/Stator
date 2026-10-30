@@ -37,10 +37,10 @@ import { fillSharedDraft, sharedBody } from "@/features/editor/sharedDraft";
 import { DRAFT_AUTOSAVE_MS, PAGE_TITLE_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
-import { pageCrumbs } from "./PageScreen";
 import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PublishDialog } from "./PublishDialog";
 import { scheduleTimeFormat } from "./schedule";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /**
  * Edits a page, together with everybody else editing it when the shared
@@ -118,6 +118,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   const saveLive = useSaveLive(page.id);
   const liveMode = page.mode === "live";
   const discard = useDiscardDraft(page.id);
+  const confirm = useConfirm();
   const publish = usePublish(page.id);
   const submitReview = useSubmitReview(page.id);
   // A page held to a review has its drafts submitted to the reviewers rather than published.
@@ -372,8 +373,13 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
   }
 
   async function discardDraft() {
-    const question = together ? t.collab.confirmDiscard : page.unpublished ? t.draft.confirmDiscardUnpublished : t.draft.confirmDiscard;
-    if (!window.confirm(question)) return;
+    const things = t.kit.confirm.things;
+    const ask = together
+      ? { noun: things.sharedDraft, body: t.collab.confirmDiscard }
+      : page.unpublished
+        ? { noun: things.changes, body: t.draft.confirmDiscardUnpublished }
+        : { noun: things.draft, body: t.draft.confirmDiscard };
+    if (!(await confirm({ ...ask, verb: t.kit.confirm.verbs.discard }))) return;
     clearTimeout(timer.current);
     dirty.current = false;
     await chain.current;
@@ -409,7 +415,6 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
       <PageHeader
         className={PAGE_SHEET_HEADER}
         style={sheet.style}
-        crumbs={pageCrumbs(space, page)}
         title={t.page.editing(page.title)}
         meta={
           <span className="inline-flex flex-wrap items-center gap-3">

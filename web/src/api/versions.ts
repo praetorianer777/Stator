@@ -1,4 +1,5 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import type { Doc, DocNode } from "@/features/editor/schema";
 import { HISTORY_PAGE_SIZE } from "@/config";
 import { api } from "./client";

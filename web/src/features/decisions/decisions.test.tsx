@@ -33,7 +33,8 @@ describe("the decision log", () => {
       },
     });
     const router = await renderAt("/s/DOCS/decisions");
-    const rows = await screen.findAllByRole("listitem");
+    await screen.findByText("Ship on Tuesdays", { exact: false });
+    const rows = within(document.querySelector("[data-decision-log]") as HTMLElement).getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([expect.stringContaining("Ship on Tuesdays"), expect.stringContaining("Which region first")]);
     expect(within(rows[0]!).getByRole("link", { name: /on Release/ })).toHaveAttribute("href", `/s/DOCS/p/${decided.pageId}/release`);
     expect(await axeViolations()).toEqual([]);

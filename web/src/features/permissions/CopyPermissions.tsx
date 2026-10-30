@@ -63,7 +63,23 @@ function CopyDialog({ space, onClose, onCopied }: { space: Space; onClose: () =>
   }
 
   return (
-    <Dialog open title={t.permissionCopy.title(space.name)} onClose={onClose} size="lg" attrs={{ "data-permission-copy-dialog": "" }}>
+    <Dialog
+      open
+      title={t.permissionCopy.title(space.name)}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-permission-copy-dialog": "" }}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t.permissionCopy.cancel}
+          </Button>
+          <Button disabled={!canApply} loading={copy.isPending} onClick={apply} data-action="apply-permission-copy">
+            {t.permissionCopy.apply}
+          </Button>
+        </>
+      }
+    >
       <div className="space-y-4">
         {spaces.error && <ErrorBanner onRetry={() => void spaces.refetch()}>{spaces.error.message}</ErrorBanner>}
         {spaces.data && sources.length === 0 ? (
@@ -101,14 +117,6 @@ function CopyDialog({ space, onClose, onCopied }: { space: Space; onClose: () =>
         </div>
         {from && <Preview query={preview} />}
         {copy.error && <ErrorBanner>{copy.error.message}</ErrorBanner>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!canApply} loading={copy.isPending} onClick={apply} data-action="apply-permission-copy">
-            {t.permissionCopy.apply}
-          </Button>
-          <Button variant="secondary" onClick={onClose}>
-            {t.permissionCopy.cancel}
-          </Button>
-        </div>
       </div>
     </Dialog>
   );

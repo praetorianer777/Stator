@@ -7,13 +7,12 @@ import { STATUS_COLORS, type StatusColor } from "./schema";
 import { StatusLabel, isoDay, statusLabel, type StatusAttrs } from "./InlineValueViews";
 import { MathFormula, mathSource, typeset } from "./MathViews";
 
-function Actions() {
+/** The dialog's pinned Save, which submits the form named, drawn apart from it. */
+function Actions({ form }: { form: string }) {
   return (
-    <div className="flex justify-end gap-2 pt-1">
-      <Button type="submit" data-action="save-inline-value">
-        {t.inlineValues.save}
-      </Button>
-    </div>
+    <Button type="submit" form={form} data-action="save-inline-value">
+      {t.inlineValues.save}
+    </Button>
   );
 }
 
@@ -25,11 +24,10 @@ function submitted(event: FormEvent, then: () => void) {
   then();
 }
 
-function Form({ onSubmit, children }: { onSubmit: () => void; children: ReactNode }) {
+function Form({ id, onSubmit, children }: { id: string; onSubmit: () => void; children: ReactNode }) {
   return (
-    <form onSubmit={(event) => submitted(event, onSubmit)} className="space-y-3" noValidate>
+    <form id={id} onSubmit={(event) => submitted(event, onSubmit)} className="space-y-3" noValidate>
       {children}
-      <Actions />
     </form>
   );
 }
@@ -46,8 +44,9 @@ export function StatusDialog({ initial, onSave, onClose }: { initial: StatusAttr
   const fieldId = `${id}-label`;
   const hint = s.hint(STATUS_LABEL_MAX_LENGTH);
   return (
-    <Dialog open title={s.dialog} onClose={onClose} attrs={{ "data-status-dialog": "" }}>
+    <Dialog open title={s.dialog} onClose={onClose} attrs={{ "data-status-dialog": "" }} footer={<Actions form={`${id}-form`} />}>
       <Form
+        id={`${id}-form`}
         onSubmit={() => {
           setTried(true);
           if (label) onSave({ label, color });
@@ -106,8 +105,9 @@ export function DateDialog({ initial, onSave, onClose }: { initial: string; onSa
   const problem = tried && !picked ? d.empty : undefined;
   const fieldId = `${id}-day`;
   return (
-    <Dialog open title={d.dialog} onClose={onClose} attrs={{ "data-date-dialog": "" }}>
+    <Dialog open title={d.dialog} onClose={onClose} attrs={{ "data-date-dialog": "" }} footer={<Actions form={`${id}-form`} />}>
       <Form
+        id={`${id}-form`}
         onSubmit={() => {
           setTried(true);
           if (picked) onSave(picked);
@@ -147,8 +147,9 @@ export function MathDialog({ initial, display, onSave, onClose }: { initial: str
   const fieldId = `${id}-latex`;
   const hint = m.hint(MATH_MAX_LENGTH);
   return (
-    <Dialog open title={m.dialog} onClose={onClose} attrs={{ "data-math-dialog": "" }}>
+    <Dialog open title={m.dialog} onClose={onClose} attrs={{ "data-math-dialog": "" }} footer={<Actions form={`${id}-form`} />}>
       <Form
+        id={`${id}-form`}
         onSubmit={() => {
           setTried(true);
           if (latex && !typeError) onSave(latex);

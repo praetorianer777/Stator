@@ -81,4 +81,5 @@ export const routeErrorDe: typeof routeErrorEn = {
 
 export const apiDe: typeof apiEn = {
   unexpected: (status: number) => `Der Server hat mit Status ${status} geantwortet. Versuchen Sie es gleich noch einmal.`,
+  unsaved: "Diese Änderung konnte nicht gespeichert werden. Prüfen Sie die Verbindung, und versuchen Sie es noch einmal.",
 };

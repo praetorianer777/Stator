@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { useDeleteSpace, useSpace, useUpdateSpace, type Space } from "@/api/spaces";
-import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs } from "@/components/ui";
+import { TabPanel, Tabs, Page, PageHeader, Button, Card, Field, ErrorBanner, SectionTitle, Skeleton, useToast } from "@/components/ui";
 import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH, STALE_PATH } from "@/config";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
@@ -17,6 +17,7 @@ import { SpaceExportPanel } from "./SpaceExport";
 import { SpaceGuests } from "./SpaceGuests";
 import { SpaceReviews } from "@/features/reviews/SpaceReviews";
 import { TrashPanel } from "./TrashPanel";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 export type SettingsTab = "details" | "shortcuts" | "permissions" | "reviews" | "templates" | "guests" | "trash" | "archive" | "export";
 
@@ -32,19 +33,8 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
   const guests = orgAdmin && !space.owner;
   const shown = (tab === "guests" && !guests) || ((tab === "export" || tab === "reviews") && !space.can.administer) ? "details" : tab;
   return (
-    <div className="mx-auto max-w-3xl" data-space-settings={space.key}>
+    <Page width="narrow" data-space-settings={space.key}>
       <PageHeader
-        crumbs={[
-          { label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> },
-          {
-            label: space.name,
-            render: (label) => (
-              <Link to="/s/$spaceKey" params={{ spaceKey: space.key }}>
-                {label}
-              </Link>
-            ),
-          },
-        ]}
         title={t.spaceSettings.title}
         actions={
           space.can.administer && (
@@ -91,7 +81,7 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         {shown === "archive" && <ArchivePanel space={space} />}
         {shown === "export" && <SpaceExportPanel space={space} />}
       </TabPanel>
-    </div>
+    </Page>
   );
 }
 
@@ -99,14 +89,13 @@ function Details({ space }: { space: Space }) {
   const update = useUpdateSpace(space.key);
   const [name, setName] = useState(space.name);
   const [description, setDescription] = useState(space.description);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const fields = update.error instanceof ApiError ? update.error.fields : {};
   const readOnly = !space.can.administer;
 
   function save(event: FormEvent) {
     event.preventDefault();
-    setNotice("");
-    update.mutate({ name, description }, { onSuccess: () => setNotice(t.spaceSettings.saved) });
+    update.mutate({ name, description }, { onSuccess: () => toast.success(t.spaceSettings.saved) });
   }
 
   return (
@@ -137,9 +126,6 @@ function Details({ space }: { space: Space }) {
             <Button type="submit" loading={update.isPending} data-action="save-space">
               {t.spaceSettings.save}
             </Button>
-            <span role="status" className="text-sm text-ink-muted">
-              {notice}
-            </span>
           </div>
         )}
       </form>
@@ -152,6 +138,7 @@ function Details({ space }: { space: Space }) {
 function DeleteSpace({ space }: { space: Space }) {
   const remove = useDeleteSpace(space.key);
   const navigate = useNavigate();
+  const confirm = useConfirm();
   return (
     <Card className="space-y-3 border-danger/40 p-4" data-space-danger>
       <SectionTitle>{t.spaceSettings.dangerTitle}</SectionTitle>
@@ -160,8 +147,8 @@ function DeleteSpace({ space }: { space: Space }) {
       <Button
         variant="danger"
         loading={remove.isPending}
-        onClick={() => {
-          if (window.confirm(t.spaceSettings.confirmDelete(space.name, space.key))) {
+        onClick={async () => {
+          if (await confirm({ noun: t.kit.confirm.things.space(space.name), body: t.spaceSettings.confirmDelete })) {
             remove.mutate(undefined, { onSuccess: () => void navigate({ to: "/spaces" }) });
           }
         }}

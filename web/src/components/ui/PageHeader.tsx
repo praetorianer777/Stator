@@ -10,6 +10,9 @@ import { cx } from "./cx";
  */
 export const ShellHeaderContext = createContext<HTMLElement | null>(null);
 
+/** The trail the shell derives from where the reader is; a page outside the shell passes its own. */
+export const PageCrumbsContext = createContext<ReactNode>(null);
+
 export interface Crumb {
   label: ReactNode;
   /** A link, rendered by the caller so the router's typing is kept. */
@@ -45,7 +48,7 @@ export function PageHeader({
   className,
   style,
 }: {
-  /** Where this page sits, drawn small above the title; crumbs is the structured form. */
+  /** Where a page outside the shell sits, drawn small above the title; crumbs is the structured form. The shell derives its own. */
   crumb?: ReactNode;
   crumbs?: Crumb[];
   title: ReactNode;
@@ -59,14 +62,17 @@ export function PageHeader({
   style?: CSSProperties;
 }) {
   const target = useContext(ShellHeaderContext);
+  const derived = useContext(PageCrumbsContext);
   const header = (
     <header className={cx(target ? "pb-3" : "mb-5", className)} style={style}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           {crumbs && crumbs.length > 0 ? (
             <Breadcrumbs crumbs={crumbs} className="mb-1" />
+          ) : crumb ? (
+            <div className="mb-1 flex items-center gap-1.5 text-sm text-ink-muted">{crumb}</div>
           ) : (
-            crumb && <div className="mb-1 flex items-center gap-1.5 text-sm text-ink-muted">{crumb}</div>
+            derived
           )}
           <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-ink">{title}</h1>
           {meta && <div className="mt-0.5 text-sm text-ink-muted">{meta}</div>}

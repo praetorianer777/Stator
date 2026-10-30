@@ -5,7 +5,7 @@ import { Editor } from "@tiptap/core";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Comment, Thread } from "@/api/comments";
-import { renderAt, signedIn, stubApi, type Answer } from "@/test/app";
+import { renderAt, signedIn, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { editorExtensions, fitSchema } from "@/features/editor/extensions";
@@ -197,7 +197,6 @@ describe("the comments below a page", () => {
         [`DELETE /comments/${replyId}`]: { status: 204 },
       },
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     await renderAt(`/s/DOCS/p/${pageId}/plan`);
     const first = (await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article"))[0]!;
     await userEvent.click(within(first).getByRole("button", { name: "Reply" }));
@@ -217,7 +216,10 @@ describe("the comments below a page", () => {
 
     await waitFor(() => expect(within(mine).getByRole("button", { name: "Delete" })).toBeInTheDocument());
     await userEvent.click(within(mine).getByRole("button", { name: "Delete" }));
-    expect(window.confirm).toHaveBeenCalledWith("Delete this comment? Its words go for good; replies to it stay.");
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Delete comment?");
+    expect(asked).toHaveTextContent("Its words go for good; replies to it stay.");
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === `/comments/${replyId}`)).toBe(true));
   });
 
@@ -232,14 +234,16 @@ describe("the comments below a page", () => {
       ],
       more: { [`DELETE /comments/${otherThreadId}`]: { status: 204 } },
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     await renderAt(`/s/DOCS/p/${pageId}/plan`);
     const [member, moderated] = await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article");
     expect(within(member!).queryByRole("button", { name: "Delete" })).toBeNull();
     expect(within(moderated!).queryByRole("button", { name: "Edit" })).toBeNull();
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(within(moderated!).getByRole("button", { name: "Delete" }));
-    expect(window.confirm).toHaveBeenCalledWith("Delete Grace Hopper's comment? Its words go for good, and the deletion is recorded.");
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Delete Grace Hopper's comment?");
+    expect(asked).toHaveTextContent("Its words go for good, and the deletion is recorded.");
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === `/comments/${otherThreadId}`)).toBe(true));
   });
 

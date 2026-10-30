@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Attachment } from "@/api/attachments";
-import { stubApi } from "@/test/app";
+import { stubApi, Feedback } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { allowlist } from "@/test/allowlist";
 import { stubUploads, upload } from "@/test/xhr";
@@ -48,10 +48,12 @@ const first = file({ versions: 2, fileName: "Budget.XLSX" });
 function shown(editable: boolean) {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <main>
-        <h1>Plan</h1>
-        <AttachmentList pageId={pageId} editable={editable} />
-      </main>
+      <Feedback>
+        <main>
+          <h1>Plan</h1>
+          <AttachmentList pageId={pageId} editable={editable} />
+        </main>
+      </Feedback>
     </QueryClientProvider>,
   );
 }
@@ -95,7 +97,7 @@ describe("the list of files", () => {
     await user.upload(input, new File(["new"], "notes.txt", { type: "text/plain" }));
     expect(upload(uploads, 0).url).toBe(`/api/v1/pages/${pageId}/attachments`);
     act(() => upload(uploads, 0).respond(201, { attachment: { ...notes, id: "0195f000-0000-7000-8000-0000000000f4", version: 2, versions: 2 } }));
-    await waitFor(() => expect(within(list).getByRole("status")).toHaveTextContent("Uploaded notes.txt as version 2."));
+    expect(await screen.findByText("Uploaded notes.txt as version 2.")).toBeInTheDocument();
   });
 
   it("restores an earlier version for whoever may edit, and says what the restore refused", async () => {
@@ -113,7 +115,7 @@ describe("the list of files", () => {
     const list = await screen.findByRole("region", { name: "Files on this page" });
     await user.click(await within(list).findByText("1 earlier version"));
     await user.click(within(list).getByRole("button", { name: "Restore Budget.XLSX, version 1" }));
-    await waitFor(() => expect(within(list).getByRole("status")).toHaveTextContent("Restored version 1 of Budget.XLSX as version 4."));
+    expect(await screen.findByText("Restored version 1 of Budget.XLSX as version 4.")).toBeInTheDocument();
     expect(sent.some((r) => r.method === "POST" && r.path === `/attachments/${first.id}/restore`)).toBe(true);
     await waitFor(() => expect(within(list).getByText(/Version 4, restored from version 1/)).toBeInTheDocument());
 
@@ -155,7 +157,9 @@ describe("the list of files", () => {
     cleanup();
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <AttachmentList pageId={undefined} editable />
+        <Feedback>
+          <AttachmentList pageId={undefined} editable />
+        </Feedback>
       </QueryClientProvider>,
     );
     expect(screen.getByText("Save the page once to list its files here.")).toBeInTheDocument();

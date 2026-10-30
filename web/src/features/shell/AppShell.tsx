@@ -3,7 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/permissions";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
-import { ShellHeaderContext } from "@/components/ui";
+import { PageCrumbsContext, ShellHeaderContext } from "@/components/ui";
 import { ReturnNotice } from "@/features/armature/connectLink";
 import { NoAccess } from "@/features/permissions/NoAccess";
 import { QuickSearch } from "@/features/search/QuickSearch";
@@ -12,6 +12,7 @@ import { ThemeLoader } from "@/features/themes/ThemeLoader";
 import { IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { PlaceCrumbs } from "./Crumbs";
 import { inSettings } from "./places";
 import { useSearchShortcut } from "./searchShortcut";
 import { rememberOutsideSettings } from "./settingsReturn";
@@ -95,10 +96,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             data-shell-header
           />
           <ShellHeaderContext.Provider value={strip}>
-            <div className="px-4 py-6 shell:px-8">
-              <ReturnNotice pathname={pathname} />
-              {children}
-            </div>
+            <PageCrumbsContext.Provider value={<PlaceCrumbs />}>
+              <div className="px-4 py-6 shell:px-8">
+                <ReturnNotice pathname={pathname} />
+                {children}
+              </div>
+            </PageCrumbsContext.Provider>
           </ShellHeaderContext.Provider>
         </main>
       </div>

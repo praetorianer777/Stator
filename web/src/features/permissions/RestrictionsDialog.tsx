@@ -13,7 +13,7 @@ import {
   type Subject,
 } from "@/api/permissions";
 import { Icon } from "@/components/icons";
-import { Button, Dialog, ErrorBanner, Skeleton } from "@/components/ui";
+import { Button, Dialog, ErrorBanner, Skeleton, DialogFooter } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { SubjectList } from "./SubjectList";
@@ -115,7 +115,7 @@ function Lists({ page, spaceKey, saved, onClose }: { page: Page; spaceKey: strin
       <p className="text-xs text-ink-subtle">{t.restrictions.adminNote}</p>
       {!editable && <p className="text-sm text-ink-muted">{t.restrictions.readOnly}</p>}
       {save.error && !fields.view && !fields.edit && !fields.editGrant && <ErrorBanner>{restrictionsError(save.error)}</ErrorBanner>}
-      <div className="flex justify-end gap-2">
+      <DialogFooter>
         <Button variant="secondary" onClick={onClose}>
           {editable ? t.restrictions.cancel : t.restrictions.close}
         </Button>
@@ -128,7 +128,7 @@ function Lists({ page, spaceKey, saved, onClose }: { page: Page; spaceKey: strin
             {t.restrictions.save}
           </Button>
         )}
-      </div>
+      </DialogFooter>
     </div>
   );
 }

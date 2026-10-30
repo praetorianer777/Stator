@@ -5,7 +5,16 @@ import { ageQuietly, lapseVerification } from "../fixtures/db";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
+import {
+  type ColourScheme,
+  expectAccessible,
+  expectNoSettingsEntry,
+  openSettingsPage,
+  scrollsSideways,
+  startInScheme,
+  confirm,
+  toast,
+} from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const STALE_PATH = "/settings/stale";
@@ -118,9 +127,9 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await expect(archive).toBeDisabled();
     await page.getByRole("checkbox", { name: "Select every page shown" }).check();
     await expect(archive).toHaveText("Archive 2 pages");
-    page.once("dialog", (dialog) => void dialog.accept());
     await archive.click();
-    await expect(page.locator("[data-stale-actions] [role=status]")).toHaveText("Archived 2 pages.");
+    await confirm(page);
+    await expect(toast(page, "Archived 2 pages.")).toBeVisible();
     await expect(page.locator("[data-stale-row]")).toHaveCount(0);
     expect(must(await api.GET("/pages/{pageID}", { params: { path: { pageID: guide.id } } })).page.archived).not.toBeNull();
 

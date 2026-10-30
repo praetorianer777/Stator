@@ -41,8 +41,22 @@ export function ModeDialog({ page, onClose }: { page: Page; onClose: () => void 
   const failed = change.error && !(change.error instanceof ApiError && change.error.code === "drafts_pending") ? change.error : null;
 
   return (
-    <Dialog open title={t.live.dialog} onClose={onClose}>
-      <form onSubmit={submit} className="space-y-4" data-mode-dialog="">
+    <Dialog
+      open
+      title={t.live.dialog}
+      onClose={onClose}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.live.cancel}
+          </Button>
+          <Button type="submit" form="mode-dialog-form" loading={change.isPending && !pending} data-action="save-mode">
+            {t.live.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="mode-dialog-form" onSubmit={submit} className="space-y-4" data-mode-dialog="">
         <fieldset className="space-y-3">
           <legend className="sr-only">{t.live.dialog}</legend>
           {options.map((option) => (
@@ -74,14 +88,6 @@ export function ModeDialog({ page, onClose }: { page: Page; onClose: () => void 
             </Button>
           </div>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.live.cancel}
-          </Button>
-          <Button type="submit" loading={change.isPending && !pending} data-action="save-mode">
-            {t.live.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

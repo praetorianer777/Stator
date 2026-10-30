@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import type { Attachment } from "@/api/attachments";
 import type { Doc } from "@/features/editor/schema";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { renderAt, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { stubUploads, upload } from "@/test/xhr";
@@ -185,7 +185,6 @@ describe("the attachments of a page", () => {
   });
 
   it("deletes a file for good, only after asking", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     const { sent, setList } = stubPage({
       more: { [`DELETE /attachments/${archive.id}`]: { status: 204 } },
     });
@@ -193,12 +192,14 @@ describe("the attachments of a page", () => {
     const list = await panel();
     const remove = await list.findByRole("button", { name: "Delete logs.zip" });
     await userEvent.click(remove);
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Delete logs.zip for good? It cannot be restored, and the page and its older versions will show it as a missing file.",
-    );
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Delete attachment logs.zip?");
+    expect(asked).toHaveTextContent("It cannot be restored, and the page and its older versions will show it as a missing file.");
+    await answerConfirm(false);
     expect(sent.some((r) => r.method === "DELETE")).toBe(false);
     setList([plan, shot]);
     await userEvent.click(remove);
+    await answerConfirm(true);
     await waitFor(() => expect(list.queryByText("logs.zip")).toBeNull());
     expect(sent.some((r) => r.method === "DELETE" && r.path === `/attachments/${archive.id}`)).toBe(true);
     expect(await screen.findByText("Deleted logs.zip.")).toBeInTheDocument();
@@ -209,7 +210,6 @@ describe("the attachments of a page", () => {
     const v1 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e1", version: 1, versions: 2 });
     const v2 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e2", version: 2, versions: 2, uploadedByName: "Grace Hopper" });
     const v3 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e3", version: 3, versions: 3, restoredFrom: 1 });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const deletes: string[] = [];
     const { setList } = stubPage({
       attachments: [v2, v1],
@@ -242,20 +242,18 @@ describe("the attachments of a page", () => {
     await userEvent.click(list.getByRole("button", { name: "Restore budget.csv, version 1" }));
     expect(await screen.findByText("Restored version 1 of budget.csv as version 3.")).toBeInTheDocument();
     await waitFor(() => expect(latest()).toHaveTextContent("Version 3, restored from version 1"));
-    expect(confirm).not.toHaveBeenCalled();
+    expect(document.querySelector("[data-confirm]")).toBeNull();
 
     await userEvent.click(list.getByText("2 earlier versions"));
     await userEvent.click(list.getByRole("button", { name: "Delete budget.csv, version 1" }));
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Delete version 1 of budget.csv for good? The other versions stay, and wherever the page shows this version it will show a missing file.",
-    );
+    expect(await confirmDialog()).toHaveAccessibleName("Delete version 1 of budget.csv?");
+    await answerConfirm(true);
     expect(await screen.findByText("Deleted version 1 of budget.csv.")).toBeInTheDocument();
     await waitFor(() => expect(list.getByText("1 earlier version")).toBeInTheDocument());
 
     await userEvent.click(list.getByRole("button", { name: "Delete budget.csv" }));
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Delete budget.csv and all 2 of its versions for good? None of them can be restored, and the page and its older versions will show them as missing files.",
-    );
+    expect(await confirmDialog()).toHaveTextContent("All 2 of its versions go with it.");
+    await answerConfirm(true);
     await waitFor(() => expect(list.queryByText("budget.csv")).toBeNull());
     expect(deletes).toEqual(["", "?versions=all"]);
     expect(await axeViolations()).toEqual([]);

@@ -53,8 +53,23 @@ export function BlogPostsDialog({
     { value: "every", label: d.everySpace },
   ];
   return (
-    <Dialog open title={isNew ? d.new : d.edit} onClose={onClose} attrs={{ "data-blog-posts-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.new : d.edit}
+      onClose={onClose}
+      attrs={{ "data-blog-posts-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="blog-posts-dialog-form" data-action="save-blog-posts">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="blog-posts-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <fieldset className="space-y-1">
           <legend className="text-sm font-medium text-ink-muted">{d.scope}</legend>
           {scopes.map((s) => (
@@ -104,14 +119,6 @@ export function BlogPostsDialog({
               </option>
             ))}
         </Select>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-blog-posts">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

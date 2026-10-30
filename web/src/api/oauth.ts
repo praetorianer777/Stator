@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { api } from "./client";
 import type { components } from "./schema";
 

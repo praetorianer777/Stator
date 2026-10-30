@@ -5,7 +5,7 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
 
 const editorBox = (page: Page) => page.locator("#page-body");
@@ -40,7 +40,7 @@ test.describe("files block", { tag: ["@auth"] }, () => {
     await block.locator("[data-attachment-list-input]").setInputFiles(csv("q1,10\n"));
     await expect(block.locator("[data-listed-file]")).toHaveAttribute("data-version", "1");
     await block.locator("[data-attachment-list-input]").setInputFiles(csv("q1,10\nq2,12\n"));
-    await expect(block.getByRole("status")).toHaveText("Uploaded budget.csv as version 2.");
+    await expect(toast(page, "Uploaded budget.csv as version 2.")).toBeVisible();
     await expect(block.locator("[data-listed-file]")).toHaveCount(1);
     await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
     await publishFromEditor(page);

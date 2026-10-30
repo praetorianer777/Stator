@@ -28,12 +28,11 @@ export const attachmentsEn = {
   open: (name: string) => `Open ${name}`,
   remove: (name: string) => `Delete ${name}`,
   removed: (name: string) => `Deleted ${name}.`,
-  confirmRemove: (name: string) => `Delete ${name} for good? It cannot be restored, and the page and its older versions will show it as a missing file.`,
-  confirmRemoveAll: (name: string, n: number) =>
-    `Delete ${name} and all ${n} of its versions for good? None of them can be restored, and the page and its older versions will show them as missing files.`,
+  confirmRemove: "It cannot be restored, and the page and its older versions will show it as a missing file.",
+  confirmRemoveAll: (n: number) =>
+    `All ${n} of its versions go with it. None of them can be restored, and the page and its older versions will show them as missing files.`,
   removeVersion: (name: string, n: number) => `Delete ${name}, version ${n}`,
-  confirmRemoveVersion: (name: string, n: number) =>
-    `Delete version ${n} of ${name} for good? The other versions stay, and wherever the page shows this version it will show a missing file.`,
+  confirmRemoveVersion: "The other versions stay, and wherever the page shows this version it will show a missing file.",
   removedVersion: (name: string, n: number) => `Deleted version ${n} of ${name}.`,
   restore: "Restore",
   restoreVersion: (name: string, n: number) => `Restore ${name}, version ${n}`,

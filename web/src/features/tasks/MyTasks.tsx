@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from "react";
 import { useMyTasks, useSetTaskDone, type Task, type TaskState } from "@/api/tasks";
-import { Button, ErrorBanner, PageHeader, Skeleton, TabPanel, Tabs } from "@/components/ui";
+import { TabPanel, Tabs, Page, PageHeader, Button, ErrorBanner, Skeleton } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { taskAnchor } from "./taskAnchor";
 import { t } from "@/i18n";
@@ -108,7 +108,7 @@ export function MyTasks() {
     panel.current?.focus();
   };
   return (
-    <div className="mx-auto max-w-3xl" data-my-tasks="">
+    <Page width="narrow" data-my-tasks="">
       <PageHeader title={t.tasks.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.tasks.intro}</p>
       <p role="status" className="sr-only">
@@ -129,6 +129,6 @@ export function MyTasks() {
           <TaskList state={state} onDone={done} />
         </div>
       </TabPanel>
-    </div>
+    </Page>
   );
 }

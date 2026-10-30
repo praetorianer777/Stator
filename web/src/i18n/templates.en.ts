@@ -18,7 +18,7 @@ export const templatesEn = {
   variableCount: (n: number) => (n === 0 ? "No variables" : n === 1 ? "1 variable" : `${n} variables`),
   edit: (name: string) => `Edit ${name}`,
   delete: (name: string) => `Delete ${name}`,
-  confirmDelete: (name: string) => `Delete the template ${name}? Pages made from it keep what they were given.`,
+  confirmDelete: "Pages made from it keep what they were given.",
   deleted: (name: string) => `Deleted ${name}.`,
   builtInFixed: "Built-in templates come with Stator and cannot be changed. Make a template of your own instead.",
   cannotEdit: "Only the administrators who keep this template can change it. Ask one of them.",

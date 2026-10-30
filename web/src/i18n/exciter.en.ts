@@ -42,7 +42,7 @@ export const exciterEn = {
   disconnectTitle: "Disconnect",
   disconnectIntro: "Disconnecting forgets the address, the webhook secret and every member's token. Pages show requirement keys only.",
   disconnect: "Disconnect Exciter",
-  confirmDisconnect: "Disconnect Exciter? Every member's token is forgotten, and pages show requirement keys only.",
+  confirmDisconnect: "Every member's token is forgotten, and pages show requirement keys only.",
   disconnected: "Exciter is disconnected.",
   app: {
     title: "Connecting at sign-in",
@@ -61,7 +61,7 @@ export const exciterEn = {
     save: "Save the app",
     saved: "The app is stored.",
     remove: "Forget the app",
-    confirmRemove: "Forget the app? Everybody connected at sign-in is disconnected and pastes a token again.",
+    confirmRemove: "Everybody connected at sign-in is disconnected and pastes a token again.",
     removed: "The app is forgotten.",
   },
   members: {
@@ -89,6 +89,8 @@ export const exciterEn = {
     } as Record<ExciterFeature, string>,
   },
   account: {
+    /** The account, as the dialog that asks before disconnecting names it. */
+    thing: "your Exciter account",
     intro: "Connect your Exciter account so pages show you the requirements you may see in Exciter.",
     notConfigured: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Settings, Exciter.",
     steps: "In Exciter, open Your account, then Access tokens, and make a token; a read-only one is enough. Then paste it here.",
@@ -103,7 +105,7 @@ export const exciterEn = {
     check: "Check again",
     checked: "Exciter accepts your token.",
     disconnect: "Disconnect",
-    confirmDisconnect: "Disconnect your Exciter account? Pages show requirement keys only until you connect again.",
+    confirmDisconnect: "Pages show requirement keys only until you connect again.",
     disconnected: "Your Exciter account is disconnected.",
     rejected: "Exciter no longer accepts your token. Make a new one under Your account, Access tokens in Exciter and paste it here.",
     unreachable: "Exciter did not answer the last check. Check again in a moment.",

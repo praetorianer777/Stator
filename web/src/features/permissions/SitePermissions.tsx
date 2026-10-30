@@ -2,19 +2,18 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
 import { subjectKey, subjectRef, useSitePermissions, useSetSitePermission, type GlobalGrant, type Subject } from "@/api/permissions";
-import { Button, Card, ErrorBanner, PageHeader, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, Card, ErrorBanner, Skeleton, useToast } from "@/components/ui";
 import { SiteAnonymousAccess, SitePublicLinks } from "@/features/public/AnonymousAccess";
 import { t } from "@/i18n";
 import { SubjectList } from "./SubjectList";
 import { SubjectPicker } from "./SubjectPicker";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The organization's global permissions, one card each; a card's changes wait for its own save. */
 export function SitePermissions() {
   const { data, error, refetch, isLoading } = useSitePermissions();
   return (
-    <div className="mx-auto max-w-3xl" data-site-permissions>
-      <PageHeader crumbs={[settingsCrumb()]} title={t.permissions.siteTitle} />
+    <Page width="narrow" data-site-permissions>
+      <PageHeader title={t.permissions.siteTitle} />
       <p className="mb-4 text-sm text-ink-muted">{t.permissions.siteIntro}</p>
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -25,7 +24,7 @@ export function SitePermissions() {
         <SiteAnonymousAccess />
         <SitePublicLinks />
       </div>
-    </div>
+    </Page>
   );
 }
 
@@ -35,12 +34,11 @@ function GrantCard({ grant }: { grant: GlobalGrant }) {
   const { data: me } = useMe();
   const save = useSetSitePermission();
   const [subjects, setSubjects] = useState<Subject[]>(grant.subjects);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const name = t.permissions.globalNames[grant.permission];
   const dirty = keys(subjects) !== keys(grant.subjects);
 
   const change = (next: Subject[]) => {
-    setNotice("");
     save.reset();
     setSubjects(next);
   };
@@ -73,7 +71,7 @@ function GrantCard({ grant }: { grant: GlobalGrant }) {
             exclude={subjects.map(subjectKey)}
             onPick={(picked) => {
               change([...subjects, picked]);
-              setNotice(t.permissions.added(picked.name));
+              toast.success(t.permissions.added(picked.name));
             }}
           />
           {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
@@ -87,7 +85,7 @@ function GrantCard({ grant }: { grant: GlobalGrant }) {
                   {
                     onSuccess: (saved) => {
                       setSubjects(saved.subjects);
-                      setNotice(t.permissions.saved);
+                      toast.success(t.permissions.saved);
                     },
                   },
                 )
@@ -102,7 +100,7 @@ function GrantCard({ grant }: { grant: GlobalGrant }) {
               </Button>
             )}
             <span role="status" className="text-sm text-ink-muted">
-              {notice || (dirty ? t.permissions.unsaved : "")}
+              {dirty ? t.permissions.unsaved : ""}
             </span>
           </div>
         </>

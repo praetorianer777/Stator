@@ -9,7 +9,7 @@ import { editorExtensions } from "@/features/editor/extensions";
 import { today } from "@/features/editor/InlineValueViews";
 import type { DocNode } from "@/features/editor/schema";
 import { allowlist, problems, templateAllowlist } from "@/test/allowlist";
-import { arrival, renderAt, stubApi, type Answer } from "@/test/app";
+import { arrival, renderAt, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { nameFrom, variablesOf } from "./TemplateEditor";
@@ -203,7 +203,6 @@ describe("making a page from a template with variables", () => {
 
 describe("keeping templates", () => {
   it("lists a space's templates in its settings and deletes one after asking", async () => {
-    vi.stubGlobal("confirm", () => true);
     const sent = stubDialog({ [`DELETE /templates/${kickoff.key}`]: { status: 204 } });
     const router = await renderAt("/s/DOCS/settings?tab=templates");
     await arrival(router, "/s/DOCS/settings");
@@ -213,7 +212,9 @@ describe("keeping templates", () => {
     expect(row.closest("tr")).toHaveTextContent("4 variables");
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(within(list).getByRole("button", { name: "Delete Kickoff" }));
-    expect(await within(list).findByText("Deleted Kickoff.")).toBeInTheDocument();
+    expect(await confirmDialog()).toHaveAccessibleName("Delete template Kickoff?");
+    await answerConfirm(true);
+    expect(await screen.findByText("Deleted Kickoff.")).toBeInTheDocument();
     expect(sent.some((r) => r.method === "DELETE" && r.path === `/templates/${kickoff.key}`)).toBe(true);
   });
 

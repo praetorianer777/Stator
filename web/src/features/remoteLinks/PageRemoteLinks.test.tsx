@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { RemoteLink } from "@/api/remoteLinks";
 import { applyLanguage } from "@/i18n";
-import { stubApi, type Answer } from "@/test/app";
+import { stubApi, type Answer, Feedback } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage } from "@/test/spaces";
 import { PageRemoteLinks } from "./PageRemoteLinks";
@@ -54,10 +54,12 @@ function wrap(children: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <main>
-        <h1>Page</h1>
-        {children}
-      </main>
+      <Feedback>
+        <main>
+          <h1>Page</h1>
+          {children}
+        </main>
+      </Feedback>
     </QueryClientProvider>,
   );
 }

@@ -4,7 +4,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // The title alone; the heading also carries the archived mark.
@@ -38,11 +38,11 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     const { key, plans, old } = await freshTree(api, testInfo, "Archive");
 
     // The page asks before it archives; a person accepts.
-    page.on("dialog", (dialog) => void dialog.accept());
     await page.goto(`/s/${key}/p/${plans.id}/page`);
     await expect(heading(page)).toHaveText(plans.title);
     await page.locator('[data-action="page-menu"]').click();
     await page.locator('[role="menu"] [data-action="archive-page"]').click();
+    await confirm(page);
     await expect(banner(page)).toHaveAttribute("data-archived-banner", "page");
     await expect(banner(page)).toContainText("This page is archived.");
     await expect(page.locator('[data-action="edit-page"]')).toHaveCount(0);
@@ -79,7 +79,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     await archiveRow(page, plans.title)
       .getByRole("button", { name: `Unarchive ${plans.title}` })
       .click();
-    await expect(page.locator("[data-archive-notice]")).toHaveText(`Unarchived ${plans.title}.`);
+    await expect(toast(page, `Unarchived ${plans.title}.`)).toBeVisible();
     await expect(page.getByText("Nothing is archived in this space.")).toBeVisible();
 
     await page.goto(`/s/${key}/p/${old.id}/page`);
@@ -90,10 +90,9 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
 
   test("alice archives a whole space, which leaves the list of spaces until asked for and comes back whole", async ({ page, api }, testInfo) => {
     const { key, space, plans } = await freshTree(api, testInfo, "Shelved");
-
-    page.on("dialog", (dialog) => void dialog.accept());
     await page.goto(`/s/${key}/settings`);
     await page.locator('[data-action="archive-space"]').click();
+    await confirm(page);
     await expect(page.locator("[data-space-archive-card]")).toHaveAttribute("data-space-archive-card", "archived");
     await expect(page.locator("[data-space-archive-card]")).toContainText("archived this space");
 
@@ -123,13 +122,17 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     test(`archiving and unarchiving work from the keyboard and are accessible in ${scheme}`, async ({ page, api }, testInfo) => {
       const { key, plans } = await freshTree(api, testInfo, `Axe ${scheme}`);
       await startInScheme(page, scheme);
-      page.on("dialog", (dialog) => void dialog.accept());
 
       await page.goto(`/s/${key}/p/${plans.id}/page`);
       await expect(heading(page)).toHaveText(plans.title);
       await page.locator('[data-action="page-menu"]').focus();
       await page.keyboard.press("Enter");
       await page.getByRole("menuitem", { name: "Archive" }).focus();
+      await page.keyboard.press("Enter");
+      // The question takes the focus, so the keyboard answers it too.
+      await expect(page.locator('[role="dialog"][data-confirm]')).toBeVisible();
+      await expectAccessible(page);
+      await page.locator('[role="dialog"][data-confirm] [data-action="confirm"]').focus();
       await page.keyboard.press("Enter");
       await expect(banner(page)).toHaveAttribute("data-archived-banner", "page");
       await expectAccessible(page);

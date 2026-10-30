@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { suggestKey, useCreateSpace } from "@/api/spaces";
 import { useCanCreateSpace } from "@/features/permissions/access";
-import { Button, ErrorBanner, Field, PageHeader } from "@/components/ui";
+import { Page, PageHeader, Button, Field, ErrorBanner } from "@/components/ui";
 import { BLANK_SPACE_TEMPLATE, SPACE_DESCRIPTION_MAX_LENGTH, SPACE_KEY_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { SpaceTemplatePicker } from "./SpaceTemplatePicker";
@@ -46,11 +46,8 @@ export function NewSpaceForm({ personal = false }: { personal?: boolean }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl" data-new-space={personal ? "personal" : ""}>
-      <PageHeader
-        crumbs={[{ label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> }]}
-        title={personal ? t.spaces.createPersonalTitle : t.spaces.createTitle}
-      />
+    <Page width="narrow" data-new-space={personal ? "personal" : ""}>
+      <PageHeader title={personal ? t.spaces.createPersonalTitle : t.spaces.createTitle} />
       {personal && <p className="mb-4 text-sm text-ink-muted">{t.spaces.personalIntro}</p>}
       {!mayCreate ? (
         <p className="text-sm text-ink-muted">{t.spaces.notAdmin}</p>
@@ -103,6 +100,6 @@ export function NewSpaceForm({ personal = false }: { personal?: boolean }) {
           </div>
         </form>
       )}
-    </div>
+    </Page>
   );
 }

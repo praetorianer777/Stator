@@ -58,8 +58,20 @@ export function ExcerptPicker({
   }
 
   return (
-    <Dialog open title={p.dialog} onClose={onClose} attrs={{ "data-excerpt-picker": "" }}>
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={p.dialog}
+      onClose={onClose}
+      attrs={{ "data-excerpt-picker": "" }}
+      footer={
+        <>
+          <Button type="submit" form="excerpt-picker-form" disabled={!pageId} data-action="pick-include">
+            {p.choose}
+          </Button>
+        </>
+      }
+    >
+      <form id="excerpt-picker-form" onSubmit={submit} className="space-y-3" noValidate>
         <Select
           label={p.space}
           value={space}
@@ -123,11 +135,6 @@ export function ExcerptPicker({
             </label>
           ))}
         </fieldset>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="submit" disabled={!pageId} data-action="pick-include">
-            {p.choose}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

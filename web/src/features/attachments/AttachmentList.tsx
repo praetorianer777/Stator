@@ -1,6 +1,6 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { attachmentUrl, canPreview, formatSize, useAttachments, useRestoreAttachment, useUploadAttachments, type Attachment } from "@/api/attachments";
-import { Button, ErrorBanner } from "@/components/ui";
+import { Button, ErrorBanner, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
@@ -44,7 +44,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
   const { upload, pending, errors, clearErrors } = useUploadAttachments(pageId ?? "");
   const restore = useRestoreAttachment(pageId ?? "");
   const input = useRef<HTMLInputElement>(null);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
 
   let state: string;
   let body: ReactNode;
@@ -76,7 +76,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
             <span className="flex items-center gap-1">
               <FileLink file={latest} label={latest.fileName} />
               <PreviewButton file={latest} media={latestOfEach} />
-              {editable && <AnnotateButton file={latest} onSaved={(made) => setNotice(t.annotate.saved(made.fileName, made.version))} />}
+              {editable && <AnnotateButton file={latest} onSaved={(made) => toast.success(t.annotate.saved(made.fileName, made.version))} />}
             </span>
             <span className="doc-page-list-meta">{meta(latest)}</span>
             {earlier.length > 0 && (
@@ -96,7 +96,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
                           onClick={() => {
                             clearErrors();
                             restore.reset();
-                            restore.mutate(file.id, { onSuccess: (made) => setNotice(t.attachments.restored(file.fileName, file.version, made.version)) });
+                            restore.mutate(file.id, { onSuccess: (made) => toast.success(t.attachments.restored(file.fileName, file.version, made.version)) });
                           }}
                           data-action="restore-attachment"
                         >
@@ -132,7 +132,7 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
                 const chosen = [...(event.target.files ?? [])];
                 event.target.value = "";
                 clearErrors();
-                for (const file of chosen) void upload(file).then((made) => made && setNotice(l.uploaded(made.fileName, made.version)));
+                for (const file of chosen) void upload(file).then((made) => made && toast.success(l.uploaded(made.fileName, made.version)));
               }}
               data-attachment-list-input=""
             />
@@ -153,9 +153,6 @@ export function AttachmentList({ pageId, editable }: { pageId: string | undefine
         return <progress key={each.key} className="h-1.5 w-full accent-accent" max={100} value={percent} aria-label={label} />;
       })}
       {body}
-      <p role="status" className="sr-only">
-        {notice}
-      </p>
     </section>
   );
 }

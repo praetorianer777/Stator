@@ -1,11 +1,10 @@
 import { useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { brandLogoHref, useBrand, useRemoveBrandLogo, useSetBrandFooter, useSetBrandLogo } from "@/api/brand";
-import { Button, ErrorBanner, Field, PageHeader, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, Field, ErrorBanner, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { BRAND_FOOTER_MAX_LENGTH, BRAND_LOGO_MAX_BYTES } from "@/config";
 import { t } from "@/i18n";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Where an administrator sets the logo and the footer line the organization's exports carry. */
 export function BrandSettings() {
@@ -38,8 +37,8 @@ export function BrandSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl" data-brand-settings="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.brand.title} />
+    <Page width="narrow" data-brand-settings="">
+      <PageHeader title={t.brand.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.brand.intro}</p>
       {isLoading && <Skeleton />}
       {brand && (
@@ -117,6 +116,6 @@ export function BrandSettings() {
           </form>
         </div>
       )}
-    </div>
+    </Page>
   );
 }

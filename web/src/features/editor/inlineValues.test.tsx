@@ -166,7 +166,8 @@ describe("the status dialog", () => {
     expect(red).toBeChecked();
     expect(within(dialog).getByText("Blocked", { selector: "[data-status-preview] .doc-status" })).toHaveAttribute("data-status-label", "danger");
     expect(await axeViolations({ popupOpen: true })).toEqual([]);
-    await user.keyboard("{Enter}");
+    // Save is pinned in the footer, outside the form; jsdom's Enter does not find it there as a browser does.
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(find(last(), "status")[0]?.attrs).toEqual({ label: "Blocked", color: "danger" });
     expect(problems(last()!)).toEqual([]);

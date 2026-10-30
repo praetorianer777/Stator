@@ -4,7 +4,7 @@ import { ApiError } from "@/api/client";
 import { useBlog, useCreatePost, usePosts, useWatchBlog, type BlogMonth } from "@/api/posts";
 import { useSpace } from "@/api/spaces";
 import { templateTitle, type Template } from "@/api/templates";
-import { Button, Dialog, EmptyState, ErrorBanner, Field, PageHeader, SelectInput, Skeleton, cx } from "@/components/ui";
+import { Page, PageHeader, Button, cx, Dialog, Field, EmptyState, ErrorBanner, SelectInput, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { BLANK_TEMPLATE, PAGE_TITLE_MAX_LENGTH } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
@@ -101,8 +101,24 @@ function NewPostDialog({ spaceKey, onClose }: { spaceKey: string; onClose: () =>
 
   const banner = create.error && !Object.keys(fields).some((field) => field.startsWith("values.") || field === "title") ? create.error.message : "";
   return (
-    <Dialog open title={t.blog.newPostTitle} onClose={onClose} size="lg" attrs={{ "data-new-post-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={t.blog.newPostTitle}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-new-post-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.page.cancel}
+          </Button>
+          <Button type="submit" form="blog-screen-form" loading={create.isPending} data-action="create-post">
+            {t.blog.create}
+          </Button>
+        </>
+      }
+    >
+      <form id="blog-screen-form" onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? (banner || t.blog.createFailed)}</ErrorBanner>}
         <Field
           label={t.blog.postTitle}
@@ -123,14 +139,6 @@ function NewPostDialog({ spaceKey, onClose }: { spaceKey: string; onClose: () =>
             {error}
           </p>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.page.cancel}
-          </Button>
-          <Button type="submit" loading={create.isPending} data-action="create-post">
-            {t.blog.create}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );
@@ -276,9 +284,8 @@ export function BlogScreen({ spaceKey, filter }: { spaceKey: string; filter: Blo
   const heading =
     filter.year === undefined ? t.blog.title : filter.month === undefined ? String(filter.year) : `${nameOfMonth(filter.year, filter.month)} ${filter.year}`;
   return (
-    <div className="mx-auto max-w-5xl" data-blog={b.spaceKey}>
+    <Page width="narrow" data-blog={b.spaceKey}>
       <PageHeader
-        crumb={b.spaceName}
         title={t.blog.title}
         actions={
           <>
@@ -328,6 +335,6 @@ export function BlogScreen({ spaceKey, filter }: { spaceKey: string; filter: Blo
         </section>
       </div>
       {writing && <NewPostDialog spaceKey={b.spaceKey} onClose={() => setWriting(false)} />}
-    </div>
+    </Page>
   );
 }

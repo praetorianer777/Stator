@@ -1,11 +1,10 @@
 import { createRoute } from "@tanstack/react-router";
-import { EmptyState, PageHeader } from "@/components/ui";
+import { Page, PageHeader, EmptyState } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { AuditLog } from "@/features/audit/AuditLog";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** Who did what to the organization, newest first, for its administrators. */
 export const auditRoute = createRoute({
@@ -14,10 +13,10 @@ export const auditRoute = createRoute({
   component: function AuditRoute() {
     if (!useCanAdministerSite()) {
       return (
-        <div className="mx-auto max-w-3xl" data-audit-refused>
-          <PageHeader crumbs={[settingsCrumb()]} title={t.audit.title} />
+        <Page width="narrow" data-audit-refused>
+          <PageHeader title={t.audit.title} />
           <EmptyState icon={<Icon.Lock />} title={t.audit.title} description={t.audit.notAdmin} />
-        </div>
+        </Page>
       );
     }
     return <AuditLog />;

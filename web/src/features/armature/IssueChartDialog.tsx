@@ -57,8 +57,24 @@ export function IssueChartDialog({
 
   const queryId = `${id}-query`;
   return (
-    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} size="lg" attrs={{ "data-issue-chart-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-issue-chart-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.armature.listDialog.cancel}
+          </Button>
+          <Button type="submit" form="issue-chart-dialog-form" data-action="save-issue-chart">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="issue-chart-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Select
           label={d.project}
           value={project}
@@ -134,14 +150,6 @@ export function IssueChartDialog({
             ))}
           </Select>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.armature.listDialog.cancel}
-          </Button>
-          <Button type="submit" data-action="save-issue-chart">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

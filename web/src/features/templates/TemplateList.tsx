@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useDeleteTemplate, useTemplates, type Template } from "@/api/templates";
-import { EmptyState, ErrorBanner, IconButton, Skeleton, Table, Td, Th } from "@/components/ui";
+import { EmptyState, ErrorBanner, IconButton, Skeleton, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { TEMPLATE_EDIT_PATH, TEMPLATE_NEW_PATH } from "@/config";
 import { t } from "@/i18n";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const linkButton =
   "inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3 text-sm font-medium text-ink no-underline hover:bg-surface-raised";
@@ -16,15 +16,16 @@ const linkButton =
 export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit: boolean }) {
   const { data, isLoading, error } = useTemplates(spaceKey);
   const remove = useDeleteTemplate();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const scope = spaceKey ? "space" : "organization";
   const mine = (data ?? []).filter((tpl) => tpl.scope === scope);
   const failure = error ?? remove.error;
 
-  function deleteTemplate(tpl: Template) {
-    if (!window.confirm(t.templates.confirmDelete(tpl.name))) return;
-    setNotice("");
-    remove.mutate(tpl.key, { onSuccess: () => setNotice(t.templates.deleted(tpl.name)) });
+  async function deleteTemplate(tpl: Template) {
+    const things = t.kit.confirm.things;
+    if (!(await confirm({ noun: things.named(things.template, tpl.name), body: t.templates.confirmDelete }))) return;
+    remove.mutate(tpl.key, { onSuccess: () => toast.success(t.templates.deleted(tpl.name)) });
   }
 
   return (
@@ -43,9 +44,6 @@ export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit
       <p className="text-sm text-ink-muted">{spaceKey ? t.templates.spaceIntro : t.templates.siteIntro}</p>
       {!canEdit && <p className="text-sm text-ink-muted">{spaceKey ? t.templates.spaceNotAdmin : t.templates.siteNotAdmin}</p>}
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-templates-notice>
-        {notice}
-      </p>
       {isLoading ? (
         <Skeleton />
       ) : mine.length === 0 ? (

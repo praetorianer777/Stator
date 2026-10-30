@@ -30,13 +30,11 @@ export const attachmentsDe: typeof attachmentsEn = {
   open: (name: string) => `${name} öffnen`,
   remove: (name: string) => `${name} löschen`,
   removed: (name: string) => `${name} gelöscht.`,
-  confirmRemove: (name: string) =>
-    `${name} endgültig löschen? Die Datei lässt sich nicht wiederherstellen, und die Seite und ihre älteren Versionen zeigen sie als fehlende Datei.`,
-  confirmRemoveAll: (name: string, n: number) =>
-    `${name} mit allen ${n} Versionen endgültig löschen? Keine davon lässt sich wiederherstellen, und die Seite und ihre älteren Versionen zeigen sie als fehlende Dateien.`,
+  confirmRemove: "Die Datei lässt sich nicht wiederherstellen, und die Seite und ihre älteren Versionen zeigen sie als fehlende Datei.",
+  confirmRemoveAll: (n: number) =>
+    `Alle ${n} Versionen gehen mit. Keine davon lässt sich wiederherstellen, und die Seite und ihre älteren Versionen zeigen sie als fehlende Dateien.`,
   removeVersion: (name: string, n: number) => `${name}, Version ${n} löschen`,
-  confirmRemoveVersion: (name: string, n: number) =>
-    `Version ${n} von ${name} endgültig löschen? Die anderen Versionen bleiben, und wo die Seite diese Version zeigt, zeigt sie eine fehlende Datei.`,
+  confirmRemoveVersion: "Die anderen Versionen bleiben, und wo die Seite diese Version zeigt, zeigt sie eine fehlende Datei.",
   removedVersion: (name: string, n: number) => `Version ${n} von ${name} gelöscht.`,
   restore: "Wiederherstellen",
   restoreVersion: (name: string, n: number) => `${name}, Version ${n} wiederherstellen`,

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { createRoute, useRouter, useRouterState } from "@tanstack/react-router";
 import { useMe, useSaveReading } from "@/api/auth";
 import { useSetShowInReaders } from "@/api/pageviews";
-import { Avatar, Button, Card, ErrorBanner, Labelled, PageHeader, SearchPicker, SectionTitle, Select, Switch } from "@/components/ui";
+import { Page, PageHeader, Avatar, Button, Card, Labelled, ErrorBanner, SearchPicker, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
 import { announceReturn, safeReturn } from "@/features/armature/connectLink";
 import { ExciterAccountSection } from "@/features/exciter/AccountSection";
@@ -19,7 +19,6 @@ import {
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
 import { browserTimeZone, isTimeZone, timeZone, timeZones } from "@/lib/format";
 import { appRoute } from "./app";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The caller's profile: who they are here, and their Armature and Exciter accounts. */
 export const profileRoute = createRoute({
@@ -61,8 +60,8 @@ function ProfilePage() {
     router.history.replace(back);
   }, [outcome, back, router]);
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.profile.title} />
+    <Page width="narrow" className="space-y-6">
+      <PageHeader title={t.profile.title} />
       {me && (
         <section aria-labelledby="profile-account" className="space-y-3">
           <SectionTitle id="profile-account">{t.profile.account}</SectionTitle>
@@ -79,7 +78,7 @@ function ProfilePage() {
       {me && <PrivacySection shown={me.user.showInReaders} />}
       <AccountSection focusToken={hash === ARMATURE_SECTION_ID && !outcome} onReturn={goBack} returnTo={back} outcome={outcome} />
       <ExciterAccountSection focusToken={hash === EXCITER_SECTION_ID} onReturn={goBackFromExciter} />
-    </div>
+    </Page>
   );
 }
 

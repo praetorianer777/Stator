@@ -126,8 +126,23 @@ function AskValues({
   }
 
   return (
-    <Dialog open title={t.templateButton.fillIn(found.template.name)} onClose={onClose} attrs={{ "data-template-button-values": "" }}>
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={t.templateButton.fillIn(found.template.name)}
+      onClose={onClose}
+      attrs={{ "data-template-button-values": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.templateButton.cancel}
+          </Button>
+          <Button type="submit" form="template-button-form" loading={pending} data-action="confirm-from-template">
+            {t.templateButton.create}
+          </Button>
+        </>
+      }
+    >
+      <form id="template-button-form" onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? banner}</ErrorBanner>}
         <TemplateValues variables={variables} values={values} onChange={setValues} parentId={found.parent.id} errors={fields} />
         {missing && (
@@ -135,14 +150,6 @@ function AskValues({
             {missing}
           </p>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.templateButton.cancel}
-          </Button>
-          <Button type="submit" loading={pending} data-action="confirm-from-template">
-            {t.templateButton.create}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

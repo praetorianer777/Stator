@@ -7,7 +7,7 @@ import type { Attachment } from "@/api/attachments";
 import { DocView } from "@/features/editor/DocView";
 import { PublicLinkContext, PublicReadingContext } from "@/features/editor/publicReading";
 import type { Doc } from "@/features/editor/schema";
-import { stubApi } from "@/test/app";
+import { stubApi, Feedback } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { AttachmentPanel } from "./AttachmentPanel";
 import { Lightbox } from "./Lightbox";
@@ -184,10 +184,12 @@ describe("where the lightbox opens", () => {
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <main>
-          <h1>Plan</h1>
-          <AttachmentPanel pageId={pageId} editable={false} />
-        </main>
+        <Feedback>
+          <main>
+            <h1>Plan</h1>
+            <AttachmentPanel pageId={pageId} editable={false} />
+          </main>
+        </Feedback>
       </QueryClientProvider>,
     );
     expect(await screen.findByRole("link", { name: "Open tour.mp4" })).toHaveAttribute("href", `/api/v1/attachments/${tour.id}?inline=1`);

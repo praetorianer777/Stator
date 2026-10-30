@@ -4,6 +4,7 @@ import { openShowing } from "../fixtures/replica";
 import { teamTest as test } from "../fixtures/team";
 import { armatureURL } from "../fixtures/stack";
 import { answered, armatureSignedIn, passwordOf, readSeed, realArmatureURL, type ArmaturePerson } from "./armature";
+import { confirm, toast } from "../fixtures/shell";
 
 // Connecting the real Armature as an administrator and a member would: the
 // address and slug Armature answers to, Armature's own sign-in and consent
@@ -103,9 +104,9 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const mia = await armatureSignedIn(member.email);
     try {
       expect(await grantsOf(mia, clientId)).toHaveLength(1);
-      bob.once("dialog", (dialog) => dialog.accept());
       await bobs.locator('[data-action="disconnect-armature-account"]').click();
-      await expect(bobs.getByText("Your Armature account is disconnected.")).toBeVisible();
+      await confirm(bob);
+      await expect(toast(bob, "Your Armature account is disconnected.")).toBeVisible();
       await expect(bobs.locator('[data-action="connect-armature-app"]')).toBeVisible();
       // Stator revokes the grant at Armature, so it is gone from her token list there too.
       await expect.poll(async () => grantsOf(mia, clientId)).toHaveLength(0);
@@ -128,7 +129,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     await expect(section.locator("[data-armature-user]")).toHaveText(`Connected as ${seed.people.member.name} (${seed.people.member.email}).`);
     await expect(page.locator("body")).not.toContainText(seed.people.member.token);
     await section.locator('[data-action="check-armature"]').click();
-    await expect(section.getByText("Armature accepts your token.")).toBeVisible();
+    await expect(toast(page, "Armature accepts your token.")).toBeVisible();
 
     // A member without access to any project is still somebody in Armature.
     const bob = await pageAs("bob");

@@ -1,10 +1,10 @@
 import { localDateFormat } from "@/lib/format";
-import { useState } from "react";
 import type { Space } from "@/api/spaces";
 import { useEmptyTrash, usePurgePage, useRestorePage, useTrash } from "@/api/trash";
-import { Button, EmptyState, ErrorBanner, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, Skeleton, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const deletedAt = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
@@ -15,7 +15,8 @@ export function TrashPanel({ space }: { space: Space }) {
   const restore = useRestorePage(space.key);
   const purge = usePurgePage(space.key);
   const empty = useEmptyTrash(space.key);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const failure = restore.error ?? purge.error ?? empty.error;
   if (!space.can.deletePages)
     return (
@@ -32,8 +33,9 @@ export function TrashPanel({ space }: { space: Space }) {
           <Button
             variant="danger"
             loading={empty.isPending}
-            onClick={() => {
-              if (window.confirm(s.confirmEmpty)) empty.mutate(undefined, { onSuccess: () => setNotice(s.emptied) });
+            onClick={async () => {
+              const ask = { noun: t.kit.confirm.things.trash, verb: t.kit.confirm.verbs.empty, body: s.confirmEmpty };
+              if (await confirm(ask)) empty.mutate(undefined, { onSuccess: () => toast.success(s.emptied) });
             }}
             data-action="empty-trash"
           >
@@ -41,9 +43,6 @@ export function TrashPanel({ space }: { space: Space }) {
           </Button>
         )}
       </div>
-      <p role="status" className="text-sm text-ink-muted [&:empty]:hidden" data-trash-notice>
-        {notice}
-      </p>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -76,7 +75,7 @@ export function TrashPanel({ space }: { space: Space }) {
                         size="sm"
                         variant="secondary"
                         aria-label={s.restoreItem(item.title)}
-                        onClick={() => restore.mutate(item.id, { onSuccess: () => setNotice(s.restored(item.title)) })}
+                        onClick={() => restore.mutate(item.id, { onSuccess: () => toast.success(s.restored(item.title)) })}
                         data-action="restore-page"
                       >
                         {s.restore}
@@ -87,8 +86,9 @@ export function TrashPanel({ space }: { space: Space }) {
                         size="sm"
                         variant="danger"
                         aria-label={s.purgeItem(item.title)}
-                        onClick={() => {
-                          if (window.confirm(s.confirmPurge(item.title))) purge.mutate(item.id, { onSuccess: () => setNotice(s.purged(item.title)) });
+                        onClick={async () => {
+                          if (await confirm({ noun: t.kit.confirm.things.page(item.title), body: s.confirmPurge }))
+                            purge.mutate(item.id, { onSuccess: () => toast.success(s.purged(item.title)) });
                         }}
                         data-action="purge-page"
                       >

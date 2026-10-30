@@ -1,4 +1,5 @@
-import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { ARMATURE_LINKS_POLL_MS, ARMATURE_LIST_PAGE_SIZE } from "@/config";
 import { ApiError, api } from "./client";
 import type { components } from "./schema";

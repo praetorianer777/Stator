@@ -3,7 +3,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -97,7 +97,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     try {
       await page.goto("/settings/permissions");
       await settings.locator('[data-action="public-links"]').click();
-      await expect(settings.getByRole("status")).toHaveText("Saved.");
+      await expect(toast(page, "Saved.")).toBeVisible();
       await openShowing(reader, made.path, reader.locator("[data-link-gone]"));
 
       await openTitled(page, `/s/${key}/p/${plan.id}/plan`, plan.title);
@@ -107,7 +107,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
 
       await page.goto("/settings/permissions");
       await settings.locator('[data-action="public-links"]').click();
-      await expect(settings.getByRole("status")).toHaveText("Saved.");
+      await expect(toast(page, "Saved.")).toBeVisible();
       await openTitled(reader, made.path, plan.title);
     } finally {
       await context.close();

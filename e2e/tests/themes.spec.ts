@@ -6,6 +6,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { chooseTheme, createTheme, listThemes, themeSpec, uniqueName, updateTheme, uploadThemeAsset } from "../fixtures/seed";
+import { confirm, toast } from "../fixtures/shell";
 
 const MINECRAFT = resolve(dirname(fileURLToPath(import.meta.url)), "../../backend/internal/theme/testdata/minecraft.armature-theme.json");
 const MINECRAFT_NAME = JSON.parse(readFileSync(MINECRAFT, "utf8")).name as string;
@@ -48,7 +49,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await createTheme(api, name, themeSpec({ colors: { light: { canvas: "#123456" }, dark: { canvas: "#123456" } } }));
     await page.goto(THEMES_PATH);
     await rowAction(page, name, "use-theme");
-    await expect(page.locator("[data-themes-notice]")).toHaveText(`Now using ${name}.`);
+    await expect(toast(page, `Now using ${name}.`)).toBeVisible();
 
     await page.goto("/");
     await expect(customStyle(page)).toBeAttached();
@@ -95,10 +96,10 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
   test("the imported Minecraft theme gives square corners and hard shadows", async ({ page }) => {
     await page.goto(THEMES_PATH);
     await page.locator("[data-theme-file]").setInputFiles(MINECRAFT);
-    await expect(page.locator("[data-themes-notice]")).toContainText(`Imported ${MINECRAFT_NAME}`);
-    const importedName = (await page.locator("[data-themes-notice]").textContent())!.replace(/^Imported /, "").replace(/\.$/, "");
+    await expect(toast(page, `Imported ${MINECRAFT_NAME}`)).toBeVisible();
+    const importedName = (await toast(page, /^Imported /).textContent())!.replace(/^Imported /, "").replace(/\.$/, "");
     await rowAction(page, importedName, "use-theme");
-    await expect(page.locator("[data-themes-notice]")).toHaveText(`Now using ${importedName}.`);
+    await expect(toast(page, `Now using ${importedName}.`)).toBeVisible();
 
     await page.goto("/");
     await expect(customStyle(page)).toBeAttached();
@@ -122,7 +123,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await (await download).saveAs(file);
 
     await page.locator("[data-theme-file]").setInputFiles(file);
-    await expect(page.locator("[data-themes-notice]")).toHaveText(`Imported ${name} (2).`);
+    await expect(toast(page, `Imported ${name} (2).`)).toBeVisible();
     await expect(row(page, `${name} (2)`)).toBeVisible();
 
     const copy = (await listThemes(api)).find((each) => each.name === `${name} (2)`);
@@ -142,7 +143,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
       await page.locator('[data-action="save-theme"]').click();
       await expect(page).toHaveURL(/\/settings\/themes\/[0-9a-f-]{36}$/);
       await page.locator('[data-action="use-theme"]').click();
-      await expect(page.locator("[data-theme-notice]")).toContainText("Now using");
+      await expect(toast(page, "Now using")).toBeVisible();
 
       const canvas = page.locator('[data-backdrop-effect="constellation"] canvas');
       const frame = () => canvas.evaluate((el) => (el as HTMLCanvasElement).toDataURL());
@@ -175,7 +176,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(customStyle(page)).toHaveCount(0);
 
     await page.locator('[data-action="save-theme"]').click();
-    await expect(page.locator("[data-theme-notice]")).toHaveText(`Saved ${name}.`);
+    await expect(toast(page, `Saved ${name}.`)).toBeVisible();
     expect((await listThemes(api)).find((each) => each.id === theme.id)?.spec.colors.light.canvas).toBe("#abcdef");
   });
 
@@ -191,19 +192,19 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(page.locator('[data-theme-asset="evil.svg"]')).toHaveCount(0);
 
     await upload.setInputFiles({ name: "square.svg", mimeType: "image/svg+xml", buffer: Buffer.from(SAFE_SVG) });
-    await expect(page.locator("[data-theme-notice]")).toContainText("square.svg");
+    await expect(toast(page, "square.svg")).toBeVisible();
     await expect(page.locator('[data-theme-asset="square.svg"]')).toBeVisible();
 
     await page.locator('[data-theme-tab="icons"]').click();
     await page.getByLabel("home icon picture").selectOption({ label: "square.svg" });
     await page.locator('[data-action="save-theme"]').click();
-    await expect(page.locator("[data-theme-notice]")).toHaveText(`Saved ${name}.`);
+    await expect(toast(page, `Saved ${name}.`)).toBeVisible();
 
     await page.locator('[data-theme-tab="files"]').click();
     await expect(page.locator('[data-theme-asset="square.svg"] [data-action="remove-theme-file"]')).toBeDisabled();
 
     await page.locator('[data-action="use-theme"]').click();
-    await expect(page.locator("[data-theme-notice]")).toHaveText(`Now using ${name}.`);
+    await expect(toast(page, `Now using ${name}.`)).toBeVisible();
     await page.goto("/");
     const home = page.locator('svg[data-icon="home"]').first();
     await expect(home).toBeVisible();
@@ -223,7 +224,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
       await expect(row(bob, name)).toBeVisible(ONE_LOOK);
     });
     await rowAction(bob, name, "use-theme");
-    await expect(bob.locator("[data-themes-notice]")).toHaveText(`Now using ${name}.`);
+    await expect(toast(bob, `Now using ${name}.`)).toBeVisible();
 
     await openUntil(page, THEMES_PATH, () => expect(row(page, name)).toContainText("1 person", ONE_LOOK));
   });
@@ -234,7 +235,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
 
     await page.goto(THEMES_PATH);
     await rowAction(page, name, "default-theme");
-    await expect(page.locator("[data-themes-notice]")).toHaveText(`${name} is what everybody sees until they choose.`);
+    await expect(toast(page, `${name} is what everybody sees until they choose.`)).toBeVisible();
     await expect(row(page, name)).toHaveAttribute("data-theme-default", "true");
 
     const bob = await pageAs("bob");
@@ -246,7 +247,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(customStyle(bob)).toHaveCount(0);
 
     await rowAction(page, name, "share-theme");
-    await expect(page.locator("[data-themes-notice]")).toHaveText(`${name} is yours alone again.`);
+    await expect(toast(page, `${name} is yours alone again.`)).toBeVisible();
     await expect(row(page, name)).toHaveAttribute("data-theme-default", "false");
     await openShowing(bob, THEMES_PATH, bob.getByText("You are using the built-in theme."));
   });
@@ -260,9 +261,9 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(customStyle(bob)).toBeAttached();
 
     await page.goto(THEMES_PATH);
-    page.once("dialog", (dialog) => dialog.accept());
     await rowAction(page, name, "delete-theme");
-    await expect(page.locator("[data-themes-notice]")).toContainText(name);
+    await confirm(page);
+    await expect(toast(page, name)).toBeVisible();
     await expect(row(page, name)).toHaveCount(0);
 
     // The notice and the style come from requests of their own, either of which a replica may answer.

@@ -13,6 +13,15 @@ const widths: Record<PageWidth, string> = {
   wide: "w-full",
 };
 
-export function Page({ width = "content", children, className }: { width?: PageWidth; children: ReactNode; className?: string }) {
-  return <div className={cx(widths[width], className)}>{children}</div>;
+export function Page({
+  width = "content",
+  children,
+  className,
+  ...attrs
+}: { width?: PageWidth; children: ReactNode; className?: string } & Record<`data-${string}`, string | boolean | undefined>) {
+  return (
+    <div className={cx(widths[width], className)} data-page-width={width} {...attrs}>
+      {children}
+    </div>
+  );
 }

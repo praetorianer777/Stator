@@ -5,7 +5,7 @@ import { png, upload } from "../fixtures/files";
 import { teamTest as test } from "../fixtures/team";
 import { openEditor, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 
 const PICTURE_WIDTH = 800;
@@ -167,7 +167,7 @@ test.describe("image annotation", { tag: ["@auth"] }, () => {
     await expect(dialog(page).locator("[data-annotate-status]")).toHaveText("Box selected.");
     await dialog(page).getByRole("button", { name: "Save as new version" }).click();
     await expect(dialog(page)).toHaveCount(0, SAVED);
-    await expect(page.locator("[data-attachment-notice]")).toHaveText("Saved the edited screen.png as version 2.");
+    await expect(toast(page, "Saved the edited screen.png as version 2.")).toBeVisible();
     await expect(row).toHaveAttribute("data-version", "2");
     await expect(page.locator(`[data-doc] figure[data-image][data-attachment-id="${shot}"]`)).toBeVisible();
     const files = await filesOf(api, target.id);
@@ -197,9 +197,8 @@ test.describe("image annotation", { tag: ["@auth"] }, () => {
       await expect(dialog(page).getByRole("button", { name: "Save as new version" })).toBeInViewport();
       const box = await canvas(page).boundingBox();
       expect(box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-
-      page.once("dialog", (asked) => void asked.accept());
       await dialog(page).getByRole("button", { name: "Cancel" }).click();
+      await confirm(page);
       await expect(dialog(page)).toHaveCount(0);
     });
   }

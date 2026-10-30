@@ -51,7 +51,7 @@ export const tokensDe: typeof tokensEn = {
   neverExpires: "Nie",
   revoke: "Widerrufen",
   revokeLabel: (name: string) => `${name} widerrufen`,
-  confirmRevoke: (name: string) => `${name} widerrufen? Alles, was es verwendet, wird ab sofort abgewiesen.`,
+  confirmRevoke: "Alles, was es verwendet, wird ab sofort abgewiesen.",
   revoked: (name: string) => `${name} wurde widerrufen.`,
   mcpTitle: "Einen Assistenten verbinden",
   mcpBody:

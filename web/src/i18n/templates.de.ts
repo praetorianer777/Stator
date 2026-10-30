@@ -19,7 +19,7 @@ export const templatesDe: typeof templatesEn = {
   variableCount: (n: number) => (n === 0 ? "Keine Variablen" : n === 1 ? "1 Variable" : `${n} Variablen`),
   edit: (name: string) => `${name} bearbeiten`,
   delete: (name: string) => `${name} löschen`,
-  confirmDelete: (name: string) => `Die Vorlage ${name} löschen? Seiten, die daraus entstanden sind, behalten ihren Inhalt.`,
+  confirmDelete: "Seiten, die daraus entstanden sind, behalten ihren Inhalt.",
   deleted: (name: string) => `${name} gelöscht.`,
   builtInFixed: "Mitgelieferte Vorlagen kommen mit Stator und lassen sich nicht ändern. Legen Sie stattdessen eine eigene Vorlage an.",
   cannotEdit: "Nur die Administratoren, die diese Vorlage verwalten, können sie ändern. Bitten Sie eine von ihnen.",

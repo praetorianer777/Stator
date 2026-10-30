@@ -11,13 +11,12 @@ import {
   useRenewExampleSpace,
 } from "@/api/exampleSpace";
 import type { Space } from "@/api/spaces";
-import { Button, EmptyState, ErrorBanner, PageHeader, Segmented, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, EmptyState, ErrorBanner, Segmented, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { EXAMPLE_SPACE_GIVE_UP_MS, EXAMPLE_SPACE_SLOW_MS } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The example space by its name, linked, with a word when it is archived. */
 function ExistingExample({ space }: { space: Space }) {
@@ -118,16 +117,16 @@ export function ExampleSpaceSettings() {
   const { query, make, run, found, underWay, failure, note } = useMakeExample(admin);
   if (!admin) {
     return (
-      <div className="mx-auto max-w-3xl">
-        <PageHeader crumbs={[settingsCrumb()]} title={t.exampleSpace.title} />
+      <Page width="narrow">
+        <PageHeader title={t.exampleSpace.title} />
         <EmptyState icon={<Icon.Lock />} title={t.exampleSpace.title} description={t.exampleSpace.notAdmin} />
-      </div>
+      </Page>
     );
   }
   const shown = found ?? query.data?.space ?? undefined;
   return (
-    <div className="mx-auto max-w-3xl space-y-4" data-example-space-settings="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.exampleSpace.title} />
+    <Page width="narrow" className="space-y-4" data-example-space-settings="">
+      <PageHeader title={t.exampleSpace.title} />
       <p className="text-sm text-ink-muted">{t.exampleSpace.intro}</p>
       {query.isLoading && <Skeleton />}
       {query.error && <ErrorBanner>{query.error.message}</ErrorBanner>}
@@ -137,7 +136,7 @@ export function ExampleSpaceSettings() {
       <Button icon={<Icon.Seal />} onClick={run} disabled={underWay || query.isLoading} data-action="create-example-space">
         {underWay ? t.exampleSpace.creating : t.exampleSpace.create}
       </Button>
-    </div>
+    </Page>
   );
 }
 

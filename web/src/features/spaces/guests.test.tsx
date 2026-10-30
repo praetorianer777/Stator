@@ -50,7 +50,7 @@ describe("a space's guests", () => {
     await userEvent.selectOptions(within(card).getByLabelText("May"), "editor");
     await userEvent.click(within(card).getByRole("button", { name: "Invite guest" }));
     await waitFor(() => expect(sent.find((r) => r.method === "POST")?.body).toEqual({ email: "hal@contractor.test", role: "editor" }));
-    expect(await within(card).findByText("hal@contractor.test may sign in to this space now.")).toBeInTheDocument();
+    expect(await screen.findByText("hal@contractor.test may sign in to this space now.")).toBeInTheDocument();
     expect((await within(card).findByText("hal", { selector: "div" })).closest("tr")).toHaveTextContent("Read, comment and edit");
     expect(within(card).getByLabelText("Email address")).toHaveValue("");
     expect(await axeViolations()).toEqual([]);
@@ -95,7 +95,7 @@ describe("a space's guests", () => {
     await userEvent.click(await within(card).findByRole("button", { name: "Remove Gwen Guest" }));
     await userEvent.click(within(card).getByRole("button", { name: /^Remove$/ }));
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE")).toBe(true));
-    expect(await within(card).findByText("Gwen Guest was removed.")).toBeInTheDocument();
+    expect(await screen.findByText("Gwen Guest was removed.")).toBeInTheDocument();
     expect(await within(card).findByText("This space has no guests.")).toBeInTheDocument();
   });
 

@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ApiToken } from "@/api/tokens";
 import { DAY_MS, MCP_PATH, TOKEN_DEFAULT_EXPIRY_DAYS } from "@/config";
-import { renderAt, stubApi } from "@/test/app";
+import { answerConfirm, confirmDialog, renderAt, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aSpace } from "@/test/spaces";
 import { expiryFrom, reachOf } from "./tokens";
@@ -171,16 +171,19 @@ describe("the tokens page", () => {
         return { status: 204 };
       },
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     const user = userEvent.setup();
     await renderAt("/settings/tokens");
     const revoke = await screen.findByRole("button", { name: "Revoke deploy" });
 
     await user.click(revoke);
+    await answerConfirm(false);
     expect(sent.some((r) => r.method === "DELETE")).toBe(false);
 
     await user.click(revoke);
-    expect(confirm).toHaveBeenLastCalledWith("Revoke deploy? Anything using it is refused from now on.");
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Revoke token deploy?");
+    expect(asked).toHaveTextContent("Anything using it is refused from now on.");
+    await answerConfirm(true);
     expect(await screen.findByText("deploy was revoked.")).toBeInTheDocument();
     await waitFor(() => expect(row("deploy")).toBeNull());
     expect(sent.filter((r) => r.method === "DELETE").map((r) => r.path)).toEqual([`/tokens/${deploy.id}`]);

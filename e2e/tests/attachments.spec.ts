@@ -6,7 +6,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { teamTest as test } from "../fixtures/team";
 import { openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
 // One pixel, as small as a PNG gets, so a picture costs the suite nothing.
@@ -89,7 +89,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     await panel(page).locator('[data-action="attach-files"]').click();
     await (await chooser).setFiles([textFile("notes.txt", "Restart the worker first.")]);
     await expect(row(page, "notes.txt")).toBeVisible();
-    await expect(page.locator("[data-attachment-notice]")).toHaveText("Attached notes.txt.");
+    await expect(toast(page, "Attached notes.txt.")).toBeVisible();
 
     await dispatchFiles(panel(page), "drop", [picture("dropped.png")]);
     await expect(row(page, "dropped.png")).toBeVisible();
@@ -107,18 +107,16 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     for await (const chunk of saved) chunks.push(chunk as Buffer);
     expect(Buffer.concat(chunks).toString()).toBe("Restart the worker first.");
 
-    const asked: string[] = [];
-    page.once("dialog", (dialog) => {
-      asked.push(dialog.message());
-      void dialog.dismiss();
-    });
     await row(page, "notes.txt").locator('[data-action="delete-attachment"]').click();
+    const asked = page.locator('[role="dialog"][data-confirm]');
+    await expect(asked).toHaveAccessibleName("Delete attachment notes.txt?");
+    await asked.getByRole("button", { name: "Cancel" }).click();
+    await expect(asked).toHaveCount(0);
     await expect(row(page, "notes.txt")).toBeVisible();
-    page.once("dialog", (dialog) => void dialog.accept());
     await row(page, "notes.txt").locator('[data-action="delete-attachment"]').click();
-    await expect(page.locator("[data-attachment-notice]")).toHaveText("Deleted notes.txt.");
+    await confirm(page);
+    await expect(toast(page, "Deleted notes.txt.")).toBeVisible();
     await expect(row(page, "notes.txt")).toHaveCount(0);
-    expect(asked[0]).toContain("Delete notes.txt for good?");
     expect((await attachmentsOf(api, wiki.id)).map((a) => a.fileName)).toEqual(["dropped.png"]);
   });
 
@@ -167,9 +165,8 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     await expect(editorBox(page).locator("figure[data-image] img")).toBeVisible();
     await publishFromEditor(page);
     await expect(page).toHaveURL(new RegExp(`/p/${wiki.id}/runbook$`));
-
-    page.once("dialog", (dialog) => void dialog.accept());
     await row(page, "gone.png").locator('[data-action="delete-attachment"]').click();
+    await confirm(page);
     await expect(row(page, "gone.png")).toHaveCount(0);
     await expect(page.locator("[data-doc] [data-image-missing]")).toHaveText("This image was deleted. Remove it from the page, or attach the picture again.");
   });
@@ -230,8 +227,8 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
 
       await publishFromEditor(page);
       await expect(page).toHaveURL(new RegExp(`/p/${wiki.id}/runbook$`));
-      page.once("dialog", (dialog) => void dialog.accept());
       await row(page, "old.png").locator('[data-action="delete-attachment"]').click();
+      await confirm(page);
       await expect(page.locator("[data-doc] [data-image-missing]")).toBeVisible();
       await panel(page)
         .locator("[data-attachment-input]")

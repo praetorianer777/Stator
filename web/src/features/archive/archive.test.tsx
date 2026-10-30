@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { Archive, ArchiveItem } from "@/api/archive";
 import type { Page } from "@/api/pages";
 import type { Hit } from "@/api/search";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { renderAt, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 // The edit route's chunk carries the editor. Loaded inside a test it outlasted
@@ -116,7 +116,6 @@ describe("an archived page", () => {
   });
 
   it("is archived from the page menu after asking", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     const sent = stubPage(
       plansId,
       "Plans",
@@ -129,10 +128,13 @@ describe("an archived page", () => {
       await userEvent.click(screen.getByRole("menuitem", { name: "Archive" }));
     };
     await pick();
+    expect(await confirmDialog()).toHaveAccessibleName("Archive page Plans?");
+    await answerConfirm(false);
     expect(sent.some((r) => r.method === "PUT")).toBe(false);
     await pick();
+    expect(await confirmDialog()).toHaveTextContent("It and every page below it stay readable");
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((r) => r.method === "PUT" && r.path === `/pages/${plansId}/archive`)).toBe(true));
-    expect(confirm).toHaveBeenLastCalledWith(expect.stringContaining("Archive Plans and every page below it?"));
   });
 
   it("is not offered to somebody who may not archive", async () => {
@@ -191,7 +193,6 @@ describe("the space's archive", () => {
   });
 
   it("archives the whole space from its details, after asking, and brings it back", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     let current = space;
     const sent = stubApi({
       "GET /spaces/DOCS": () => ({ status: 200, body: { space: current } }),
@@ -207,6 +208,7 @@ describe("the space's archive", () => {
     });
     await renderAt("/s/DOCS/settings");
     await userEvent.click(await screen.findByRole("button", { name: "Archive space" }));
+    await answerConfirm(true);
     expect(await screen.findByText(/Ada Lovelace archived this space on/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Unarchive space" }));
     expect(await screen.findByText("The space is unarchived.")).toBeInTheDocument();

@@ -5,7 +5,7 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, confirm } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // Delivery goes through the outbox and the worker.
@@ -104,9 +104,8 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(first).toContainText("First thought. Revised.");
     await expect(first.locator("[data-comment-edited]")).toBeVisible();
     await expect(first.locator('[data-action="edit-comment"]')).toBeFocused();
-
-    page.once("dialog", (dialog) => void dialog.accept());
     await first.locator('[data-action="delete-comment"]').click();
+    await confirm(page);
     await expect(first.locator("[data-comment-placeholder]")).toHaveText("This comment was deleted.");
     await expect(first).toContainText("Alice");
     await expect(comments(page).locator("[data-thread]")).toHaveCount(1);
@@ -114,8 +113,8 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-comment-count]")).toHaveText("1 comment");
 
     const reply = comments(page).locator("[data-comment]").last();
-    page.once("dialog", (dialog) => void dialog.accept());
     await reply.locator('[data-action="delete-comment"]').click();
+    await confirm(page);
     await expect(comments(page).locator("[data-thread]")).toHaveCount(0);
     await expect(comments(page).locator("[data-comments-empty]")).toBeVisible();
     await expect(page.locator("[data-comment-count]")).toHaveCount(0);
@@ -164,8 +163,8 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     );
     await openPage(bob, space.key, plan, () => expect(alices.locator('[data-action="delete-comment"]')).toBeVisible(ONE_LOOK));
     await expectAccessible(bob);
-    bob.once("dialog", (dialog) => void dialog.accept());
     await alices.locator('[data-action="delete-comment"]').click();
+    await confirm(bob);
     await expect(alices).toHaveCount(0);
   });
 

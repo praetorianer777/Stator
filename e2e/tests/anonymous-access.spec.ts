@@ -2,7 +2,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -48,7 +48,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       await page.goto("/settings/permissions");
       const org = page.locator("[data-anonymous-access]");
       await org.locator('[data-action="anonymous-access"]').click();
-      await expect(org.getByRole("status")).toHaveText("Saved.");
+      await expect(toast(page, "Saved.")).toBeVisible();
       await expect(org.locator("[data-public-address]")).toContainText(`${WEB_URL}/public`);
 
       await page.goto(`/s/${key}/settings?tab=permissions`);

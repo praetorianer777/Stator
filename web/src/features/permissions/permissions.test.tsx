@@ -68,11 +68,11 @@ describe("the organization's permissions", () => {
 
     await userEvent.type(within(card).getByRole("combobox", { name: "Add a person or group" }), "Eng");
     await userEvent.click(await within(card).findByRole("option", { name: /Engineering/ }));
-    expect(within(card).getByText("Added Engineering.")).toBeInTheDocument();
+    expect(await screen.findByText("Added Engineering.")).toBeInTheDocument();
     expect(within(card).getByText("Engineering", { selector: "[data-subject] span" })).toBeInTheDocument();
     expect(sent.some((r) => r.method === "PUT")).toBe(false);
     await userEvent.click(within(card).getByRole("button", { name: "Save changes" }));
-    expect(await within(card).findByText("Saved.")).toBeInTheDocument();
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
     expect(sent.find((r) => r.method === "PUT")).toMatchObject({ path: "/site/permissions/createSpace", body: { subjects: [{ type: "group", id: ids.eng }] } });
   });
 

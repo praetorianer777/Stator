@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { StalePage } from "@/api/stale";
 import { STALE_DEFAULT_DAYS, STALE_PATH } from "@/config";
-import { arrival, renderAt, signedIn, stubApi, type Answer } from "@/test/app";
+import { arrival, renderAt, signedIn, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -158,7 +158,6 @@ describe("the stale content report", () => {
   });
 
   it("archives the chosen pages one at a time once the reader agrees, and reads the report again", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const archived: string[] = [];
     let reads = 0;
     const { sent } = report({
@@ -184,7 +183,8 @@ describe("the stale content report", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Select every page shown" }));
     expect(screen.getByRole("checkbox", { name: "Select Onboarding" })).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Archive these 2 pages and every page below them?"));
+    expect(await confirmDialog()).toHaveAccessibleName("Archive these 2 pages?");
+    await answerConfirm(true);
     expect(await screen.findByText("Archived 2 pages.")).toBeInTheDocument();
     expect(archived).toEqual([runbookId, first[1]!.id]);
     expect(sent.filter((each) => each.method === "PUT")).toHaveLength(2);
@@ -192,7 +192,6 @@ describe("the stale content report", () => {
   });
 
   it("archives nothing when the reader thinks better of it, and says where it stopped when the server refuses", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { sent } = report({
       [`PUT /pages/${runbookId}/archive`]: { status: 200, body: { page: aPage({ id: runbookId }) } },
       [`PUT /pages/${first[1]!.id}/archive`]: {
@@ -203,10 +202,11 @@ describe("the stale content report", () => {
     await renderAt(STALE_PATH);
     await userEvent.click(await screen.findByRole("checkbox", { name: "Select every page shown" }));
     await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    await answerConfirm(false);
     expect(sent.filter((each) => each.method === "PUT")).toHaveLength(0);
 
-    confirm.mockReturnValue(true);
     await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    await answerConfirm(true);
     expect(await screen.findByText(/Archived 1 of the pages, then stopped: Only an administrator of this space can archive pages/)).toBeInTheDocument();
   });
 

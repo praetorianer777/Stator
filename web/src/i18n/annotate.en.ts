@@ -42,6 +42,6 @@ export const annotateEn = {
   unchanged: "Draw, write or crop something first, then save.",
   refused: (name: string, why: string) => `The edited ${name} could not be saved: ${why}`,
   broke: (name: string) => `Saving the edited ${name} broke off. Check your connection and save again.`,
-  confirmDiscard: "Discard what you drew on this picture?",
+  confirmDiscard: "What you drew on this picture is lost.",
   saved: (name: string, version: number) => `Saved the edited ${name} as version ${version}.`,
 };

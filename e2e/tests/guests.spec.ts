@@ -3,7 +3,7 @@ import { must } from "../fixtures/api";
 import { ME_PATH, expect, startSSO, submitKeycloak } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -53,7 +53,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       await card.getByLabel("Email address", { exact: true }).fill(CAROL.email);
       await card.getByLabel("May", { exact: true }).selectOption("commenter");
       await card.locator('[data-action="invite-guest"]').click();
-      await expect(card.getByRole("status")).toHaveText(`${CAROL.email} may sign in to this space now.`);
+      await expect(toast(page, `${CAROL.email} may sign in to this space now.`)).toBeVisible();
       await expect(card.locator(`[data-guest="${CAROL.email}"]`)).toContainText("Read and comment");
       await expectAccessible(page);
 
@@ -87,7 +87,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       await page.goto(`/s/${key}/settings?tab=guests`);
       await card.locator(`[data-guest="${CAROL.email}"] [data-action="remove-guest"]`).click();
       await card.locator('[data-action="confirm-remove-guest"]').click();
-      await expect(card.getByRole("status")).toContainText("was removed.");
+      await expect(toast(page, "was removed.")).toBeVisible();
       await expect(card.locator(`[data-guest="${CAROL.email}"]`)).toHaveCount(0);
 
       // Her open session stops reaching the organisation at once.

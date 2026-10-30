@@ -45,8 +45,7 @@ export const pageDe: typeof pageEn = {
   copySubmit: "Seite kopieren",
   loadingPlaces: "Die Seiten des Bereichs werden geladen",
   moveToTrash: "In den Papierkorb",
-  confirmTrash: (title: string) =>
-    `${title} und alle Seiten darunter in den Papierkorb verschieben? Sie lassen sich aus dem Papierkorb des Bereichs wiederherstellen.`,
+  confirmTrash: "Sie und alle Seiten darunter kommen in den Papierkorb und lassen sich aus dem Papierkorb des Bereichs wiederherstellen.",
   history: "Verlauf",
   unpublished: "Unveröffentlicht",
   unpublishedNote: "Nur Sie sehen diese Seite, bis Sie sie veröffentlichen.",
@@ -58,8 +57,8 @@ export const draftDe: typeof draftEn = {
   close: "Schließen",
   publish: "Veröffentlichen",
   discard: "Entwurf verwerfen",
-  confirmDiscard: "Ihren Entwurf verwerfen? Die Seite bleibt, wie sie zuletzt veröffentlicht wurde.",
-  confirmDiscardUnpublished: "Ihre Änderungen verwerfen? Die Seite behält den Inhalt, mit dem sie angelegt wurde.",
+  confirmDiscard: "Die Seite bleibt, wie sie zuletzt veröffentlicht wurde.",
+  confirmDiscardUnpublished: "Die Seite behält den Inhalt, mit dem sie angelegt wurde.",
   saving: "Entwurf wird gespeichert",
   saved: "Entwurf gespeichert. Nur Sie sehen ihn, bis Sie veröffentlichen.",
   notSaved: (reason: string) =>
@@ -102,7 +101,7 @@ export const scheduleDe: typeof scheduleEn = {
   change: "Ändern",
   editAgain: "Bearbeiten und erneut planen",
   cancel: "Planung aufheben",
-  confirmCancel: "Diese geplante Veröffentlichung aufheben? Der Entwurf bleibt.",
+  confirmCancel: "Der Entwurf bleibt.",
 };
 
 export const liveDe: typeof liveEn = {
@@ -150,8 +149,8 @@ export const historyDe: typeof historyEn = {
   compareWithPreviousOf: (n: number) => `Version ${n} mit der vorherigen vergleichen`,
   restore: "Wiederherstellen",
   restoreVersion: (n: number) => `Version ${n} wiederherstellen`,
-  confirmRestore: (n: number) =>
-    `Version ${n} wiederherstellen? Sie wird als neue Version oben im Verlauf erneut veröffentlicht, nichts im Verlauf geht verloren, und alle, die die Seite beobachten, werden benachrichtigt.`,
+  confirmRestore:
+    "Sie wird als neue Version oben im Verlauf erneut veröffentlicht, nichts im Verlauf geht verloren, und alle, die die Seite beobachten, werden benachrichtigt.",
   restoreConflict:
     "Jemand hat diese Seite veröffentlicht, während Sie sie angesehen haben, der Verlauf hat sich also geändert. Sehen Sie sich die neueste Version an und stellen Sie dann erneut wieder her, wenn Sie das noch möchten.",
   restored: (n: number, latest: number) => `Version ${n} als Version ${latest} wiederhergestellt.`,

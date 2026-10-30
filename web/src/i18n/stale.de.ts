@@ -23,8 +23,8 @@ export const staleDe: typeof staleEn = {
   selectAll: "Alle angezeigten Seiten auswählen",
   select: (title: string) => `${title} auswählen`,
   archiveSelected: (n: number) => (n === 0 ? "Ausgewählte Seiten archivieren" : n === 1 ? "1 Seite archivieren" : `${n} Seiten archivieren`),
-  confirmArchive: (n: number) =>
-    `${n === 1 ? "Diese Seite" : `Diese ${n} Seiten`} und alle Seiten darunter archivieren? Sie bleiben lesbar und behalten ihre Adressen, aber niemand kann sie ändern, bis ein Administrator des Bereichs sie aus dem Archiv holt.`,
+  confirmArchive:
+    "Sie und alle Seiten darunter bleiben lesbar und behalten ihre Adressen, aber niemand kann sie ändern, bis ein Administrator des Bereichs sie aus dem Archiv holt.",
   archivedCount: (n: number) => (n === 1 ? "1 Seite archiviert." : `${n} Seiten archiviert.`),
   archiveStopped: (done: number, reason: string) => `${done} der Seiten archiviert, dann abgebrochen: ${reason}`,
   columnPage: "Seite",

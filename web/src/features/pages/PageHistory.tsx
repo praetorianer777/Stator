@@ -1,5 +1,5 @@
 import { localDateFormat } from "@/lib/format";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
@@ -16,7 +16,7 @@ import {
   type Comparison,
   type VersionEntry,
 } from "@/api/versions";
-import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Tag, Td, Th, cx, type Crumb } from "@/components/ui";
+import { Table, Tag, Page as PageFrame, PageHeader, Button, cx, Td, Th, EmptyState, ErrorBanner, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { Through } from "@/components/Through";
 import { DocPageContext } from "@/features/editor/BlockViews";
@@ -24,9 +24,8 @@ import { DocDiffView, DocView } from "@/features/editor/DocView";
 import { HISTORY_PAGE_SIZE } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
-import { PageLink } from "./PageLink";
 import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
-import { pageCrumbs } from "./PageScreen";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /** Where in a page's history the reader is: the list, one version, or two sides compared. */
 export interface HistorySearch {
@@ -57,31 +56,6 @@ interface ScreenProps {
 }
 
 /** The crumbs up to the page itself, and on to its history when the screen is below that. */
-function historyCrumbs(space: Space, page: Page, withHistory: boolean): Crumb[] {
-  const crumbs = [
-    ...pageCrumbs(space, page),
-    {
-      label: page.home ? space.name : page.title,
-      render: (label: ReactNode) => (
-        <PageLink spaceKey={space.key} id={page.id} title={page.title} home={page.home}>
-          {label}
-        </PageLink>
-      ),
-    },
-  ];
-  if (withHistory) {
-    crumbs.push({
-      label: t.history.crumb,
-      render: (label) => (
-        <Link to="/s/$spaceKey/p/$pageId/$slug/history" params={{ spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) }}>
-          {label}
-        </Link>
-      ),
-    });
-  }
-  return crumbs;
-}
-
 function sideLabel(side: { number: number; draft: boolean }): string {
   if (side.draft) return t.history.yourDraft;
   return side.number === 0 ? t.history.emptyPage : t.history.version(side.number);
@@ -91,16 +65,17 @@ function sideLabel(side: { number: number; draft: boolean }): string {
 function useRestore(page: Page) {
   const restore = useRestoreVersion(page.id);
   const queryClient = useQueryClient();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const [failure, setFailure] = useState("");
-  const run = (number: number) => {
-    if (!window.confirm(t.history.confirmRestore(number))) return;
-    setNotice("");
+  const confirm = useConfirm();
+  const run = async (number: number) => {
+    const ask = { noun: t.kit.confirm.things.versionNumber(number), verb: t.kit.confirm.verbs.restore, body: t.history.confirmRestore };
+    if (!(await confirm(ask))) return;
     setFailure("");
     restore.mutate(
       { number, baseVersion: page.version },
       {
-        onSuccess: (saved) => setNotice(t.history.restored(number, saved.version)),
+        onSuccess: (saved) => toast.success(t.history.restored(number, saved.version)),
         onError: (error) => {
           if (error instanceof ApiError && error.code === "conflict") {
             setFailure(t.history.restoreConflict);
@@ -110,14 +85,7 @@ function useRestore(page: Page) {
       },
     );
   };
-  const messages = (
-    <>
-      <p role="status" className="text-sm text-ink-muted [&:empty]:hidden" data-history-notice>
-        {notice}
-      </p>
-      {failure && <ErrorBanner>{failure}</ErrorBanner>}
-    </>
-  );
+  const messages = <>{failure && <ErrorBanner>{failure}</ErrorBanner>}</>;
   return { run, pending: restore.isPending, messages };
 }
 
@@ -143,8 +111,8 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
   const total = data?.total ?? 0;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4" data-page-history={page.id}>
-      <PageHeader crumbs={historyCrumbs(space, page, false)} title={t.history.title(page.title)} meta={t.history.intro} />
+    <PageFrame width="narrow" className="space-y-4" data-page-history={page.id}>
+      <PageHeader title={t.history.title(page.title)} meta={t.history.intro} />
       {restore.messages}
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -258,7 +226,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                             variant="secondary"
                             aria-label={t.history.restoreVersion(entry.number)}
                             loading={restore.pending}
-                            onClick={() => restore.run(entry.number)}
+                            onClick={() => void restore.run(entry.number)}
                             data-action="restore-version"
                           >
                             {t.history.restore}
@@ -283,7 +251,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
           )}
         </>
       )}
-    </div>
+    </PageFrame>
   );
 }
 
@@ -297,7 +265,6 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
       <PageHeader
         className={PAGE_SHEET_HEADER}
         style={sheet.style}
-        crumbs={historyCrumbs(space, page, true)}
         title={t.history.viewingTitle(version?.title ?? page.title, number)}
         meta={
           version && (
@@ -316,7 +283,7 @@ function VersionScreen({ page, space, number, onSearch }: ScreenProps & { number
               {t.history.compareWithPrevious}
             </Button>
             {page.can.edit && !latest && (
-              <Button variant="secondary" loading={restore.pending} onClick={() => restore.run(number)} data-action="restore-version">
+              <Button variant="secondary" loading={restore.pending} onClick={() => void restore.run(number)} data-action="restore-version">
                 {t.history.restoreVersion(number)}
               </Button>
             )}
@@ -365,7 +332,6 @@ function CompareScreen({ page, space, from, to }: ScreenProps & { from?: Compare
       <PageHeader
         className={PAGE_SHEET_HEADER}
         style={sheet.style}
-        crumbs={historyCrumbs(space, page, true)}
         title={t.history.compareTitle}
         actions={
           to === "draft" &&

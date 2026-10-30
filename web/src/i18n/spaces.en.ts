@@ -79,7 +79,7 @@ export const spaceSettingsEn = {
   dangerTitle: "Delete this space",
   dangerBody: "Deleting the space deletes every page in it for good. This cannot be undone.",
   delete: "Delete space",
-  confirmDelete: (name: string, key: string) => `Delete ${name} (${key}) and every page in it for good?`,
+  confirmDelete: "Every page in it goes for good. This cannot be undone.",
   trashIntro:
     "Deleted pages wait here with the pages that went with them. A restore puts a page back where it was, or under the home page when that page is gone.",
   trashEmpty: "The trash is empty.",
@@ -91,8 +91,8 @@ export const spaceSettingsEn = {
   emptyTrash: "Empty trash",
   restoreItem: (title: string) => `Restore ${title}`,
   purgeItem: (title: string) => `Delete ${title} for good`,
-  confirmPurge: (title: string) => `Delete ${title} and the pages that went with it for good? This cannot be undone.`,
-  confirmEmpty: "Delete everything in the trash for good? This cannot be undone.",
+  confirmPurge: "It and the pages that went with it go for good. This cannot be undone.",
+  confirmEmpty: "Everything in it goes for good. This cannot be undone.",
   restored: (title: string) => `Restored ${title}.`,
   purged: (title: string) => `Deleted ${title} for good.`,
   emptied: "The trash is empty now.",
@@ -110,8 +110,8 @@ export const archiveEn = {
   tag: "Archived",
   menuArchive: "Archive",
   menuUnarchive: "Unarchive",
-  confirmArchive: (title: string) =>
-    `Archive ${title} and every page below it? They stay readable and keep their addresses, but nobody can change them until an administrator of the space unarchives them.`,
+  confirmArchive:
+    "It and every page below it stay readable and keep their addresses, but nobody can change them until an administrator of the space unarchives them.",
   bannerPage: "This page is archived. It can be read and linked, but nobody can change it.",
   bannerSpace: "This whole space is archived. Its pages can be read and linked, but nobody can change them.",
   bannerWith: (title: string) => `It was archived together with ${title} above it.`,
@@ -139,8 +139,7 @@ export const archiveEn = {
       : `This space was archived on ${when}. Its pages can be read, but nobody can change them.`,
   spaceArchive: "Archive space",
   spaceUnarchive: "Unarchive space",
-  confirmArchiveSpace: (name: string) =>
-    `Archive ${name}? Its pages stay readable, but nobody can change them until an administrator of the space unarchives it.`,
+  confirmArchiveSpace: "Its pages stay readable, but nobody can change them until an administrator of the space unarchives it.",
   spaceUnarchived: "The space is unarchived.",
   showArchived: "Show archived spaces",
   searchFilter: "Include archived pages",

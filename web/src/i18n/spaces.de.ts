@@ -82,7 +82,7 @@ export const spaceSettingsDe: typeof spaceSettingsEn = {
   dangerTitle: "Diesen Bereich löschen",
   dangerBody: "Mit dem Bereich werden alle Seiten darin endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
   delete: "Bereich löschen",
-  confirmDelete: (name: string, key: string) => `${name} (${key}) und alle Seiten darin endgültig löschen?`,
+  confirmDelete: "Alle Seiten darin gehen endgültig verloren. Das lässt sich nicht rückgängig machen.",
   trashIntro:
     "Gelöschte Seiten warten hier mit den Seiten, die mit ihnen gegangen sind. Beim Wiederherstellen kommt eine Seite an ihren alten Platz zurück, oder unter die Startseite, wenn es diesen nicht mehr gibt.",
   trashEmpty: "Der Papierkorb ist leer.",
@@ -94,8 +94,8 @@ export const spaceSettingsDe: typeof spaceSettingsEn = {
   emptyTrash: "Papierkorb leeren",
   restoreItem: (title: string) => `${title} wiederherstellen`,
   purgeItem: (title: string) => `${title} endgültig löschen`,
-  confirmPurge: (title: string) => `${title} und die Seiten, die mit ihr gegangen sind, endgültig löschen? Das lässt sich nicht rückgängig machen.`,
-  confirmEmpty: "Alles im Papierkorb endgültig löschen? Das lässt sich nicht rückgängig machen.",
+  confirmPurge: "Sie und die Seiten, die mit ihr gegangen sind, gehen endgültig verloren. Das lässt sich nicht rückgängig machen.",
+  confirmEmpty: "Alles darin geht endgültig verloren. Das lässt sich nicht rückgängig machen.",
   restored: (title: string) => `${title} wiederhergestellt.`,
   purged: (title: string) => `${title} endgültig gelöscht.`,
   emptied: "Der Papierkorb ist jetzt leer.",
@@ -114,8 +114,8 @@ export const archiveDe: typeof archiveEn = {
   tag: "Archiviert",
   menuArchive: "Archivieren",
   menuUnarchive: "Aus dem Archiv holen",
-  confirmArchive: (title: string) =>
-    `${title} und alle Seiten darunter archivieren? Sie bleiben lesbar und behalten ihre Adressen, aber niemand kann sie ändern, bis ein Administrator des Bereichs sie aus dem Archiv holt.`,
+  confirmArchive:
+    "Sie und alle Seiten darunter bleiben lesbar und behalten ihre Adressen, aber niemand kann sie ändern, bis ein Administrator des Bereichs sie aus dem Archiv holt.",
   bannerPage: "Diese Seite ist archiviert. Sie können sie lesen und verlinken, aber niemand kann sie ändern.",
   bannerSpace: "Dieser ganze Bereich ist archiviert. Sie können seine Seiten lesen und verlinken, aber niemand kann sie ändern.",
   bannerWith: (title: string) => `Sie wurde zusammen mit ${title} darüber archiviert.`,
@@ -143,8 +143,7 @@ export const archiveDe: typeof archiveEn = {
       : `Dieser Bereich wurde am ${when} archiviert. Sie können seine Seiten lesen, aber niemand kann sie ändern.`,
   spaceArchive: "Bereich archivieren",
   spaceUnarchive: "Bereich aus dem Archiv holen",
-  confirmArchiveSpace: (name: string) =>
-    `${name} archivieren? Seine Seiten bleiben lesbar, aber niemand kann sie ändern, bis ein Administrator des Bereichs ihn aus dem Archiv holt.`,
+  confirmArchiveSpace: "Seine Seiten bleiben lesbar, aber niemand kann sie ändern, bis ein Administrator des Bereichs ihn aus dem Archiv holt.",
   spaceUnarchived: "Der Bereich wurde aus dem Archiv geholt.",
   showArchived: "Archivierte Bereiche zeigen",
   searchFilter: "Archivierte Seiten einbeziehen",

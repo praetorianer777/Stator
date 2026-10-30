@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ArmatureAccount, ArmatureConnection } from "@/api/armature";
-import { renderAt, stubApi } from "@/test/app";
+import { renderAt, stubApi, answerConfirm } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => {
@@ -95,7 +95,6 @@ describe("connecting Armature in one step", () => {
         return { status: 200, body: { connection: current } };
       },
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     await renderAt("/settings/armature?armature=connected");
     expect(await screen.findByText("Armature is connected: Stator made its webhook there, and your own account is connected.")).toBeInTheDocument();
@@ -106,6 +105,7 @@ describe("connecting Armature in one step", () => {
     await user.click(screen.getByRole("button", { name: "Test" }));
     expect(await screen.findByText("Armature reached Stator, which answered 204.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "New secret" }));
+    await answerConfirm(true);
     expect(await screen.findByText("The webhook has a new secret, which Stator stored.")).toBeInTheDocument();
     expect(sent.filter((r) => r.method === "POST").map((r) => r.path)).toEqual([
       "/armature/connection/webhook/test",

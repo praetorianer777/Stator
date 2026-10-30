@@ -151,7 +151,7 @@ describe("a post's own page", () => {
       [`POST /pages/${id}/visit`]: { status: 204 },
     });
     await renderAt(`/s/DOCS/p/${id}/launch-day`);
-    await waitFor(() => expect(document.querySelector("[data-blog-crumb]")).toHaveAttribute("href", "/s/DOCS/blog"));
+    await waitFor(() => expect(document.querySelector('[data-crumb="blog"]')).toHaveAttribute("href", "/s/DOCS/blog"));
     expect(document.querySelector("[data-post-date]")).toHaveTextContent("Posted on Oct 2, 2026");
     expect(document.querySelector('[data-action="new-page"]')).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));

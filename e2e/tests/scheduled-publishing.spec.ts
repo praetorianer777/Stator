@@ -6,7 +6,7 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, scrollsSideways, startInScheme, type ColourScheme, confirm } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
 const doc = (...lines: string[]) => ({ type: "doc" as const, content: lines.map((text) => ({ type: "paragraph", content: [{ type: "text", text }] })) });
@@ -107,8 +107,8 @@ test.describe("scheduled publishing", { tag: ["@auth"] }, () => {
     const bob = await pageAs("bob");
     await openUntil(bob, path, () => expect(note(bob)).toContainText("scheduled their draft of this page to publish on", ONE_LOOK));
     await expect(note(bob).locator('[data-action="edit-schedule"]')).toHaveCount(0);
-    bob.once("dialog", (asked) => void asked.accept());
     await note(bob).locator('[data-action="cancel-schedule"]').click();
+    await confirm(bob);
     await expect(note(bob)).toHaveCount(0);
 
     await openUntil(page, path, () => expect(page.locator("[data-draft-note]")).toBeVisible(ONE_LOOK));

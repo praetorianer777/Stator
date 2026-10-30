@@ -5,7 +5,7 @@ import type { Page } from "@/api/pages";
 import { subjectKey, subjectRef, type Subject } from "@/api/permissions";
 import { shareSearch, useSharePage, useViewers, type Share } from "@/api/sharing";
 import { Icon } from "@/components/icons";
-import { Button, Dialog, ErrorBanner, Field, Skeleton } from "@/components/ui";
+import { Button, Dialog, ErrorBanner, Field, Skeleton, DialogFooter } from "@/components/ui";
 import { SubjectGlyph, SubjectPicker } from "@/features/permissions/SubjectPicker";
 import { SHARE_MAX_RECIPIENTS, SHARE_MESSAGE_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
@@ -40,6 +40,8 @@ export function ShareDialog({ page, onClose }: { page: Page; onClose: () => void
   );
 }
 
+const SHARE_FORM_ID = "share-form";
+
 function Compose({ page, onClose, onSent }: { page: Page; onClose: () => void; onSent: (share: Share) => void }) {
   const { data: me } = useMe();
   const share = useSharePage(page.id);
@@ -59,6 +61,7 @@ function Compose({ page, onClose, onSent }: { page: Page; onClose: () => void; o
 
   return (
     <form
+      id={SHARE_FORM_ID}
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
@@ -104,14 +107,14 @@ function Compose({ page, onClose, onSent }: { page: Page; onClose: () => void; o
           <span data-share-error>{shareError(share.error)}</span>
         </ErrorBanner>
       )}
-      <div className="flex justify-end gap-2">
+      <DialogFooter>
         <Button type="button" variant="secondary" onClick={onClose}>
           {t.share.cancel}
         </Button>
-        <Button type="submit" icon={<Icon.Share />} loading={share.isPending} disabled={picked.length === 0} data-action="send-share">
+        <Button type="submit" form={SHARE_FORM_ID} icon={<Icon.Share />} loading={share.isPending} disabled={picked.length === 0} data-action="send-share">
           {t.share.send}
         </Button>
-      </div>
+      </DialogFooter>
     </form>
   );
 }
@@ -197,11 +200,11 @@ function Sent({ share, onClose }: { share: Share; onClose: () => void }) {
         <Icon.Check className="shrink-0 text-success" />
         {t.share.sent(share.people)}
       </p>
-      <div className="flex justify-end">
+      <DialogFooter>
         <Button onClick={onClose} data-action="close-share">
           {t.share.done}
         </Button>
-      </div>
+      </DialogFooter>
     </div>
   );
 }

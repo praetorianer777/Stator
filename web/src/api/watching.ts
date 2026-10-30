@@ -1,4 +1,5 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { WATCHERS_LIMIT, WATCHES_PAGE_SIZE } from "@/config";
 import { api } from "./client";
 import { pageQueryKey, pagesQueryKey, type PageInSpace } from "./pages";

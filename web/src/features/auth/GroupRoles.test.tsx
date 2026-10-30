@@ -88,7 +88,7 @@ describe("the roles groups grant", () => {
     expect(within(card).getByLabelText("Role")).toHaveValue("member");
     await userEvent.click(within(card).getByRole("button", { name: "Map group" }));
     await waitFor(() => expect(sent.find((r) => r.method === "POST")?.body).toEqual({ group: "engineering", role: "member" }));
-    expect(await within(card).findByText("engineering now grants Member.")).toBeInTheDocument();
+    expect(await screen.findByText("engineering now grants Member.")).toBeInTheDocument();
     expect(await within(card).findByText("engineering", { selector: "td" })).toBeInTheDocument();
     expect(within(card).getByLabelText("Group")).toHaveValue("");
   });
@@ -116,7 +116,7 @@ describe("the roles groups grant", () => {
     const card = await mappingCard();
     await userEvent.click(await within(card).findByRole("button", { name: "Unmap stator-administrators" }));
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === `/oidc-provider/group-roles/${admins.id}`)).toBe(true));
-    expect(await within(card).findByText("stator-administrators no longer grants a role.")).toBeInTheDocument();
+    expect(await screen.findByText("stator-administrators no longer grants a role.")).toBeInTheDocument();
     await waitFor(() => expect(within(card).queryByText("stator-administrators", { selector: "td" })).toBeNull());
   });
 
@@ -205,7 +205,7 @@ describe("the members list", () => {
     expect(question).toHaveTextContent("Remove Bob Builder?");
     await userEvent.click(within(question).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === `/users/${bob.userId}`)).toBe(true));
-    expect(await within(card).findByText("Bob Builder was removed.")).toBeInTheDocument();
+    expect(await screen.findByText("Bob Builder was removed.")).toBeInTheDocument();
     await waitFor(() => expect(within(card).queryByText("Bob Builder")).toBeNull());
   });
 });

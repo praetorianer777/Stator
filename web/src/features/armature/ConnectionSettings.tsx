@@ -14,7 +14,7 @@ import {
   type ArmaturePartner,
   type ArmatureWebhookTest,
 } from "@/api/armature";
-import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import {
   ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS,
@@ -28,6 +28,8 @@ import { useDebounced } from "@/lib/debounce";
 import { localDateFormat } from "@/lib/format";
 import { ConnectedApp } from "./ConnectedApp";
 import { ConnectArmatureLink } from "./connectLink";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { useArrivalToast } from "@/features/shell/arrivalToast";
 
 /**
  * The organization's Armature instance and its webhook, for administrators; outcome is how a connect in one step
@@ -39,7 +41,9 @@ export function ConnectionSettings({ outcome }: { outcome?: ArmatureOutcome }) {
   // says about that save has to outlive the remount.
   const save = useSaveArmatureConnection();
   const remove = useRemoveArmatureConnection();
-  const [notice, setNotice] = useState(outcome === "connected" ? (t.armature.oneStep.outcomes.connected ?? "") : "");
+  const toast = useToast();
+  const confirm = useConfirm();
+  useArrivalToast(outcome === "connected" ? t.armature.oneStep.outcomes.connected : undefined);
   const [manualSecret, setManualSecret] = useState(false);
   if (isLoading) return <Skeleton />;
   if (error) return <ErrorBanner>{error instanceof ApiError && error.status === 403 ? t.armature.notAdmin : error.message}</ErrorBanner>;
@@ -49,17 +53,13 @@ export function ConnectionSettings({ outcome }: { outcome?: ArmatureOutcome }) {
   const oneStep = Boolean(connection?.partnerWebhook.offered) && !manualSecret;
   const failed = outcome && outcome !== "connected" ? outcome : undefined;
 
-  function disconnect() {
-    if (!window.confirm(t.armature.confirmDisconnect)) return;
-    setNotice("");
-    remove.mutate(undefined, { onSuccess: () => setNotice(t.armature.disconnected) });
+  async function disconnect() {
+    if (!(await confirm({ noun: "Armature", verb: t.kit.confirm.verbs.disconnect, body: t.armature.confirmDisconnect }))) return;
+    remove.mutate(undefined, { onSuccess: () => toast.success(t.armature.disconnected) });
   }
 
   return (
     <div className="space-y-6">
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-armature-notice>
-        {notice}
-      </p>
       {failed && (
         <div data-armature-outcome={failed}>
           <ErrorBanner>{t.armature.oneStep.outcomes[failed] ?? t.armature.account.outcomes[failed]}</ErrorBanner>
@@ -69,7 +69,7 @@ export function ConnectionSettings({ outcome }: { outcome?: ArmatureOutcome }) {
         key={connection?.updatedAt ?? "new"}
         connection={connection}
         save={save}
-        onSaved={setNotice}
+        onSaved={toast.success}
         withSecret={!oneStep}
         onManualSecret={connection?.partnerWebhook.offered ? () => setManualSecret((open) => !open) : undefined}
         manualSecret={manualSecret}
@@ -85,7 +85,7 @@ export function ConnectionSettings({ outcome }: { outcome?: ArmatureOutcome }) {
           <SectionTitle id="armature-disconnect">{t.armature.disconnectTitle}</SectionTitle>
           <p className="text-sm text-ink-muted">{t.armature.disconnectIntro}</p>
           {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
-          <Button variant="danger" onClick={disconnect} loading={remove.isPending} data-action="disconnect-armature">
+          <Button variant="danger" onClick={() => void disconnect()} loading={remove.isPending} data-action="disconnect-armature">
             {t.armature.disconnect}
           </Button>
         </section>
@@ -259,9 +259,10 @@ function OneStep({ connection }: { connection: ArmatureConnection }) {
   const rotate = useRotateArmatureWebhook();
   const test = useTestArmatureWebhook();
   const [said, setSaid] = useState("");
+  const confirm = useConfirm();
 
-  function renew() {
-    if (!window.confirm(o.confirmRotate)) return;
+  async function renew() {
+    if (!(await confirm({ noun: t.kit.confirm.things.webhookSecret, verb: t.kit.confirm.verbs.rotate, body: o.confirmRotate }))) return;
     setSaid("");
     test.reset();
     rotate.mutate(undefined, { onSuccess: () => setSaid(o.rotated) });

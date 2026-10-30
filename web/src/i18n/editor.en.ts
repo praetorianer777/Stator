@@ -121,7 +121,7 @@ export const editorEn = {
     cancel: "Cancel",
     loading: "Loading the drawing canvas.",
     loadFailed: "The drawing canvas could not be loaded. Check your connection, then close this and open the sketch again.",
-    confirmDiscard: "Discard your changes to this sketch?",
+    confirmDiscard: "Your changes to this sketch are lost.",
     picturesLeftOut: "Pictures cannot go in a sketch yet, so they were left out. Put the picture on the page beside the sketch instead.",
     tooLarge: "This sketch is too large to keep. Take some shapes out, or split it into two sketches.",
     canvasHint: "Escape inside the canvas lets go of what is selected; Tab leaves the canvas for Done and Cancel.",

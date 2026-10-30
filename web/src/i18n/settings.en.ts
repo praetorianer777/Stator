@@ -49,7 +49,7 @@ export const tokensEn = {
   neverExpires: "Never",
   revoke: "Revoke",
   revokeLabel: (name: string) => `Revoke ${name}`,
-  confirmRevoke: (name: string) => `Revoke ${name}? Anything using it is refused from now on.`,
+  confirmRevoke: "Anything using it is refused from now on.",
   revoked: (name: string) => `${name} was revoked.`,
   mcpTitle: "Connect an assistant",
   mcpBody:

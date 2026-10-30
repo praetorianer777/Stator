@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Page } from "@/api/pages";
 import { useRemoteLinks, useRemoveRemoteLink, type RemoteLink } from "@/api/remoteLinks";
-import { Button, ErrorBanner, SectionTitle } from "@/components/ui";
+import { Button, ErrorBanner, SectionTitle, useToast } from "@/components/ui";
 import { t } from "@/i18n";
 
 /** The links in the order the API lists them, under one heading per source. */
@@ -19,15 +19,10 @@ function bySource(links: RemoteLink[]): [string, RemoteLink[]][] {
 export function PageRemoteLinks({ page }: { page: Page }) {
   const links = useRemoteLinks(page.id);
   const remove = useRemoveRemoteLink(page.id);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const rows = links.data ?? [];
-  const status = (
-    <p role="status" className="sr-only" data-remote-link-notice>
-      {notice}
-    </p>
-  );
-  // With its last link gone the section goes too, and the notice stays to say so.
-  if (rows.length === 0) return notice ? status : null;
+  // With its last link gone the section goes too; the toast says so.
+  if (rows.length === 0) return null;
 
   return (
     <section aria-labelledby="remote-links-title" className="mt-10" data-remote-links="">
@@ -53,7 +48,7 @@ export function PageRemoteLinks({ page }: { page: Page }) {
                     className="shrink-0 text-xs text-ink-subtle hover:text-danger"
                     aria-label={t.remoteLinks.remove(link.title)}
                     disabled={remove.isPending}
-                    onClick={() => remove.mutate(link, { onSuccess: () => setNotice(t.remoteLinks.removed(link.title)) })}
+                    onClick={() => remove.mutate(link, { onSuccess: () => toast.success(t.remoteLinks.removed(link.title)) })}
                     data-action="remove-remote-link"
                   >
                     {t.remoteLinks.removeShort}

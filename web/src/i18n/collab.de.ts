@@ -11,5 +11,5 @@ export const collabDe: typeof collabEn = {
     "Ihre Sitzung ist abgelaufen, Ihre Änderungen werden also nicht mehr geteilt. Kopieren Sie, was Sie geschrieben haben, melden Sie sich neu an und öffnen Sie den Editor noch einmal.",
   refused:
     "Sie dürfen diese Seite nicht mehr bearbeiten, Ihre Änderungen werden also nicht mehr geteilt. Bitten Sie jemanden, der den Bereich verwaltet, um Bearbeitungsrechte.",
-  confirmDiscard: "Den gemeinsamen Entwurf für alle verwerfen, die ihn bearbeiten? Die Seite bleibt, wie sie zuletzt veröffentlicht wurde.",
+  confirmDiscard: "Er geht für alle verloren, die ihn bearbeiten. Die Seite bleibt, wie sie zuletzt veröffentlicht wurde.",
 };

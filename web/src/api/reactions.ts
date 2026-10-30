@@ -1,4 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { threadsQueryKey, type Thread } from "./comments";
 import { api } from "./client";
 import { pageQueryKey, type PageInSpace } from "./pages";

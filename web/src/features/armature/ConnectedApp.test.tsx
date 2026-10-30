@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ArmatureAccount, ArmatureConnection } from "@/api/armature";
-import { arrival, renderAt, stubApi } from "@/test/app";
+import { arrival, renderAt, stubApi, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => {
@@ -171,13 +171,13 @@ describe("connecting one's account with one click", () => {
         return { status: 204 };
       },
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     await renderAt("/settings/profile");
     expect(await screen.findByText(/Armature ended this connection/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect Armature" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Stator also ends its access in Armature"));
+    expect(await confirmDialog()).toHaveTextContent("Stator also ends its access in Armature");
+    await answerConfirm(true);
     expect(await screen.findByText("Your Armature account is disconnected.")).toBeInTheDocument();
     expect(sent.some((r) => r.method === "DELETE")).toBe(true);
   });
@@ -253,13 +253,13 @@ describe("the connected app, for administrators", () => {
         return { status: 204 };
       },
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     await renderAt("/settings/armature");
     expect(await screen.findByText(/waits for an Armature administrator to allow it/)).toBeInTheDocument();
     expect(screen.getByText(/Stator registered itself/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Client id")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Forget app" }));
+    await answerConfirm(true);
     expect(await screen.findByText(/The app is forgotten/)).toBeInTheDocument();
     expect(await screen.findByText("Stator registers itself in Armature when the first member connects.")).toBeInTheDocument();
   });

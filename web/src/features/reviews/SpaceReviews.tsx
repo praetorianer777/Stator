@@ -4,6 +4,7 @@ import { Button, Card, ErrorBanner, SectionTitle, Skeleton } from "@/components/
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { ReviewRuleForm } from "./ReviewRuleForm";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /** The space's review rules for its administrators: the one for the whole space, and the branches that have their own. */
 export function SpaceReviews({ space }: { space: Space }) {
@@ -18,7 +19,11 @@ export function SpaceReviews({ space }: { space: Space }) {
         <SectionTitle>{t.review.spaceTitle}</SectionTitle>
         <p className="text-sm text-ink-muted">{t.review.spaceIntro}</p>
         {!whole && <p className="text-sm text-ink-subtle">{t.review.noSpaceRule}</p>}
-        <ReviewRuleForm target={{ spaceKey: space.key }} rule={whole} confirmRemove={t.review.confirmRemoveSpace} />
+        <ReviewRuleForm
+          target={{ spaceKey: space.key }}
+          rule={whole}
+          confirmRemove={{ noun: t.kit.confirm.things.spaceRule, body: t.review.confirmRemoveSpace }}
+        />
       </Card>
       <Card className="space-y-3 p-4" data-branch-review-rules="">
         <SectionTitle>{t.review.branchesTitle}</SectionTitle>
@@ -40,6 +45,7 @@ export function SpaceReviews({ space }: { space: Space }) {
 function BranchRule({ rule, space }: { rule: ReviewRule; space: Space }) {
   const page = rule.page!;
   const remove = useRemoveReviewRule({ pageId: page.id });
+  const confirm = useConfirm();
   return (
     <li className="flex flex-wrap items-center gap-3 py-2" data-branch-rule={page.id}>
       <div className="min-w-0 flex-1">
@@ -54,8 +60,9 @@ function BranchRule({ rule, space }: { rule: ReviewRule; space: Space }) {
         variant="secondary"
         aria-label={t.review.removeBranch(page.title)}
         loading={remove.isPending}
-        onClick={() => {
-          if (window.confirm(t.review.confirmRemovePage(page.title))) remove.mutate();
+        onClick={async () => {
+          const ask = { noun: t.kit.confirm.things.ruleOf(page.title), verb: t.kit.confirm.verbs.remove, body: t.review.confirmRemovePage };
+          if (await confirm(ask)) remove.mutate();
         }}
         data-action="remove-branch-rule"
       >

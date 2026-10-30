@@ -2,11 +2,13 @@ import { localDateFormat } from "@/lib/format";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useArmatureAccount, useCheckArmature, useConnectArmature, useDisconnectArmature, type ArmatureAccount } from "@/api/armature";
-import { Button, ButtonLink, Card, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, ButtonLink, Card, ErrorBanner, Field, SectionTitle, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ARMATURE_SECTION_ID, ARMATURE_TOKEN_PREFIX, type ArmatureOutcome } from "@/config";
 import { t } from "@/i18n";
 import { appConnectHref, tokensUrl } from "./connectLink";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { useArrivalToast } from "@/features/shell/arrivalToast";
 
 const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
@@ -29,20 +31,21 @@ export function AccountSection({
   const { data: account, isLoading, error } = useArmatureAccount();
   const check = useCheckArmature();
   const disconnect = useDisconnectArmature();
-  const [notice, setNotice] = useState(outcome === "connected" ? t.armature.account.outcomes.connected : "");
+  const toast = useToast();
+  const confirm = useConfirm();
+  useArrivalToast(outcome === "connected" ? t.armature.account.outcomes.connected : undefined);
   const [shownOutcome, setShownOutcome] = useState(outcome && outcome !== "connected" ? outcome : undefined);
 
-  function forget() {
+  async function forget() {
     const viaApp = account?.via === "app";
-    if (!window.confirm(viaApp ? t.armature.account.confirmDisconnectApp : t.armature.account.confirmDisconnect)) return;
-    setNotice("");
+    const body = viaApp ? t.armature.account.confirmDisconnectApp : t.armature.account.confirmDisconnect;
+    if (!(await confirm({ noun: t.armature.account.thing, verb: t.kit.confirm.verbs.disconnect, body }))) return;
     setShownOutcome(undefined);
-    disconnect.mutate(undefined, { onSuccess: () => setNotice(t.armature.account.disconnected) });
+    disconnect.mutate(undefined, { onSuccess: () => toast.success(t.armature.account.disconnected) });
   }
 
   function checkNow() {
-    setNotice("");
-    check.mutate(undefined, { onSuccess: (checked) => checked.status === "ok" && setNotice(t.armature.account.checked) });
+    check.mutate(undefined, { onSuccess: (checked) => checked.status === "ok" && toast.success(t.armature.account.checked) });
   }
 
   const failure = error ?? check.error ?? disconnect.error;
@@ -50,9 +53,6 @@ export function AccountSection({
     <section id={ARMATURE_SECTION_ID} aria-labelledby="armature-account" className="scroll-mt-16 space-y-3" data-armature-account>
       <SectionTitle id="armature-account">{t.armature.title}</SectionTitle>
       <p className="text-sm text-ink-muted">{t.armature.account.intro}</p>
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-armature-notice>
-        {notice}
-      </p>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
       {shownOutcome && (
         <div data-armature-outcome={shownOutcome}>
@@ -73,7 +73,7 @@ export function AccountSection({
               <Button variant="secondary" size="sm" onClick={checkNow} loading={check.isPending} data-action="check-armature">
                 {t.armature.account.check}
               </Button>
-              <Button variant="ghost" size="sm" onClick={forget} loading={disconnect.isPending} data-action="disconnect-armature-account">
+              <Button variant="ghost" size="sm" onClick={() => void forget()} loading={disconnect.isPending} data-action="disconnect-armature-account">
                 {t.armature.account.disconnect}
               </Button>
             </div>
@@ -99,7 +99,6 @@ export function AccountSection({
                   focus={focusToken}
                   returns={Boolean(onReturn)}
                   onConnected={() => {
-                    setNotice("");
                     onReturn?.();
                   }}
                 />

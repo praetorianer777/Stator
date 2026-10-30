@@ -4,7 +4,7 @@ import { expect } from "../fixtures/auth";
 import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
@@ -172,10 +172,10 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
   test("discarding a draft leaves the page as published", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Discard");
     const plans = await createPage(api, space.homePageId, "Plans", doc("Kept words."));
-    page.on("dialog", (dialog) => void dialog.accept());
     await page.goto(`/s/${space.key}/p/${plans.id}/plans/edit`);
     await typeIntoDraft(page, " Thrown away.");
     await page.locator('[data-action="discard-draft"]').click();
+    await confirm(page);
     await expect(page).toHaveURL(new RegExp(`/p/${plans.id}/plans$`));
     await expect(page.locator("[data-doc]")).toContainText("Kept words.");
     await expect(page.locator("[data-doc]")).not.toContainText("Thrown away.");
@@ -187,7 +187,6 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     const plans = await createPage(api, space.homePageId, "Plans", doc("The plan is one."));
     await publishVersion(api, plans.id, "The plan is two.", "Second go.");
     await publishVersion(api, plans.id, "The plan is three.", "Third go.");
-    page.on("dialog", (dialog) => void dialog.accept());
 
     await page.goto(`/s/${space.key}/p/${plans.id}/plans/history`);
     await expect(versionRow(page, 3)).toContainText("Third go.");
@@ -203,7 +202,8 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-doc]")).toContainText("The plan is one.");
     await expect(page.locator("[contenteditable]")).toHaveCount(0);
     await page.locator('[data-action="restore-version"]').click();
-    await expect(page.locator("[data-history-notice]")).toHaveText("Restored version 1 as version 4.");
+    await confirm(page);
+    await expect(toast(page, "Restored version 1 as version 4.")).toBeVisible();
 
     await page.goto(`/s/${space.key}/p/${plans.id}/plans/history`);
     await expect(versionRow(page, 4)).toContainText("Restored from version 1");

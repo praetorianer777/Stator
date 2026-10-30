@@ -5,14 +5,14 @@ import { useArchivePage } from "@/api/archive";
 import { ApiError } from "@/api/client";
 import { useSpaces } from "@/api/spaces";
 import { staleQueryKey, useStalePages, type StaleFilter, type StalePage, type StaleVerification } from "@/api/stale";
-import { Button, Checkbox, EmptyState, ErrorBanner, PageHeader, Select, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Table, Page, PageHeader, Button, Checkbox, Td, Th, EmptyState, ErrorBanner, Select, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { STALE_AGE_DAYS, STALE_DEFAULT_DAYS, STALE_REVIEW_FROM } from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
 import { pageSlug } from "@/lib/slug";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const day = localDateFormat({ dateStyle: "medium" });
 
@@ -36,7 +36,8 @@ export function StaleReport({ space }: { space?: string }) {
   const archive = useArchivePage();
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [archiving, setArchiving] = useState(false);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const [stopped, setStopped] = useState("");
   const archivable = rows.filter((row) => row.archivable);
   const chosen = archivable.filter((row) => selected.has(row.id));
@@ -45,7 +46,6 @@ export function StaleReport({ space }: { space?: string }) {
     setFilter((current) => ({ ...current, ...patch }));
     setCursors([]);
     setSelected(new Set());
-    setNotice("");
   }
 
   function clear() {
@@ -67,9 +67,10 @@ export function StaleReport({ space }: { space?: string }) {
   // One page at a time through the page's own archive action, which archives
   // what is below it too; a page already taken with one above is no change.
   async function archiveChosen() {
-    if (chosen.length === 0 || !window.confirm(t.stale.confirmArchive(chosen.length))) return;
+    if (chosen.length === 0) return;
+    const ask = { noun: t.kit.confirm.things.pages(chosen.length), verb: t.kit.confirm.verbs.archive, body: t.stale.confirmArchive };
+    if (!(await confirm(ask))) return;
     setArchiving(true);
-    setNotice("");
     setStopped("");
     let done = 0;
     try {
@@ -77,7 +78,7 @@ export function StaleReport({ space }: { space?: string }) {
         await archive.mutateAsync({ id: row.id, archived: true });
         done++;
       }
-      setNotice(t.stale.archivedCount(done));
+      toast.success(t.stale.archivedCount(done));
     } catch (error) {
       setStopped(t.stale.archiveStopped(done, error instanceof Error ? error.message : String(error)));
     } finally {
@@ -89,16 +90,16 @@ export function StaleReport({ space }: { space?: string }) {
 
   if (problem?.status === 403) {
     return (
-      <div className="mx-auto max-w-3xl" data-stale-refused>
-        <PageHeader crumbs={[settingsCrumb()]} title={t.stale.title} />
+      <Page width="narrow" data-stale-refused>
+        <PageHeader title={t.stale.title} />
         <EmptyState icon={<Icon.Lock />} title={t.stale.title} description={t.stale.notAdmin} />
-      </div>
+      </Page>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl" data-stale-report>
-      <PageHeader crumbs={[settingsCrumb()]} title={t.stale.title} />
+    <Page width="narrow" data-stale-report>
+      <PageHeader title={t.stale.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.stale.intro(filter.olderThan)}</p>
       <section aria-label={t.stale.filters} className="mb-4 space-y-3" data-stale-filters>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -161,7 +162,7 @@ export function StaleReport({ space }: { space?: string }) {
       </section>
       {report.error && <ErrorBanner onRetry={() => void report.refetch()}>{report.error.message}</ErrorBanner>}
       {stopped && <ErrorBanner>{stopped}</ErrorBanner>}
-      {(archivable.length > 0 || notice) && (
+      {archivable.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-3" data-stale-actions>
           {archivable.length > 0 && (
             <Button
@@ -176,9 +177,6 @@ export function StaleReport({ space }: { space?: string }) {
               {t.stale.archiveSelected(chosen.length)}
             </Button>
           )}
-          <span role="status" className="text-sm text-ink-muted">
-            {notice}
-          </span>
         </div>
       )}
       {report.isLoading ? (
@@ -262,7 +260,7 @@ export function StaleReport({ space }: { space?: string }) {
           </Button>
         </nav>
       )}
-    </div>
+    </Page>
   );
 }
 

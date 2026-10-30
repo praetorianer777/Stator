@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useRemoveArmatureApp, useSaveArmatureApp, type ArmatureConnection } from "@/api/armature";
-import { Button, ErrorBanner, Field, SectionTitle } from "@/components/ui";
+import { Button, ErrorBanner, Field, SectionTitle, useToast } from "@/components/ui";
 import { ARMATURE_CLIENT_SECRET_PREFIX } from "@/config";
 import { t } from "@/i18n";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /**
  * Stator as a connected app of the organization's Armature, for administrators: where it stands, Armature's
@@ -12,24 +13,21 @@ import { t } from "@/i18n";
 export function ConnectedApp({ connection }: { connection: ArmatureConnection }) {
   const app = connection.app;
   const remove = useRemoveArmatureApp();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   // Pasting is what a refusal asks for; otherwise it is there for an
   // administrator who registered Stator in Armature already.
   const [pasting, setPasting] = useState(app.status === "refused");
 
-  function forget() {
-    if (!window.confirm(t.armature.app.confirmRemove)) return;
-    setNotice("");
-    remove.mutate(undefined, { onSuccess: () => setNotice(t.armature.app.removed) });
+  async function forget() {
+    if (!(await confirm({ noun: t.kit.confirm.things.app, verb: t.kit.confirm.verbs.remove, body: t.armature.app.confirmRemove }))) return;
+    remove.mutate(undefined, { onSuccess: () => toast.success(t.armature.app.removed) });
   }
 
   return (
     <section aria-labelledby="armature-app" className="space-y-3" data-armature-app={app.status}>
       <SectionTitle id="armature-app">{t.armature.app.title}</SectionTitle>
       <p className="text-sm text-ink-muted">{t.armature.app.intro}</p>
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-armature-app-notice>
-        {notice}
-      </p>
       {!app.offered ? (
         <p className="text-sm text-ink" data-armature-app-offered="no">
           {t.armature.app.notOffered}
@@ -57,7 +55,7 @@ export function ConnectedApp({ connection }: { connection: ArmatureConnection })
           </Button>
         )}
         {app.status !== "none" && (
-          <Button variant="ghost" size="sm" onClick={forget} loading={remove.isPending} data-action="forget-armature-app">
+          <Button variant="ghost" size="sm" onClick={() => void forget()} loading={remove.isPending} data-action="forget-armature-app">
             {t.armature.app.remove}
           </Button>
         )}
@@ -67,7 +65,7 @@ export function ConnectedApp({ connection }: { connection: ArmatureConnection })
           redirectUri={app.redirectUri}
           onSaved={() => {
             setPasting(false);
-            setNotice(t.armature.app.saved);
+            toast.success(t.armature.app.saved);
           }}
         />
       )}

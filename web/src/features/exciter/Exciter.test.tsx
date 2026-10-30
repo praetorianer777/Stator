@@ -10,6 +10,8 @@ import { renderAt, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { ExciterAccountSection } from "./AccountSection";
 import { normalizeRequirementKey, requirementBatches, requirementKeysOf, requirementUrl, TYPED_REQUIREMENT_KEY } from "./requirementKeys";
+import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
+import { ToastProvider } from "@/components/ui";
 
 afterEach(() => {
   cleanup();
@@ -65,10 +67,14 @@ function wrap(children: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <main>
-        <h1>Page</h1>
-        {children}
-      </main>
+      <ToastProvider>
+        <ConfirmProvider>
+          <main>
+            <h1>Page</h1>
+            {children}
+          </main>
+        </ConfirmProvider>
+      </ToastProvider>
     </QueryClientProvider>,
   );
 }

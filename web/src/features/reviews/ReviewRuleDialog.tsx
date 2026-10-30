@@ -23,7 +23,11 @@ export function ReviewRuleDialog({ page, onClose }: { page: Page; onClose: () =>
         </div>
         <section className="space-y-2" aria-label={t.review.ownRuleTitle}>
           <SectionTitle>{t.review.ownRuleTitle}</SectionTitle>
-          <ReviewRuleForm target={{ pageId: page.id }} rule={own} confirmRemove={t.review.confirmRemovePage(page.title)} />
+          <ReviewRuleForm
+            target={{ pageId: page.id }}
+            rule={own}
+            confirmRemove={{ noun: t.kit.confirm.things.ruleOf(page.title), body: t.review.confirmRemovePage }}
+          />
         </section>
       </div>
     </Dialog>

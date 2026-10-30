@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { answered, armatureAs, armatureSignedIn, passwordOf, readSeed, realArmatureURL, type ArmaturePerson, WEBHOOK_URL } from "./armature";
+import { confirm } from "../fixtures/shell";
 
 // Connecting the real Armature as an administrator in one step (#429): one
 // consent on Armature's own page with every scope, after which Armature
@@ -109,8 +110,8 @@ test.describe("connecting a real Armature in one step", { tag: ["@auth"] }, () =
         .toBe(true);
 
       // Disconnecting removes it from Armature again.
-      page.once("dialog", (dialog) => dialog.accept());
       await page.locator('[data-action="disconnect-armature"]').click();
+      await confirm(page);
       await expect(page.getByText("Armature is disconnected.")).toBeVisible();
       await expect.poll(own).toBeUndefined();
     } finally {

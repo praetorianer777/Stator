@@ -1,14 +1,13 @@
 import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useArchivePage } from "@/api/archive";
 import { usePage, type Page } from "@/api/pages";
-import type { Space } from "@/api/spaces";
 import { useVisit } from "@/api/search";
 import { useSetTaskDone } from "@/api/tasks";
 import { useTrashPage } from "@/api/trash";
 import { attachmentUrl } from "@/api/attachments";
-import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type Crumb, type MenuItem } from "@/components/ui";
+import { Button, ErrorBanner, IconButton, Menu, PageHeader, Skeleton, Tag, Tooltip, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { ArchiveBanner, ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { ExampleRenewal } from "@/features/spaces/ExampleSpace";
@@ -46,51 +45,14 @@ import { WatchMenu } from "@/features/watching/WatchMenu";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { NewPageDialog } from "./NewPageDialog";
-import { PageLink } from "./PageLink";
 import { PAGE_SHEET_HEADER, pageSheet } from "./pageSheet";
 import { PlaceDialog } from "./PlaceDialog";
 import { RenameFolderDialog } from "./RenameFolderDialog";
 import { ScheduleNote } from "./ScheduleNote";
 import { postDay } from "@/features/blog/blogPosts";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const updatedAt = localDateFormat({ dateStyle: "medium" });
-
-/** The trail above a page's title: the directory, its space by name, then every page above it. */
-export function pageCrumbs(space: Space, page: Page): Crumb[] {
-  const crumbs: Crumb[] = [{ label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> }];
-  for (const above of page.ancestors) {
-    crumbs.push({
-      label: above.home ? space.name : above.title,
-      render: (label) => (
-        <PageLink spaceKey={space.key} id={above.id} title={above.title} home={above.home}>
-          {label}
-        </PageLink>
-      ),
-    });
-  }
-  // A post hangs from no page; it sits in its space's blog.
-  if (page.kind === "post") {
-    crumbs.push(
-      {
-        label: space.name,
-        render: (label) => (
-          <Link to="/s/$spaceKey" params={{ spaceKey: space.key }}>
-            {label}
-          </Link>
-        ),
-      },
-      {
-        label: t.blog.title,
-        render: (label) => (
-          <Link to="/s/$spaceKey/blog" params={{ spaceKey: space.key }} data-blog-crumb="">
-            {label}
-          </Link>
-        ),
-      },
-    );
-  }
-  return crumbs;
-}
 
 type Dialog =
   | "appearance"
@@ -155,6 +117,7 @@ function CommentCount({ count }: { count: number }) {
 export function PageScreen({ pageId, thread, reviewing = false }: { pageId: string; thread?: string; reviewing?: boolean }) {
   const { data, isLoading, error, refetch } = usePage(pageId, { follow: true });
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [dialog, setDialog] = useState<Dialog>();
   const [watchFailed, setWatchFailed] = useState(false);
   const [starFailed, setStarFailed] = useState(false);
@@ -249,8 +212,9 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
     actions.push({
       label: t.archive.menuArchive,
       icon: <Icon.Archive />,
-      onSelect: () => {
-        if (window.confirm(t.archive.confirmArchive(page.title))) archive.mutate({ id: page.id, archived: true });
+      onSelect: async () => {
+        const ask = { noun: t.kit.confirm.things.page(page.title), verb: t.kit.confirm.verbs.archive, body: t.archive.confirmArchive };
+        if (await confirm(ask)) archive.mutate({ id: page.id, archived: true });
       },
       attrs: { "data-action": "archive-page" },
     });
@@ -259,8 +223,8 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
     actions.push({
       label: t.page.moveToTrash,
       danger: true,
-      onSelect: () => {
-        if (!window.confirm(t.page.confirmTrash(page.title))) return;
+      onSelect: async () => {
+        if (!(await confirm({ noun: t.kit.confirm.things.page(page.title), body: t.page.confirmTrash }))) return;
         // The reader lands on the page it was under, which is where it would come back.
         const above = page.ancestors[page.ancestors.length - 1];
         trash.mutate(page.id, {
@@ -293,7 +257,6 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       <PageHeader
         className={PAGE_SHEET_HEADER}
         style={sheet.style}
-        crumbs={pageCrumbs(space, page)}
         title={
           <>
             {page.appearance.icon ? (

@@ -52,8 +52,28 @@ export function EventDialog({ calendarId, day, event, onClose }: { calendarId: s
   }
 
   return (
-    <Dialog open title={event ? e.titleEdit : e.titleNew} onClose={onClose} attrs={{ "data-calendar-event-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={event ? e.titleEdit : e.titleNew}
+      onClose={onClose}
+      attrs={{ "data-calendar-event-dialog": "" }}
+      footer={
+        <>
+          {event && (
+            <Button type="button" variant="danger" className="mr-auto" onClick={deleteEvent} disabled={remove.isPending} data-action="delete-calendar-event">
+              {e.delete}
+            </Button>
+          )}
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {e.cancel}
+          </Button>
+          <Button type="submit" form="event-dialog-form" disabled={save.isPending} data-action="save-calendar-event">
+            {event ? e.save : e.add}
+          </Button>
+        </>
+      }
+    >
+      <form id="event-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Field
           label={e.title}
           value={draft.title}
@@ -112,19 +132,6 @@ export function EventDialog({ calendarId, day, event, onClose }: { calendarId: s
           </div>
         )}
         {failed && <ErrorBanner>{failed}</ErrorBanner>}
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          {event && (
-            <Button type="button" variant="danger" className="mr-auto" onClick={deleteEvent} disabled={remove.isPending} data-action="delete-calendar-event">
-              {e.delete}
-            </Button>
-          )}
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {e.cancel}
-          </Button>
-          <Button type="submit" disabled={save.isPending} data-action="save-calendar-event">
-            {event ? e.save : e.add}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

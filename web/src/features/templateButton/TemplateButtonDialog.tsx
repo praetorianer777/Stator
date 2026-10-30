@@ -51,8 +51,23 @@ export function TemplateButtonDialog({
   }
 
   return (
-    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} attrs={{ "data-template-button-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      attrs={{ "data-template-button-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="template-button-dialog-form" data-action="save-template-button">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="template-button-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         {templates.isError && <ErrorBanner>{t.page.templatesFailed}</ErrorBanner>}
         <Select label={d.template} value={template} onChange={(event) => setTemplate(event.target.value)} error={error}>
           <option value="">{d.chooseTemplate}</option>
@@ -105,14 +120,6 @@ export function TemplateButtonDialog({
           hint={d.titleHint(TEMPLATE_DATE_TOKEN)}
           onChange={(event) => setTitle(event.target.value)}
         />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-template-button">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

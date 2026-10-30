@@ -84,8 +84,23 @@ export function CalendarDialog({
   }
 
   return (
-    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} attrs={{ "data-calendar-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      attrs={{ "data-calendar-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="calendar-dialog-form" disabled={create.isPending} data-action="save-calendar">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="calendar-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Select
           label={d.space}
           value={space}
@@ -156,14 +171,6 @@ export function CalendarDialog({
           </p>
         )}
         {failed && <ErrorBanner>{failed}</ErrorBanner>}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" disabled={create.isPending} data-action="save-calendar">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

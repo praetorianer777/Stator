@@ -2,7 +2,7 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, confirm } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 // Connecting Armature as an administrator in one step (#429), through the
@@ -99,9 +99,8 @@ test.describe("connecting Armature in one step", { tag: ["@auth"] }, () => {
     await expect(section.locator("[data-armature-webhook-said]")).toHaveText("Armature reached Stator, which answered 204.");
     await page.reload();
     await expect(page.locator("[data-last-delivery]")).toContainText("Stator last took a delivery, ping,");
-
-    page.once("dialog", (dialog) => dialog.accept());
     await section.locator('[data-action="rotate-armature-webhook"]').click();
+    await confirm(page);
     await expect(section.locator("[data-armature-webhook-said]")).toHaveText("The webhook has a new secret, which Stator stored.");
     const rotated = await hookOf(request, clientId);
     expect(rotated!.secret).not.toBe(hook!.secret);
@@ -123,8 +122,8 @@ test.describe("connecting Armature in one step", { tag: ["@auth"] }, () => {
     expect(stale.status).toBe(401);
 
     // Disconnecting removes the webhook from Armature.
-    page.once("dialog", (dialog) => dialog.accept());
     await page.locator('[data-action="disconnect-armature"]').click();
+    await confirm(page);
     await expect(page.getByText("Armature is disconnected.")).toBeVisible();
     await expect.poll(async () => hookOf(request, clientId)).toBeUndefined();
   });

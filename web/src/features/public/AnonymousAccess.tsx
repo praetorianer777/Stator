@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   useAnonymousAccess,
   usePublicLinkSettings,
@@ -9,7 +8,7 @@ import {
   type AnonymousAccessSettings,
 } from "@/api/public";
 import type { Space } from "@/api/spaces";
-import { Card, ErrorBanner, Skeleton, Switch } from "@/components/ui";
+import { Card, ErrorBanner, Skeleton, Switch, useToast } from "@/components/ui";
 import { publicSitePath, publicSpacePath } from "@/features/editor/publicReading";
 import { t } from "@/i18n";
 
@@ -22,11 +21,10 @@ function absolute(path: string): string {
 export function SiteAnonymousAccess() {
   const { data, error, refetch } = useAnonymousAccess();
   const save = useSetAnonymousAccess();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
 
   function change(next: AnonymousAccessSettings) {
-    setNotice("");
-    save.mutate(next, { onSuccess: () => setNotice(t.anonymousAccess.saved) });
+    save.mutate(next, { onSuccess: () => toast.success(t.anonymousAccess.saved) });
   }
 
   return (
@@ -65,9 +63,6 @@ export function SiteAnonymousAccess() {
         </div>
       )}
       {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
-      <span role="status" className="text-sm text-ink-muted">
-        {notice}
-      </span>
     </Card>
   );
 }
@@ -76,7 +71,7 @@ export function SiteAnonymousAccess() {
 export function SitePublicLinks() {
   const { data, error, refetch } = usePublicLinkSettings();
   const save = useSetPublicLinkSettings();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   return (
     <Card className="space-y-3 p-4" data-public-links-settings="">
       <h2 className="font-semibold text-ink">{t.publicLinks.settingsTitle}</h2>
@@ -90,8 +85,7 @@ export function SitePublicLinks() {
             label={t.publicLinks.settingsToggle}
             disabled={save.isPending}
             onChange={(enabled) => {
-              setNotice("");
-              save.mutate({ enabled }, { onSuccess: () => setNotice(t.publicLinks.saved) });
+              save.mutate({ enabled }, { onSuccess: () => toast.success(t.publicLinks.saved) });
             }}
             data-action="public-links"
           />
@@ -99,9 +93,6 @@ export function SitePublicLinks() {
         </span>
       )}
       {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
-      <span role="status" className="text-sm text-ink-muted">
-        {notice}
-      </span>
     </Card>
   );
 }

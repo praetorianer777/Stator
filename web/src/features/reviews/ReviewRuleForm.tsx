@@ -2,12 +2,13 @@ import { useId, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { subjectKey, subjectRef, type Subject } from "@/api/permissions";
 import { useRemoveReviewRule, useSetReviewRule, type ReviewRule } from "@/api/reviews";
-import { Button, ErrorBanner, Field } from "@/components/ui";
+import { Button, ErrorBanner, Field, useToast } from "@/components/ui";
 import { REVIEW_REQUIRED_MAX } from "@/config";
 import { SubjectList } from "@/features/permissions/SubjectList";
 import { SubjectPicker } from "@/features/permissions/SubjectPicker";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const changedOn = localDateFormat({ dateStyle: "medium" });
 
@@ -27,7 +28,8 @@ export function ReviewRuleForm({
   target: RuleTarget;
   /** The rule as it stands, null when there is none to change. */
   rule: ReviewRule | null;
-  confirmRemove: string;
+  /** What the dialog that asks before the rule goes names, and what it says follows. */
+  confirmRemove: { noun: string; body: string };
   onDone?: () => void;
 }) {
   const id = useId();
@@ -36,12 +38,12 @@ export function ReviewRuleForm({
   const [reviewers, setReviewers] = useState<Subject[]>(rule?.reviewers ?? []);
   const [required, setRequired] = useState(String(rule?.required ?? 1));
   const [problems, setProblems] = useState<{ reviewers?: string; required?: string }>({});
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const failed = save.error ?? remove.error;
   const fields = failed instanceof ApiError ? failed.fields : {};
 
   function reset() {
-    setNotice("");
     save.reset();
     remove.reset();
   }
@@ -62,21 +64,21 @@ export function ReviewRuleForm({
         onSuccess: (saved) => {
           setReviewers(saved.reviewers);
           setRequired(String(saved.required));
-          setNotice(t.review.saved);
+          toast.success(t.review.saved);
           onDone?.();
         },
       },
     );
   }
 
-  function removeRule() {
-    if (!window.confirm(confirmRemove)) return;
+  async function removeRule() {
+    if (!(await confirm({ ...confirmRemove, verb: t.kit.confirm.verbs.remove }))) return;
     reset();
     remove.mutate(undefined, {
       onSuccess: () => {
         setReviewers([]);
         setRequired("1");
-        setNotice(t.review.removed);
+        toast.success(t.review.removed);
         onDone?.();
       },
     });
@@ -133,13 +135,10 @@ export function ReviewRuleForm({
           {t.review.save}
         </Button>
         {rule && (
-          <Button type="button" variant="secondary" loading={remove.isPending} onClick={removeRule} data-action="remove-review-rule">
+          <Button type="button" variant="secondary" loading={remove.isPending} onClick={() => void removeRule()} data-action="remove-review-rule">
             {t.review.remove}
           </Button>
         )}
-        <span role="status" className="text-sm text-ink-muted">
-          {notice}
-        </span>
       </div>
     </form>
   );

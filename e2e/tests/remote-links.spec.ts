@@ -4,7 +4,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Space } from "../fixtures/spaces";
 
 const panel = (page: Page) => page.locator("[data-remote-links]");
@@ -54,7 +54,7 @@ test.describe("remote links", { tag: ["@auth"] }, () => {
     await first.getByRole("button", { name: `Remove the link ${requirement(1).title}` }).click();
     await expect(first).toHaveCount(0);
     await expect(panel(page).getByRole("heading", { level: 3 })).toHaveText(["Armature (1)", "Exciter (1)"]);
-    await expect(page.locator("[data-remote-link-notice]")).toContainText(`Removed the link ${requirement(1).title}.`);
+    await expect(toast(page, `Removed the link ${requirement(1).title}.`)).toBeVisible();
     const left = must(await api.GET("/pages/{pageID}/remote-links", { params: { path: { pageID: target.id } } })).remoteLinks;
     expect(left.map((each) => each.url).sort()).toEqual([issue.url, requirement(2).url].sort());
 

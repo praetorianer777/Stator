@@ -73,8 +73,18 @@ export function NewPageDialog({
       onClose={onClose}
       size={folder ? "md" : "lg"}
       attrs={{ "data-new-page-dialog": folder ? "folder" : "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.page.cancel}
+          </Button>
+          <Button type="submit" form="new-page-dialog-form" loading={create.isPending} data-action="confirm-new-page">
+            {folder ? t.page.createFolder : t.page.create}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={submit} className="space-y-3" noValidate>
+      <form id="new-page-dialog-form" onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? banner}</ErrorBanner>}
         <Field
           label={t.page.title}
@@ -95,14 +105,6 @@ export function NewPageDialog({
             {error}
           </p>
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.page.cancel}
-          </Button>
-          <Button type="submit" loading={create.isPending} data-action="confirm-new-page">
-            {folder ? t.page.createFolder : t.page.create}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

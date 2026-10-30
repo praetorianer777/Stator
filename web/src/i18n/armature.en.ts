@@ -41,7 +41,7 @@ export const armatureEn = {
   disconnectTitle: "Disconnect",
   disconnectIntro: "Disconnecting forgets the address, the webhook secret and every member's token. Pages show issue keys only.",
   disconnect: "Disconnect Armature",
-  confirmDisconnect: "Disconnect Armature? Every member's token is forgotten, and pages show issue keys only.",
+  confirmDisconnect: "Every member's token is forgotten, and pages show issue keys only.",
   disconnected: "Armature is disconnected.",
   check: "Check",
   checking: "Asking this address...",
@@ -83,7 +83,7 @@ export const armatureEn = {
     refused: "Armature cannot reach Stator, so it would not make the webhook. Armature said:",
     test: "Test",
     rotate: "New secret",
-    confirmRotate: "Give the webhook a new secret? Armature stops signing with the old one at once, and Stator stores the new one.",
+    confirmRotate: "Armature stops signing with the old one at once, and Stator stores the new one.",
     rotated: "The webhook has a new secret, which Stator stored.",
     tested: (status: number) => `Armature reached Stator, which answered ${status}.`,
     testFailed: (error: string) => `Armature could not deliver to Stator: ${error}`,
@@ -123,6 +123,8 @@ export const armatureEn = {
     } as Record<ArmatureFeature, string>,
   },
   account: {
+    /** The account, as the dialog that asks before disconnecting names it. */
+    thing: "your Armature account",
     intro: "Connect your Armature account so pages show you the issues you may see in Armature.",
     notConfigured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",
     steps: "In Armature, open Tokens and make a token without the read-only mark, so pages can also create issues and link to them. Then paste it here.",
@@ -137,7 +139,7 @@ export const armatureEn = {
     check: "Check again",
     checked: "Armature accepts your token.",
     disconnect: "Disconnect",
-    confirmDisconnect: "Disconnect your Armature account? Pages show issue keys only until you connect again.",
+    confirmDisconnect: "Pages show issue keys only until you connect again.",
     disconnected: "Your Armature account is disconnected.",
     rejected: "Armature no longer accepts your token. Make a new one under Tokens in Armature and paste it here.",
     unreachable: "Armature did not answer the last check. Check again in a moment.",
@@ -150,7 +152,7 @@ export const armatureEn = {
     useToken: "Use a token instead",
     viaApp: "Connected through Armature's connected apps.",
     rejectedApp: "Armature ended this connection, because it was disconnected there or Stator is no longer allowed. Connect Armature again.",
-    confirmDisconnectApp: "Disconnect your Armature account? Stator also ends its access in Armature. Pages show issue keys only until you connect again.",
+    confirmDisconnectApp: "Stator also ends its access in Armature. Pages show issue keys only until you connect again.",
     outcomes: {
       connected: "Your Armature account is connected.",
       denied: "You did not allow Stator in Armature, so nothing is connected. Connect Armature again if you change your mind.",
@@ -191,7 +193,7 @@ export const armatureEn = {
     save: "Save app",
     saved: "The app is saved.",
     remove: "Forget app",
-    confirmRemove: "Forget the app? Every member connected through it connects again.",
+    confirmRemove: "Every member connected through it connects again.",
     removed: "The app is forgotten. The next member to connect registers Stator again.",
   },
   links: {

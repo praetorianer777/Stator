@@ -46,6 +46,6 @@ export const annotateDe: typeof annotateEn = {
   unchanged: "Zeichnen, schreiben oder schneiden Sie zuerst etwas, dann speichern Sie.",
   refused: (name: string, why: string) => `Das bearbeitete ${name} konnte nicht gespeichert werden: ${why}`,
   broke: (name: string) => `Das Speichern des bearbeiteten ${name} brach ab. Prüfen Sie Ihre Verbindung und speichern Sie erneut.`,
-  confirmDiscard: "Was Sie auf dieses Bild gezeichnet haben, verwerfen?",
+  confirmDiscard: "Was Sie auf dieses Bild gezeichnet haben, geht verloren.",
   saved: (name: string, version: number) => `Das bearbeitete ${name} ist als Version ${version} gespeichert.`,
 };

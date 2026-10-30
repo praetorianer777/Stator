@@ -26,8 +26,23 @@ export function ContributorsDialog({
   }
 
   return (
-    <Dialog open title={d.title} onClose={onClose} attrs={{ "data-contributors-dialog": "" }}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={d.title}
+      onClose={onClose}
+      attrs={{ "data-contributors-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="contributors-dialog-form" data-action="save-contributors">
+            {d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="contributors-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Select label={d.scope} value={scope} onChange={(event) => setScope(event.target.value as ContributorScope)}>
           {CONTRIBUTOR_SCOPES.map((choice) => (
             <option key={choice} value={choice}>
@@ -44,14 +59,6 @@ export function ContributorsDialog({
               </option>
             ))}
         </Select>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-contributors">
-            {d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

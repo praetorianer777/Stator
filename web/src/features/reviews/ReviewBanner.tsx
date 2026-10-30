@@ -9,6 +9,7 @@ import { DOCUMENT_DRAWER_WIDTH, REVIEW_COMMENT_MAX_LENGTH } from "@/config";
 import { ComparisonView } from "@/features/pages/PageHistory";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const submittedOn = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
@@ -17,6 +18,7 @@ export function ReviewBanner({ page, space }: { page: Page; space: Space }) {
   const review = page.review.pending;
   const [dialog, setDialog] = useState<"review" | "skip">();
   const withdraw = useWithdrawReview(page.id, space.key);
+  const confirm = useConfirm();
   if (!review) return null;
   const { can } = review;
   return (
@@ -53,8 +55,9 @@ export function ReviewBanner({ page, space }: { page: Page; space: Space }) {
                 size="sm"
                 variant="secondary"
                 loading={withdraw.isPending}
-                onClick={() => {
-                  if (window.confirm(t.review.confirmWithdraw)) withdraw.mutate(review.id);
+                onClick={async () => {
+                  const ask = { noun: t.kit.confirm.things.review, verb: t.kit.confirm.verbs.withdraw, body: t.review.confirmWithdraw };
+                  if (await confirm(ask)) withdraw.mutate(review.id);
                 }}
                 data-action="withdraw-review"
               >
@@ -173,8 +176,23 @@ function SkipDialog({ page, space, review, onClose }: { page: Page; space: Space
   }
 
   return (
-    <Dialog open title={t.review.skipTitle(page.title)} onClose={onClose} attrs={{ "data-skip-review-dialog": review.id }}>
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={t.review.skipTitle(page.title)}
+      onClose={onClose}
+      attrs={{ "data-skip-review-dialog": review.id }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.draft.cancel}
+          </Button>
+          <Button type="submit" form="review-banner-form" variant="danger" loading={skip.isPending} data-action="confirm-skip-review">
+            {t.review.confirmSkip}
+          </Button>
+        </>
+      }
+    >
+      <form id="review-banner-form" onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-ink-muted">{t.review.skipIntro}</p>
         {skip.error && <ErrorBanner>{skip.error.message}</ErrorBanner>}
         <Field
@@ -190,14 +208,6 @@ function SkipDialog({ page, space, review, onClose }: { page: Page; space: Space
             setReasonError("");
           }}
         />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.draft.cancel}
-          </Button>
-          <Button type="submit" variant="danger" loading={skip.isPending} data-action="confirm-skip-review">
-            {t.review.confirmSkip}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

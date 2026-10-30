@@ -6,7 +6,7 @@ import { ArchivedMark } from "@/features/archive/ArchiveBanner";
 import { useCanCreateSpace } from "@/features/permissions/access";
 import { SpaceStar } from "@/features/stars/StarButton";
 import { ExampleSpaceButton } from "./ExampleSpace";
-import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Switch, Table, Td, Th } from "@/components/ui";
+import { Table, Page, PageHeader, Button, Td, Th, EmptyState, ErrorBanner, Skeleton, Switch } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 
@@ -53,7 +53,7 @@ export function SpaceDirectory() {
   );
 
   return (
-    <div className="mx-auto max-w-4xl" data-space-directory>
+    <Page width="narrow" data-space-directory>
       <PageHeader title={t.spaces.title} actions={actions} />
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -75,7 +75,7 @@ export function SpaceDirectory() {
           />
         </section>
       )}
-    </div>
+    </Page>
   );
 }
 

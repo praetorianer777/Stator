@@ -2,7 +2,7 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { ME_PATH, authTest as test, expect, startSSO, submitKeycloak } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible, openNavigation, settingsSidebar } from "../fixtures/shell";
+import { expectAccessible, openNavigation, settingsSidebar, toast } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -153,7 +153,7 @@ test.describe("mapping groups to roles", { tag: "@auth" }, () => {
       await card.getByLabel("Group", { exact: true }).fill(group);
       await card.getByLabel("Role", { exact: true }).selectOption("admin");
       await card.locator('[data-action="map-group"]').click();
-      await expect(card.getByRole("status")).toHaveText(`${group} now grants Admin.`);
+      await expect(toast(page, `${group} now grants Admin.`)).toBeVisible();
       await expect(groupRole(page, group)).toContainText("Admin");
       await expect(card.getByLabel("Group", { exact: true })).toHaveValue("");
 
@@ -164,7 +164,7 @@ test.describe("mapping groups to roles", { tag: "@auth" }, () => {
       await groupRole(page, group)
         .getByRole("button", { name: `Unmap ${group}` })
         .click();
-      await expect(card.getByRole("status")).toHaveText(`${group} no longer grants a role.`);
+      await expect(toast(page, `${group} no longer grants a role.`)).toBeVisible();
       await expect(groupRole(page, group)).toHaveCount(0);
     } finally {
       const left = must(await api.GET("/oidc-provider/group-roles")).groupRoles.find((each) => each.group === group);

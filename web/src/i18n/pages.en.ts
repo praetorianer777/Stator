@@ -40,7 +40,7 @@ export const pageEn = {
   copySubmit: "Copy page",
   loadingPlaces: "Loading the pages of the space",
   moveToTrash: "Move to trash",
-  confirmTrash: (title: string) => `Move ${title} and every page below it to the trash? It can be restored from the space's trash.`,
+  confirmTrash: "It and every page below it go to the trash, and can be restored from the space's trash.",
   history: "History",
   unpublished: "Unpublished",
   unpublishedNote: "Only you can see this page until you publish it.",
@@ -52,8 +52,8 @@ export const draftEn = {
   close: "Close",
   publish: "Publish",
   discard: "Discard draft",
-  confirmDiscard: "Throw your draft away? The page stays as it was last published.",
-  confirmDiscardUnpublished: "Throw your changes away? The page keeps the content it was made with.",
+  confirmDiscard: "The page stays as it was last published.",
+  confirmDiscardUnpublished: "The page keeps the content it was made with.",
   saving: "Saving draft",
   saved: "Draft saved. Only you can see it until you publish.",
   notSaved: (reason: string) => `Your draft could not be saved: ${reason} Keep this window open and try again in a moment.`,
@@ -95,7 +95,7 @@ export const scheduleEn = {
   change: "Change",
   editAgain: "Edit and schedule again",
   cancel: "Cancel schedule",
-  confirmCancel: "Call this scheduled publish off? The draft stays.",
+  confirmCancel: "The draft stays.",
 };
 
 export const liveEn = {
@@ -142,8 +142,7 @@ export const historyEn = {
   compareWithPreviousOf: (n: number) => `Compare with previous, for version ${n}`,
   restore: "Restore",
   restoreVersion: (n: number) => `Restore version ${n}`,
-  confirmRestore: (n: number) =>
-    `Restore version ${n}? It is published again as a new version on top of the history, nothing in the history is lost, and the people watching the page are told.`,
+  confirmRestore: "It is published again as a new version on top of the history, nothing in the history is lost, and the people watching the page are told.",
   restoreConflict:
     "Somebody published this page while you were looking, so the history has changed. Look at the latest version, then restore again if you still want to.",
   restored: (n: number, latest: number) => `Restored version ${n} as version ${latest}.`,

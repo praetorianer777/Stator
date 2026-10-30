@@ -114,3 +114,16 @@ export async function expectNoSettingsEntry(page: Page, id: string): Promise<voi
   await expect(sidebar.locator('[data-nav="profile"]')).toBeVisible();
   await expect(sidebar.locator(`[data-nav="${id}"]`)).toHaveCount(0);
 }
+
+/** Presses the danger button of the dialog that asks before something goes, and waits for it to close. */
+export async function confirm(page: Page): Promise<void> {
+  const dialog = page.locator('[role="dialog"][data-confirm]');
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[data-action="confirm"]').click();
+  await expect(dialog).toHaveCount(0);
+}
+
+/** The latest toast that says a sentence, among those in the corner. */
+export function toast(page: Page, text: string | RegExp) {
+  return page.locator("[data-toast]").filter({ hasText: text }).last();
+}

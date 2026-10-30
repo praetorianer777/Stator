@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMe, useMembers, useRemoveMember, type Member } from "@/api/auth";
-import { Button, Card, ErrorBanner, Table, Tag, Td, Th } from "@/components/ui";
+import { Button, Card, ErrorBanner, Table, Tag, Td, Th, useToast } from "@/components/ui";
 import { t } from "@/i18n";
 import { AddMember } from "./AddMember";
 
@@ -14,7 +14,7 @@ export function Members() {
   const { data } = useMembers();
   const remove = useRemoveMember();
   const [confirming, setConfirming] = useState<Member | null>(null);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const members = data ?? [];
   if (members.length === 0) return null;
 
@@ -24,7 +24,7 @@ export function Members() {
       {
         onSuccess: () => {
           setConfirming(null);
-          setNotice(t.sso.removed(member.name || member.email));
+          toast.success(t.sso.removed(member.name || member.email));
         },
       },
     );
@@ -104,11 +104,6 @@ export function Members() {
         </div>
       )}
       {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
-      {notice && (
-        <p role="status" className="text-sm text-ink-muted">
-          {notice}
-        </p>
-      )}
     </Card>
   );
 }

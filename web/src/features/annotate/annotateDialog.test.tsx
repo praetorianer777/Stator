@@ -6,6 +6,8 @@ import type { Attachment } from "@/api/attachments";
 import { axeViolations } from "@/test/axe";
 import { stubUploads, upload } from "@/test/xhr";
 import { AnnotateDialog } from "./AnnotateDialog";
+import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
+import { answerConfirm, confirmDialog } from "@/test/app";
 
 const PICTURE = { width: 400, height: 300 };
 
@@ -92,7 +94,9 @@ function shown(props: Partial<Parameters<typeof AnnotateDialog>[0]> = {}) {
   const onClose = vi.fn();
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <AnnotateDialog file={shot} onSaved={onSaved} onClose={onClose} {...props} />
+      <ConfirmProvider>
+        <AnnotateDialog file={shot} onSaved={onSaved} onClose={onClose} {...props} />
+      </ConfirmProvider>
     </QueryClientProvider>,
   );
   return { onSaved, onClose };
@@ -238,11 +242,13 @@ describe("the annotation editor", () => {
     await user.click(within(dialog()).getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledTimes(1);
 
-    const ask = vi.spyOn(window, "confirm").mockReturnValue(false);
     stage().focus();
     await user.keyboard("{Enter}");
     await user.keyboard("{Escape}");
-    expect(ask).toHaveBeenCalledWith("Discard what you drew on this picture?");
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Discard drawing?");
+    expect(asked).toHaveTextContent("What you drew on this picture is lost.");
+    await answerConfirm(false);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
