@@ -263,7 +263,7 @@ SELECT t.id, CASE WHEN 'read' = ANY (t.scopes || pr.scopes) THEN ARRAY['read'] E
              SELECT sp FROM unnest(pr.spaces) sp WHERE NOT t.spaces_only
              ORDER BY 1),
        u.id, u.email::text, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), COALESCE(u.timezone, ''), u.show_in_readers, u.is_active,
-       o.name, m.role, gs.id, gs.key, gs.name
+       o.name, m.role, perm_role_admin(m.user_id), gs.id, gs.key, gs.name
 FROM presented pr
 JOIN api_token t ON t.id = pr.id
 JOIN app_user u ON u.id = t.user_id
@@ -288,7 +288,7 @@ func (s *Service) authenticateAPIToken(ctx context.Context, secret string) (*Pri
 		return tx.QueryRow(ctx, apiTokenPrincipalSQL, HashToken(secret), IsAccessToken(secret)).Scan(
 			&tokenID, &p.Scopes, &lastUsed, &p.SpacesOnly, &p.MCPOnly, &p.TokenSpaces,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.Timezone, &p.ShowInReaders, &active,
-			&p.SiteName, &p.Role, &guest.id, &guest.key, &guest.name,
+			&p.SiteName, &p.Role, &p.Administers, &guest.id, &guest.key, &guest.name,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {

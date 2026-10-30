@@ -67,20 +67,31 @@ func templatePages(tpl template.SpaceTemplate, name string) []string {
 	return out
 }
 
-// everyoneMay is what the space's permission table grants everyone.
+// everyoneMay is what the roles the space grants Everyone hold, from view
+// to administer.
 func everyoneMay(t *testing.T, c *client, key string) []string {
 	t.Helper()
-	for _, g := range list(t, want(t, c.get(t, "/api/v1/spaces/"+key+"/permissions"), http.StatusOK, "read the permissions of "+key), "grants") {
+	holds := map[string][]any{}
+	for _, r := range list(t, want(t, c.get(t, "/api/v1/roles"), http.StatusOK, "read the roles"), "roles") {
+		role := r.(map[string]any)
+		holds[role["role"].(string)] = role["permissions"].([]any)
+	}
+	held := map[string]bool{}
+	for _, g := range list(t, want(t, c.get(t, "/api/v1/role-assignments?space="+key), http.StatusOK, "read the grants of "+key), "assignments") {
 		grant := g.(map[string]any)
-		if grant["subject"].(map[string]any)["type"] == "everyone" {
-			var out []string
-			for _, p := range grant["permissions"].([]any) {
-				out = append(out, p.(string))
+		if grant["groupBuiltin"] == "everyone" {
+			for _, p := range holds[grant["role"].(string)] {
+				held[p.(string)] = true
 			}
-			return out
 		}
 	}
-	return nil
+	var out []string
+	for _, p := range []string{"view", "addPages", "addComments", "delete", "administer"} {
+		if held[p] {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // A space from a template has its pages, labels, permissions and an audit
@@ -225,7 +236,7 @@ func TestASpaceFromATemplateIsMadeWholeOrNotAtAll(t *testing.T) {
 		"pages":         `SELECT count(*) FROM page`,
 		"versions":      `SELECT count(*) FROM page_version`,
 		"labels":        `SELECT count(*) FROM page_label`,
-		"grants":        `SELECT count(*) FROM space_grant`,
+		"grants":        `SELECT count(*) FROM role_assignment WHERE space_id IS NOT NULL`,
 		"audit entries": `SELECT count(*) FROM audit_log WHERE action = 'space.created'`,
 	} {
 		if n := h.countRows(t, sql); n != 0 {
@@ -247,9 +258,10 @@ func TestATemplatesPermissionsHoldInTheDatabase(t *testing.T) {
 
 	conn := appConn(t)
 	actAs(t, conn, memberID)
-	refused(t, conn, "granting everyone addPages", `INSERT INTO space_grant (space_id, permission, subject_type) VALUES ($1, 'addPages', 'everyone')`, spaceID)
-	refused(t, conn, "granting themselves administer", `INSERT INTO space_grant (space_id, permission, subject_type, user_id) VALUES ($1, 'administer', 'user', $2)`, spaceID, memberID)
-	untouched(t, conn, "taking view from everyone", `DELETE FROM space_grant WHERE space_id = $1`, spaceID)
+	refused(t, conn, "granting Everyone editor", `INSERT INTO role_assignment (role, space_id, group_id) SELECT 'editor', $1, id FROM groups WHERE builtin = 'everyone'`, spaceID)
+	refused(t, conn, "granting themselves space administrator", `INSERT INTO role_assignment (role, space_id, user_id) VALUES ('space_administrator', $1, $2)`, spaceID, memberID)
+	untouched(t, conn, "taking Everyone's grant away", `DELETE FROM role_assignment WHERE space_id = $1`, spaceID)
+	untouched(t, conn, "making Everyone's role add pages", `UPDATE role SET permissions = permissions || ARRAY['addPages'] WHERE key = 'viewer'`)
 	refused(t, conn, "adding a page", `INSERT INTO page (space_id, parent_id, rank, title, created_by, updated_by) VALUES ($1, $2, 'W', 'Planted', $3, $3)`, spaceID, homeID, memberID)
 	refused(t, conn, "retitling a page", `UPDATE page SET title = 'Taken' WHERE space_id = $1`, spaceID)
 	refused(t, conn, "labelling a page", `INSERT INTO page_label (page_id, name, created_by) VALUES ($1, 'planted', $2)`, homeID, memberID)

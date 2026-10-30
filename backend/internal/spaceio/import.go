@@ -547,10 +547,19 @@ func (im *importer) writeGrants(ctx context.Context, tx db.DBTX) error {
 		keep = uuid.Nil
 	}
 	if _, err := tx.Exec(ctx, `
-		DELETE FROM space_grant WHERE space_id = $1
-		AND NOT (permission = 'administer' AND subject_type = 'user' AND user_id = $2)`, im.spaceID, keep); err != nil {
+		DELETE FROM role_assignment WHERE space_id = $1
+		AND NOT (role = 'space_administrator' AND user_id = $2)`, im.spaceID, keep); err != nil {
 		return err
 	}
+	// What each subject held, gathered, becomes the role that holds just that.
+	type held struct {
+		user, group *uuid.UUID
+		everyone    bool
+		perms       []string
+	}
+	var order []string
+	subjects := map[string]*held{}
+	anonymous := false
 	for _, g := range im.m.Grants {
 		if !slices.Contains(permissions, g.Permission) {
 			return invalid("The archive grants %q, a permission Stator does not know. Export the space again and import the new file.", g.Permission)
@@ -560,9 +569,29 @@ func (im *importer) writeGrants(ctx context.Context, tx db.DBTX) error {
 			im.dropped("", g.Permission, name)
 			continue
 		}
+		if typ == "anonymous" {
+			anonymous = anonymous || g.Permission == "view"
+			continue
+		}
+		key := typ + ":" + idText(user) + idText(group)
+		if subjects[key] == nil {
+			subjects[key] = &held{user: user, group: group, everyone: typ == "everyone"}
+			order = append(order, key)
+		}
+		subjects[key].perms = append(subjects[key].perms, g.Permission)
+	}
+	for _, key := range order {
+		h := subjects[key]
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO space_grant (space_id, permission, subject_type, user_id, group_id)
-			VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`, im.spaceID, g.Permission, typ, user, group); err != nil {
+			INSERT INTO role_assignment (role, space_id, user_id, group_id)
+			SELECT role_for_space_permissions($2::text[]), $1, $3,
+			       CASE WHEN $5 THEN (SELECT id FROM groups WHERE builtin = 'everyone') ELSE $4 END
+			ON CONFLICT DO NOTHING`, im.spaceID, h.perms, h.user, h.group, h.everyone); err != nil {
+			return err
+		}
+	}
+	if anonymous {
+		if _, err := tx.Exec(ctx, `UPDATE space SET anonymous_view = owner_id IS NULL WHERE id = $1`, im.spaceID); err != nil {
 			return err
 		}
 	}

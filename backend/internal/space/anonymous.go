@@ -34,7 +34,7 @@ var ErrPersonalNotPublic = &FieldError{Field: "view",
 	Message: "A personal space cannot be read without signing in. Move the pages to a team space to publish them."}
 
 // anonymousTeamSpace is the guard that keeps personal spaces private.
-const anonymousTeamSpace = "space_grant_anonymous_team_space"
+const anonymousTeamSpace = "space_anonymous_team_space"
 
 // AnonymousAccess says whether anybody may read the space. For whoever
 // administers it.
@@ -57,8 +57,7 @@ func (s *Service) AnonymousAccess(ctx context.Context, actor perm.Actor, key str
 func anonymousAccess(ctx context.Context, tx db.DBTX, sp *Space) (*AnonymousAccess, error) {
 	out := AnonymousAccess{Personal: sp.Owner != nil}
 	err := tx.QueryRow(ctx, `
-		SELECT EXISTS (SELECT 1 FROM space_grant WHERE space_id = $1 AND subject_type = 'anonymous' AND permission = 'view'),
-		       (SELECT anonymous_access FROM site)`, sp.ID).Scan(&out.View, &out.SiteEnabled)
+		SELECT (SELECT anonymous_view FROM space WHERE id = $1), (SELECT anonymous_access FROM site)`, sp.ID).Scan(&out.View, &out.SiteEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("read whether anybody may read the space: %w", err)
 	}
@@ -84,14 +83,7 @@ func (s *Service) SetAnonymousAccess(ctx context.Context, actor perm.Actor, key 
 		if in.View && sp.Owner != nil {
 			return ErrPersonalNotPublic
 		}
-		if in.View {
-			_, err = tx.Exec(ctx, `
-				INSERT INTO space_grant (space_id, permission, subject_type)
-				VALUES ($1, 'view', 'anonymous') ON CONFLICT DO NOTHING`, sp.ID)
-		} else {
-			_, err = tx.Exec(ctx, `DELETE FROM space_grant WHERE space_id = $1 AND subject_type = 'anonymous'`, sp.ID)
-		}
-		if err != nil {
+		if _, err = tx.Exec(ctx, `UPDATE space SET anonymous_view = $2 WHERE id = $1`, sp.ID, in.View); err != nil {
 			return fmt.Errorf("change whether anybody may read the space: %w", err)
 		}
 		if out, err = anonymousAccess(ctx, tx, sp); err != nil {

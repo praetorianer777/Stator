@@ -59,7 +59,7 @@ func TestTestEndpointsIgnoreSessionsAndAccessTokens(t *testing.T) {
 	tokenID, sessionID := uuid.New(), uuid.New()
 	s.Auth = fakeAuth{
 		"read-only": {UserID: uuid.New(), TokenID: &tokenID, Scopes: []string{auth.ScopeRead}},
-		"session":   {UserID: uuid.New(), SessionID: &sessionID, Role: auth.RoleOwner},
+		"session":   {UserID: uuid.New(), SessionID: &sessionID, Role: auth.RoleMember, Administers: true},
 	}
 	instance := &fakeTestInstance{}
 	s.TestInstance = instance

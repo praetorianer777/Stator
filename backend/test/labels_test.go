@@ -80,9 +80,9 @@ func TestLabelsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("a reader may not label, and nobody labels what they cannot see", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/spaces/LDEV/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "LDEV", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "LDEV is read only")
+		}), http.StatusOK, "LDEV is read only")
 		h.settle(t)
 		r := want(t, addLabel(t, ben, notes, "mine"), http.StatusForbidden, "ben labels in a read only space")
 		if code := errorCode(t, r); code != "forbidden" {

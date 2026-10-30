@@ -86,12 +86,10 @@ func (s *Service) Invite(ctx context.Context, actor perm.Actor, spaceKey string,
 			VALUES ($1, 'guest', $2)`, userID, sp.ID); err != nil {
 			return fmt.Errorf("make the guest's membership: %w", err)
 		}
-		for _, p := range in.Role.Permissions() {
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-				VALUES ($1, $2, 'user', $3)`, sp.ID, string(p), userID); err != nil {
-				return fmt.Errorf("grant the guest %s: %w", p, err)
-			}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO role_assignment (role, space_id, user_id, created_by)
+			VALUES ($1, $2, $3, $4)`, string(in.Role), sp.ID, userID, actor.UserID); err != nil {
+			return fmt.Errorf("grant the guest %s: %w", in.Role, err)
 		}
 		// Somebody who asked to join and is now invited has had their answer.
 		if _, err := tx.Exec(ctx, `DELETE FROM join_request WHERE user_id = $1`, userID); err != nil {
@@ -182,12 +180,14 @@ func notYetHere(ctx context.Context, tx db.DBTX, userID uuid.UUID, email string,
 	return &FieldError{Field: "email", Message: fmt.Sprintf("%s is a member of this organization already. Grant them this space under its permissions instead.", email)}
 }
 
-// list reads the guests of a space with their grants there, or one of them.
+// list reads the guests of a space with what their grants there hold, or one of them.
 func list(ctx context.Context, tx db.DBTX, spaceID uuid.UUID, only *uuid.UUID) ([]Guest, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT u.id, u.email::text, u.name, m.created_at,
-		       ARRAY(SELECT g.permission FROM space_grant g
-		             WHERE g.space_id = m.guest_space_id AND g.subject_type = 'user' AND g.user_id = m.user_id)
+		       ARRAY(SELECT DISTINCT p.word FROM role_assignment a
+		             JOIN role r ON r.key = a.role
+		             CROSS JOIN LATERAL unnest(r.permissions) AS p (word)
+		             WHERE a.space_id = m.guest_space_id AND a.user_id = m.user_id)
 		FROM member m JOIN app_user u ON u.id = m.user_id
 		WHERE m.role = 'guest' AND m.guest_space_id = $1
 		  AND ($2::uuid IS NULL OR m.user_id = $2)

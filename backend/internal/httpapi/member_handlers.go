@@ -6,8 +6,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/auth"
 )
 
-// The organization's people and the groups at its provider that decide their
-// roles, for its administrators.
+// The installation's people, for its administrators.
 
 func (s *Server) handleListMembers(w http.ResponseWriter, r *http.Request) {
 	if s.Accounts == nil {
@@ -27,7 +26,7 @@ type createMemberRequest struct {
 	Email string `json:"email"`
 	// Name is what the person is called; blank takes the part of the address before the at sign.
 	Name string `json:"name"`
-	// Role is the standing the person gets: member, or admin.
+	// Role is member, or admin, which grants the built-in administrator role besides.
 	Role auth.Role `json:"role"`
 	// Password is the person's first password, at least 12 characters. Blank has one made, which the answer shows once.
 	Password string `json:"password"`
@@ -63,64 +62,6 @@ func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lsn, err := s.Accounts.RemoveMember(r.Context(), userID, userFrom(r), clientIP(r))
-	noteWrite(r.Context(), lsn)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondNoContent(w)
-}
-
-type setGroupRoleRequest struct {
-	// Group is a value of the provider's groups claim.
-	Group string `json:"group"`
-	// Role is what the group grants: member, or admin.
-	Role auth.Role `json:"role"`
-}
-
-func (s *Server) handleListGroupRoles(w http.ResponseWriter, r *http.Request) {
-	if s.OIDC == nil {
-		respondError(w, r, errSignInOff)
-		return
-	}
-	mapping, err := s.OIDC.GroupRoles(r.Context())
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"groupRoles": mapping})
-}
-
-func (s *Server) handleSetGroupRole(w http.ResponseWriter, r *http.Request) {
-	if s.OIDC == nil {
-		respondError(w, r, errSignInOff)
-		return
-	}
-	var req setGroupRoleRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
-	}
-	saved, lsn, err := s.OIDC.SetGroupRole(r.Context(), req.Group, req.Role, userFrom(r), clientIP(r))
-	noteWrite(r.Context(), lsn)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"groupRole": saved})
-}
-
-func (s *Server) handleRemoveGroupRole(w http.ResponseWriter, r *http.Request) {
-	if s.OIDC == nil {
-		respondError(w, r, errSignInOff)
-		return
-	}
-	id, apiErr := pathUUID(r, "groupRoleID", "group role's")
-	if apiErr != nil {
-		respondError(w, r, apiErr)
-		return
-	}
-	lsn, err := s.OIDC.RemoveGroupRole(r.Context(), id, userFrom(r), clientIP(r))
 	noteWrite(r.Context(), lsn)
 	if err != nil {
 		respondError(w, r, err)

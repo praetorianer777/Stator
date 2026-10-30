@@ -54,9 +54,9 @@ func (h *harness) admittedBy(t *testing.T, email string) (group, via string) {
 	return group, via
 }
 
-// A mapped group lets somebody new in at sign-in only once an administrator
-// turns it on; it sets the role of somebody already in either way. Carol is
-// in quality, dave in marketing, bob in neither.
+// A group with a grant lets somebody new in at sign-in only once an
+// administrator turns it on; its grants reach somebody already in either way.
+// Carol is in quality, dave in marketing, bob in neither.
 func TestAMappedGroupLetsSomebodyNewInAtSignInOnlyWhenTurnedOn(t *testing.T) {
 	h := newHarness(t)
 	kc := newKeycloak(t)
@@ -75,7 +75,7 @@ func TestAMappedGroupLetsSomebodyNewInAtSignInOnlyWhenTurnedOn(t *testing.T) {
 		if landing := newBrowser(t).signIn(t, a, "carol", carolPassword, "/"); landing != notAMember {
 			t.Fatalf("carol landed on %q", landing)
 		}
-		if role, _ := h.standing(t, "carol@suite.test"); role != "" {
+		if role := h.standing(t, "carol@suite.test"); role != "" {
 			t.Fatalf("carol became %s with the setting off", role)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM join_request r JOIN app_user u ON u.id = r.user_id WHERE u.email = 'carol@suite.test'`); n != 1 {
@@ -83,9 +83,9 @@ func TestAMappedGroupLetsSomebodyNewInAtSignInOnlyWhenTurnedOn(t *testing.T) {
 		}
 	})
 
-	t.Run("off, a mapped group still sets the role of somebody already in", func(t *testing.T) {
-		if role := roleIn(t, signedIn(t, a, "alice", alicePassword), a); role != "admin" {
-			t.Fatalf("alice is %q, want the admin her group maps to", role)
+	t.Run("off, a group's grant still reaches somebody already in", func(t *testing.T) {
+		if !administers(t, signedIn(t, a, "alice", alicePassword), a) {
+			t.Fatal("alice does not administer through her group's grant")
 		}
 	})
 
@@ -96,8 +96,8 @@ func TestAMappedGroupLetsSomebodyNewInAtSignInOnlyWhenTurnedOn(t *testing.T) {
 		if landing := b.signIn(t, a, "carol", carolPassword, "/spaces"); landing != "http://"+appHost+"/spaces" {
 			t.Fatalf("carol landed on %q, want where she was going", landing)
 		}
-		if role, source := h.standing(t, "carol@suite.test"); role != "member" || source != "oidc" {
-			t.Fatalf("carol's membership is %s from %s", role, source)
+		if role := h.standing(t, "carol@suite.test"); role != "member" {
+			t.Fatalf("carol's membership is %s", role)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM join_request r JOIN app_user u ON u.id = r.user_id WHERE u.email = 'carol@suite.test'`); n != 0 {
 			t.Fatalf("carol still has %d requests", n)
@@ -111,7 +111,7 @@ func TestAMappedGroupLetsSomebodyNewInAtSignInOnlyWhenTurnedOn(t *testing.T) {
 		if landing := newBrowser(t).signIn(t, a, "bob", bobPassword, "/"); landing != notAMember {
 			t.Fatalf("bob landed on %q", landing)
 		}
-		if role, _ := h.standing(t, "bob@suite.test"); role != "" {
+		if role := h.standing(t, "bob@suite.test"); role != "" {
 			t.Fatalf("bob became %s", role)
 		}
 	})
@@ -121,7 +121,7 @@ func TestAMappedGroupLetsSomebodyNewInAtSignInOnlyWhenTurnedOn(t *testing.T) {
 		if landing := newBrowser(t).signIn(t, a, "dave", davePassword, "/"); landing != "http://"+appHost+"/login?sso=inactive" {
 			t.Fatalf("dave landed on %q", landing)
 		}
-		if role, _ := h.standing(t, "dave@suite.test"); role != "" {
+		if role := h.standing(t, "dave@suite.test"); role != "" {
 			t.Fatalf("a switched off account became %s", role)
 		}
 	})
@@ -171,8 +171,8 @@ func TestAMappedGroupLetsAPartnerConnectSomebodyNewOnlyWhenTurnedOn(t *testing.T
 		if got := exchange("carol", carolPassword); got.Status != http.StatusOK || got.str("scope") != "read" {
 			t.Fatalf("the exchange for carol answered %d %v", got.Status, got.Body)
 		}
-		if role, source := h.standing(t, "carol@suite.test"); role != "member" || source != "oidc" {
-			t.Fatalf("carol's membership is %s from %s", role, source)
+		if role := h.standing(t, "carol@suite.test"); role != "member" {
+			t.Fatalf("carol's membership is %s", role)
 		}
 		if group, via := h.admittedBy(t, "carol@suite.test"); group != "quality" || via != "token_exchange" {
 			t.Errorf("the audit log says admitted by %q via %q, want quality at a token exchange", group, via)
@@ -189,7 +189,7 @@ func TestAMappedGroupLetsAPartnerConnectSomebodyNewOnlyWhenTurnedOn(t *testing.T
 	t.Run("on, dave, switched off, is refused whatever his groups", func(t *testing.T) {
 		h.switchedOff(t, "dave@suite.test")
 		refused(t, "dave", exchange("dave", davePassword))
-		if role, _ := h.standing(t, "dave@suite.test"); role != "" {
+		if role := h.standing(t, "dave@suite.test"); role != "" {
 			t.Fatalf("a switched off account became %s", role)
 		}
 	})
@@ -197,11 +197,13 @@ func TestAMappedGroupLetsAPartnerConnectSomebodyNewOnlyWhenTurnedOn(t *testing.T
 
 // An installation that already maps a group let people in by it from the
 // moment it was mapped, so the upgrade turns the setting on there, and leaves
-// it off where nothing is mapped.
+// it off where nothing is mapped. The mapping itself is a grant to the group
+// after the move to roles, which goes on letting its people in.
 func TestTheUpgradeKeepsLettingPeopleInWhereAGroupIsMapped(t *testing.T) {
 	newHarness(t)
 	ctx := context.Background()
 	adding, before := migrationsAround(t, "_oidc_admit_by_group.sql")
+	roles, _ := migrationsAround(t, "_roles_and_grants.sql")
 	scratch := scratchDatabase(t)
 	upTo(t, scratch.db, before)
 	if _, err := scratch.pool.Exec(ctx, `INSERT INTO oidc_provider (issuer, client_id) VALUES ('https://id.test', 'stator')`); err != nil {
@@ -230,5 +232,12 @@ func TestTheUpgradeKeepsLettingPeopleInWhereAGroupIsMapped(t *testing.T) {
 	upTo(t, scratch.db, adding)
 	if !admits() {
 		t.Error("the upgrade stopped letting people in by the group an installation maps")
+	}
+	upTo(t, scratch.db, roles)
+	var granted string
+	if err := scratch.pool.QueryRow(ctx, `
+		SELECT a.role FROM role_assignment a JOIN groups g ON g.id = a.group_id
+		WHERE g.external_ref = 'staff' AND g.source = 'oidc' AND a.space_id IS NULL`).Scan(&granted); err != nil || granted != "member" {
+		t.Errorf("the group staff holds %q (%v), want the member role it let people in with", granted, err)
 	}
 }

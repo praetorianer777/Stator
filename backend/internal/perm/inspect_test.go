@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
-	"github.com/praetorianer777/stator/backend/internal/auth"
 )
 
 // inspected builds the facts the database would answer from the Go mirror of
@@ -19,19 +17,20 @@ func inspected(f Facts, published bool, chain ...InspectLink) InspectFacts {
 	}
 	a := PageRules(f, links)
 	trashable := !chain[len(chain)-1].Page.Home
-	out := InspectFacts{SiteAdmin: f.SiteAdmin(), Use: f.HoldsGlobal(UseStator), Space: map[SpacePermission]bool{},
+	out := InspectFacts{Use: f.HoldsGlobal(UseStator), Space: map[SpacePermission]bool{},
 		Chain: chain, Published: published, Trashable: trashable,
 		Verdict: map[Right]bool{RightView: a.View, RightEdit: a.Edit, RightDelete: a.Delete && trashable, RightComment: a.Comment && published}}
 	for _, p := range SpacePermissions {
 		out.Space[p] = f.HoldsSpace(p)
 	}
+	for _, p := range f.Global {
+		out.Grants = append(out.Grants, AccessGrant{Assignment: Assignment{Role: string(p), GroupName: "Everyone"}, Permissions: []Permission{Permission(p)}})
+	}
 	for _, p := range f.Space {
-		out.Grants = append(out.Grants, SpaceGrant{Subject: everyoneSubject, Permissions: []SpacePermission{p}})
+		out.Grants = append(out.Grants, AccessGrant{Assignment: Assignment{Role: string(p), GroupName: "Everyone"}, Permissions: []Permission{Permission(p)}})
 	}
 	return out
 }
-
-var everyoneSubject = Subject{Type: SubjectEveryone, Name: EveryoneName}
 
 func chainPage(title string, home bool) InspectLink {
 	return InspectLink{Page: AccessPage{ID: uuid.New(), Title: title, Home: home}}
@@ -69,8 +68,8 @@ func TestEveryRefusalNamesTheStepThatDecidesIt(t *testing.T) {
 	onList.View = listed(true, "Bob", "Ann")
 	draft := chainPage("Draft", false)
 	draft.Hidden = true
-	admin := Facts{Member: true, Role: auth.RoleAdmin}
-	noUse := Facts{Member: true, Role: auth.RoleMember, Space: openSpace}
+	admin := administrator()
+	noUse := Facts{Member: true, Space: openSpace}
 	granted := chainPage("Granted", false)
 	granted.Grant = listed(true, "Bob")
 	grantedLocked := chainPage("Granted and locked", false)
@@ -161,14 +160,14 @@ func TestTheStepsNameTheirPagesListsAndGrants(t *testing.T) {
 	}
 
 	view := rights[0].Steps
-	if view[0].Kind != StepUse || len(view[0].Via) != 0 || view[1].Kind != StepSpace || *view[1].Permission != SpaceView {
+	if view[0].Kind != StepUse || len(view[0].Grants) != 1 || view[1].Kind != StepSpace || *view[1].Permission != SpaceView {
 		t.Fatalf("view starts with %+v", view[:2])
 	}
 	if len(view[1].Grants) != len(openSpace) {
 		t.Errorf("every grant gives view, but %d are named", len(view[1].Grants))
 	}
 	edit := rights[1].Steps
-	if edit[1].Kind != StepSpace || len(edit[1].Grants) != 1 || edit[1].Grants[0].Permissions[0] != SpaceAddPages {
+	if edit[1].Kind != StepSpace || len(edit[1].Grants) != 1 || edit[1].Grants[0].Permissions[0] != Permission(SpaceAddPages) {
 		t.Errorf("edit is given by %+v", edit[1].Grants)
 	}
 
@@ -180,9 +179,11 @@ func TestTheStepsNameTheirPagesListsAndGrants(t *testing.T) {
 	if before := bypassed[len(bypassed)-2]; before.Kind != StepSpace || *before.Permission != SpaceAdminister {
 		t.Errorf("the grant that lets an administrator through is not named: %+v", before)
 	}
-	orgAdmin := Explain(inspected(Facts{Member: true, Role: auth.RoleOwner}, true, home, secret))[0].Steps
-	if orgAdmin[0].Kind != StepSiteAdmin || len(orgAdmin) != 2 || !orgAdmin[1].Bypassed {
-		t.Errorf("an owner's view is %+v", orgAdmin)
+	// An administrator of the installation passes as one of the space, through
+	// the grant across the installation that holds administer.
+	orgAdmin := Explain(inspected(administrator(), true, home, secret))[0].Steps
+	if orgAdmin[0].Kind != StepUse || len(orgAdmin) != 4 || orgAdmin[2].Kind != StepSpace || *orgAdmin[2].Permission != SpaceAdminister || !orgAdmin[3].Bypassed {
+		t.Errorf("an administrator's view is %+v", orgAdmin)
 	}
 	for _, r := range rights {
 		for _, s := range r.Steps {

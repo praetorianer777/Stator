@@ -231,9 +231,9 @@ func TestMarkdownImportAndExport(t *testing.T) {
 	t.Run("what is refused, and how", func(t *testing.T) {
 		reading := newTree(t, owner, "MDREAD", "Read only")
 		readPage := reading.add(reading.homeID, "Read me")
-		want(t, owner.put(t, "/api/v1/spaces/MDREAD/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "MDREAD", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "MDREAD is read only")
+		}), http.StatusOK, "MDREAD is read only")
 		h.settle(t)
 		md := [2]string{"page.md", "# Page\n"}
 		if got := reader.importFiles(t, http.MethodPost, pagePath(readPage, "/import"), md); got.Status != http.StatusForbidden {

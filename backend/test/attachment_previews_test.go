@@ -73,10 +73,10 @@ func TestPreviewsShowPDFsAndConvertOfficeDocumentsOnce(t *testing.T) {
 	reader := api.as(t, readerID)
 	docs := newTree(t, owner, "PREV", "Previews")
 	pageID := docs.add(docs.homeID, "Plans")
-	want(t, owner.put(t, "/api/v1/spaces/PREV/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "PREV", []any{
 		map[string]any{"subject": user(home.user), "permissions": []any{"view", "addPages", "administer"}},
 		map[string]any{"subject": user(readerID), "permissions": []any{"view"}},
-	}}), http.StatusOK, "the reader only reads PREV")
+	}), http.StatusOK, "the reader only reads PREV")
 	files := pagePath(pageID, "/attachments")
 
 	upload := func(name, contentType string, data []byte) map[string]any {

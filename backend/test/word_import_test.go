@@ -232,9 +232,9 @@ func TestWordDocumentsAreImported(t *testing.T) {
 	t.Run("a reader is refused, and so is a stranger", func(t *testing.T) {
 		reading := newTree(t, owner, "WORDREAD", "Read only")
 		readPage := reading.add(reading.homeID, "Read me")
-		want(t, owner.put(t, "/api/v1/spaces/WORDREAD/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "WORDREAD", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "WORDREAD is read only")
+		}), http.StatusOK, "WORDREAD is read only")
 		h.closeSpace(t, reading.space, readerID)
 		doc := [2]string{"guide.docx", string(guide)}
 		if got := reader.importFiles(t, http.MethodPost, pagePath(readPage, "/import/docx"), doc); got.Status != http.StatusForbidden {
@@ -309,9 +309,9 @@ func TestAWordImportThatCannotFinishLeavesNothing(t *testing.T) {
 	t.Run("a requester who may no longer add pages", func(t *testing.T) {
 		docs := newTree(t, owner, "WORDFAIL", "Failing")
 		parent := docs.add(docs.homeID, "Imports")
-		want(t, owner.put(t, "/api/v1/spaces/WORDFAIL/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "WORDFAIL", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "WORDFAIL is read only")
+		}), http.StatusOK, "WORDFAIL is read only")
 		h.settle(t)
 		id := queueWordImport(t, h, memberID, parent, `) VALUES ($1, $2, $3, $4, $5)`, nil,
 			map[string][]byte{"a.docx": wordDoc(t, "A", nil, wPara("a"))})
@@ -365,9 +365,9 @@ func TestTheDatabaseKeepsWordImportsTheirImporters(t *testing.T) {
 	readerID := h.addPerson(t, "member")
 	open := newTree(t, owner, "WORDSQL", "Open")
 	reading := newTree(t, owner, "WORDRO", "Read only")
-	want(t, owner.put(t, "/api/v1/spaces/WORDRO/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "WORDRO", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
-	}}), http.StatusOK, "WORDRO is read only")
+	}), http.StatusOK, "WORDRO is read only")
 	h.settle(t)
 	ctx := context.Background()
 	insert := `INSERT INTO word_import (id, requested_by, parent_id, file_count, size_bytes) VALUES ($1, $2, $3, 1, 10)`

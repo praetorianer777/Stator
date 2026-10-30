@@ -22,10 +22,10 @@ func TestAnEditedPictureIsItsFilesNextVersion(t *testing.T) {
 	readerID := h.addPerson(t, "member")
 	reader := api.as(t, readerID)
 	docs := newTree(t, owner, "PEDT", "Edits")
-	want(t, owner.put(t, "/api/v1/spaces/PEDT/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "PEDT", []any{
 		map[string]any{"subject": user(home.user), "permissions": []any{"view", "addPages", "administer"}},
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
-	}}), http.StatusOK, "everybody else reads PEDT")
+	}), http.StatusOK, "everybody else reads PEDT")
 	pageID := docs.add(docs.homeID, "Screens")
 	files := "/api/v1/pages/" + pageID + "/attachments"
 

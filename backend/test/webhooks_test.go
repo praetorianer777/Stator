@@ -614,10 +614,10 @@ func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 	annID := h.addPerson(t, "admin")
 	ann := api.as(t, annID)
 	docs := newTree(t, owner, "PRM", "Permissions")
-	want(t, owner.put(t, "/api/v1/spaces/PRM/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "PRM", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments"}},
 		map[string]any{"subject": user(home.user), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "everybody reads the space")
+	}), http.StatusOK, "everybody reads the space")
 	bin, address := hookBin(t)
 	id, _ := makeHook(t, ann, "Ann's", address, events.TopicPagePublished)
 

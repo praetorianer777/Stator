@@ -35,9 +35,9 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	want(t, ann.upload(t, pagePath(low, "/attachments"), "low.txt", []byte("secret")), http.StatusCreated, "ann attaches to Low")
 	reading := newTree(t, owner, "READ", "Read only")
 	readPage := reading.add(reading.homeID, "Read me")
-	want(t, owner.put(t, "/api/v1/spaces/READ/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "READ", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
-	}}), http.StatusOK, "READ is read only")
+	}), http.StatusOK, "READ is read only")
 	h.settle(t)
 
 	conn := appConn(t)
@@ -55,7 +55,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 		if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.UserVar); err != nil {
 			t.Fatal(err)
 		}
-		for _, table := range []string{"space", "page", "page_version", "page_restriction", "space_grant", "global_grant"} {
+		for _, table := range []string{"space", "page", "page_version", "page_restriction", "role_assignment", "role"} {
 			if n := count(`SELECT count(*) FROM ` + table); n != 0 {
 				t.Errorf("nobody sees %d rows of %s", n, table)
 			}
@@ -104,9 +104,10 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 		denied(t, conn, "retitling in a read only space", `UPDATE page SET title = 'Taken' WHERE id = $1`, readPage)
 		denied(t, conn, "renaming a space", `UPDATE space SET name = 'Taken' WHERE key = 'RAW'`)
 		untouched(t, conn, "deleting a space", `DELETE FROM space WHERE key = 'RAW'`)
-		denied(t, conn, "granting herself a space", `INSERT INTO space_grant (space_id, permission, subject_type, user_id) VALUES ((SELECT id FROM space WHERE key = 'READ'), 'administer', 'user', $1)`, annID)
-		denied(t, conn, "granting herself spaces", `INSERT INTO global_grant (permission, subject_type, user_id) VALUES ('createSpace', 'user', $1)`, annID)
-		untouched(t, conn, "taking use from everyone", `DELETE FROM global_grant`)
+		denied(t, conn, "granting herself a space", `INSERT INTO role_assignment (role, space_id, user_id) VALUES ('space_administrator', (SELECT id FROM space WHERE key = 'READ'), $1)`, annID)
+		denied(t, conn, "granting herself spaces", `INSERT INTO role_assignment (role, user_id) VALUES ('space_creator', $1)`, annID)
+		untouched(t, conn, "taking use from everyone", `DELETE FROM role_assignment WHERE role = 'member'`)
+		untouched(t, conn, "letting her role administer the space", `UPDATE role SET permissions = permissions || ARRAY['administer'] WHERE key = 'viewer'`)
 		denied(t, conn, "making a space", `INSERT INTO space (key, name, created_by) VALUES ('MINE', 'Mine', $1)`, annID)
 		denied(t, conn, "purging", `SELECT page_purge($1)`, top)
 		denied(t, conn, "emptying the trash", `SELECT space_empty_trash((SELECT id FROM space WHERE key = 'RAW'))`)
@@ -130,11 +131,13 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("without use nothing is seen", func(t *testing.T) {
-		if _, err := h.super.Exec(ctx, `DELETE FROM global_grant WHERE permission = 'use'`); err != nil {
+		if _, err := h.super.Exec(ctx, `
+			DELETE FROM role_assignment a USING groups g
+			WHERE a.role = 'member' AND a.space_id IS NULL AND a.group_id = g.id AND g.builtin = 'everyone'`); err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
-			h.cleanupExec(t, h.super, `INSERT INTO global_grant (permission, subject_type) VALUES ('use', 'everyone')`)
+			h.cleanupExec(t, h.super, `INSERT INTO role_assignment (role, group_id) SELECT 'member', id FROM groups WHERE builtin = 'everyone' ON CONFLICT DO NOTHING`)
 		})
 		actAs(t, conn, annID)
 		for _, table := range []string{"space", "page"} {
@@ -144,7 +147,7 @@ func TestPermissionsAreEnforcedByTheDatabase(t *testing.T) {
 		}
 		actAs(t, conn, home.user)
 		if n := count(`SELECT count(*) FROM space`); n != 2 {
-			t.Errorf("the owner without a use grant reads %d spaces", n)
+			t.Errorf("the administrator, who uses Stator through their own role, reads %d spaces", n)
 		}
 	})
 }

@@ -126,7 +126,7 @@ func TestAnInstanceUpgradesAcrossTheSchemaChangeWhole(t *testing.T) {
 	}
 	pointAt(t, scratch.name)
 	h := connectHarness(t)
-	actor := perm.Actor{UserID: owner, Role: auth.RoleOwner}
+	actor := perm.Actor{UserID: owner, Role: auth.RoleMember}
 	as := db.WithUser(ctx, owner)
 
 	site, err := instance.NewResolver(h.cluster).Site(ctx)

@@ -1122,11 +1122,65 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Groups of the organization, to pick whom to grant something. */
+        /** The installation's groups, Everyone first, with how many people and grants each has; to pick whom to grant something. */
         get: operations["listGroups"];
         put?: never;
-        post?: never;
+        /** Make a group, kept by hand or, with a provider claim, filled by the identity provider at every sign-in. For administrators. */
+        post: operations["createGroup"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/groups/{groupID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One group with its members. For administrators. */
+        get: operations["getGroup"];
+        put?: never;
+        post?: never;
+        /** Delete a group and every grant to it; Everyone stays. For administrators. */
+        delete: operations["deleteGroup"];
+        options?: never;
+        head?: never;
+        /** Rename a group, describe it, or change the provider claim that fills it; Everyone is not changed. For administrators. */
+        patch: operations["updateGroup"];
+        trace?: never;
+    };
+    "/groups/{groupID}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Put a member in a group kept by hand. For administrators. */
+        post: operations["addGroupMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/groups/{groupID}/members/{userID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take somebody out of a group kept by hand. For administrators. */
+        delete: operations["removeGroupMember"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1489,41 +1543,6 @@ export interface paths {
         put: operations["saveOIDCProvider"];
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/oidc-provider/group-roles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Which provider groups grant which role. For administrators. */
-        get: operations["listGroupRoles"];
-        put?: never;
-        /** Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators. */
-        post: operations["setGroupRole"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/oidc-provider/group-roles/{groupRoleID}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators. */
-        delete: operations["removeGroupRole"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2658,6 +2677,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every permission a role may hold, in words, and whether it counts in a space or across the installation only. */
+        get: operations["listPermissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/posts": {
         parameters: {
             query?: never;
@@ -3258,6 +3294,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/role-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who holds which role where, a page at a time, with how many there are in all. Across the installation for its administrators; in a space for the space's administrators too. */
+        get: operations["listAssignments"];
+        put?: never;
+        /** Grant a role to a person or a group, in a space by its key or, with none, across the installation. In a space for its administrators; across the installation for the installation's. */
+        post: operations["grantRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/role-assignments/{assignmentID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a grant away. The last grant that administers a space, and the last that leaves the installation an active administrator, stay. */
+        delete: operations["revokeRole"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The roles and the permissions each holds outright, the built-in ones first. */
+        get: operations["listRoles"];
+        put?: never;
+        /** Add a role beside the built-in ones; its key is made from its name unless given. For administrators. */
+        post: operations["createRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/roles/{roleKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a role that is not built in, and every grant of it. For administrators. */
+        delete: operations["deleteRole"];
+        options?: never;
+        head?: never;
+        /** Rename a role, describe it or change what it holds; every grant of it follows. The administrator keeps administering Stator. For administrators. */
+        patch: operations["updateRole"];
+        trace?: never;
+    };
     "/search": {
         parameters: {
             query?: never;
@@ -3444,40 +3551,6 @@ export interface paths {
         /** One import of an organization's archive: its progress, then what came across and what did not, or why it failed. For administrators. */
         get: operations["getSiteImport"];
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/site/permissions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Each global permission and whom it is granted to. For administrators. */
-        get: operations["listGlobalPermissions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/site/permissions/{permission}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Replace whom a global permission is granted to. For administrators. */
-        put: operations["setGlobalPermission"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3846,24 +3919,6 @@ export interface paths {
         /** The pages directly under a parent, by default under the space's home page, in order. */
         get: operations["listPages"];
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/spaces/{spaceKey}/permissions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Who may do what in a space. For the space's administrators. */
-        get: operations["listSpacePermissions"];
-        /** Replace a space's whole permission table. For the space's administrators. */
-        put: operations["setSpacePermissions"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4438,7 +4493,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The organization's members, with their roles and whether the identity provider decides them. For administrators. */
+        /** The installation's members and guests, with their standing and the roles they hold across the installation, by name or through a group. For administrators. */
         get: operations["listMembers"];
         put?: never;
         /** Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators. */
@@ -4510,7 +4565,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Take somebody out of the organization. The owner stays. For administrators. */
+        /** Take somebody out of the installation. The last active administrator stays. For administrators. */
         delete: operations["removeMember"];
         options?: never;
         head?: never;
@@ -4706,6 +4761,28 @@ export interface components {
             secret?: string;
             spaces: string[];
         };
+        AccessGrant: {
+            /** Format: date-time */
+            createdAt: string;
+            groupBuiltin?: string;
+            /** Format: uuid */
+            groupId?: string;
+            groupName?: string;
+            guest?: boolean;
+            /** Format: uuid */
+            id: string;
+            permissions: ("view" | "addComments" | "addPages" | "delete" | "administer" | "use" | "createSpace" | "administerSite")[];
+            role: string;
+            roleName: string;
+            /** Format: uuid */
+            spaceId?: string;
+            spaceKey?: string;
+            spaceName?: string;
+            userEmail?: string;
+            /** Format: uuid */
+            userId?: string;
+            userName?: string;
+        };
         AccessPage: {
             home: boolean;
             /** Format: uuid */
@@ -4716,9 +4793,7 @@ export interface components {
             person: components["schemas"]["Person"];
             rights: components["schemas"]["AccessRight"][];
             /** @enum {string} */
-            role: "owner" | "admin" | "member" | "guest";
-            /** @enum {string} */
-            roleSource: "manual" | "oidc";
+            role: "member" | "guest";
         };
         AccessRight: {
             allowed: boolean;
@@ -4728,9 +4803,9 @@ export interface components {
         };
         AccessStep: {
             bypassed: boolean;
-            grants: components["schemas"]["SpaceGrant"][];
+            grants: components["schemas"]["AccessGrant"][];
             /** @enum {string} */
-            kind: "orgAdmin" | "use" | "space" | "unpublished" | "list" | "grant" | "view" | "published" | "home" | "archived";
+            kind: "use" | "space" | "unpublished" | "list" | "grant" | "view" | "published" | "home" | "archived";
             /** @enum {string} */
             list?: "view" | "edit" | "editGrant";
             listed: components["schemas"]["Subject"][];
@@ -4767,13 +4842,17 @@ export interface components {
             id: string;
             name: string;
         };
+        AddGroupMemberRequest: {
+            /** Format: uuid */
+            userId: string;
+        };
         AdmitRequest: {
             /** @enum {string} */
-            role: "admin" | "member";
+            role: "member" | "admin";
         };
         Admitted: {
             /** @enum {string} */
-            role: "owner" | "admin" | "member" | "guest";
+            role: "member" | "admin";
             /** Format: uuid */
             userId: string;
         };
@@ -4833,6 +4912,34 @@ export interface components {
             name: string;
             size: number;
         };
+        Assignment: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            groupBuiltin?: "everyone";
+            /** Format: uuid */
+            groupId?: string;
+            groupName?: string;
+            guest?: boolean;
+            /** Format: uuid */
+            id: string;
+            role: string;
+            roleName: string;
+            /** Format: uuid */
+            spaceId?: string;
+            spaceKey?: string;
+            spaceName?: string;
+            userEmail?: string;
+            /** Format: uuid */
+            userId?: string;
+            userName?: string;
+        };
+        AssignmentPage: {
+            assignments: components["schemas"]["Assignment"][];
+            limit: number;
+            offset: number;
+            total: number;
+        };
         Attachment: {
             contentType: string;
             /** Format: date-time */
@@ -4861,7 +4968,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented";
+            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -4878,7 +4985,7 @@ export interface components {
             via: components["schemas"]["Via"] | null;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented")[];
+            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -5216,7 +5323,7 @@ export interface components {
             id: string | null;
             name: string;
             /** @enum {string} */
-            type: "user" | "group" | "everyone" | "anonymous";
+            type: "user" | "group" | "anonymous";
         };
         Counts: {
             detached: number;
@@ -5257,7 +5364,7 @@ export interface components {
             name: string;
             password: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member" | "guest";
+            role: "member" | "admin";
         };
         CreateTokenRequest: {
             /** Format: date-time */
@@ -5272,7 +5379,7 @@ export interface components {
             newAccount: boolean;
             password?: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member" | "guest";
+            role: "member" | "admin";
             /** Format: uuid */
             userId: string;
         };
@@ -5599,30 +5706,33 @@ export interface components {
             createSpace: boolean;
             use: boolean;
         };
-        GlobalGrant: {
-            fixed: boolean;
-            /** @enum {string} */
-            permission: "use" | "createSpace" | "administer";
-            subjects: components["schemas"]["Subject"][];
-        };
-        GlobalGrantInput: {
-            subjects: components["schemas"]["SubjectRef"][];
+        GrantRoleRequest: {
+            /** Format: uuid */
+            groupId: string | null;
+            role: string;
+            spaceKey: string;
+            /** Format: uuid */
+            userId: string | null;
         };
         Group: {
+            /** @enum {string} */
+            builtin?: "everyone";
+            description: string;
+            externalRef: string;
             fromProvider: boolean;
             /** Format: uuid */
             id: string;
             memberCount: number;
+            members?: components["schemas"]["Person"][];
             name: string;
-        };
-        GroupRole: {
-            group: string;
-            /** Format: uuid */
-            id: string;
+            roleCount: number;
             /** @enum {string} */
-            role: "admin" | "member";
-            /** Format: date-time */
-            updatedAt: string;
+            source: "local" | "oidc";
+        };
+        GroupInput: {
+            description?: string;
+            externalRef?: string;
+            name?: string;
         };
         Guest: {
             email: string;
@@ -5859,17 +5969,24 @@ export interface components {
             schema?: components["schemas"]["Schema"];
         };
         Member: {
+            active: boolean;
             email: string;
             guestSpace: components["schemas"]["SpaceRef"] | null;
             /** Format: date-time */
             joinedAt: string;
             name: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member" | "guest";
-            /** @enum {string} */
-            roleSource: "manual" | "oidc";
+            role: "member" | "guest";
+            roles: components["schemas"]["MemberRole"][];
             /** Format: uuid */
             userId: string;
+        };
+        MemberRole: {
+            /** Format: uuid */
+            groupId: string | null;
+            groupName: string | null;
+            name: string;
+            role: string;
         };
         Mentionable: {
             canView: boolean;
@@ -6288,6 +6405,13 @@ export interface components {
             key: string;
             name: string;
         };
+        PermissionView: {
+            /** @enum {string} */
+            permission: "view" | "addComments" | "addPages" | "delete" | "administer" | "use" | "createSpace" | "administerSite";
+            /** @enum {string} */
+            scope: "space" | "installation";
+            words: string;
+        };
         Person: {
             email: string;
             /** Format: uuid */
@@ -6488,11 +6612,17 @@ export interface components {
             name: string;
         };
         RecipientGroup: {
+            builtin?: string;
+            description: string;
+            externalRef: string;
             fromProvider: boolean;
             /** Format: uuid */
             id: string;
             memberCount: number;
+            members?: components["schemas"]["Person"][];
             name: string;
+            roleCount: number;
+            source: string;
             viewers: number;
         };
         Ref: {
@@ -6694,6 +6824,22 @@ export interface components {
             name: string;
             rows: components["schemas"]["RoadmapBar"][];
         };
+        Role: {
+            builtin: boolean;
+            description: string;
+            inUse: number;
+            name: string;
+            orgWideOnly: boolean;
+            permissions: ("view" | "addComments" | "addPages" | "delete" | "administer" | "use" | "createSpace" | "administerSite")[];
+            role: string;
+        };
+        RoleInput: {
+            description?: string;
+            key?: string;
+            name?: string;
+            orgWideOnly?: boolean;
+            permissions?: ("view" | "addComments" | "addPages" | "delete" | "administer" | "use" | "createSpace" | "administerSite")[];
+        };
         RpcError: {
             code: number;
             /** @description A JSON value. */
@@ -6752,11 +6898,6 @@ export interface components {
         Server: {
             description?: string;
             url: string;
-        };
-        SetGroupRoleRequest: {
-            group: string;
-            /** @enum {string} */
-            role: "admin" | "member";
         };
         Shape: {
             radiusControl?: number;
@@ -6938,17 +7079,6 @@ export interface components {
             /** @enum {string} */
             state: "queued" | "running" | "done" | "failed" | "expired";
         };
-        SpaceGrant: {
-            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
-            subject: components["schemas"]["Subject"];
-        };
-        SpaceGrantInput: {
-            permissions: ("view" | "addPages" | "addComments" | "delete" | "administer")[];
-            subject: components["schemas"]["SubjectRef"];
-        };
-        SpaceGrantsInput: {
-            grants: components["schemas"]["SpaceGrantInput"][];
-        };
         SpaceImport: {
             failure: ("forbidden" | "key_taken" | "invalid" | "too_large" | "failed") | null;
             /** Format: date-time */
@@ -7071,7 +7201,7 @@ export interface components {
             guestSpace: components["schemas"]["SpaceRef"] | null;
             name: string;
             /** @enum {string} */
-            role: "owner" | "admin" | "member" | "guest";
+            role: "member" | "guest";
         };
         Star: {
             /** @enum {string} */
@@ -7098,13 +7228,13 @@ export interface components {
             id: string | null;
             name: string;
             /** @enum {string} */
-            type: "user" | "group" | "everyone";
+            type: "user" | "group";
         };
         SubjectRef: {
             /** Format: uuid */
             id?: string;
             /** @enum {string} */
-            type: "user" | "group" | "everyone";
+            type: "user" | "group";
         };
         Switches: {
             assigned: boolean;
@@ -9241,7 +9371,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -9290,7 +9420,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -11073,6 +11203,283 @@ export interface operations {
             };
         };
     };
+    createGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        group: components["schemas"]["Group"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    getGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        group: components["schemas"]["Group"];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GroupInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        group: components["schemas"]["Group"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    addGroupMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddGroupMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        group: components["schemas"]["Group"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    removeGroupMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupID: string;
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        group: components["schemas"]["Group"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     liveness: {
         parameters: {
             query?: never;
@@ -12104,101 +12511,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProviderView"];
                 };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    listGroupRoles: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        groupRoles: components["schemas"]["GroupRole"][];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    setGroupRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SetGroupRoleRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        groupRole: components["schemas"]["GroupRole"];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    removeGroupRole: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                groupRoleID: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description An error, in the one shape every endpoint uses. */
             default: {
@@ -15766,6 +16078,37 @@ export interface operations {
             };
         };
     };
+    listPermissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        permissions: components["schemas"]["PermissionView"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listPosts: {
         parameters: {
             query?: {
@@ -17342,6 +17685,297 @@ export interface operations {
             };
         };
     };
+    listAssignments: {
+        parameters: {
+            query?: {
+                /** @description Text the person, the group, the role, or the space's key or name contains. */
+                q?: string;
+                /** @description Only the grants in this space, by key. */
+                space?: string;
+                /** @description installation for only the grants across the whole installation. */
+                scope?: "installation";
+                /** @description Only grants of this role, by its key. */
+                role?: string;
+                /** @description 1 to 200; 50 unless said. */
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentPage"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    grantRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        assignment: components["schemas"]["Assignment"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revokeRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assignmentID: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        roles: components["schemas"]["Role"][];
+                    };
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    createRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        role: components["schemas"]["Role"];
+                    };
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    deleteRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roleKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        role: components["schemas"]["Role"];
+                    };
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     search: {
         parameters: {
             query?: {
@@ -17956,74 +18590,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         import: components["schemas"]["SiteImport"];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    listGlobalPermissions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        permissions: components["schemas"]["GlobalGrant"][];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    setGlobalPermission: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                permission: "use" | "createSpace" | "administer";
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GlobalGrantInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        permission: components["schemas"]["GlobalGrant"];
                     };
                 };
             };
@@ -19185,85 +19751,6 @@ export interface operations {
             };
         };
     };
-    listSpacePermissions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                spaceKey: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        grants: components["schemas"]["SpaceGrant"][];
-                    };
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    setSpacePermissions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                spaceKey: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SpaceGrantsInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        grants: components["schemas"]["SpaceGrant"][];
-                    };
-                };
-            };
-            /** @description Unprocessable Entity */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description An error, in the one shape every endpoint uses. */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
     previewPermissionCopy: {
         parameters: {
             query?: {
@@ -19343,7 +19830,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         copy: components["schemas"]["PermissionCopyPreview"];
-                        grants: components["schemas"]["SpaceGrant"][];
+                        grants: components["schemas"]["Assignment"][];
                     };
                 };
             };

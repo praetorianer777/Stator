@@ -110,7 +110,7 @@ func TestSignInFailuresAreNamedForThePage(t *testing.T) {
 func TestTheProviderSettingsAreForAdministratorsOnly(t *testing.T) {
 	s := newServer(t)
 	s.Auth = fakeAuth{
-		"admin":  {UserID: uuid.New(), Role: auth.RoleAdmin},
+		"admin":  {UserID: uuid.New(), Role: auth.RoleMember, Administers: true},
 		"member": {UserID: uuid.New(), Role: auth.RoleMember},
 		"no-org": {UserID: uuid.New()},
 	}

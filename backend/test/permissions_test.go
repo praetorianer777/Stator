@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -46,8 +47,8 @@ func restrict(t *testing.T, c *client, page string, view, edit []any) response {
 	return c.put(t, pagePath(page, "/restrictions"), map[string]any{"view": view, "edit": edit})
 }
 
-// The permission matrix: global grants, space grants and page restrictions
-// decide what each person is answered, and every change is audited.
+// Grants across the installation and in a space, to people, groups and
+// Everyone, and page restrictions decide what each person is answered.
 func TestPermissionsOverTheAPI(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -70,33 +71,32 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 			t.Errorf("nobody's access: %d", got.Status)
 		}
 
-		perms := list(t, want(t, owner.get(t, "/api/v1/site/permissions"), http.StatusOK, "global permissions"), "permissions")
-		if len(perms) != 3 {
-			t.Fatalf("%d global permissions", len(perms))
+		across := list(t, want(t, owner.get(t, "/api/v1/role-assignments?scope=installation"), http.StatusOK, "the grants across the installation"), "assignments")
+		held := map[string]bool{}
+		for _, each := range across {
+			a := each.(map[string]any)
+			held[a["role"].(string)+":"+fmt.Sprint(a["groupBuiltin"], a["userId"])] = true
 		}
-		use, admin := perms[0].(map[string]any), perms[2].(map[string]any)
-		if use["permission"] != "use" || len(use["subjects"].([]any)) != 1 || use["subjects"].([]any)[0].(map[string]any)["type"] != "everyone" {
-			t.Errorf("use is granted to %v", use)
+		if !held["member:everyone<nil>"] || !held["administrator:<nil>"+home.user.String()] {
+			t.Errorf("across the installation %v", across)
 		}
-		if admin["permission"] != "administer" || admin["fixed"] != true || len(admin["subjects"].([]any)) != 1 {
-			t.Errorf("administer is %v", admin)
+		if got := ann.get(t, "/api/v1/role-assignments?scope=installation"); got.Status != http.StatusForbidden {
+			t.Errorf("a member reads the grants across the installation: %d", got.Status)
 		}
-		if got := ann.get(t, "/api/v1/site/permissions"); got.Status != http.StatusForbidden {
-			t.Errorf("a member reads the global permissions: %d", got.Status)
+		everyoneID := h.everyoneGroup(t)
+		if got := owner.post(t, "/api/v1/role-assignments", map[string]any{"role": "administrator", "groupId": everyoneID}); got.Status != http.StatusUnprocessableEntity {
+			t.Errorf("Everyone was made an administrator: %d %s", got.Status, got.Raw)
 		}
-		if got := owner.put(t, "/api/v1/site/permissions/administer", map[string]any{"subjects": []any{user(annID)}}); got.Status != http.StatusConflict {
-			t.Errorf("administer was granted: %d", got.Status)
-		}
-		if got := ann.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(annID)}}); got.Status != http.StatusForbidden {
+		if got := ann.setAcross(t, "createSpace", []any{user(annID)}); got.Status != http.StatusForbidden {
 			t.Errorf("a member granted themselves createSpace: %d", got.Status)
 		}
 
 		if got := ann.post(t, "/api/v1/spaces", map[string]any{"key": "ANNS", "name": "Ann's"}); got.Status != http.StatusForbidden {
 			t.Fatalf("a member made a space: %d", got.Status)
 		}
-		granted := obj(t, want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(annID), user(annID)}}), http.StatusOK, "grant createSpace"), "permission")
-		if subjects := granted["subjects"].([]any); len(subjects) != 1 || subjects[0].(map[string]any)["name"] != "A member" {
-			t.Errorf("createSpace is granted to %v", subjects)
+		granted := list(t, want(t, owner.setAcross(t, "createSpace", []any{user(annID), user(annID)}), http.StatusOK, "grant createSpace"), "assignments")
+		if len(granted) != 1 || granted[0].(map[string]any)["userName"] != "A member" {
+			t.Errorf("createSpace is granted to %v", granted)
 		}
 		sp := obj(t, want(t, ann.post(t, "/api/v1/spaces", map[string]any{"key": "ANNS", "name": "Ann's"}), http.StatusCreated, "ann's space"), "space")
 		if can := sp["can"].(map[string]any); can["administer"] != true || can["purgeTrash"] != true {
@@ -106,7 +106,7 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 			t.Errorf("somebody else renamed ann's space: %d", got.Status)
 		}
 
-		want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "use for writers only")
+		want(t, owner.setAcross(t, "use", []any{group(writers)}), http.StatusOK, "use for writers only")
 		got := ann.get(t, "/api/v1/spaces")
 		if got.Status != http.StatusForbidden || errorCode(t, got) != "no_access" {
 			t.Errorf("a member without use lists spaces: %d %s", got.Status, got.Raw)
@@ -115,46 +115,50 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 			t.Errorf("without use a member may %v", me)
 		}
 		want(t, bob.get(t, "/api/v1/spaces"), http.StatusOK, "a writer still uses Stator")
-		want(t, owner.get(t, "/api/v1/spaces"), http.StatusOK, "an owner always uses Stator")
-		want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{everyone}}), http.StatusOK, "use for everyone again")
+		want(t, owner.get(t, "/api/v1/spaces"), http.StatusOK, "an administrator uses Stator through their own role")
+		want(t, owner.setAcross(t, "use", []any{everyone}), http.StatusOK, "use for everyone again")
 		want(t, ann.get(t, "/api/v1/spaces"), http.StatusOK, "use is back")
 	})
 
 	t.Run("space permissions", func(t *testing.T) {
 		sec := newTree(t, owner, "SEC", "Secure")
 		page := sec.add(sec.homeID, "Plans")
-		grants := list(t, want(t, owner.get(t, "/api/v1/spaces/SEC/permissions"), http.StatusOK, "the space's table"), "grants")
+		grants := list(t, want(t, owner.get(t, "/api/v1/role-assignments?space=SEC"), http.StatusOK, "the space's grants"), "assignments")
 		if len(grants) != 2 {
 			t.Fatalf("a new space grants %v", grants)
 		}
 		first, second := grants[0].(map[string]any), grants[1].(map[string]any)
-		if first["subject"].(map[string]any)["type"] != "everyone" || len(first["permissions"].([]any)) != 4 {
-			t.Errorf("everyone holds %v", first)
+		if first["role"] != "space_administrator" || first["userId"] != home.user.String() {
+			t.Errorf("the creator holds %v", first)
 		}
-		if second["subject"].(map[string]any)["type"] != "user" || second["permissions"].([]any)[0] != "administer" {
-			t.Errorf("the creator holds %v", second)
+		if second["role"] != "editor" || second["groupBuiltin"] != "everyone" {
+			t.Errorf("Everyone holds %v", second)
 		}
-		if got := ann.get(t, "/api/v1/spaces/SEC/permissions"); got.Status != http.StatusForbidden {
-			t.Errorf("a member read the space's table: %d", got.Status)
+		if got := ann.get(t, "/api/v1/role-assignments?space=SEC"); got.Status != http.StatusForbidden {
+			t.Errorf("a member read the space's grants: %d", got.Status)
 		}
-		if got := ann.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{}}); got.Status != http.StatusForbidden {
-			t.Errorf("a member replaced the space's table: %d", got.Status)
+		if got := ann.setTable(t, "SEC", []any{}); got.Status != http.StatusForbidden {
+			t.Errorf("a member replaced the space's grants: %d", got.Status)
 		}
-		for what, body := range map[string]any{
-			"a row with no permissions": []any{map[string]any{"subject": everyone, "permissions": []any{}}},
-			"an unknown permission":     []any{map[string]any{"subject": everyone, "permissions": []any{"fly"}}},
-			"an unknown person":         []any{map[string]any{"subject": user(uuid.New()), "permissions": []any{"view"}}},
+		for what, body := range map[string]map[string]any{
+			"no role":                 {"spaceKey": "SEC", "userId": annID},
+			"an unknown role":         {"role": "pilot", "spaceKey": "SEC", "userId": annID},
+			"an unknown person":       {"role": "viewer", "spaceKey": "SEC", "userId": uuid.New()},
+			"nobody":                  {"role": "viewer", "spaceKey": "SEC"},
+			"a person and a group":    {"role": "viewer", "spaceKey": "SEC", "userId": annID, "groupId": writers},
+			"the installation's role": {"role": "administrator", "spaceKey": "SEC", "userId": annID},
+			"an unknown space":        {"role": "viewer", "spaceKey": "NOPE", "userId": annID},
 		} {
-			if got := owner.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": body}); got.Status != http.StatusUnprocessableEntity {
-				t.Errorf("%s: %d", what, got.Status)
+			if got := owner.post(t, "/api/v1/role-assignments", body); got.Status != http.StatusUnprocessableEntity {
+				t.Errorf("%s: %d %s", what, got.Status, got.Raw)
 			}
 		}
 
-		table := want(t, owner.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{
+		table := want(t, owner.setTable(t, "SEC", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 			map[string]any{"subject": group(writers), "permissions": []any{"addPages", "addComments"}},
 			map[string]any{"subject": user(daveID), "permissions": []any{"administer"}},
-		}}), http.StatusOK, "narrow the space")
+		}), http.StatusOK, "narrow the space")
 		if n := len(list(t, table, "grants")); n != 3 {
 			t.Errorf("the table has %d rows", n)
 		}
@@ -175,29 +179,36 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 		if got := bob.delete(t, "/api/v1/pages/"+page); got.Status != http.StatusForbidden {
 			t.Errorf("a writer without delete trashed a page: %d", got.Status)
 		}
-		want(t, dave.get(t, "/api/v1/spaces/SEC/permissions"), http.StatusOK, "a space administrator reads the table")
+		want(t, dave.get(t, "/api/v1/role-assignments?space=SEC"), http.StatusOK, "a space administrator reads the grants")
+		if got := dave.get(t, "/api/v1/role-assignments?scope=installation"); got.Status != http.StatusForbidden {
+			t.Errorf("a space administrator read the grants across the installation: %d", got.Status)
+		}
+		if got := dave.post(t, "/api/v1/role-assignments", map[string]any{"role": "member", "userId": annID}); got.Status != http.StatusForbidden {
+			t.Errorf("a space administrator granted across the installation: %d", got.Status)
+		}
 
-		// A space administrator who is no organization administrator may give
-		// the space away, though not to nobody, and the answer is still the
-		// table they wrote.
-		fieldError(t, want(t, dave.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{
+		// A space administrator who is no administrator of the installation may
+		// give the space away, though not to nobody.
+		if got := dave.setTable(t, "SEC", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
-		}}), http.StatusUnprocessableEntity, "dave leaves the space without an administrator"), "grants")
-		given := want(t, dave.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{
+		}); got.Status != http.StatusConflict || errorCode(t, got) != "space_keeps_administrator" {
+			t.Errorf("dave left the space without an administrator: %d %s", got.Status, got.Raw)
+		}
+		given := want(t, dave.setTable(t, "SEC", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
 			map[string]any{"subject": group(writers), "permissions": []any{"administer"}},
-		}}), http.StatusOK, "dave gives the space away")
+		}), http.StatusOK, "dave gives the space away")
 		if n := len(list(t, given, "grants")); n != 2 {
 			t.Errorf("the table dave wrote has %d rows", n)
 		}
-		if got := dave.get(t, "/api/v1/spaces/SEC/permissions"); got.Status != http.StatusForbidden {
-			t.Errorf("dave still reads the table: %d", got.Status)
+		if got := dave.get(t, "/api/v1/role-assignments?space=SEC"); got.Status != http.StatusForbidden {
+			t.Errorf("dave still reads the grants: %d", got.Status)
 		}
-		want(t, owner.get(t, "/api/v1/spaces/SEC/permissions"), http.StatusOK, "no space is ever orphaned")
+		want(t, owner.get(t, "/api/v1/role-assignments?space=SEC"), http.StatusOK, "no space is ever orphaned")
 		want(t, carl.post(t, "/api/v1/pages", map[string]any{"parentId": sec.homeID, "title": "Open again", "publish": true}), http.StatusCreated, "the space is open again")
 
 		// No view for anybody but the administrators hides the space itself.
-		want(t, owner.put(t, "/api/v1/spaces/SEC/permissions", map[string]any{"grants": []any{}}), http.StatusOK, "close the space")
+		want(t, owner.setTable(t, "SEC", []any{}), http.StatusOK, "close the space")
 		if got := ann.get(t, "/api/v1/spaces/SEC"); got.Status != http.StatusNotFound {
 			t.Errorf("a closed space answers %d", got.Status)
 		}
@@ -213,10 +224,10 @@ func TestPermissionsOverTheAPI(t *testing.T) {
 
 	t.Run("page restrictions", func(t *testing.T) {
 		docs := newTree(t, owner, "RES", "Restricted")
-		want(t, owner.put(t, "/api/v1/spaces/RES/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "RES", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
 			map[string]any{"subject": user(daveID), "permissions": []any{"administer"}},
-		}}), http.StatusOK, "dave administers RES")
+		}), http.StatusOK, "dave administers RES")
 		top := docs.add(docs.homeID, "Top")
 		mid := docs.add(top, "Mid")
 		low := docs.add(mid, "Low")

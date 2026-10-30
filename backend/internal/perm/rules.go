@@ -4,47 +4,45 @@ import (
 	"slices"
 
 	"github.com/google/uuid"
-
-	"github.com/praetorianer777/stator/backend/internal/auth"
 )
 
 // The rules, as plain functions of what the database says, so each can be
 // read and tested alone. The SQL functions of migration 00090 are the same
 // rules for the policies; the integration suite holds the two to each other.
 
-// Facts are what one person is granted in the organization and in a space.
+// Facts are what one person is granted across the installation and in a space.
 type Facts struct {
-	// Member is false for somebody who is not in the organization at all.
+	// Member is false for somebody who is not in the installation at all.
 	Member bool
-	Role   auth.Role
-	// Global and Space are the grants as stored, before any implication.
+	// Guest is somebody from outside, let into one space, who uses Stator
+	// there because their invitation says so.
+	Guest bool
+	// Global are the permissions grants across the installation hold, and
+	// Space those that grants in the space or across the installation hold,
+	// both before any implication.
 	Global []GlobalPermission
 	Space  []SpacePermission
 	// SpacesOnly says the person acts with a token limited to spaces, or is a
-	// guest of one, and so reaches nothing of the organization as a whole.
+	// guest of one, and so reaches nothing of the installation as a whole.
 	// Facts about a space they do not reach are empty.
 	SpacesOnly bool
 }
 
-// roleAdmin reports whether the person is an owner or administrator, who
-// holds every permission in every space so nothing can be orphaned.
-func (f Facts) roleAdmin() bool { return f.Member && f.Role.CanAdminister() }
-
-// SiteAdmin reports whether the person administers the organization itself,
+// SiteAdmin reports whether the person administers the installation itself,
 // which a token limited to spaces never does.
-func (f Facts) SiteAdmin() bool { return f.roleAdmin() && !f.SpacesOnly }
+func (f Facts) SiteAdmin() bool { return f.HoldsGlobal(AdministerSite) }
 
-// HoldsGlobal reports whether a global permission applies. Without use a
-// person holds nothing, administer follows the roles alone, and a token
-// limited to spaces holds use and nothing more.
+// HoldsGlobal reports whether a permission across the installation applies.
+// Without use a person holds nothing but administering, which follows its
+// grant alone; a token limited to spaces, or a guest, holds use and nothing more.
 func (f Facts) HoldsGlobal(p GlobalPermission) bool {
 	switch {
-	case f.SpacesOnly && p != UseStator:
+	case !f.Member, f.SpacesOnly && p != UseStator:
 		return false
-	case f.roleAdmin():
-		return true
-	case !f.Member, p == AdministerSite:
-		return false
+	case f.Guest:
+		return p == UseStator
+	case p == AdministerSite:
+		return slices.Contains(f.Global, p)
 	}
 	return slices.Contains(f.Global, UseStator) && slices.Contains(f.Global, p)
 }
@@ -52,9 +50,6 @@ func (f Facts) HoldsGlobal(p GlobalPermission) bool {
 // HoldsSpace reports whether a space permission applies: every one implies
 // view, and administer implies all.
 func (f Facts) HoldsSpace(p SpacePermission) bool {
-	if f.roleAdmin() {
-		return true
-	}
 	if !f.HoldsGlobal(UseStator) {
 		return false
 	}

@@ -122,8 +122,12 @@ func TestTheMigrationsReachEveryRowWhereTheOwnerIsBoundByRowLevelSecurity(t *tes
 		want int
 	}{
 		{"pages without their first version (00070)", `SELECT count(*) FROM page p WHERE NOT EXISTS (SELECT 1 FROM page_version v WHERE v.page_id = p.id AND v.number = 1) AND p.space_id <> $1`, []any{example}, 0},
-		{"the organization's grant to everyone (00090)", `SELECT count(*) FROM global_grant WHERE permission = 'use' AND subject_type = 'everyone'`, nil, 1},
-		{"the grants of the spaces made before permissions (00090)", `SELECT count(*) FROM space_grant g JOIN space s ON s.id = g.space_id WHERE s.key IN ('DOCS', 'TEAM')`, nil, 2*4 + 2},
+		{"the organization's grant to everyone (00090), Everyone's member role now (00960)",
+			`SELECT count(*) FROM role_assignment a JOIN groups g ON g.id = a.group_id WHERE a.role = 'member' AND a.space_id IS NULL AND g.builtin = 'everyone'`, nil, 1},
+		{"the grants of the spaces made before permissions (00090), as roles (00960)",
+			`SELECT count(*) FROM role_assignment a JOIN space s ON s.id = a.space_id WHERE s.key IN ('DOCS', 'TEAM')`, nil, 2 + 2},
+		{"the owner of before administers (00960)", `SELECT count(*) FROM role_assignment WHERE role = 'administrator' AND user_id = $1`, []any{ada}, 1},
+		{"every member is in Everyone (00960)", `SELECT count(*) FROM group_member m JOIN groups g ON g.id = m.group_id WHERE g.builtin = 'everyone'`, nil, 2},
 		{"people whose stored language is the old default (00195)", `SELECT count(*) FROM app_user WHERE locale IS NOT NULL`, nil, 0},
 		{"pages without their publication (00210)", `SELECT count(*) FROM page WHERE published_at IS NULL AND space_id <> $1`, []any{example}, 0},
 		{"views counted from the visits (00300)", `SELECT count(*) FROM page_view`, nil, visits},

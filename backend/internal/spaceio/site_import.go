@@ -265,6 +265,7 @@ func (oi *siteImporter) write(ctx context.Context, tx db.DBTX) error {
 	steps := []func() error{
 		func() error { return oi.writePeople(ctx, tx) },
 		func() error { return oi.writeGroups(ctx, tx) },
+		func() error { return oi.writeRoles(ctx, tx) },
 		func() error { return oi.writeThemes(ctx, tx) },
 		func() error { return oi.writeSpaces(ctx, tx) },
 		func() error { return oi.writeSettings(ctx, tx) },
@@ -307,7 +308,7 @@ func (oi *siteImporter) writePeople(ctx context.Context, tx db.DBTX) error {
 		if !strings.Contains(email, "@") {
 			return invalid("The archive names a person without an address. Export the organization again and import the new file.")
 		}
-		if !slices.Contains(orgRoles, p.Role) || !slices.Contains(roleSources, p.RoleSource) {
+		if !slices.Contains(orgRoles, p.Role) || (p.RoleSource != "" && !slices.Contains(roleSources, p.RoleSource)) {
 			return invalid("The archive gives %s a role Stator does not know. Export the organization again and import the new file.", email)
 		}
 		name := strings.TrimSpace(p.Name)
@@ -342,14 +343,17 @@ func (oi *siteImporter) writePeople(ctx context.Context, tx db.DBTX) error {
 			oi.guests = append(oi.guests, p)
 			continue
 		}
-		source := p.RoleSource
-		if p.Role == "owner" {
-			source = "manual"
-		}
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO member (user_id, role, role_source, created_at) VALUES ($1, $2, $3, $4)
-			ON CONFLICT (user_id) DO NOTHING`, id, p.Role, source, p.JoinedAt); err != nil {
+		tag, err := tx.Exec(ctx, `
+			INSERT INTO member (user_id, role, created_at) VALUES ($1, 'member', $2)
+			ON CONFLICT (user_id) DO NOTHING`, id, p.JoinedAt)
+		if err != nil {
 			return part("the membership of "+email, err)
+		}
+		// Version 1 said who administered by role; version 2's grants say it.
+		if tag.RowsAffected() == 1 && (p.Role == "owner" || p.Role == "admin") {
+			if err := auth.GrantAdministrator(ctx, tx, id, &oi.importer); err != nil {
+				return part("the membership of "+email, err)
+			}
 		}
 	}
 	return nil
@@ -366,9 +370,22 @@ func (oi *siteImporter) writeGroups(ctx context.Context, tx db.DBTX) error {
 		if g.Source != "oidc" {
 			ref = nil
 		}
-		var id uuid.UUID
-		err := tx.QueryRow(ctx, `SELECT id FROM groups WHERE lower(name) = lower($1)`, name).Scan(&id)
+		var (
+			id      uuid.UUID
+			builtin *string
+		)
+		err := tx.QueryRow(ctx, `SELECT id, builtin FROM groups WHERE lower(name) = lower($1)`, name).Scan(&id, &builtin)
+		if err == nil && builtin != nil && g.Builtin != *builtin {
+			// A group made by hand under Everyone's name keeps its own members.
+			name += " (made by hand)"
+			err = tx.QueryRow(ctx, `SELECT id, builtin FROM groups WHERE lower(name) = lower($1)`, name).Scan(&id, &builtin)
+		}
+		if g.Builtin != "" {
+			err = tx.QueryRow(ctx, `SELECT id, builtin FROM groups WHERE builtin = $1`, g.Builtin).Scan(&id, &builtin)
+		}
 		switch {
+		case errors.Is(err, pgx.ErrNoRows) && g.Builtin != "":
+			return invalid("The archive holds a built-in group Stator does not know. Export the organization again and import the new file.")
 		case errors.Is(err, pgx.ErrNoRows):
 			if err := tx.QueryRow(ctx, `
 				INSERT INTO groups (name, description, source, external_ref) VALUES ($1, $2, $3, $4) RETURNING id`,
@@ -519,7 +536,7 @@ func (oi *siteImporter) writeGuests(ctx context.Context, tx db.DBTX, key string,
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO member (user_id, role, role_source, guest_space_id, created_at) VALUES ($1, 'guest', 'manual', $2, $3)
+			INSERT INTO member (user_id, role, guest_space_id, created_at) VALUES ($1, 'guest', $2, $3)
 			ON CONFLICT (user_id) DO NOTHING`, oi.people[g.Ref], space, g.JoinedAt); err != nil {
 			return part("the guest "+g.Email, err)
 		}
@@ -602,21 +619,69 @@ func (oi *siteImporter) subject(s Subject) (user, group *uuid.UUID, ok bool) {
 	return nil, nil, false
 }
 
-// writePermissions replaces what a new organization grants by the archive's.
-func (oi *siteImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
-	if _, err := tx.Exec(ctx, `DELETE FROM global_grant`); err != nil {
-		return err
-	}
-	for _, g := range oi.m.Permissions {
-		user, group, ok := oi.subject(g.Subject)
-		if !ok || !slices.Contains(globalGrants, g.Permission) {
-			oi.report.Dropped = append(oi.report.Dropped, DroppedEntry{Permission: g.Permission, Subject: g.Subject.Type})
+// writeRoles makes the archive's roles that are not here yet, before the
+// spaces, whose grants name the roles that hold what they held. A role here
+// already, built in or not, stays as it is.
+func (oi *siteImporter) writeRoles(ctx context.Context, tx db.DBTX) error {
+	for _, r := range oi.m.Roles {
+		if r.Builtin {
 			continue
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO global_grant (permission, subject_type, user_id, group_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-			g.Permission, g.Subject.Type, user, group); err != nil {
-			return part("the organization's permissions", err)
+			INSERT INTO role (key, name, description, installation_wide_only, permissions)
+			SELECT $1, $2, $3, $4, $5
+			WHERE NOT EXISTS (SELECT 1 FROM role WHERE key = $1 OR lower(name) = lower($2))`,
+			r.Key, r.Name, r.Description, r.OrgWideOnly, r.Permissions); err != nil {
+			return part("the role "+r.Name, err)
+		}
+	}
+	return nil
+}
+
+// grantAcross grants a role across the installation to a subject of the
+// archive; everyone is the Everyone group.
+func (oi *siteImporter) grantAcross(ctx context.Context, tx db.DBTX, role string, s Subject) (bool, error) {
+	user, group, ok := oi.subject(s)
+	if !ok {
+		return false, nil
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO role_assignment (role, user_id, group_id, created_by)
+		SELECT $1, $2, CASE WHEN $4 THEN (SELECT id FROM groups WHERE builtin = 'everyone') ELSE $3 END, $5
+		WHERE EXISTS (SELECT 1 FROM role WHERE key = $1)
+		ON CONFLICT DO NOTHING`, role, user, group, s.Type == "everyone", oi.importer)
+	return err == nil, err
+}
+
+// writePermissions replaces what a new installation grants across itself by
+// the archive's; its administrators' grants stay, so somebody still does.
+func (oi *siteImporter) writePermissions(ctx context.Context, tx db.DBTX) error {
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM role_assignment a USING role r
+		WHERE a.space_id IS NULL AND r.key = a.role AND NOT ('administerSite' = ANY (r.permissions))`); err != nil {
+		return err
+	}
+	for _, g := range oi.m.RoleGrants {
+		ok, err := oi.grantAcross(ctx, tx, g.Role, g.Subject)
+		if err != nil {
+			return part("the roles granted across the organization", err)
+		}
+		if !ok {
+			oi.report.Dropped = append(oi.report.Dropped, DroppedEntry{Permission: g.Role, Subject: g.Subject.Type})
+		}
+	}
+	// Version 1's permissions are the roles they amount to.
+	for _, g := range oi.m.Permissions {
+		role := map[string]string{"use": "member", "createSpace": "space_creator"}[g.Permission]
+		ok := false
+		if role != "" {
+			var err error
+			if ok, err = oi.grantAcross(ctx, tx, role, g.Subject); err != nil {
+				return part("the organization's permissions", err)
+			}
+		}
+		if !ok || !slices.Contains(globalGrants, g.Permission) {
+			oi.report.Dropped = append(oi.report.Dropped, DroppedEntry{Permission: g.Permission, Subject: g.Subject.Type})
 		}
 	}
 	return nil
@@ -645,16 +710,24 @@ func (oi *siteImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
 			oi.report.Kept = append(oi.report.Kept, "signIn")
 		}
 	}
+	// Version 1's group roles: a group carrying the provider's name in its
+	// claim, granted the role the mapping amounted to.
 	for _, r := range s.GroupRoles {
-		if !slices.Contains(providerRoles, r.Role) || strings.TrimSpace(r.Group) == "" {
+		ref := strings.TrimSpace(r.Group)
+		if !slices.Contains(providerRoles, r.Role) || ref == "" {
 			continue
 		}
-		// A role belongs to the provider now; an older archive may carry
-		// roles without one, which would have nothing here to hang off.
+		role := map[string]string{"admin": auth.AdministratorRole, "member": "member"}[r.Role]
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO oidc_group_role (group_ref, role) SELECT $1, $2 WHERE EXISTS (SELECT 1 FROM oidc_provider)
-			ON CONFLICT (group_ref) DO NOTHING`,
-			r.Group, r.Role); err != nil {
+			INSERT INTO groups (name, source, external_ref)
+			SELECT CASE WHEN EXISTS (SELECT 1 FROM groups o WHERE lower(o.name) = lower($1)) THEN $1 || ' (provider)' ELSE $1 END, 'oidc', $1
+			WHERE NOT EXISTS (SELECT 1 FROM groups WHERE external_ref = $1)`, ref); err != nil {
+			return part("the roles the provider's groups give", err)
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO role_assignment (role, group_id, created_by)
+			SELECT $2, id, $3 FROM groups WHERE external_ref = $1
+			ON CONFLICT DO NOTHING`, ref, role, oi.importer); err != nil {
 			return part("the roles the provider's groups give", err)
 		}
 	}

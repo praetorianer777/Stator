@@ -142,7 +142,7 @@ func (s *Service) Share(ctx context.Context, actor perm.Actor, pageID uuid.UUID,
 		if !page.published {
 			return ErrUnpublished
 		}
-		subjects, err := perm.ResolveSubjects(ctx, tx, "recipients", in.Recipients, false)
+		subjects, err := perm.ResolveSubjects(ctx, tx, "recipients", in.Recipients)
 		if err != nil {
 			return err
 		}

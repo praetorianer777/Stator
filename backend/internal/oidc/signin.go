@@ -85,8 +85,9 @@ func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Durat
 		if err != nil {
 			return err
 		}
-		// Before the groups, whose rows need a membership to hang off: a mapped
-		// group is an administrator's yes given in advance, once they say so.
+		// Before the groups, whose rows need a membership to hang off: a group
+		// that holds a grant is an administrator's yes given in advance, once
+		// they say so.
 		if out.Role, err = followMapping(ctx, tx, userID, identity.Groups, rules.admit, viaSignIn); err != nil {
 			return err
 		}

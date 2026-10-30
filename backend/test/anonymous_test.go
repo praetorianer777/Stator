@@ -110,10 +110,10 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 		if access["view"] != true || access["orgEnabled"] != true {
 			t.Errorf("OPEN's access reads %v", access)
 		}
-		grid := list(t, want(t, owner.get(t, "/api/v1/spaces/OPEN/permissions"), http.StatusOK, "OPEN's grid"), "grants")
-		for _, each := range grid {
-			if each.(map[string]any)["subject"].(map[string]any)["type"] == "anonymous" {
-				t.Errorf("the permission grid shows the anonymous grant: %v", each)
+		// Reading without signing in is the space's switch, no grant of a role.
+		for _, each := range list(t, want(t, owner.get(t, "/api/v1/role-assignments?space=OPEN"), http.StatusOK, "OPEN's grants"), "assignments") {
+			if a := each.(map[string]any); a["userId"] == nil && a["groupId"] == nil {
+				t.Errorf("a grant of OPEN names nobody: %v", a)
 			}
 		}
 	})
@@ -244,10 +244,7 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 		fieldError(t, want(t, owner.put(t, "/api/v1/spaces/"+key+"/anonymous-access", map[string]any{"view": true}), http.StatusUnprocessableEntity, "open a personal space"), "view")
 		conn := appConn(t)
 		actAs(t, conn, home.user)
-		denied(t, conn, "a personal space opened through SQL", `INSERT INTO space_grant (space_id, permission, subject_type) VALUES ($1, 'view', 'anonymous')`,
-			mine["id"])
-		denied(t, conn, "an anonymous grant beyond view", `INSERT INTO space_grant (space_id, permission, subject_type)
-			SELECT id, 'addComments', 'anonymous' FROM space WHERE key = 'SHUT'`)
+		denied(t, conn, "a personal space opened through SQL", `UPDATE space SET anonymous_view = true WHERE id = $1`, mine["id"])
 	})
 
 	t.Run("straight through SQL an anonymous reader reaches the open pages and writes nothing", func(t *testing.T) {
@@ -274,7 +271,8 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 			"the guide's comments":      `SELECT count(*) FROM comment WHERE page_id = '` + guide + `'`,
 			"the guide's reactions":     `SELECT count(*) FROM reaction WHERE page_id = '` + guide + `'`,
 			"the guide's views":         `SELECT count(*) FROM page_view WHERE page_id = '` + guide + `'`,
-			"the grants":                `SELECT count(*) FROM space_grant`,
+			"the grants":                `SELECT count(*) FROM role_assignment`,
+			"the roles":                 `SELECT count(*) FROM role`,
 			"the restrictions":          `SELECT count(*) FROM page_restriction`,
 			"the audit log":             `SELECT count(*) FROM audit_log`,
 			"the sessions":              `SELECT count(*) FROM user_session`,
@@ -312,7 +310,8 @@ func TestAnonymousReadersReadOnlyWhatIsOpenAndNobodysName(t *testing.T) {
 		untouched(t, conn, "deleting the guide's file", `DELETE FROM attachment WHERE id = $1`, file)
 		denied(t, conn, "a comment", `INSERT INTO comment (page_id, body) VALUES ($1, '{"type":"doc"}')`, guide)
 		denied(t, conn, "a view", `INSERT INTO page_view (page_id) VALUES ($1)`, guide)
-		denied(t, conn, "a grant", `INSERT INTO space_grant (space_id, permission, subject_type) VALUES ($1, 'addPages', 'everyone')`, openID)
+		denied(t, conn, "a grant", `INSERT INTO role_assignment (role, space_id, group_id) SELECT 'editor', $1, id FROM groups WHERE builtin = 'everyone'`, openID)
+		untouched(t, conn, "closing the open space to anybody", `UPDATE space SET anonymous_view = false WHERE key = 'OPEN'`)
 		denied(t, conn, "an event", `INSERT INTO outbox_event (topic, payload) VALUES ('page.published', '{}')`)
 		untouched(t, conn, "turning the switch", `UPDATE site SET anonymous_access = false`)
 		refused(t, conn, "trashing the guide", `SELECT page_trash($1)`, guide)

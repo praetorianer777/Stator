@@ -263,14 +263,15 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 		}
 	}
 
-	var org, owners int
+	var org, admins int
 	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM site WHERE name = 'Bootstrapped'`).Scan(&org); err != nil || org != 1 {
 		t.Fatalf("organizations: %d (%v), want the one the bootstrap made", org, err)
 	}
 	if err := h.super.QueryRow(ctx, `
 		SELECT count(*) FROM member m JOIN app_user u ON u.id = m.user_id
-		WHERE u.email = $1 AND m.role = 'owner'`, email).Scan(&owners); err != nil || owners != 1 {
-		t.Fatalf("owners named %s: %d (%v), want 1", email, owners, err)
+		JOIN role_assignment a ON a.user_id = m.user_id AND a.role = 'administrator' AND a.space_id IS NULL
+		WHERE u.email = $1 AND m.role = 'member'`, email).Scan(&admins); err != nil || admins != 1 {
+		t.Fatalf("administrators named %s: %d (%v), want 1", email, admins, err)
 	}
 	if _, err := accounts.EnsureAdmin(ctx, email, "Administrator", "second password 2"); err != nil {
 		t.Fatalf("a changed password: %v", err)
@@ -286,8 +287,9 @@ func TestTheBootstrapMakesTheOrganizationAndItsAdministratorOnce(t *testing.T) {
 }
 
 // Where the role that ran the migrations is an ordinary owner, as under
-// CloudNativePG, row level security applies to the trigger that lets everyone
-// use a new organization; the stack's owner is a superuser, which it does not.
+// CloudNativePG, row level security applies to the trigger that grants
+// Everyone the member role in a new organization; the stack's owner is a
+// superuser, which it does not.
 // So the trigger is run as an owner row level security binds, and an
 // organization made by the admin role must still get its grant.
 func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *testing.T) {
@@ -301,7 +303,8 @@ func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *t
 	for _, q := range []string{
 		`CREATE ROLE rls_bound_owner NOLOGIN NOSUPERUSER NOBYPASSRLS`,
 		`GRANT USAGE ON SCHEMA public TO rls_bound_owner`,
-		`GRANT INSERT, SELECT ON global_grant TO rls_bound_owner`,
+		`GRANT SELECT ON groups TO rls_bound_owner`,
+		`GRANT INSERT, SELECT ON role_assignment TO rls_bound_owner`,
 		`ALTER FUNCTION site_default_grants() OWNER TO rls_bound_owner`,
 	} {
 		if _, err := tx.Exec(ctx, q); err != nil {
@@ -314,8 +317,8 @@ func TestANewOrganizationGetsItsGrantWhereTheOwnerIsBoundByRowLevelSecurity(t *t
 	}
 	var grants int
 	if err := tx.QueryRow(ctx, `
-		SELECT count(*) FROM global_grant g
-		WHERE g.permission = 'use' AND g.subject_type = 'everyone'`).Scan(&grants); err != nil || grants != 1 {
+		SELECT count(*) FROM role_assignment a JOIN groups g ON g.id = a.group_id
+		WHERE a.role = 'member' AND a.space_id IS NULL AND g.builtin = 'everyone'`).Scan(&grants); err != nil || grants != 1 {
 		t.Fatalf("grants of the new organization: %d (%v), want 1", grants, err)
 	}
 }

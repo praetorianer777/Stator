@@ -167,7 +167,10 @@ func benchPerson(b *testing.B, cluster *db.Cluster, org uuid.UUID) uuid.UUID {
 		if err := tx.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, 'Bench') RETURNING id`, uuid.NewString()+"@example.test").Scan(&user); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, 'owner')`, org, user)
+		if _, err := tx.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, 'member')`, user); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', $1)`, user)
 		return err
 	})
 	if err != nil {

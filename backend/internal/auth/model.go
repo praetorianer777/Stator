@@ -7,49 +7,54 @@ import (
 	"github.com/google/uuid"
 )
 
-// Role is a member's standing on the site.
+// Role is a member's standing: whether they are in, as a member or as the
+// guest of one space. What they may do comes from grants only.
 type Role string
 
 const (
-	RoleOwner  Role = "owner"
-	RoleAdmin  Role = "admin"
 	RoleMember Role = "member"
 	// RoleGuest is somebody from outside, let into one space and nothing else.
 	RoleGuest Role = "guest"
+	// RoleAdmin is no standing: letting somebody in as admin makes them a
+	// member and grants them the built-in administrator role besides.
+	RoleAdmin Role = "admin"
 )
 
-// Roles lists every role, in the order the API documents them.
-var Roles = []Role{RoleOwner, RoleAdmin, RoleMember, RoleGuest}
+// Roles lists every standing, in the order the API documents them.
+var Roles = []Role{RoleMember, RoleGuest}
 
-// CanAdminister reports whether the role may change the site's settings.
-func (r Role) CanAdminister() bool { return r == RoleOwner || r == RoleAdmin }
+// JoinRoles lists what letting somebody in may make of them.
+var JoinRoles = []Role{RoleMember, RoleAdmin}
 
-// RoleSource says who decided a member's role.
-type RoleSource string
+// AdministratorRole is the key of the built-in role that administers the
+// installation, which letting somebody in as admin grants.
+const AdministratorRole = "administrator"
 
-const (
-	// RoleSourceManual is a role somebody here chose, which the identity
-	// provider leaves alone while none of the person's groups is mapped.
-	RoleSourceManual RoleSource = "manual"
-	// RoleSourceProvider is a role the provider's groups gave, which a later
-	// sign-in takes back when the group goes.
-	RoleSourceProvider RoleSource = "oidc"
-)
-
-// RoleSources lists every source, in the order the API documents them.
-var RoleSources = []RoleSource{RoleSourceManual, RoleSourceProvider}
-
-// Member is somebody in the organization, as its administrators see them.
+// Member is somebody in the installation, as its administrators see them.
 type Member struct {
 	UserID uuid.UUID `json:"userId"`
 	Email  string    `json:"email"`
 	Name   string    `json:"name"`
-	Role   Role      `json:"role"`
-	// RoleSource says whether the role follows the identity provider's groups.
-	RoleSource RoleSource `json:"roleSource"`
-	JoinedAt   time.Time  `json:"joinedAt"`
+	// Role is the standing: member, or guest.
+	Role Role `json:"role"`
+	// Active is false for an account somebody switched off.
+	Active   bool      `json:"active"`
+	JoinedAt time.Time `json:"joinedAt"`
 	// GuestSpace is the one space a guest belongs to; null for everybody else.
 	GuestSpace *SpaceRef `json:"guestSpace"`
+	// Roles are what the person holds across the installation, by name or
+	// through a group.
+	Roles []MemberRole `json:"roles"`
+}
+
+// MemberRole is a role somebody holds across the installation, and the group
+// it comes through, if any.
+type MemberRole struct {
+	Role string `json:"role"`
+	Name string `json:"name"`
+	// GroupID and GroupName name the group the grant is to; null for one by name.
+	GroupID   *uuid.UUID `json:"groupId"`
+	GroupName *string    `json:"groupName"`
 }
 
 // SpaceRef names a space by its id, key and name.
@@ -94,7 +99,8 @@ type User struct {
 // Standing is the organization's name and the caller's place in it.
 type Standing struct {
 	Name string `json:"name"`
-	Role Role   `json:"role"`
+	// Role is the standing, member or guest; what the caller may do is /access/me's.
+	Role Role `json:"role"`
 	// GuestSpace is where a guest lands and all they reach; null for everybody else.
 	GuestSpace *SpaceRef `json:"guestSpace"`
 }
@@ -124,10 +130,7 @@ var (
 	// ErrBadTimezone is returned for a zone the database of zones does not know.
 	ErrBadTimezone = errors.New("choose a time zone from the list")
 	// ErrNoSuchMember is returned when the person named is not a member here.
-	ErrNoSuchMember = errors.New("that person is not a member of this organization")
-	// ErrOwnerStays is returned when somebody tries to remove the owner, who
-	// is how the organization is always entered again.
-	ErrOwnerStays = errors.New("the owner of an organization cannot be removed")
+	ErrNoSuchMember = errors.New("that person is not a member of this installation")
 	// ErrRemoveSelf is returned when an administrator tries to remove themselves.
-	ErrRemoveSelf = errors.New("you cannot remove yourself from the organization")
+	ErrRemoveSelf = errors.New("you cannot remove yourself from the installation")
 )

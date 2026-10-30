@@ -33,7 +33,6 @@ func TestAnInputIsCheckedBeforeAnythingIsRead(t *testing.T) {
 	}{
 		"nobody":    {Input{}, "recipients"},
 		"too many":  {Input{Recipients: many}, "recipients"},
-		"everyone":  {Input{Recipients: []perm.SubjectRef{{Type: perm.SubjectEveryone}}}, "recipients"},
 		"long note": {Input{Recipients: []perm.SubjectRef{user()}, Message: strings.Repeat("ä", MaxMessageLength+1)}, "message"},
 	} {
 		_, err := c.in.Clean()

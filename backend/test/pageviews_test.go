@@ -68,10 +68,10 @@ func TestPageViewsOverTheAPI(t *testing.T) {
 	nobody := api.anonymous()
 
 	docs := newTree(t, owner, "PVW", "Viewed")
-	want(t, owner.put(t, "/api/v1/spaces/PVW/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "PVW", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everyone reads PVW and ann edits it")
+	}), http.StatusOK, "everyone reads PVW and ann edits it")
 	guide := docs.add(docs.homeID, "Guide")
 	secret := docs.add(docs.homeID, "Secret")
 	gone := docs.add(docs.homeID, "Gone")
@@ -334,10 +334,10 @@ func TestPageViewsAreWalledByTheDatabase(t *testing.T) {
 	owner := api.as(t, org.user)
 	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
 	docs := newTree(t, owner, "PVS", "Walled")
-	want(t, owner.put(t, "/api/v1/spaces/PVS/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "PVS", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everyone reads PVS and ann edits it")
+	}), http.StatusOK, "everyone reads PVS and ann edits it")
 	h.closeSpace(t, docs.space, annID, benID)
 	guide := docs.add(docs.homeID, "Guide")
 	secret := docs.add(docs.homeID, "Secret")

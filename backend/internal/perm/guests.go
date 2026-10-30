@@ -8,10 +8,13 @@ import (
 )
 
 // GuestConstraints are the database's names for its refusals of what would
-// take a guest beyond their one space; each refusal is a sentence.
+// take a guest beyond their one space, or give Everyone the installation;
+// each refusal is a sentence.
 var GuestConstraints = []string{
-	"space_grant_guest_one_space",
-	"space_grant_guest_not_administrator",
+	"role_assignment_guest_one_space",
+	"role_assignment_guest_not_administrator",
+	"role_assignment_everyone_administers",
+	"role_assignment_installation_wide",
 	"group_member_not_guest",
 	"member_guest_fixed",
 	"page_edit_grant_guest_one_space",

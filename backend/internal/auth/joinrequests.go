@@ -70,10 +70,14 @@ func (s *Service) AdmitJoinRequest(ctx context.Context, userID uuid.UUID, role R
 			return ErrNoSuchRequest
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO member (user_id, role) VALUES ($1, $2)
-			ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role, role_source = 'manual'`,
-			userID, string(role)); err != nil {
+			INSERT INTO member (user_id, role) VALUES ($1, 'member')
+			ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
 			return fmt.Errorf("create membership: %w", err)
+		}
+		if role == RoleAdmin {
+			if err := GrantAdministrator(ctx, tx, userID, &actor); err != nil {
+				return err
+			}
 		}
 		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionMemberAdmitted, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
 			Data: map[string]any{"role": role}})
@@ -106,7 +110,9 @@ func (s *Service) EnsureMember(ctx context.Context, email string, role Role) (bo
 	if !strings.Contains(email, "@") {
 		return false, fmt.Errorf("%q is not an email address", email)
 	}
-	if role != RoleOwner && role != RoleAdmin && role != RoleMember {
+	// An owner of before administers the installation like an admin.
+	admin := role == "owner" || role == RoleAdmin
+	if !admin && role != RoleMember {
 		return false, fmt.Errorf("%q is not a role; use owner, admin or member", role)
 	}
 	name, _, _ := strings.Cut(email, "@")
@@ -123,10 +129,16 @@ func (s *Service) EnsureMember(ctx context.Context, email string, role Role) (bo
 			return fmt.Errorf("find or create %s: %w", email, err)
 		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO member (user_id, role) VALUES ($1, $2)
-			ON CONFLICT (user_id) DO NOTHING`, userID, string(role))
+			INSERT INTO member (user_id, role) VALUES ($1, 'member')
+			ON CONFLICT (user_id) DO NOTHING`, userID)
+		if err != nil {
+			return err
+		}
 		added = tag.RowsAffected() == 1
-		return err
+		if added && admin {
+			return GrantAdministrator(ctx, tx, userID, nil)
+		}
+		return nil
 	})
 	return added, err
 }

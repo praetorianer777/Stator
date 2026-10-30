@@ -24,7 +24,7 @@ func tokenServer(t *testing.T) *Server {
 		"full":    {UserID: user, Role: auth.RoleMember, TokenID: &full},
 		"reader":  {UserID: user, Role: auth.RoleMember, TokenID: &reader, Scopes: []string{auth.ScopeRead}},
 		// An owner's, so a refusal is the token's and never the person's.
-		"spaces": {UserID: user, Role: auth.RoleOwner, TokenID: &limited, SpacesOnly: true, TokenSpaces: []uuid.UUID{uuid.New()}},
+		"spaces": {UserID: user, Role: auth.RoleMember, Administers: true, TokenID: &limited, SpacesOnly: true, TokenSpaces: []uuid.UUID{uuid.New()}},
 	}
 	return s
 }

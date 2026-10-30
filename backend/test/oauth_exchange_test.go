@@ -284,8 +284,8 @@ func TestAPartnerTradesAPersonsSignInForAStatorToken(t *testing.T) {
 		if got.Status != http.StatusOK {
 			t.Fatalf("carol, in a mapped group, answered %d %v", got.Status, got.Body)
 		}
-		if role, source := h.standing(t, "carol@suite.test"); role != "member" || source != "oidc" {
-			t.Errorf("carol's membership is %s from %s", role, source)
+		if role := h.standing(t, "carol@suite.test"); role != "member" {
+			t.Errorf("carol's membership is %s", role)
 		}
 	})
 

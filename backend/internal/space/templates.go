@@ -106,22 +106,25 @@ func publishFirst(ctx context.Context, tx db.DBTX, id uuid.UUID) error {
 	return err
 }
 
-// presetGrants replaces what everyone may do in a new space with the
-// template's; the creator's own grant, which the database made, stays.
+// presetGrants replaces what Everyone may do in a new space with the role
+// that holds the template's permissions; the creator's own grant, which the
+// database made, stays.
 func presetGrants(ctx context.Context, tx db.DBTX, sp uuid.UUID, preset []perm.SpacePermission) error {
 	everyone := make([]string, 0, len(preset))
 	for _, p := range preset {
 		everyone = append(everyone, string(p))
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO space_grant (space_id, permission, subject_type)
-		SELECT $1, p, 'everyone' FROM unnest($2::text[]) AS p
-		ON CONFLICT DO NOTHING`, sp, everyone); err != nil {
-		return fmt.Errorf("grant the template's permissions: %w", err)
+		DELETE FROM role_assignment a USING groups g
+		WHERE a.space_id = $1 AND a.group_id = g.id AND g.builtin = 'everyone'`, sp); err != nil {
+		return fmt.Errorf("take back what the template does not grant: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		DELETE FROM space_grant WHERE space_id = $1 AND subject_type = 'everyone' AND NOT permission = ANY ($2::text[])`, sp, everyone); err != nil {
-		return fmt.Errorf("take back what the template does not grant: %w", err)
+		INSERT INTO role_assignment (role, space_id, group_id)
+		SELECT role_for_space_permissions($2::text[]), $1, g.id FROM groups g
+		WHERE g.builtin = 'everyone' AND cardinality($2::text[]) > 0
+		ON CONFLICT DO NOTHING`, sp, everyone); err != nil {
+		return fmt.Errorf("grant the template's permissions: %w", err)
 	}
 	return nil
 }

@@ -143,6 +143,21 @@ const (
 	ActionOAuthGrantConsented   = "oauth.grant_consented"
 )
 
+// Access: roles, groups and who holds what (#585). The org., sso. and
+// space.permissions_set entries above are kept for what was recorded before.
+const (
+	ActionRoleCreated        = "role.created"
+	ActionRoleUpdated        = "role.updated"
+	ActionRoleDeleted        = "role.deleted"
+	ActionGroupCreated       = "group.created"
+	ActionGroupUpdated       = "group.updated"
+	ActionGroupDeleted       = "group.deleted"
+	ActionGroupMemberAdded   = "group.member_added"
+	ActionGroupMemberRemoved = "group.member_removed"
+	ActionGrantAdded         = "grant.added"
+	ActionGrantRemoved       = "grant.removed"
+)
+
 // Actions is every action the log may hold, for a filter to offer and a
 // client to name.
 var Actions = []string{
@@ -170,6 +185,9 @@ var Actions = []string{
 	ActionReviewRuleSet, ActionReviewRuleRemoved, ActionReviewSkipped,
 	ActionOAuthClientCreated, ActionOAuthClientUpdated, ActionOAuthClientRemoved, ActionOAuthGrantCreated,
 	ActionOAuthClientRegistered, ActionOAuthClientAllowed, ActionOAuthGrantConsented,
+	ActionRoleCreated, ActionRoleUpdated, ActionRoleDeleted,
+	ActionGroupCreated, ActionGroupUpdated, ActionGroupDeleted, ActionGroupMemberAdded, ActionGroupMemberRemoved,
+	ActionGrantAdded, ActionGrantRemoved,
 }
 
 // Redacted stands in the record for a value that looked like a credential.

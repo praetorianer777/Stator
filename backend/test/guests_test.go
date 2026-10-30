@@ -251,13 +251,13 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 			map[string]any{"subject": user(home.user), "permissions": []string{"administer"}},
 			map[string]any{"subject": user(guestID), "permissions": []string{"view"}},
 		}
-		fieldError(t, want(t, owner.put(t, "/api/v1/spaces/OTHR/permissions", map[string]any{"grants": grants}), http.StatusUnprocessableEntity, "gwen in OTHR's table"), "grants")
+		fieldError(t, want(t, owner.setTable(t, "OTHR", grants), http.StatusUnprocessableEntity, "gwen in OTHR's table"), "userId")
 		administer := []any{
 			map[string]any{"subject": map[string]any{"type": "everyone"}, "permissions": []string{"view", "addPages", "addComments", "delete"}},
 			map[string]any{"subject": user(home.user), "permissions": []string{"administer"}},
 			map[string]any{"subject": user(guestID), "permissions": []string{"administer"}},
 		}
-		fieldError(t, want(t, owner.put(t, "/api/v1/spaces/JOIN/permissions", map[string]any{"grants": administer}), http.StatusUnprocessableEntity, "gwen administers JOIN"), "grants")
+		fieldError(t, want(t, owner.setTable(t, "JOIN", administer), http.StatusUnprocessableEntity, "gwen administers JOIN"), "userId")
 		want(t, gwen.get(t, pagePath(joinPage)), http.StatusOK, "the refused tables left gwen as she was")
 	})
 
@@ -326,8 +326,8 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 		denied(t, conn, "a space of their own", `INSERT INTO space (key, name, created_by, owner_id) VALUES ('GWEN', 'Gwen', $1, $1)`, guestID)
 		denied(t, conn, "a team space", `INSERT INTO space (key, name, created_by) VALUES ('GWENS', 'Gwens', $1)`, guestID)
 		denied(t, conn, "a token", `INSERT INTO api_token (user_id, name, token_hash) VALUES ($1, 'planted', $2)`, guestID, []byte(uuid.NewString()))
-		denied(t, conn, "a grant of OTHR to themselves", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-			VALUES ($1, 'view', 'user', $2)`, otherID, guestID)
+		denied(t, conn, "a grant of OTHR to themselves", `INSERT INTO role_assignment (role, space_id, user_id) VALUES ('viewer', $1, $2)`, otherID, guestID)
+		untouched(t, conn, "making their own role administer", `UPDATE role SET permissions = permissions || ARRAY['administer'] WHERE key = 'editor'`)
 		denied(t, conn, "a mention of Oscar", `INSERT INTO outbox_event (topic, payload) VALUES ('page.published', $1)`,
 			map[string]any{"actorId": guestID, "pageId": joinPage, "mentioned": []uuid.UUID{oscarID}})
 		tx, err := conn.Begin(ctx)
@@ -342,10 +342,12 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 
 		// The owner administers everything, and still cannot widen a guest.
 		actAs(t, conn, home.user)
-		denied(t, conn, "granting OTHR to the guest", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-			SELECT id, 'view', 'user', $1 FROM space WHERE key = 'OTHR'`, guestID)
-		denied(t, conn, "the guest administering JOIN", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-			SELECT id, 'administer', 'user', $1 FROM space WHERE key = 'JOIN'`, guestID)
+		denied(t, conn, "granting OTHR to the guest", `INSERT INTO role_assignment (role, space_id, user_id)
+			SELECT 'viewer', id, $1 FROM space WHERE key = 'OTHR'`, guestID)
+		denied(t, conn, "the guest administering JOIN", `INSERT INTO role_assignment (role, space_id, user_id)
+			SELECT 'space_administrator', id, $1 FROM space WHERE key = 'JOIN'`, guestID)
+		denied(t, conn, "the guest granted the installation", `INSERT INTO role_assignment (role, user_id) VALUES ('member', $1)`, guestID)
+		denied(t, conn, "the guest's role made to administer", `UPDATE role SET permissions = permissions || ARRAY['administer'] WHERE key = 'editor'`)
 		denied(t, conn, "the guest in a group", `INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)`, groupID, guestID)
 		denied(t, conn, "the guest made a member", `UPDATE member SET role = 'member', guest_space_id = NULL WHERE user_id = $1`, guestID)
 		denied(t, conn, "the guest moved to OTHR", `UPDATE member SET guest_space_id = (SELECT id FROM space WHERE key = 'OTHR') WHERE user_id = $1`, guestID)
@@ -373,7 +375,7 @@ func TestAGuestReachesOneSpaceAndThePeopleInIt(t *testing.T) {
 			guestID).Scan(&role); err != nil || role != "guest" {
 			t.Errorf("the audit log has %q (%v)", role, err)
 		}
-		if n := h.count(t, home.ctx, `SELECT count(*) FROM space_grant WHERE user_id = $1`, guestID); n != 0 {
+		if n := h.count(t, home.ctx, `SELECT count(*) FROM role_assignment WHERE user_id = $1`, guestID); n != 0 {
 			t.Errorf("the guest's grants outlived them: %d", n)
 		}
 	})
@@ -399,8 +401,8 @@ func TestAGuestGoesWithTheirSpace(t *testing.T) {
 }
 
 // A guest signs in through the organization's provider like anybody, and
-// stays a guest of their space: a group mapped to a role does not promote
-// them, and no group of the provider's takes them in.
+// stays a guest of their space: a group that administers does not take them
+// in, and so grants them nothing.
 func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 	h := newHarness(t)
 	kc := newKeycloak(t)
@@ -413,7 +415,9 @@ func TestAGuestSignsInAsAGuestWhateverTheirGroups(t *testing.T) {
 	if err := h.super.QueryRow(ctx, `INSERT INTO space (key, name) VALUES ('VISIT', 'Visit') RETURNING id`).Scan(&spaceID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_group_role (group_ref, role) VALUES ('stator-administrators', 'admin')`); err != nil {
+	if _, err := h.super.Exec(ctx, `
+		WITH g AS (INSERT INTO groups (name, source, external_ref) VALUES ('stator-administrators', 'oidc', 'stator-administrators') RETURNING id)
+		INSERT INTO role_assignment (role, group_id) SELECT 'administrator', id FROM g`); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.super.QueryRow(ctx, `

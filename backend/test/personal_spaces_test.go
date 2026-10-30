@@ -34,12 +34,12 @@ func TestAPersonalSpaceIsItsOwnersAloneUntilShared(t *testing.T) {
 	}
 
 	t.Run("only its owner holds a grant", func(t *testing.T) {
-		grants := list(t, want(t, ann.get(t, "/api/v1/spaces/ANN/permissions"), http.StatusOK, "the owner reads the table"), "grants")
+		grants := list(t, want(t, ann.get(t, "/api/v1/role-assignments?space=ANN"), http.StatusOK, "the owner reads the grants"), "assignments")
 		if len(grants) != 1 {
 			t.Fatalf("a personal space grants %v", grants)
 		}
 		only := grants[0].(map[string]any)
-		if subject := only["subject"].(map[string]any); subject["type"] != "user" || subject["id"] != annID.String() {
+		if only["userId"] != annID.String() || only["role"] != "space_administrator" {
 			t.Errorf("the one grant is %v", only)
 		}
 	})
@@ -74,10 +74,10 @@ func TestAPersonalSpaceIsItsOwnersAloneUntilShared(t *testing.T) {
 	})
 
 	t.Run("shared like any space, it shows to whom it is shared with", func(t *testing.T) {
-		want(t, ann.put(t, "/api/v1/spaces/ANN/permissions", map[string]any{"grants": []any{
+		want(t, ann.setTable(t, "ANN", []any{
 			map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
 			map[string]any{"subject": user(bobID), "permissions": []any{"view"}},
-		}}), http.StatusOK, "ann shares her space with bob")
+		}), http.StatusOK, "ann shares her space with bob")
 		got := obj(t, want(t, bob.get(t, "/api/v1/spaces/ANN"), http.StatusOK, "bob opens the shared space"), "space")
 		if got["owner"].(map[string]any)["id"] != annID.String() || got["can"].(map[string]any)["editPages"] != false {
 			t.Errorf("bob sees %v", got)
@@ -108,11 +108,13 @@ func TestPersonalSpacesAreHeldByTheDatabase(t *testing.T) {
 	refused(t, conn, "a second personal space", insert, uuid.New(), "ANN2", annID, annID)
 
 	var everyoneGrants int
-	if err := h.super.QueryRow(ctx, `SELECT count(*) FROM space_grant WHERE space_id = $1 AND subject_type = 'everyone'`, mine).Scan(&everyoneGrants); err != nil {
+	if err := h.super.QueryRow(ctx, `
+		SELECT count(*) FROM role_assignment a JOIN groups g ON g.id = a.group_id
+		WHERE a.space_id = $1 AND g.builtin = 'everyone'`, mine).Scan(&everyoneGrants); err != nil {
 		t.Fatal(err)
 	}
 	if everyoneGrants != 0 {
-		t.Errorf("a personal space grants everyone %d permissions", everyoneGrants)
+		t.Errorf("a personal space grants Everyone %d roles", everyoneGrants)
 	}
 	refused(t, conn, "handing the space to somebody else", `UPDATE space SET owner_id = $2 WHERE id = $1`, mine, bobID)
 

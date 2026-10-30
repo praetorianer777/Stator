@@ -55,10 +55,10 @@ func TestTeamCalendarsOverTheAPI(t *testing.T) {
 	ann, reader := api.as(t, annID), api.as(t, readerID)
 
 	cal := newTree(t, owner, "CAL", "Calendars")
-	want(t, owner.put(t, "/api/v1/spaces/CAL/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "CAL", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everybody reads CAL, ann adds pages")
+	}), http.StatusOK, "everybody reads CAL, ann adds pages")
 	h.closeSpace(t, cal.space, annID, readerID)
 
 	var team string
@@ -226,10 +226,10 @@ func TestCalendarsAreEnforcedByTheDatabase(t *testing.T) {
 
 	walled := newTree(t, owner, "CWL", "Walled calendars")
 	other := newTree(t, owner, "CWO", "Other calendars")
-	want(t, owner.put(t, "/api/v1/spaces/CWL/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "CWL", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everybody reads CWL, ann adds pages")
+	}), http.StatusOK, "everybody reads CWL, ann adds pages")
 	h.closeSpace(t, walled.space, annID, readerID)
 	team := obj(t, want(t, owner.post(t, calendarsPath("CWL"), map[string]any{"name": "Team"}), http.StatusCreated, "add Team"), "calendar")["id"].(string)
 	elsewhere := obj(t, want(t, owner.post(t, calendarsPath("CWO"), map[string]any{"name": "Elsewhere"}), http.StatusCreated, "add Elsewhere"), "calendar")["id"].(string)

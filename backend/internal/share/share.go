@@ -137,11 +137,6 @@ func (in Input) Clean() (string, error) {
 	if len(in.Recipients) > MaxRecipients {
 		return "", &FieldError{Field: "recipients", Message: fmt.Sprintf("Share with at most %d people and groups at once, then share again.", MaxRecipients)}
 	}
-	for _, r := range in.Recipients {
-		if r.Type == perm.SubjectEveryone {
-			return "", &FieldError{Field: "recipients", Message: "A page is shared with people and groups. Pick them by name instead of everyone."}
-		}
-	}
 	return message, nil
 }
 

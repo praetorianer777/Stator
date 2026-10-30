@@ -99,7 +99,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 
 	var guest guestSpaceColumns
 	err = s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, memberSQL, p.UserID).Scan(&p.SiteName, &p.Role, &guest.id, &guest.key, &guest.name)
+		return tx.QueryRow(ctx, memberSQL, p.UserID).Scan(&p.SiteName, &p.Role, &p.Administers, &guest.id, &guest.key, &guest.name)
 	})
 	switch {
 	case err == nil:
@@ -129,7 +129,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent, ip stri
 // memberSQL reads a person's standing on a site that is not archived; no row
 // for somebody who is no member.
 const memberSQL = `
-SELECT o.name, m.role, gs.id, gs.key, gs.name
+SELECT o.name, m.role, perm_role_admin(m.user_id), gs.id, gs.key, gs.name
 FROM member m
 JOIN site o ON o.archived_at IS NULL
 LEFT JOIN space gs ON gs.id = m.guest_space_id
@@ -140,7 +140,7 @@ WHERE m.user_id = $1`
 const sessionPrincipalSQL = `
 SELECT s.id, s.last_seen_at, s.proof,
        u.id, u.email, u.name, COALESCE(u.avatar_url, ''), COALESCE(u.locale, ''), COALESCE(u.timezone, ''), u.show_in_readers, u.is_active,
-       o.name, m.role, gs.id, gs.key, gs.name
+       o.name, m.role, COALESCE(perm_role_admin(m.user_id), false), gs.id, gs.key, gs.name
 FROM user_session s
 JOIN app_user u ON u.id = s.user_id
 LEFT JOIN site o ON o.archived_at IS NULL
@@ -164,13 +164,14 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 		active     bool
 		siteName   *string
 		memberRole *string
+		admin      bool
 		guest      guestSpaceColumns
 	)
 	err := s.db.ReadAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, sessionPrincipalSQL, HashToken(secret)).Scan(
 			&sessionID, &lastSeen, &p.Proof,
 			&p.UserID, &p.Email, &p.Name, &p.AvatarURL, &p.Locale, &p.Timezone, &p.ShowInReaders, &active,
-			&siteName, &memberRole, &guest.id, &guest.key, &guest.name,
+			&siteName, &memberRole, &admin, &guest.id, &guest.key, &guest.name,
 		)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -188,6 +189,7 @@ func (s *Service) Authenticate(ctx context.Context, secret string) (*Principal, 
 	if siteName != nil && memberRole != nil {
 		p.SiteName = *siteName
 		p.Role = Role(*memberRole)
+		p.Administers = admin
 		p.GuestSpace = guest.ref()
 	}
 	if s.now().Sub(lastSeen) > lastSeenEvery {
@@ -255,8 +257,8 @@ func (s *Service) SetShowInReaders(ctx context.Context, userID uuid.UUID, show b
 	})
 }
 
-// EnsureAdmin makes email a local owner of the organization, reporting whether
-// the account is new. Run again it changes nothing, or resets a changed password.
+// EnsureAdmin makes email a local member who administers the installation,
+// reporting whether the account is new. Run again it changes nothing, or resets a changed password.
 func (s *Service) EnsureAdmin(ctx context.Context, email, name, password string) (bool, error) {
 	email = NormalizeEmail(email)
 	if !strings.Contains(email, "@") {
@@ -305,11 +307,12 @@ func (s *Service) EnsureAdmin(ctx context.Context, email, name, password string)
 		if err != nil {
 			return fmt.Errorf("create the administrator: %w", err)
 		}
-		_, err = tx.Exec(ctx, `
-			INSERT INTO member (user_id, role) VALUES ($1, 'owner')
-			ON CONFLICT (user_id) DO UPDATE SET role = 'owner', role_source = 'manual'
-			WHERE member.role <> 'owner'`, userID)
-		return err
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO member (user_id, role) VALUES ($1, 'member')
+			ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
+			return err
+		}
+		return GrantAdministrator(ctx, tx, userID, nil)
 	})
 	return created, err
 }

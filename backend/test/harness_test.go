@@ -369,8 +369,8 @@ type member struct {
 	ctx  context.Context
 }
 
-// makeMember makes an owner of the test's site; the first call makes the
-// site, named after slug, or on the stack finds the seed's.
+// makeMember makes a member of the test's site who administers it; the first
+// call makes the site, named after slug, or on the stack finds the seed's.
 func (h *harness) makeMember(t *testing.T, slug string) member {
 	t.Helper()
 	if h.site == nil && h.stack {
@@ -395,26 +395,30 @@ func (h *harness) makeOutsider(t *testing.T, slug string) member {
 		t.Fatal("make the site's owner with makeMember before an outsider")
 	}
 	m := h.makePerson(t, slug, "member")
-	if _, err := h.super.Exec(context.Background(), `INSERT INTO global_grant (permission, subject_type, user_id) VALUES ('createSpace', 'user', $1)`, m.user); err != nil {
+	if _, err := h.super.Exec(context.Background(), `INSERT INTO role_assignment (role, user_id) VALUES ('space_creator', $1)`, m.user); err != nil {
 		t.Fatalf("let the outsider make spaces: %v", err)
 	}
 	h.settle(t)
 	return m
 }
 
-// closeSpace gives what a space grants everyone to the people kept instead,
-// so that only they, those it names and the administrators reach it.
+// closeSpace gives the roles a space grants Everyone to the people kept
+// instead, so that only they, those it names and the administrators reach it.
 func (h *harness) closeSpace(t *testing.T, space any, keep ...uuid.UUID) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := h.super.Exec(ctx, `
-		INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-		SELECT g.space_id, g.permission, 'user', k.id
-		FROM space_grant g CROSS JOIN unnest($2::uuid[]) AS k (id)
-		WHERE g.space_id = $1 AND g.subject_type = 'everyone'`, space, keep); err != nil {
+		INSERT INTO role_assignment (role, space_id, user_id)
+		SELECT a.role, a.space_id, k.id
+		FROM role_assignment a JOIN groups g ON g.id = a.group_id AND g.builtin = 'everyone'
+		CROSS JOIN unnest($2::uuid[]) AS k (id)
+		WHERE a.space_id = $1
+		ON CONFLICT DO NOTHING`, space, keep); err != nil {
 		t.Fatalf("keep the space open to %v: %v", keep, err)
 	}
-	if _, err := h.super.Exec(ctx, `DELETE FROM space_grant WHERE space_id = $1 AND subject_type = 'everyone'`, space); err != nil {
+	if _, err := h.super.Exec(ctx, `
+		DELETE FROM role_assignment a USING groups g
+		WHERE a.space_id = $1 AND a.group_id = g.id AND g.builtin = 'everyone'`, space); err != nil {
 		t.Fatalf("close the space: %v", err)
 	}
 	h.settle(t)
@@ -425,11 +429,11 @@ func (h *harness) closeSpace(t *testing.T, space any, keep ...uuid.UUID) {
 func (h *harness) openSpaceTo(t *testing.T, space any, people ...uuid.UUID) {
 	t.Helper()
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-		SELECT s.id, p, 'user', k.id
+		INSERT INTO role_assignment (role, space_id, user_id)
+		SELECT 'editor', s.id, k.id
 		FROM space s CROSS JOIN unnest($2::uuid[]) AS k (id)
-		CROSS JOIN unnest(ARRAY['view', 'addPages', 'addComments', 'delete']) AS p
-		WHERE s.id = $1`, space, people); err != nil {
+		WHERE s.id = $1
+		ON CONFLICT DO NOTHING`, space, people); err != nil {
 		t.Fatalf("let %v into the space: %v", people, err)
 	}
 	h.settle(t)
@@ -445,6 +449,9 @@ func (h *harness) makeSite(t *testing.T, slug string) instance.Site {
 	return o
 }
 
+// makePerson makes a member of the site, or a guest; owner and admin make a
+// member who holds the administrator role across the site, as an owner or an
+// admin of before does after the move to grants.
 func (h *harness) makePerson(t *testing.T, slug, role string) member {
 	t.Helper()
 	ctx := context.Background()
@@ -456,8 +463,17 @@ func (h *harness) makePerson(t *testing.T, slug, role string) member {
 	if h.stack {
 		t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, m.user) })
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, m.user, role); err != nil {
+	standing := role
+	if role == "owner" || role == "admin" {
+		standing = "member"
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, m.user, standing); err != nil {
 		t.Fatalf("make %s a member: %v", slug, err)
+	}
+	if standing != role {
+		if _, err := h.super.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', $1)`, m.user); err != nil {
+			t.Fatalf("make %s an administrator: %v", slug, err)
+		}
 	}
 	m.ctx = db.WithUser(ctx, m.user)
 	h.settle(t)

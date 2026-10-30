@@ -156,11 +156,11 @@ func (s *Service) SetRestrictions(ctx context.Context, actor perm.Actor, id uuid
 		if err := p.must(perm.EditPages); err != nil {
 			return err
 		}
-		view, err := perm.ResolveSubjects(ctx, tx, "view", in.View, false)
+		view, err := perm.ResolveSubjects(ctx, tx, "view", in.View)
 		if err != nil {
 			return err
 		}
-		edit, err := perm.ResolveSubjects(ctx, tx, "edit", in.Edit, false)
+		edit, err := perm.ResolveSubjects(ctx, tx, "edit", in.Edit)
 		if err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func (s *Service) SetRestrictions(ctx context.Context, actor perm.Actor, id uuid
 		}
 		grant := before.editGrant
 		if in.EditGrant != nil {
-			if grant, err = perm.ResolveSubjects(ctx, tx, "editGrant", *in.EditGrant, false); err != nil {
+			if grant, err = perm.ResolveSubjects(ctx, tx, "editGrant", *in.EditGrant); err != nil {
 				return err
 			}
 			if !sameSubjects(grant, before.editGrant) {
@@ -263,7 +263,7 @@ func (s *Service) CheckRestrictions(ctx context.Context, actor perm.Actor, id uu
 		if err := p.must(perm.EditPages); err != nil {
 			return err
 		}
-		edit, err := perm.ResolveSubjects(ctx, tx, "edit", in.Edit, false)
+		edit, err := perm.ResolveSubjects(ctx, tx, "edit", in.Edit)
 		if err != nil {
 			return err
 		}
@@ -273,7 +273,7 @@ func (s *Service) CheckRestrictions(ctx context.Context, actor perm.Actor, id uu
 		}
 		granted := grant.editGrant
 		if in.EditGrant != nil {
-			if granted, err = perm.ResolveSubjects(ctx, tx, "editGrant", *in.EditGrant, false); err != nil {
+			if granted, err = perm.ResolveSubjects(ctx, tx, "editGrant", *in.EditGrant); err != nil {
 				return err
 			}
 		}

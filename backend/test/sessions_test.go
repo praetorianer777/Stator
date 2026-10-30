@@ -62,13 +62,14 @@ func TestTheBootstrapAdministratorIsMadeOnce(t *testing.T) {
 		t.Fatalf("first run = %v, %v", created, err)
 	}
 	var hash, role string
+	var administers bool
 	if err := h.super.QueryRow(ctx, `
-		SELECT u.password_hash, m.role FROM app_user u JOIN member m ON m.user_id = u.id
-		WHERE u.email = $1`, email).Scan(&hash, &role); err != nil {
+		SELECT u.password_hash, m.role, perm_role_admin(u.id) FROM app_user u JOIN member m ON m.user_id = u.id
+		WHERE u.email = $1`, email).Scan(&hash, &role, &administers); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(hash, "$argon2id$") || role != string(auth.RoleOwner) {
-		t.Fatalf("hash %q, role %q", hash, role)
+	if !strings.HasPrefix(hash, "$argon2id$") || role != string(auth.RoleMember) || !administers {
+		t.Fatalf("hash %q, role %q, administers %v", hash, role, administers)
 	}
 
 	created, err = a.accounts.EnsureAdmin(ctx, email, "Boot", adminPassword)
@@ -115,7 +116,7 @@ func TestPasswordLoginSessionsExpireAndEnd(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("login = %d %v", resp.StatusCode, body)
 	}
-	if current, _ := body["organization"].(map[string]any); current["name"] == nil || current["role"] != "owner" {
+	if current, _ := body["organization"].(map[string]any); current["name"] == nil || current["role"] != "member" {
 		t.Fatalf("login answered %v", body)
 	}
 	secret := b.sessionCookie(t, a, h.cfg.Auth.SessionCookie)
@@ -141,16 +142,21 @@ func TestPasswordLoginSessionsExpireAndEnd(t *testing.T) {
 		}
 	})
 
-	t.Run("a removed membership leaves the session without the organization", func(t *testing.T) {
-		if _, err := h.super.Exec(ctx, `UPDATE member SET role = 'member'`); err != nil {
+	t.Run("an administrator whose grant goes administers no more at once", func(t *testing.T) {
+		// Somebody else administers meanwhile: the installation keeps one.
+		h.makePerson(t, "stand-in", "admin")
+		if _, err := h.super.Exec(ctx, `
+			DELETE FROM role_assignment WHERE role = 'administrator' AND user_id = (SELECT id FROM app_user WHERE email = $1)`, email); err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() {
-			h.cleanupExec(t, h.super, `UPDATE member SET role = 'owner'`)
+			h.cleanupExec(t, h.super, `
+				INSERT INTO role_assignment (role, user_id) SELECT 'administrator', id FROM app_user WHERE email = $1
+				ON CONFLICT DO NOTHING`, email)
 		})
 		p, err := a.accounts.Authenticate(ctx, secret)
 		if err != nil || p.Role != auth.RoleMember || p.CanAdminister() {
-			t.Fatalf("a demoted owner = %+v, %v", p, err)
+			t.Fatalf("an administrator without the grant = %+v, %v", p, err)
 		}
 	})
 

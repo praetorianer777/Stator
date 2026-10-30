@@ -62,7 +62,7 @@ func TestATokenActsAsItsOwnerUntilRevoked(t *testing.T) {
 
 	script := api.withToken(secret)
 	me := want(t, script.get(t, "/api/v1/auth/me"), http.StatusOK, "who the token is")
-	if obj(t, me, "user")["id"] != m.user.String() || obj(t, me, "organization")["role"] != "owner" {
+	if obj(t, me, "user")["id"] != m.user.String() || obj(t, me, "organization")["role"] != "member" {
 		t.Fatalf("the token is not its owner: %s", me.Raw)
 	}
 	if h.lastUsed(t, id) == nil {

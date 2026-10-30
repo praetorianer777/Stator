@@ -38,10 +38,10 @@ func TestTemplateButtonsOverTheAPI(t *testing.T) {
 	ann, carl := api.as(t, annID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "TBA", "Button space")
-	want(t, owner.put(t, "/api/v1/spaces/TBA/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "TBA", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everybody reads TBA, ann adds pages")
+	}), http.StatusOK, "everybody reads TBA, ann adds pages")
 	plans := docs.add(docs.homeID, "Plans")
 	secret := docs.add(docs.homeID, "Secret")
 	want(t, restrict(t, owner, secret, []any{user(org.user), user(annID)}, nil), http.StatusOK, "only ann sees the secret")
@@ -153,11 +153,11 @@ func TestContributorsOverTheAPI(t *testing.T) {
 	ann, ben, carl := api.as(t, annID), api.as(t, benID), api.as(t, carlID)
 
 	docs := newTree(t, owner, "CTB", "Contributors")
-	want(t, owner.put(t, "/api/v1/spaces/CTB/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "CTB", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
 		map[string]any{"subject": user(benID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everybody reads CTB, ann and ben add pages")
+	}), http.StatusOK, "everybody reads CTB, ann and ben add pages")
 	guide := docs.add(docs.homeID, "Guide")
 	setup := docs.add(guide, "Setup")
 	secret := docs.add(setup, "Secret")

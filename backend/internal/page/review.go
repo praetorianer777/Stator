@@ -695,7 +695,7 @@ func cleanRule(ctx context.Context, tx db.DBTX, in review.RuleInput) ([]perm.Sub
 			return nil, &FieldError{Field: "reviewers", Message: "Name people and groups to review the pages; a review is somebody's judgement, so everyone cannot be named."}
 		}
 	}
-	subjects, err := perm.ResolveSubjects(ctx, tx, "reviewers", in.Reviewers, false)
+	subjects, err := perm.ResolveSubjects(ctx, tx, "reviewers", in.Reviewers)
 	if err != nil {
 		return nil, err
 	}

@@ -262,10 +262,10 @@ func TestBlogPostsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("posting takes adding pages, and an archived space takes none", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/spaces/BLOGX/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "BLOGX", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 			map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-		}}), http.StatusOK, "everybody reads BLOGX, ann writes")
+		}), http.StatusOK, "everybody reads BLOGX, ann writes")
 		h.settle(t)
 		if got := ben.post(t, postPath("BLOGX"), map[string]any{"title": "Not mine"}); got.Status != http.StatusForbidden {
 			t.Errorf("a reader posted: %d %s", got.Status, got.Raw)
@@ -407,11 +407,11 @@ func TestBlogPostsAreHeldByTheDatabase(t *testing.T) {
 
 	tr := newTree(t, owner, "BDB", "Guarded")
 	newTree(t, owner, "BDBC", "Closed")
-	want(t, owner.put(t, "/api/v1/spaces/BDB/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "BDB", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"addPages"}},
-	}}), http.StatusOK, "everybody reads BDB, ann writes")
-	want(t, owner.put(t, "/api/v1/spaces/BDBC/permissions", map[string]any{"grants": []any{}}), http.StatusOK, "nobody else reads BDBC")
+	}), http.StatusOK, "everybody reads BDB, ann writes")
+	want(t, owner.setTable(t, "BDBC", []any{}), http.StatusOK, "nobody else reads BDBC")
 	post := writePost(t, ann, "BDB", "Guarded post", "Words")["id"].(string)
 	h.settle(t)
 

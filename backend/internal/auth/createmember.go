@@ -110,13 +110,18 @@ func (s *Service) CreateMember(ctx context.Context, in NewMember, actor uuid.UUI
 			name = existingName
 		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO member (user_id, role) VALUES ($1, $2)
-			ON CONFLICT (user_id) DO NOTHING`, userID, string(in.Role))
+			INSERT INTO member (user_id, role) VALUES ($1, 'member')
+			ON CONFLICT (user_id) DO NOTHING`, userID)
 		if err != nil {
 			return fmt.Errorf("create the membership: %w", err)
 		}
 		if tag.RowsAffected() == 0 {
 			return ErrAlreadyMember
+		}
+		if in.Role == RoleAdmin {
+			if err := GrantAdministrator(ctx, tx, userID, &actor); err != nil {
+				return err
+			}
 		}
 		out.UserID, out.Email, out.Name, out.Role = userID, email, name, in.Role
 		return audit.Write(ctx, tx, audit.Entry{Action: audit.ActionMemberCreated, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip,
