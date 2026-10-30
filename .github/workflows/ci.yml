@@ -143,7 +143,7 @@ jobs:
       # Green or red, the report job reads these for the run's summary.
       - name: Keep the layer's reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reports-${{ strategy.job-index }}
           path: reports/
@@ -179,7 +179,7 @@ jobs:
 
       - name: Keep the layer's reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reports-armature
           path: reports/
@@ -219,14 +219,14 @@ jobs:
         run: ./scripts/test-summary.sh reports | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Keep the Playwright report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: e2e/playwright-report
           if-no-files-found: ignore
 
       - name: Keep the timings
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-timings
           path: |
