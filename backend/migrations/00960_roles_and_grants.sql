@@ -628,12 +628,32 @@ AS $$
 $$;
 -- +goose StatementEnd
 
+-- Only a change that took administering from somebody is weighed: an
+-- installation that has no administrator yet, as a fresh one or a test's,
+-- still lets everybody else come and go.
 -- +goose StatementBegin
 CREATE FUNCTION installation_keeps_administrator() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
+DECLARE
+    took boolean;
+    who uuid;
 BEGIN
-    IF perm_active_administrators() > 0 OR NOT EXISTS (SELECT 1 FROM member WHERE role <> 'guest') THEN
+    IF TG_TABLE_NAME = 'role_assignment' THEN
+        took := NOT EXISTS (SELECT 1 FROM role r WHERE r.key = OLD.role AND NOT ('administerSite' = ANY (r.permissions)));
+    ELSIF TG_TABLE_NAME = 'group_member' THEN
+        took := EXISTS (SELECT 1 FROM role_assignment a JOIN role r ON r.key = a.role
+                        WHERE a.group_id = OLD.group_id AND a.space_id IS NULL AND 'administerSite' = ANY (r.permissions));
+    ELSIF TG_TABLE_NAME IN ('member', 'app_user') THEN
+        who := CASE WHEN TG_TABLE_NAME = 'member' THEN (to_jsonb(OLD) ->> 'user_id')::uuid ELSE (to_jsonb(OLD) ->> 'id')::uuid END;
+        took := EXISTS (SELECT 1 FROM role_assignment a JOIN role r ON r.key = a.role
+                        WHERE a.space_id IS NULL AND 'administerSite' = ANY (r.permissions)
+                          AND (a.user_id = who OR EXISTS (
+                              SELECT 1 FROM group_member gm WHERE gm.group_id = a.group_id AND gm.user_id = who)));
+    ELSE
+        took := true;
+    END IF;
+    IF NOT took OR perm_active_administrators() > 0 OR NOT EXISTS (SELECT 1 FROM member WHERE role <> 'guest') THEN
         RETURN NULL;
     END IF;
     RAISE EXCEPTION 'Stator keeps at least one active administrator. Make somebody else an administrator first, then take it from this one.'
@@ -648,7 +668,7 @@ CREATE CONSTRAINT TRIGGER installation_keeps_administrator
     FOR EACH ROW WHEN (OLD.space_id IS NULL)
     EXECUTE FUNCTION installation_keeps_administrator();
 CREATE CONSTRAINT TRIGGER installation_keeps_administrator
-    AFTER UPDATE OF permissions ON role
+    AFTER UPDATE OF permissions OR DELETE ON role
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW WHEN ('administerSite' = ANY (OLD.permissions))
     EXECUTE FUNCTION installation_keeps_administrator();
