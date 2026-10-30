@@ -5,7 +5,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme, toast } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme, toast, dismissToasts } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 // web/src/config.ts WEBHOOKS_PATH and WEBHOOK_SIGNATURE_HEADER.
@@ -94,6 +94,7 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     await row.getByRole("button", { name: `Actions for ${name}` }).click();
     await page.getByRole("menuitem", { name: "Send a test ping" }).click();
     await expect(toast(page, `The ping reached ${name}. The receiver answered 204.`)).toBeVisible();
+    await dismissToasts(page);
     const received = await bin.read(request);
     expect(received).toHaveLength(1);
     expect(signedWith(secret, received[0]!)).toBe(true);
@@ -161,6 +162,7 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     await expect(page.getByRole("menuitem", { name: "Send a test ping" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(toast(page, `The ping reached ${name}. The receiver answered 204.`)).toBeVisible();
+    await dismissToasts(page);
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
@@ -173,6 +175,7 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
       await page.getByRole("button", { name: `Actions for ${name}` }).click();
       await page.getByRole("menuitem", { name: "Send a test ping" }).click();
       await expect(page.locator("[data-toast]").first()).toBeVisible();
+      await dismissToasts(page);
       await page.getByRole("button", { name: `Actions for ${name}` }).click();
       await page.getByRole("menuitem", { name: "Delivery log" }).click();
       await expect(page.locator('[data-delivery="ping"]')).toBeVisible();

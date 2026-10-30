@@ -4,7 +4,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil, openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, toast, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
@@ -171,7 +171,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await use.locator('[data-subject-type="everyone"] [data-action="remove-subject"]').click();
       await pick(use, ALICE, ALICE);
       await use.locator('[data-action="save-global"]').click();
-      await expect(use.getByText("Saved.", { exact: true })).toBeVisible();
+      await expect(toast(page, "Saved.")).toBeVisible();
 
       const bob = await pageAs("bob");
       await openShowing(bob, "/spaces", bob.locator("[data-no-access]"));

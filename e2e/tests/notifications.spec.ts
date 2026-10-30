@@ -141,7 +141,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
       const listed = bob.locator("[data-notifications-page]");
       await expect(listed.locator('[data-notification="published"]').first()).toContainText(plan.title);
       await expectAccessible(bob);
-      await listed.locator('[data-action="mark-all-read"]').click();
+      await bob.locator('[data-shell-header] [data-action="mark-all-read"]').click();
       await expect(listed).toContainText("Nothing unread");
       await expect(entry.locator('[data-count="notifications"]')).toHaveCount(0);
     } finally {

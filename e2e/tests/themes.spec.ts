@@ -6,7 +6,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { chooseTheme, createTheme, listThemes, themeSpec, uniqueName, updateTheme, uploadThemeAsset } from "../fixtures/seed";
-import { confirm, toast } from "../fixtures/shell";
+import { confirm, dismissToasts, toast } from "../fixtures/shell";
 
 const MINECRAFT = resolve(dirname(fileURLToPath(import.meta.url)), "../../backend/internal/theme/testdata/minecraft.armature-theme.json");
 const MINECRAFT_NAME = JSON.parse(readFileSync(MINECRAFT, "utf8")).name as string;
@@ -23,6 +23,7 @@ const row = (page: Page, name: string) => page.locator(`[data-theme-row="${name}
 const rootVar = (page: Page, name: string) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
 
 async function rowAction(page: Page, name: string, action: string) {
+  await dismissToasts(page);
   await row(page, name).locator('[data-action="theme-menu"]').click();
   await page.locator(`[role="menu"] [data-action="${action}"]`).click();
 }
@@ -97,7 +98,7 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await page.goto(THEMES_PATH);
     await page.locator("[data-theme-file]").setInputFiles(MINECRAFT);
     await expect(toast(page, `Imported ${MINECRAFT_NAME}`)).toBeVisible();
-    const importedName = (await toast(page, /^Imported /).textContent())!.replace(/^Imported /, "").replace(/\.$/, "");
+    const importedName = (await toast(page, /^Imported /).locator("[data-toast-message]").textContent())!.replace(/^Imported /, "").replace(/\.$/, "");
     await rowAction(page, importedName, "use-theme");
     await expect(toast(page, `Now using ${importedName}.`)).toBeVisible();
 

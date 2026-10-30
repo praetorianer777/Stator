@@ -28,7 +28,8 @@ test.describe("the suite's shell", { tag: ["@auth"] }, () => {
     const me = must(await api.GET("/auth/me"));
     await openShell(page, "/");
     const strip = page.locator("[data-nav-strip]");
-    expect((await strip.boundingBox())!.height).toBe(48);
+    expect(await strip.evaluate((el) => el.getBoundingClientRect().height)).toBe(48);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     await expect(strip.locator('[data-action="drawer"]')).toBeVisible();
     await expect(strip.locator("[data-installation-name]")).toHaveText(me.organization!.name);
     await expect(strip.locator('[data-action="notifications"]')).toBeVisible();

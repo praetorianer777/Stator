@@ -123,6 +123,13 @@ export async function confirm(page: Page): Promise<void> {
   await expect(dialog).toHaveCount(0);
 }
 
+/** Closes every toast in the corner, which would otherwise sit over the controls beneath it. */
+export async function dismissToasts(page: Page): Promise<void> {
+  const close = page.locator('[data-toast] [data-action="dismiss-toast"]');
+  // A toast may time out between counting and clicking.
+  for (let left = await close.count(); left > 0; left--) await close.first().click({ timeout: 1000 }).catch(() => {});
+}
+
 /** The latest toast that says a sentence, among those in the corner. */
 export function toast(page: Page, text: string | RegExp) {
   return page.locator("[data-toast]").filter({ hasText: text }).last();

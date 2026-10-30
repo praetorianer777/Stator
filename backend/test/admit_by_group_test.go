@@ -36,8 +36,8 @@ func admitByGroup(t *testing.T, admin *browser, a *api, on bool) {
 func (h *harness) switchedOff(t *testing.T, email string) {
 	t.Helper()
 	if _, err := h.super.Exec(context.Background(), `
-		INSERT INTO app_user (email, name, is_active) VALUES ($1, $1, false)
-		ON CONFLICT (email) DO UPDATE SET is_active = false`, email); err != nil {
+		INSERT INTO app_user (email, name, is_active) VALUES ($1, $2, false)
+		ON CONFLICT (email) DO UPDATE SET is_active = false`, email, email); err != nil {
 		t.Fatal(err)
 	}
 }
