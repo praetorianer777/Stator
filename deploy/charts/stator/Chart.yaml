@@ -2,8 +2,8 @@ apiVersion: v2
 name: stator
 description: A team wiki and knowledge base that works hand in hand with Armature
 type: application
-version: 0.2.1
-appVersion: "0.2.1"
+version: 0.3.0
+appVersion: "0.3.0"
 home: https://github.com/praetorianer777/Stator
 sources:
   - https://github.com/praetorianer777/Stator
