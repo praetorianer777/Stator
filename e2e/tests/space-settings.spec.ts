@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { uniqueName } from "../fixtures/seed";
-import { confirm, expectAccessible, scrollsSideways, toast } from "../fixtures/shell";
+import { confirm, expectAccessible, openNavigation, scrollsSideways, toast } from "../fixtures/shell";
 import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const SECTIONS = [
@@ -75,6 +75,7 @@ test.describe("a space's settings", { tag: ["@auth"] }, () => {
     const bob = await pageAs("bob");
 
     await bob.goto(`/spaces/${key}`);
+    await openNavigation(bob);
     await bob.locator('[data-nav="space-settings"]').click();
     await expect(bob).toHaveURL(new RegExp(`/spaces/${key}/settings/general$`));
     await expect(bob.locator("[data-settings-read-only]")).toHaveText(READ_ONLY);
