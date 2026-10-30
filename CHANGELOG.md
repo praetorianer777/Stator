@@ -7,6 +7,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-30
+
 ### Security
 
 - The backend takes go-jose 4.1.6, which no longer stalls or panics on
