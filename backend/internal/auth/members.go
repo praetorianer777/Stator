@@ -83,6 +83,40 @@ func (s *Service) RemoveMember(ctx context.Context, userID, actor uuid.UUID, ip 
 	})
 }
 
+// SetActive switches somebody's account off or back on. Switched off, they
+// cannot sign in and their open sessions stop at the next request; the last
+// active administrator stays, which the database holds to. Accounts are the
+// service's to write, so this runs past row level security behind the
+// administrator check of its route.
+func (s *Service) SetActive(ctx context.Context, userID uuid.UUID, active bool, actor uuid.UUID, ip string) (db.LSN, error) {
+	if userID == actor && !active {
+		return 0, ErrSwitchSelfOff
+	}
+	return s.db.WriteAdmin(ctx, func(ctx context.Context, tx db.DBTX) error {
+		var was bool
+		err := tx.QueryRow(ctx, `
+			SELECT u.is_active FROM member m JOIN app_user u ON u.id = m.user_id
+			WHERE m.user_id = $1 FOR UPDATE OF u`, userID).Scan(&was)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNoSuchMember
+		}
+		if err != nil {
+			return err
+		}
+		if was == active {
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE app_user SET is_active = $2 WHERE id = $1`, userID, active); err != nil {
+			return err
+		}
+		action := audit.ActionMemberSwitchedOff
+		if active {
+			action = audit.ActionMemberSwitchedOn
+		}
+		return audit.Write(ctx, tx, audit.Entry{Action: action, TargetType: "user", TargetID: &userID, Actor: actor, IP: ip})
+	})
+}
+
 // removedData is what the record keeps of a membership taken away: its role,
 // and a guest's space.
 func removedData(role Role, guestSpace *uuid.UUID) map[string]any {

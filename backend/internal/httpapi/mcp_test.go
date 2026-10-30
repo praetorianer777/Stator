@@ -104,6 +104,7 @@ var notTools = map[string]string{
 	"PUT /oidc-provider":                                           whyAdmin,
 	"GET /users":                                                   whyAdmin,
 	"POST /users":                                                  whyAdmin,
+	"PATCH /users/{userID}":                                        whyAdmin,
 	"DELETE /users/{userID}":                                       whyAdmin,
 	"GET /users/requests":                                          whyAdmin,
 	"POST /users/requests/{userID}/admit":                          whyAdmin,

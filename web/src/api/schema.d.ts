@@ -4569,7 +4569,8 @@ export interface paths {
         delete: operations["removeMember"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Switch somebody's account off, so they cannot sign in, or back on. Nobody switches their own off, and the last active administrator stays. For administrators. */
+        patch: operations["updateMember"];
         trace?: never;
     };
     "/watches": {
@@ -4968,7 +4969,7 @@ export interface components {
         };
         AuditEntry: {
             /** @enum {string} */
-            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
+            action: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "member.switched_off" | "member.switched_on" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
             /** Format: uuid */
             actorId: string | null;
             actorName: string;
@@ -4985,7 +4986,7 @@ export interface components {
             via: components["schemas"]["Via"] | null;
         };
         AuditFacets: {
-            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed")[];
+            actions: ("member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "member.switched_off" | "member.switched_on" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed")[];
             actors: components["schemas"]["AuditActor"][];
             retentionDays: number;
             targetTypes: string[];
@@ -7457,6 +7458,9 @@ export interface components {
             showInReaders?: boolean;
             timezone?: string;
         };
+        UpdateMemberRequest: {
+            active: boolean;
+        };
         UpdatedPage: {
             authorName: string;
             /** Format: uuid */
@@ -9375,7 +9379,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "member.switched_off" | "member.switched_on" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -9424,7 +9428,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description One action. */
-                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
+                action?: "member.admitted" | "member.created" | "member.declined" | "member.removed" | "member.joined" | "member.role_changed" | "member.guest_invited" | "member.switched_off" | "member.switched_on" | "sso.provider_saved" | "sso.group_role_set" | "sso.group_role_removed" | "token.created" | "token.revoked" | "space.created" | "space.updated" | "space.deleted" | "page.purged" | "trash.emptied" | "org.permission_set" | "space.permissions_set" | "page.restrictions_set" | "comment.deleted" | "theme.default_set" | "org.hub_set" | "org.brand_set" | "armature.connection_saved" | "armature.connection_removed" | "armature.app_saved" | "armature.app_removed" | "exciter.connection_saved" | "exciter.connection_removed" | "exciter.app_saved" | "exciter.app_removed" | "page.exported" | "audit.exported" | "page.owner_set" | "page.owner_removed" | "page.verified" | "page.unverified" | "page.archived" | "page.unarchived" | "space.archived" | "space.unarchived" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "webhook.secret_rotated" | "webhook.disabled" | "page.shared" | "template.created" | "template.updated" | "template.deleted" | "space.shortcut_added" | "space.shortcut_moved" | "space.shortcut_removed" | "org.anonymous_access_set" | "space.anonymous_access_set" | "page.public_link_created" | "page.public_link_revoked" | "org.public_links_set" | "space.permissions_copied" | "page.mode_changed" | "space.example_created" | "space.example_renewed" | "space.exported" | "space.imported" | "org.exported" | "org.imported" | "review.rule_set" | "review.rule_removed" | "review.skipped" | "oauth.client_created" | "oauth.client_updated" | "oauth.client_removed" | "oauth.grant_created" | "oauth.client_registered" | "oauth.client_allowed" | "oauth.grant_consented" | "role.created" | "role.updated" | "role.deleted" | "group.created" | "group.updated" | "group.deleted" | "group.member_added" | "group.member_removed" | "grant.added" | "grant.removed";
                 /** @description The person who acted. */
                 actor?: string;
                 /** @description What kind of thing the entries are about, such as space or user. */
@@ -21690,6 +21694,39 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error, in the one shape every endpoint uses. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    updateMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userID: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberRequest"];
+            };
+        };
         responses: {
             /** @description No Content */
             204: {

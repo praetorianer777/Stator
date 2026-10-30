@@ -138,4 +138,6 @@ var (
 	ErrNoSuchMember = errors.New("that person is not a member of this installation")
 	// ErrRemoveSelf is returned when an administrator tries to remove themselves.
 	ErrRemoveSelf = errors.New("you cannot remove yourself from the installation")
+	// ErrSwitchSelfOff is returned when an administrator tries to switch their own account off.
+	ErrSwitchSelfOff = errors.New("you cannot switch your own account off")
 )

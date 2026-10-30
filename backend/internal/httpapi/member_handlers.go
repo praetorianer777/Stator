@@ -51,6 +51,35 @@ func (s *Server) handleCreateMember(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, r, http.StatusCreated, map[string]any{"member": member})
 }
 
+type updateMemberRequest struct {
+	// Active false switches the account off, so it cannot sign in; true switches it back on.
+	Active bool `json:"active"`
+}
+
+func (s *Server) handleUpdateMember(w http.ResponseWriter, r *http.Request) {
+	if s.Accounts == nil {
+		respondError(w, r, errSignInOff)
+		return
+	}
+	userID, apiErr := pathUUID(r, "userID", "person's")
+	if apiErr != nil {
+		respondError(w, r, apiErr)
+		return
+	}
+	var req updateMemberRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		respondError(w, r, err)
+		return
+	}
+	lsn, err := s.Accounts.SetActive(r.Context(), userID, req.Active, userFrom(r), clientIP(r))
+	noteWrite(r.Context(), lsn)
+	if err != nil {
+		respondError(w, r, err)
+		return
+	}
+	respondNoContent(w)
+}
+
 func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	if s.Accounts == nil {
 		respondError(w, r, errSignInOff)

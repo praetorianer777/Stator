@@ -2381,6 +2381,8 @@
                 "member.joined",
                 "member.role_changed",
                 "member.guest_invited",
+                "member.switched_off",
+                "member.switched_on",
                 "sso.provider_saved",
                 "sso.group_role_set",
                 "sso.group_role_removed",
@@ -2587,6 +2589,8 @@
                 "member.joined",
                 "member.role_changed",
                 "member.guest_invited",
+                "member.switched_off",
+                "member.switched_on",
                 "sso.provider_saved",
                 "sso.group_role_set",
                 "sso.group_role_removed",
@@ -20579,6 +20583,49 @@
             }
           }
         }
+      },
+      "patch": {
+        "operationId": "updateMember",
+        "summary": "Switch somebody's account off, so they cannot sign in, or back on. Nobody switches their own off, and the last active administrator stays. For administrators.",
+        "tags": [
+          "access"
+        ],
+        "parameters": [
+          {
+            "name": "userID",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "An error, in the one shape every endpoint uses.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/watches": {
@@ -22153,6 +22200,8 @@
               "member.joined",
               "member.role_changed",
               "member.guest_invited",
+              "member.switched_off",
+              "member.switched_on",
               "sso.provider_saved",
               "sso.group_role_set",
               "sso.group_role_removed",
@@ -22308,6 +22357,8 @@
                 "member.joined",
                 "member.role_changed",
                 "member.guest_invited",
+                "member.switched_off",
+                "member.switched_on",
                 "sso.provider_saved",
                 "sso.group_role_set",
                 "sso.group_role_removed",
@@ -32159,6 +32210,17 @@
             "type": "string"
           }
         }
+      },
+      "UpdateMemberRequest": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
+        ]
       },
       "UpdatedPage": {
         "type": "object",

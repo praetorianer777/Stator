@@ -22,6 +22,10 @@ const (
 	ActionMemberCreated  = "member.created"
 	ActionMemberDeclined = "member.declined"
 	ActionMemberRemoved  = "member.removed"
+	// ActionMemberSwitchedOff and ActionMemberSwitchedOn are an account an
+	// administrator switched off, or back on.
+	ActionMemberSwitchedOff = "member.switched_off"
+	ActionMemberSwitchedOn  = "member.switched_on"
 	// ActionMemberJoined is somebody let in by a mapped group on their first
 	// sign-in, with nobody here clicking.
 	ActionMemberJoined = "member.joined"
@@ -162,6 +166,7 @@ const (
 // client to name.
 var Actions = []string{
 	ActionMemberAdmitted, ActionMemberCreated, ActionMemberDeclined, ActionMemberRemoved, ActionMemberJoined, ActionMemberRoleChanged, ActionGuestInvited,
+	ActionMemberSwitchedOff, ActionMemberSwitchedOn,
 	ActionSSOProviderSaved, ActionGroupRoleSet, ActionGroupRoleRemoved,
 	ActionTokenCreated, ActionTokenRevoked,
 	ActionSpaceCreated, ActionSpaceUpdated, ActionSpaceDeleted, ActionPagePurged, ActionTrashEmptied,

@@ -159,6 +159,8 @@ var operations = append([]operation{
 		responses: ok(env{"members": []auth.Member{}})},
 	{method: "POST", path: "/users", handler: "handleCreateMember", wholeInstance: true, tag: "access", summary: "Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators.",
 		request: createMemberRequest{}, responses: created(env{"member": auth.CreatedMember{}})},
+	{method: "PATCH", path: "/users/{userID}", handler: "handleUpdateMember", wholeInstance: true, tag: "access", summary: "Switch somebody's account off, so they cannot sign in, or back on. Nobody switches their own off, and the last active administrator stays. For administrators.",
+		request: updateMemberRequest{}, responses: none()},
 	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", wholeInstance: true, tag: "access", summary: "Take somebody out of the installation. The last active administrator stays. For administrators.",
 		responses: none()},
 	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", wholeInstance: true, tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",

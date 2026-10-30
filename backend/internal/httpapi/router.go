@@ -294,6 +294,7 @@ func (s *Server) Routes(allowedOrigins []string) http.Handler {
 			r.Put("/oidc-provider", s.handleSaveOIDCProvider)
 			r.Get("/users", s.handleListMembers)
 			r.Post("/users", s.handleCreateMember)
+			r.Patch("/users/{userID}", s.handleUpdateMember)
 			r.Delete("/users/{userID}", s.handleRemoveMember)
 			r.Get("/users/requests", s.handleListJoinRequests)
 			r.Post("/users/requests/{userID}/admit", s.handleAdmitJoinRequest)

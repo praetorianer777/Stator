@@ -448,6 +448,8 @@ func toAPIError(err error) *APIError {
 		return ErrNotFound("That person is not a member here. Reload the list; somebody may have removed them already.")
 	case errors.Is(err, auth.ErrRemoveSelf):
 		return ErrConflict("You cannot remove yourself. Ask another administrator to do it.")
+	case errors.Is(err, auth.ErrSwitchSelfOff):
+		return ErrConflict("You cannot switch your own account off. Ask another administrator to do it.")
 	case errors.Is(err, perm.ErrNoSuchRole):
 		return ErrNotFound("There is no such role. Reload the list; somebody may have deleted it already.")
 	case errors.Is(err, perm.ErrBuiltinRole):
@@ -485,7 +487,7 @@ func toAPIError(err error) *APIError {
 			Message: "Signing in through an identity provider is not set up here. Sign in with a password, or ask an administrator to set up the provider."}
 	case errors.Is(err, exciter.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "exciter_not_configured",
-			Message: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Settings, Exciter."}
+			Message: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Admin, Exciter."}
 	case errors.Is(err, exciter.ErrNotConnected):
 		return &APIError{Status: http.StatusConflict, Code: "exciter_not_connected",
 			Message: "You have not connected your Exciter account. Paste an Exciter token under Your profile, Exciter, then try again."}
@@ -494,13 +496,13 @@ func toAPIError(err error) *APIError {
 			Message: "Exciter did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
 	case errors.Is(err, armature.ErrWebhookAdmin):
 		return &APIError{Status: http.StatusConflict, Code: "armature_webhook_admin",
-			Message: "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Settings, Armature, and allow it in Armature as an Armature administrator."}
+			Message: "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Admin, Armature, and allow it in Armature as an Armature administrator."}
 	case errors.Is(err, armature.ErrWebhookUnavailable):
 		return &APIError{Status: http.StatusConflict, Code: "armature_outdated",
-			Message: "The connected Armature does not let Stator make its own webhook. Add the webhook in Armature and paste its secret under Settings, Armature instead."}
+			Message: "The connected Armature does not let Stator make its own webhook. Add the webhook in Armature and paste its secret under Admin, Armature instead."}
 	case errors.Is(err, armature.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_configured",
-			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature."}
+			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Admin, Armature."}
 	case errors.Is(err, armature.ErrNotConnected):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_connected",
 			Message: "You have not connected your Armature account. Paste an Armature token under Profile, Armature, then try again."}
