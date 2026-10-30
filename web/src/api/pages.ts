@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import type { Doc } from "@/features/editor/schema";
 import { LIVE_PAGE_REFRESH_MS } from "@/config";
 import { api } from "./client";

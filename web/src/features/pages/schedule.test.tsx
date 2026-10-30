@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { PageSchedule } from "@/api/versions";
 import { collabTransport } from "@/features/collab/transport";
-import { arrival, renderAt, stubApi, type Answer } from "@/test/app";
+import { arrival, renderAt, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { aPage, aSpace } from "@/test/spaces";
 import { defaultScheduleTime, localInputValue, parseLocalInput } from "./schedule";
 
@@ -13,7 +13,7 @@ const EDITOR_TEST_MS = 20_000;
 const space = aSpace();
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000d4";
-const PATH = `/s/DOCS/p/${PAGE_ID}/news`;
+const PATH = `/spaces/DOCS/p/${PAGE_ID}/news`;
 const news = aPage({
   id: PAGE_ID,
   title: "News",
@@ -70,7 +70,6 @@ describe("the times a schedule offers and reads", () => {
 
 describe("a page with a publish scheduled", () => {
   it("tells its author when the draft goes out, and lets them call it off", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const sent = stubPage(aPage({ ...news, draft: { baseVersion: 2, updatedAt: draft.updatedAt }, schedule: waiting }), {
       [`DELETE /pages/${PAGE_ID}/schedule`]: { status: 204 },
     });
@@ -83,6 +82,8 @@ describe("a page with a publish scheduled", () => {
     expect(within(note as HTMLElement).getByRole("button", { name: "Change" })).toBeInTheDocument();
     expect(document.querySelector("[data-draft-note]")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Cancel schedule" }));
+    expect(await confirmDialog()).toHaveAccessibleName("Call off scheduled publish?");
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === `/pages/${PAGE_ID}/schedule`)).toBe(true));
   });
 

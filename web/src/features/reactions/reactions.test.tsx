@@ -120,7 +120,7 @@ describe("reactions on a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const bar = await pageBar();
     const thumbs = within(bar).getByRole("button", { name: "👍 2 reactions" });
     expect(thumbs).toHaveAttribute("aria-pressed", "true");
@@ -158,7 +158,7 @@ describe("reactions on a page", () => {
             })),
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const bar = await pageBar();
     const add = within(bar).getByRole("button", { name: "Add a reaction" });
     add.focus();
@@ -186,7 +186,7 @@ describe("reactions on a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await userEvent.click(within(await pageBar()).getByRole("button", { name: "Add a reaction" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "More emoji" }));
     const dialog = await screen.findByRole("dialog", { name: "React with any emoji" });
@@ -215,14 +215,14 @@ describe("reactions on a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await userEvent.click(within(await pageBar()).getByRole("button", { name: "👍 1 reaction" }));
     expect(await screen.findByText("You may not react in this space. Ask an administrator of the space for access.")).toBeInTheDocument();
   });
 
   it("lets a reader who may not comment see who reacted, and nothing more", async () => {
     const sent = stubPage({ comment: false, reactions: [aReaction()] });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const bar = await pageBar();
     expect(within(bar).queryByRole("button", { name: "Add a reaction" })).toBeNull();
     const thumbs = within(bar).getByRole("button", { name: "👍 1 reaction" });
@@ -235,7 +235,7 @@ describe("reactions on a page", () => {
 
   it("shows nothing to a reader who may not comment on a page without reactions", async () => {
     stubPage({ comment: false });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await screen.findByRole("heading", { name: "Plan", level: 1 });
     expect(screen.queryByRole("list", { name: "Reactions to this page" })).toBeNull();
   });
@@ -252,7 +252,7 @@ describe("reactions on a comment", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const bar = await screen.findByRole("list", { name: "Reactions to Grace Hopper's comment" });
     const done = within(bar).getByRole("button", { name: "✅ 1 reaction" });
     expect(done).toHaveAccessibleDescription("Alan Turing reacted with ✅");
@@ -268,7 +268,7 @@ describe("reactions on a comment", () => {
     const opening = live.comments[0]!;
     const reply = { ...opening, id: "0195f000-0000-7000-8000-00000000d0a2" };
     stubPage({ threads: [{ ...live, comments: [{ ...opening, deleted: true, body: null }, reply] }] });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await screen.findByText("This comment was deleted.");
     expect(screen.getAllByRole("list", { name: "Reactions to Grace Hopper's comment" })).toHaveLength(1);
   });

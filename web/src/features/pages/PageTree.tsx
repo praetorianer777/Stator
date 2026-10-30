@@ -180,7 +180,7 @@ function Item({ node, level }: { node: TreeNode; level: number }) {
         break;
       case "Enter":
         handled();
-        void navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: tree.space.key, pageId: node.id, slug: pageSlug(node.title) } });
+        void navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug", params: { spaceKey: tree.space.key, pageId: node.id, slug: pageSlug(node.title) } });
         break;
       case "m":
       case "M":

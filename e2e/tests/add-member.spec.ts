@@ -4,7 +4,7 @@ import { expectAccessible } from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
-const SSO_PATH = "/settings/sso";
+const USERS_PATH = "/admin/users";
 
 test.describe("adding people with a password", { tag: ["@auth", "@desktop"] }, () => {
   const added: string[] = [];
@@ -21,8 +21,8 @@ test.describe("adding people with a password", { tag: ["@auth", "@desktop"] }, (
     const email = `added-${testInfo.workerIndex}-${Date.now().toString(36)}@stator.test`;
     added.push(email);
 
-    await page.goto(SSO_PATH);
-    const card = page.locator("[data-members]");
+    await page.goto(USERS_PATH);
+    const card = page.locator("[data-users-page]");
     await card.getByRole("button", { name: "Add person" }).click();
     await card.getByLabel("Email address").fill(email);
     await expectAccessible(page);
@@ -32,7 +32,7 @@ test.describe("adding people with a password", { tag: ["@auth", "@desktop"] }, (
     await expect(shown).toBeVisible();
     const password = (await shown.textContent())!.trim();
     expect(password.length).toBeGreaterThanOrEqual(12);
-    await expect(card.locator(`[data-member="${email}"]`)).toBeVisible();
+    await expect(card.locator(`[data-user="${email}"]`)).toBeVisible();
 
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     const fresh = await context.newPage();
@@ -42,15 +42,15 @@ test.describe("adding people with a password", { tag: ["@auth", "@desktop"] }, (
 
     // Shown once: a reload has nothing to show.
     await page.reload();
-    await expect(page.locator("[data-members]").locator("[data-new-password]")).toHaveCount(0);
+    await expect(page.locator("[data-users-page]").locator("[data-new-password]")).toHaveCount(0);
   });
 
   test("a password that is too short is refused beside its field and nobody is added", async ({ page, api }, testInfo) => {
     const email = `short-${testInfo.workerIndex}-${Date.now().toString(36)}@stator.test`;
     added.push(email);
 
-    await page.goto(SSO_PATH);
-    const card = page.locator("[data-members]");
+    await page.goto(USERS_PATH);
+    const card = page.locator("[data-users-page]");
     await card.getByRole("button", { name: "Add person" }).click();
     await card.getByLabel("Email address").fill(email);
     await card.getByLabel("Password").fill("short");

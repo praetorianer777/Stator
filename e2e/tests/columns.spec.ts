@@ -47,7 +47,7 @@ test.describe("column layouts", () => {
     // The empty paragraph at the end takes the block: an Enter after the caret
     // key would split wherever ProseMirror last saw the caret.
     const compare = await createPage(api, space.homePageId, "Compare", { type: "doc", content: [paragraph("Two options."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${compare.id}/compare`;
+    const path = `/spaces/${space.key}/p/${compare.id}/compare`;
 
     await openEditor(page, path, "Two options.");
     await caretTo(editorBox(page), "end");
@@ -91,7 +91,7 @@ test.describe("column layouts", () => {
       type: "doc",
       content: [{ type: "columns", content: [column(25, "First column."), column(50, "Second column."), column(25, "Third column.")] }],
     });
-    await openPage(page, `/s/${space.key}/p/${notes.id}/notes`, "Third column.");
+    await openPage(page, `/spaces/${space.key}/p/${notes.id}/notes`, "Third column.");
 
     const parts = shown(page).locator("[data-columns] > [data-column]");
     const boxes = [await box(parts.nth(0)), await box(parts.nth(1)), await box(parts.nth(2))];
@@ -110,7 +110,7 @@ test.describe("column layouts", () => {
         content: [paragraph("Side by side."), { type: "columns", content: [column(50, "On the left."), column(50, "On the right.")] }],
       });
       await startInScheme(page, scheme);
-      const path = `/s/${space.key}/p/${notes.id}/notes`;
+      const path = `/spaces/${space.key}/p/${notes.id}/notes`;
 
       await openPage(page, path, "On the right.");
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);

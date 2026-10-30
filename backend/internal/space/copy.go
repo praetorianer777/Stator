@@ -74,12 +74,7 @@ var (
 )
 
 // keepsAdministrator is the database's refusal of a space left without one.
-const keepsAdministrator = "space_grant_keeps_administrator"
-
-// ErrNoAdministrator refuses a permission table that names no administrator
-// where the old one did, for a caller who does not administer the organization.
-var ErrNoAdministrator = &FieldError{Field: "grants",
-	Message: "A space keeps at least one administrator. Give administer to another person or group before you take it from the last one."}
+const keepsAdministrator = "space_keeps_administrator"
 
 // PreviewCopy says what copying another space's permissions onto this one
 // would change, without changing anything.
@@ -101,12 +96,12 @@ func (s *Service) PreviewCopy(ctx context.Context, actor perm.Actor, key string,
 
 // CopyPermissions applies the preview whose fingerprint in carries, in one
 // transaction, and answers the target's table as written.
-func (s *Service) CopyPermissions(ctx context.Context, actor perm.Actor, key string, in CopyInput) ([]perm.SpaceGrant, *CopyPreview, db.LSN, error) {
+func (s *Service) CopyPermissions(ctx context.Context, actor perm.Actor, key string, in CopyInput) ([]perm.Assignment, *CopyPreview, db.LSN, error) {
 	if err := checkCopyInput(in, true); err != nil {
 		return nil, nil, 0, err
 	}
 	var (
-		out     []perm.SpaceGrant
+		out     []perm.Assignment
 		applied *CopyPreview
 	)
 	lsn, err := s.db.Write(ctx, func(ctx context.Context, tx db.DBTX) error {
@@ -122,12 +117,18 @@ func (s *Service) CopyPermissions(ctx context.Context, actor perm.Actor, key str
 			return errCopyNoAdministrator
 		}
 		applied = c.preview
-		out = gridOf(c.plan.Result)
+		if len(c.plan.Changes) > 0 {
+			if err := copyGrantsOver(ctx, tx, c.source.ID, c.target.ID, in.Mode); err != nil {
+				return err
+			}
+		}
+		// The answer is the table as written: somebody who just gave up
+		// administering the space may no longer read it back.
+		if out, err = perm.SpaceAssignments(ctx, tx, c.target.ID); err != nil {
+			return err
+		}
 		if len(c.plan.Changes) == 0 {
 			return nil
-		}
-		if err := writeGrants(ctx, tx, c.target.ID, c.plan.Result); err != nil {
-			return err
 		}
 		if _, err := tx.Exec(ctx, `SELECT armature_links_emit_space($1, false, $2)`, c.target.ID, events.TraceParent(ctx)); err != nil {
 			return fmt.Errorf("sync the space's Armature links: %w", err)
@@ -227,21 +228,27 @@ func loadCopy(ctx context.Context, tx db.DBTX, actor perm.Actor, key string, in 
 	}}, nil
 }
 
-// copyGrants reads a space's whole table, reading without signing in and
-// guests included, a row per subject.
+// copyGrants reads what each subject holds in a space, reading without
+// signing in and guests included, a row per subject: the union of the
+// space permissions of the roles granted to them there.
 func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGrant, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT g.subject_type, COALESCE(g.user_id, g.group_id),
-		       CASE g.subject_type WHEN 'everyone' THEN $2 WHEN 'anonymous' THEN $3 ELSE COALESCE(u.name, gr.name, '') END,
-		       COALESCE(m.role = 'guest', false), g.permission
-		FROM space_grant g
-		LEFT JOIN app_user u ON u.id = g.user_id
-		LEFT JOIN groups gr ON gr.id = g.group_id
-		LEFT JOIN member m ON m.user_id = g.user_id
-		WHERE g.space_id = $1
-		ORDER BY CASE g.subject_type WHEN 'anonymous' THEN 0 WHEN 'everyone' THEN 1 WHEN 'group' THEN 2 ELSE 3 END,
-		         lower(COALESCE(u.name, gr.name, '')), COALESCE(g.user_id, g.group_id)`,
-		space, perm.EveryoneName, perm.AnonymousName)
+		SELECT t.subject_type, t.subject_id, t.name, t.guest, t.builtin, t.permission FROM (
+		    SELECT CASE WHEN a.user_id IS NOT NULL THEN 'user' ELSE 'group' END AS subject_type,
+		           COALESCE(a.user_id, a.group_id) AS subject_id, COALESCE(u.name, gr.name, '') AS name,
+		           COALESCE(m.role = 'guest', false) AS guest, COALESCE(gr.builtin, '') AS builtin, p.word AS permission,
+		           CASE WHEN gr.builtin IS NOT NULL THEN 1 WHEN a.group_id IS NOT NULL THEN 2 ELSE 3 END AS rank
+		    FROM role_assignment a
+		    JOIN role r ON r.key = a.role
+		    CROSS JOIN LATERAL unnest(r.permissions) AS p (word)
+		    LEFT JOIN app_user u ON u.id = a.user_id
+		    LEFT JOIN groups gr ON gr.id = a.group_id
+		    LEFT JOIN member m ON m.user_id = a.user_id
+		    WHERE a.space_id = $1 AND p.word IN ('view', 'addPages', 'addComments', 'delete', 'administer')
+		    UNION ALL
+		    SELECT 'anonymous', NULL, $2, false, '', 'view', 0 FROM space WHERE id = $1 AND anonymous_view
+		) AS t
+		ORDER BY t.rank, lower(t.name), t.subject_id`, space, perm.AnonymousName)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +259,7 @@ func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGr
 			sub perm.CopySubject
 			p   perm.SpacePermission
 		)
-		if err := rows.Scan(&sub.Type, &sub.ID, &sub.Name, &sub.Guest, &p); err != nil {
+		if err := rows.Scan(&sub.Type, &sub.ID, &sub.Name, &sub.Guest, &sub.Builtin, &p); err != nil {
 			return nil, err
 		}
 		if n := len(out); n > 0 && out[n-1].Subject.Key() == sub.Key() {
@@ -264,61 +271,33 @@ func copyGrants(ctx context.Context, tx db.DBTX, space uuid.UUID) ([]perm.CopyGr
 	return out, rows.Err()
 }
 
-// writeGrants makes a space's table the one given, reading without signing
-// in included.
-func writeGrants(ctx context.Context, tx db.DBTX, space uuid.UUID, table []perm.CopyGrant) error {
-	// New rows go in before old ones go, as in SetPermissions, so whoever
-	// administers the space still does while the policy asks.
-	var perms, types, users, groups []string
-	for _, g := range table {
-		var user, group *uuid.UUID
-		switch g.Subject.Type {
-		case perm.SubjectUser:
-			user = g.Subject.ID
-		case perm.SubjectGroup:
-			group = g.Subject.ID
-		}
-		for _, p := range g.Permissions {
-			if _, err := tx.Exec(ctx, `
-				INSERT INTO space_grant (space_id, permission, subject_type, user_id, group_id)
-				VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
-				space, string(p), string(g.Subject.Type), user, group); err != nil {
-				return fmt.Errorf("grant %s: %w", p, err)
-			}
-			perms = append(perms, string(p))
-			types = append(types, string(g.Subject.Type))
-			users = append(users, idText(user))
-			groups = append(groups, idText(group))
+// copyGrantsOver gives the target the source's grants, its guests' aside: a
+// replace takes the target's other grants away, a merge keeps them. What each
+// subject holds is then the union the plan computed. New grants go in before
+// old ones go, so whoever administers the space still does while the policy asks.
+func copyGrantsOver(ctx context.Context, tx db.DBTX, source, target uuid.UUID, mode perm.CopyMode) error {
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO role_assignment (role, space_id, user_id, group_id)
+		SELECT a.role, $2, a.user_id, a.group_id FROM role_assignment a
+		LEFT JOIN member m ON m.user_id = a.user_id
+		WHERE a.space_id = $1 AND COALESCE(m.role, '') <> 'guest'
+		ON CONFLICT DO NOTHING`, source, target); err != nil {
+		return fmt.Errorf("copy the grants: %w", err)
+	}
+	if mode == perm.CopyReplace {
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM role_assignment t
+			WHERE t.space_id = $2
+			  AND NOT EXISTS (SELECT 1 FROM member m WHERE m.user_id = t.user_id AND m.role = 'guest')
+			  AND NOT EXISTS (SELECT 1 FROM role_assignment s
+			                  WHERE s.space_id = $1 AND s.role = t.role
+			                    AND s.user_id IS NOT DISTINCT FROM t.user_id AND s.group_id IS NOT DISTINCT FROM t.group_id)`,
+			source, target); err != nil {
+			return fmt.Errorf("take the grants the source does not hold away: %w", err)
 		}
 	}
 	_, err := tx.Exec(ctx, `
-		DELETE FROM space_grant g WHERE g.space_id = $1 AND NOT EXISTS (
-			SELECT 1 FROM unnest($2::text[], $3::text[], $4::text[], $5::text[]) AS w (permission, subject_type, user_id, group_id)
-			WHERE w.permission = g.permission AND w.subject_type = g.subject_type
-			  AND NULLIF(w.user_id, '')::uuid IS NOT DISTINCT FROM g.user_id
-			  AND NULLIF(w.group_id, '')::uuid IS NOT DISTINCT FROM g.group_id)`,
-		space, perms, types, users, groups)
+		UPDATE space SET anonymous_view = CASE WHEN $3 THEN s.anonymous_view ELSE s.anonymous_view OR space.anonymous_view END
+		FROM space s WHERE s.id = $1 AND space.id = $2`, source, target, mode == perm.CopyReplace)
 	return err
-}
-
-// gridOf is a table as the permission grid shows it, without reading
-// without signing in, which has a switch of its own.
-func gridOf(table []perm.CopyGrant) []perm.SpaceGrant {
-	out := []perm.SpaceGrant{}
-	for _, g := range table {
-		if g.Subject.Type == perm.SubjectAnonymous {
-			continue
-		}
-		out = append(out, perm.SpaceGrant{
-			Subject:     perm.Subject{Type: g.Subject.Type, ID: g.Subject.ID, Name: g.Subject.Name},
-			Permissions: g.Permissions,
-		})
-	}
-	slices.SortStableFunc(out, func(a, b perm.SpaceGrant) int {
-		if d := subjectRank(a.Subject) - subjectRank(b.Subject); d != 0 {
-			return d
-		}
-		return strings.Compare(strings.ToLower(a.Subject.Name), strings.ToLower(b.Subject.Name))
-	})
-	return out
 }

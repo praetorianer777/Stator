@@ -178,8 +178,24 @@ export function RequirementListDialog({
   };
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-requirement-list-dialog="">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-requirement-list-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="requirement-list-dialog-form" data-action="save-requirement-list">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="requirement-list-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Labelled id={projectId} label={d.project} hint={choices ? undefined : d.projectHint} error={problems.project} className="max-w-sm">
           {choices ? (
             <SelectInput
@@ -301,14 +317,6 @@ export function RequirementListDialog({
             }}
           />
         </Labelled>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-requirement-list">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

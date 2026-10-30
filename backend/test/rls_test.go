@@ -26,7 +26,7 @@ func TestATransactionForNobodyReachesNothing(t *testing.T) {
 	newTree(t, owner, uniqueKey("NOB"), "Nobody's")
 	h.settle(t)
 
-	for _, table := range []string{"space", "page", "page_version", "space_grant"} {
+	for _, table := range []string{"space", "page", "page_version", "role_assignment"} {
 		if n := h.count(t, context.Background(), `SELECT count(*) FROM `+table); n != 0 {
 			t.Errorf("a transaction for nobody sees %d rows of %s", n, table)
 		}
@@ -69,7 +69,7 @@ func TestRawSQLAsTheAppRoleCannotLiftRowSecurity(t *testing.T) {
 	}
 
 	t.Run("with nobody set nothing is visible", func(t *testing.T) {
-		for _, table := range []string{"space", "page", "page_version", "space_grant"} {
+		for _, table := range []string{"space", "page", "page_version", "role_assignment"} {
 			var n int
 			if err := conn.QueryRow(ctx, `SELECT count(*) FROM `+table).Scan(&n); err != nil {
 				t.Fatal(err)

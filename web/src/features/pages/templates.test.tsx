@@ -40,7 +40,7 @@ const checked = (dialog: HTMLElement) => within(dialog).getByRole("radio", { che
 describe("the template picker", () => {
   it("offers a blank page and every template, blank first and chosen", async () => {
     stub();
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     const dialog = await openDialog();
     const group = within(dialog).getByRole("radiogroup", { name: "Start from" });
     expect(
@@ -55,7 +55,7 @@ describe("the template picker", () => {
 
   it("previews the chosen template read-only, hints and all, and names the page after it", async () => {
     stub();
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     const dialog = await openDialog();
     await userEvent.click(within(dialog).getByRole("radio", { name: /^Meeting notes/ }));
     expect(within(dialog).getByLabelText("Title")).toHaveValue(templateTitle("Meeting notes {date}"));
@@ -70,7 +70,7 @@ describe("the template picker", () => {
 
   it("is one stop for the keyboard, and the arrows move the choice", async () => {
     stub();
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     const dialog = await openDialog();
     const radios = within(dialog).getAllByRole("radio");
     expect(radios.filter((r) => r.tabIndex === 0)).toHaveLength(1);
@@ -93,13 +93,13 @@ describe("the template picker", () => {
 
   it("makes the page unpublished from the template, which the server fills, keeps a typed title, and opens the editor", async () => {
     const sent = stub();
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     const dialog = await openDialog();
     await userEvent.type(within(dialog).getByLabelText("Title"), "Retro");
     await userEvent.click(within(dialog).getByRole("radio", { name: /^Retrospective/ }));
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Retro");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await arrival(router, `/s/DOCS/p/${made.id}/retro/edit`);
+    await arrival(router, `/spaces/DOCS/p/${made.id}/retro/edit`);
     expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro", template: "retrospective" });
   });
 
@@ -111,13 +111,13 @@ describe("the template picker", () => {
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       "POST /pages": { status: 201, body: { page: made } },
     });
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "New page" }));
     const dialog = await screen.findByRole("dialog", { name: "New page under Handbook" });
     expect(await within(dialog).findByText(/The templates could not be loaded/)).toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText("Title"), "Retro");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await arrival(router, `/s/DOCS/p/${made.id}/retro/edit`);
+    await arrival(router, `/spaces/DOCS/p/${made.id}/retro/edit`);
     expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({ parentId: home.id, title: "Retro" });
   });
 });

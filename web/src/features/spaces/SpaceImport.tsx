@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { transferOpen, useImportSpace, useSpaceImport, type ImportSource, type SpaceImportReport } from "@/api/spaceTransfers";
-import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle } from "@/components/ui";
+import { Page, PageHeader, Button, Card, Field, ErrorBanner, SectionTitle } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { SPACE_KEY_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { useCanCreateSpace } from "@/features/permissions/access";
@@ -31,20 +31,20 @@ export function SpaceImportPage() {
     upload.reset();
   }
 
-  const header = <PageHeader crumbs={[{ label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> }]} title={t.spaceTransfer.importTitle} />;
+  const header = <PageHeader title={t.spaceTransfer.importTitle} />;
   if (!mayCreate) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <Page width="narrow">
         {header}
         <p className="text-sm text-ink-muted">{t.spaceTransfer.notCreator}</p>
-      </div>
+      </Page>
     );
   }
   const current = job.data;
   if (jobId) {
     const percent = current && current.progress.total > 0 ? Math.round((current.progress.done / current.progress.total) * 100) : 0;
     return (
-      <div className="mx-auto max-w-2xl space-y-4" data-space-import={current?.state ?? "queued"}>
+      <Page width="narrow" className="space-y-4" data-space-import={current?.state ?? "queued"}>
         {header}
         {job.error && <ErrorBanner onRetry={() => void job.refetch()}>{job.error.message}</ErrorBanner>}
         {(!current || transferOpen(current)) && (
@@ -67,19 +67,24 @@ export function SpaceImportPage() {
           <>
             <p className="text-sm text-ink" role="status" data-import-done="">
               {t.spaceTransfer.imported}{" "}
-              <Link to="/s/$spaceKey" params={{ spaceKey: current.spaceKey }} className="font-medium text-accent hover:underline" data-action="open-imported">
+              <Link
+                to="/spaces/$spaceKey"
+                params={{ spaceKey: current.spaceKey }}
+                className="font-medium text-accent hover:underline"
+                data-action="open-imported"
+              >
                 {t.spaceTransfer.open(current.spaceKey)}
               </Link>
             </p>
             {current.report && <ImportReport report={current.report} source={current.source} />}
           </>
         )}
-      </div>
+      </Page>
     );
   }
   const error = upload.error && !Object.keys(fields).length ? upload.error.message : undefined;
   return (
-    <div className="mx-auto max-w-2xl" data-space-import="">
+    <Page width="narrow" data-space-import="">
       {header}
       <p className="mb-4 text-sm text-ink-muted">{t.spaceTransfer.importIntro}</p>
       <form onSubmit={submit} className="space-y-4" noValidate>
@@ -132,7 +137,7 @@ export function SpaceImportPage() {
           {t.spaceTransfer.importSpace}
         </Button>
       </form>
-    </div>
+    </Page>
   );
 }
 

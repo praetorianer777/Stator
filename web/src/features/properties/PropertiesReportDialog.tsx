@@ -61,8 +61,24 @@ export function PropertiesReportDialog({
   }
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-properties-report-dialog="">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-properties-report-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="properties-report-dialog-form" data-action="save-properties-report">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="properties-report-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Field
           label={d.labels}
           hint={d.labelsHint}
@@ -94,14 +110,6 @@ export function PropertiesReportDialog({
             setProblems(({ columns: _, ...rest }) => rest);
           }}
         />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-properties-report">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

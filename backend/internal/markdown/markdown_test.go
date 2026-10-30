@@ -45,7 +45,7 @@ func testResolver(dest string) Target {
 	case "plan.files/notes.txt":
 		return Target{Kind: TargetFile, AttachmentID: file2ID, FileName: "notes.txt"}
 	case "plan/other.md", "plan/other.md#part":
-		return Target{Kind: TargetPage, Href: "/s/DOCS/p/" + otherID + strings.TrimPrefix(dest, "plan/other.md")}
+		return Target{Kind: TargetPage, Href: "/spaces/DOCS/p/" + otherID + strings.TrimPrefix(dest, "plan/other.md")}
 	}
 	return Target{}
 }
@@ -141,7 +141,7 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 			txt(" "), txt("gone", `{"type":"strike"}`), txt(" "), txt("x := `y`", `{"type":"code"}`), txt(" "),
 			txt("both", `{"type":"bold"}`, `{"type":"italic"}`), txt(" "),
 			txt("a link", `{"type":"link","attrs":{"href":"https://example.com/a_b?c=(d)","title":"Say \"hi\""}}`),
-			txt(" and "), txt("code link", `{"type":"link","attrs":{"href":"/s/DOCS"}}`, `{"type":"code"}`),
+			txt(" and "), txt("code link", `{"type":"link","attrs":{"href":"/spaces/DOCS"}}`, `{"type":"code"}`),
 		)),
 		"headings": doc(
 			`{"type":"heading","attrs":{"level":1},"content":[`+txt("One # with hash")+`]}`,
@@ -247,7 +247,7 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 		),
 		"breaks and links to pages": doc(
 			para(txt("line one"), `{"type":"hardBreak"}`, txt("line two")),
-			para(txt("other page", `{"type":"link","attrs":{"href":"/s/DOCS/p/`+otherID+`#part"}}`)),
+			para(txt("other page", `{"type":"link","attrs":{"href":"/spaces/DOCS/p/`+otherID+`#part"}}`)),
 		),
 		"text that looks like Markdown": doc(
 			para(txt(`1. not a list *nor* _this_ [link](x) <b>tag</b> \ back `+"`tick`"+` ~~ &amp; R&D snake_case`)),
@@ -267,6 +267,13 @@ func TestEveryNodeComesBackAsItLeft(t *testing.T) {
 				t.Errorf("a round trip warned: %v\n%s", got.Warnings, md)
 			}
 		})
+	}
+}
+
+func TestExportFollowsAPageAtItsOldAddress(t *testing.T) {
+	body := doc(para(txt("other page", `{"type":"link","attrs":{"href":"/s/DOCS/p/`+otherID+`/other#part"}}`)))
+	if md := Render("Plan", parseDoc(t, body), testLinks); !strings.Contains(md, "(plan/other.md#part)") {
+		t.Errorf("a link to /s/ does not lead to the exported page:\n%s", md)
 	}
 }
 

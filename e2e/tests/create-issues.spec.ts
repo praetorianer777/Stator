@@ -209,7 +209,7 @@ test.describe("creating Armature issues from a selection", {
       // Armature holds them as filed by alice's Armature self, each linking back to the page.
       const filed = (await stub(request, "GET", `${team.label}/issues/CP-7`)) as { issue: { reporter: { name: string }; description: unknown } };
       expect(filed.issue.reporter.name).toBe("Admin");
-      expect(JSON.stringify(filed.issue.description)).toContain(`${WEB_URL}/s/${space.key}/p/${target.id}`);
+      expect(JSON.stringify(filed.issue.description)).toContain(`${WEB_URL}/spaces/${space.key}/p/${target.id}`);
       expect(JSON.stringify(filed.issue.description)).toContain(target.title);
     });
   }

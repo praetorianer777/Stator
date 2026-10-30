@@ -1,7 +1,9 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { API_BASE, ME_STALE_MS } from "@/config";
 import { applyLanguage, type LanguageChoice } from "@/i18n";
+import { applyTimeZone } from "@/lib/format";
 import { HANDLES_UNAUTHORIZED } from "@/lib/session";
 import { api } from "./client";
 import type { components } from "./schema";
@@ -16,13 +18,10 @@ export type ProviderView = Wire["ProviderView"];
 export type SaveProviderInput = Wire["SaveOIDCProviderRequest"];
 
 export type JoinRequest = Wire["JoinRequest"];
-export type GroupRole = Wire["GroupRole"];
-export type GrantedRole = GroupRole["role"];
 export type Member = Wire["Member"];
 
 export const meQueryKey = ["auth", "me"] as const;
 export const providerQueryKey = ["oidc-provider"] as const;
-export const groupRolesQueryKey = ["oidc-provider", "group-roles"] as const;
 export const membersQueryKey = ["users", "members"] as const;
 export const joinRequestsQueryKey = ["users", "requests"] as const;
 
@@ -39,20 +38,33 @@ export function useMe() {
   return useQuery(meQuery);
 }
 
-/** Follows the signed-in person's language whenever the app has asked who they are; it never asks itself. */
+/**
+ * Follows the signed-in person's language and time zone whenever the app has
+ * asked who they are; it never asks itself.
+ */
 export function useProfileLanguage(): void {
   const { data } = useQuery({ ...meQuery, enabled: false });
   const choice = data?.user.locale;
+  const zone = data?.user.timezone;
   useEffect(() => {
     if (choice !== undefined) applyLanguage(choice);
   }, [choice]);
+  useEffect(() => {
+    if (zone !== undefined) applyTimeZone(zone);
+  }, [zone]);
 }
 
-/** Changes the caller's interface language; an empty choice follows the browser. */
-export function useSetLanguage() {
+/** How the caller reads the interface: its language and the zone of its times; empty follows the browser. */
+export interface ReadingChoice {
+  locale: LanguageChoice;
+  timezone: string;
+}
+
+/** Saves the caller's language and time zone together, as the profile's Save does. */
+export function useSaveReading() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (locale: LanguageChoice): Promise<Me> => (await api.PATCH("/auth/me", { body: { locale } })).data!,
+    mutationFn: async (choice: ReadingChoice): Promise<Me> => (await api.PATCH("/auth/me", { body: choice })).data!,
     onSuccess: (me) => queryClient.setQueryData(meQueryKey, me),
   });
 }
@@ -62,9 +74,9 @@ export function guestSpaceOf(me: Me | undefined): Wire["SpaceRef"] | null {
   return me?.organization?.guestSpace ?? null;
 }
 
-/** Whether a role may change the organization's settings. */
-export function administers(role: SiteRole | undefined): boolean {
-  return role === "owner" || role === "admin";
+/** Whether a grant lets the signed-in person administer the installation, as the session says. */
+export function administers(me: Me | undefined): boolean {
+  return me?.organization?.administers ?? false;
 }
 
 /** Where the browser goes to sign in through the identity provider; a navigation, since it follows redirects. */
@@ -120,34 +132,7 @@ export function useAdmitJoinRequest() {
   });
 }
 
-/** Which provider groups grant which role here. */
-export function useGroupRoles() {
-  return useQuery({
-    queryKey: groupRolesQueryKey,
-    queryFn: async (): Promise<GroupRole[]> => (await api.GET("/oidc-provider/group-roles")).data!.groupRoles,
-  });
-}
-
-export function useSetGroupRole() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: { group: string; role: GrantedRole }): Promise<GroupRole> =>
-      (await api.POST("/oidc-provider/group-roles", { body })).data!.groupRole,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: groupRolesQueryKey }),
-  });
-}
-
-export function useRemoveGroupRole() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
-      await api.DELETE("/oidc-provider/group-roles/{groupRoleID}", { params: { path: { groupRoleID: id } } });
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: groupRolesQueryKey }),
-  });
-}
-
-/** The organization's members, with where each role comes from; asked only of administrators. */
+/** The installation's members and guests, with the roles each holds across it; asked only of administrators. */
 export function useMembers() {
   return useQuery({
     queryKey: membersQueryKey,
@@ -163,6 +148,17 @@ export function useCreateMember() {
   return useMutation({
     mutationFn: async (body: { email: string; name: string; role: "member" | "admin"; password: string }): Promise<CreatedMember> =>
       (await api.POST("/users", { body })).data!.member,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: membersQueryKey }),
+  });
+}
+
+/** Switches somebody's account off, so they cannot sign in, or back on. */
+export function useSetMemberActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => {
+      await api.PATCH("/users/{userID}", { params: { path: { userID: userId } }, body: { active } });
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: membersQueryKey }),
   });
 }

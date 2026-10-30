@@ -496,13 +496,12 @@ func (s *Service) SetDefault(ctx context.Context, reader uuid.UUID, id *uuid.UUI
 }
 
 // Administers says whether the reader may tidy what anybody in the
-// organization shared, and name its default theme: its owners and admins.
+// installation shared, and name its default theme: whoever a grant lets
+// administer it.
 func (s *Service) Administers(ctx context.Context, reader uuid.UUID) (bool, error) {
 	var ok bool
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		return tx.QueryRow(ctx, `
-			SELECT EXISTS (SELECT 1 FROM member
-			               WHERE user_id = $1 AND role IN ('owner', 'admin'))`, reader).Scan(&ok)
+		return tx.QueryRow(ctx, `SELECT perm_role_admin($1)`, reader).Scan(&ok)
 	})
 	return ok, err
 }

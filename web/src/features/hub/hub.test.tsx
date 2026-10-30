@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals());
 const space = aSpace({ key: "NEWS", name: "News" });
 const front = aPage({ id: "0195f000-0000-7000-8000-0000000000e1", title: "Front page", spaceKey: "NEWS", home: false });
 const hubPage = { id: front.id, title: front.title, spaceKey: "NEWS" };
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 
 function stubHub(hub: Answer, more: Record<string, Answer> = {}) {
   return stubApi({
@@ -36,9 +36,9 @@ describe("the organization's hub", () => {
   it("is where everybody lands when it says so, with the reader's own home a link away", async () => {
     stubHub({ status: 200, body: { hub: { page: hubPage, landing: true } } });
     const router = await renderAt("/", { me: member });
-    await arrival(router, `/s/NEWS/p/${front.id}/front-page`);
+    await arrival(router, `/spaces/NEWS/p/${front.id}/front-page`);
     const nav = screen.getAllByRole("navigation", { name: "Everywhere" })[0]!;
-    expect(within(nav).getByRole("link", { name: "Hub" })).toHaveAttribute("href", `/s/NEWS/p/${front.id}/front-page`);
+    expect(within(nav).getByRole("link", { name: "Hub" })).toHaveAttribute("href", `/spaces/NEWS/p/${front.id}/front-page`);
     expect(within(nav).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/home");
   });
 
@@ -66,7 +66,7 @@ describe("choosing the hub", () => {
       { status: 200, body: { hub: { page: null, landing: false } } },
       { "PUT /site/hub": { status: 200, body: { hub: { page: hubPage, landing: true } } } },
     );
-    await renderAt("/settings/hub");
+    await renderAt("/admin/hub");
     expect(await screen.findByText("There is no hub page yet.")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText("Page")).not.toBeDisabled());
     await userEvent.selectOptions(screen.getByLabelText("Page"), front.id);
@@ -79,7 +79,7 @@ describe("choosing the hub", () => {
 
   it("tells a member who chooses it", async () => {
     stubHub({ status: 200, body: { hub: { page: null, landing: false } } });
-    await renderAt("/settings/hub", { me: member });
-    expect(await screen.findByText(/Only an administrator of the organization chooses its hub page/)).toBeInTheDocument();
+    await renderAt("/admin/hub", { me: member });
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
   });
 });

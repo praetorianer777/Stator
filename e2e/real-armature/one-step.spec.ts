@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { answered, armatureAs, armatureSignedIn, passwordOf, readSeed, realArmatureURL, type ArmaturePerson, WEBHOOK_URL } from "./armature";
+import { confirm } from "../fixtures/shell";
 
 // Connecting the real Armature as an administrator in one step (#429): one
 // consent on Armature's own page with every scope, after which Armature
@@ -46,7 +47,7 @@ test.describe("connecting a real Armature in one step", { tag: ["@auth"] }, () =
     const { admin } = seed.people;
     expect((await api.PUT("/armature/connection", { body: { baseUrl: seed.url } })).response.status).toBe(200);
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     const section = page.locator("[data-armature-one-step]");
     await expect(section.getByRole("heading", { name: "Connect in one step" })).toBeVisible();
     await expect(page.getByLabel("Webhook secret", { exact: true })).toHaveCount(0);
@@ -58,7 +59,7 @@ test.describe("connecting a real Armature in one step", { tag: ["@auth"] }, () =
     await expect(consent.locator('[data-consent-scope="webhooks.partner"]')).toBeVisible();
     await page.locator('[data-action="consent-allow"]').click();
 
-    await expect(page).toHaveURL(/\/settings\/armature\?armature=connected$/);
+    await expect(page).toHaveURL(/\/admin\/armature\?armature=connected$/);
     await expect(section).toHaveAttribute("data-armature-one-step", "connected");
     const connection = (await api.GET("/armature/connection")).data!.connection!;
     expect(connection.webhookSecretSet).toBe(true);
@@ -109,8 +110,8 @@ test.describe("connecting a real Armature in one step", { tag: ["@auth"] }, () =
         .toBe(true);
 
       // Disconnecting removes it from Armature again.
-      page.once("dialog", (dialog) => dialog.accept());
       await page.locator('[data-action="disconnect-armature"]').click();
+      await confirm(page);
       await expect(page.getByText("Armature is disconnected.")).toBeVisible();
       await expect.poll(own).toBeUndefined();
     } finally {

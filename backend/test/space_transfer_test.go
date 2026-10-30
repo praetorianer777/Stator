@@ -246,12 +246,12 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 	box := obj(t, want(t, owner.post(t, "/api/v1/pages", map[string]any{"parentId": trip.homeID, "title": "Box", "kind": "folder"}), http.StatusCreated, "make a folder"), "page")["id"].(string)
 	trip.add(box, "In the box")
 	want(t, addLabel(t, owner, nested, "trip"), http.StatusOK, "label the page")
-	want(t, owner.put(t, "/api/v1/spaces/TRIP/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "TRIP", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addComments"}},
 		map[string]any{"subject": group(writers), "permissions": []any{"addPages"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
 		map[string]any{"subject": user(from.user), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "TRIP's grants")
+	}), http.StatusOK, "TRIP's grants")
 	want(t, restrict(t, owner, top, []any{group(writers), user(annID)}, []any{user(annID)}), http.StatusOK, "restrict Top")
 	startThread(t, ann, nested, "Looks good")
 	want(t, react(t, ann, "pages", nested, "👍"), http.StatusOK, "ann reacts")
@@ -446,7 +446,7 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 		}
 		body := string(want(t, landedOwner.get(t, pagePath(nestedThere, "/versions/2")), http.StatusOK, "version 2").Raw)
 		if !strings.Contains(body, annThereID.String()) || strings.Contains(body, from.user.String()) || !strings.Contains(body, "@The Organizer") ||
-			!strings.Contains(body, "/s/LANDED/p/"+ids["Top"]) || strings.Contains(body, second["id"].(string)) {
+			!strings.Contains(body, "/spaces/LANDED/p/"+ids["Top"]) || strings.Contains(body, second["id"].(string)) {
 			t.Errorf("version 2 reads %s", body)
 		}
 	})
@@ -494,7 +494,7 @@ func TestASpaceTravelsToAnotherInstanceWhole(t *testing.T) {
 	})
 
 	t.Run("who may do what is found again by address and name", func(t *testing.T) {
-		grants := string(want(t, landedOwner.get(t, "/api/v1/spaces/LANDED/permissions"), http.StatusOK, "the permissions").Raw)
+		grants := string(want(t, landedOwner.get(t, "/api/v1/role-assignments?space=LANDED"), http.StatusOK, "the permissions").Raw)
 		for _, want := range []string{landedWriters.String(), annThereID.String(), to.user.String()} {
 			if !strings.Contains(grants, want) {
 				t.Errorf("the permissions lack %s: %s", want, grants)

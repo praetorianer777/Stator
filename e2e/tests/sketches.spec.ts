@@ -135,7 +135,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [paragraph("How a request travels."), { type: "paragraph" }],
     });
-    const path = `/s/${space.key}/p/${notes.id}/request-flow`;
+    const path = `/spaces/${space.key}/p/${notes.id}/request-flow`;
 
     await openEditor(page, path, "How a request travels.");
     await caretTo(editorBox(page), "end");
@@ -214,7 +214,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
       });
       const aliceName = must(await api.GET("/auth/me")).user.name;
       const bobName = must(await (await apiAs("bob")).GET("/auth/me")).user.name;
-      const path = `/s/${space.key}/p/${notes.id}/whiteboard`;
+      const path = `/spaces/${space.key}/p/${notes.id}/whiteboard`;
       const elsewhere = requestsElsewhere(page);
 
       await openEditor(page, path, "Our whiteboard.");
@@ -305,7 +305,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
     const elsewhere = requestsElsewhere(page);
     const space = await freshSpace(api, testInfo, "Keyboard");
     const notes = await createPage(api, space.homePageId, "Ledger", { type: "doc", content: [sketch("Ledger")] });
-    const path = `/s/${space.key}/p/${notes.id}/ledger`;
+    const path = `/spaces/${space.key}/p/${notes.id}/ledger`;
 
     await openUntil(page, `${path}/edit`, () => expect(editorBox(page).getByRole("img", { name: "Sketch: Ledger" })).toBeVisible(ONE_LOOK));
     const before = await drawingOf(editorBox(page).getByRole("img", { name: "Sketch: Ledger" }));
@@ -347,7 +347,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
       const elsewhere = requestsElsewhere(reader);
       const pictures = (on: Page) => on.locator("[data-doc] [data-sketch] img");
 
-      await openUntil(reader, `/public/s/${space.key}/p/${guide.id}/open-ledger`, () => expect(pictures(reader)).toHaveCount(2, ONE_LOOK));
+      await openUntil(reader, `/public/spaces/${space.key}/p/${guide.id}/open-ledger`, () => expect(pictures(reader)).toHaveCount(2, ONE_LOOK));
       await expect(reader.getByRole("img", { name: "Sketch: Ledger" })).toBeVisible();
       const imported = reader.getByRole("img", { name: "Sketch: Imported ledger" });
       await expect(imported).toBeVisible();
@@ -382,7 +382,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
       expect(rowCount).toBe(1);
     });
     const elsewhere = requestsElsewhere(page);
-    await openUntil(page, `/s/${space.key}/p/${notes.id}/planted`, async () => {
+    await openUntil(page, `/spaces/${space.key}/p/${notes.id}/planted`, async () => {
       const shownDrawing = await drawingOf(shown(page).getByRole("img", { name: "Sketch: Planted" }));
       expect(shownDrawing).toContain('<rect width="10" height="10"/>');
     });
@@ -397,7 +397,7 @@ test.describe("sketches", { tag: ["@auth"] }, () => {
       test.slow();
       const space = await freshSpace(api, testInfo, "Axe");
       const notes = await createPage(api, space.homePageId, "Notes", { type: "doc", content: [sketch("Ledger"), sketch(null)] });
-      const path = `/s/${space.key}/p/${notes.id}/notes`;
+      const path = `/spaces/${space.key}/p/${notes.id}/notes`;
       await startInScheme(page, scheme);
       await openUntil(page, path, () => expect(shown(page).getByRole("img", { name: "Sketch: Ledger" })).toBeVisible(ONE_LOOK));
       await expect(shown(page).getByRole("figure", { name: "Sketch without a title" })).toBeVisible();

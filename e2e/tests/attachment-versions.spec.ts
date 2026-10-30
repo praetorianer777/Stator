@@ -4,12 +4,11 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openWithout } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey, type Page as WikiPage } from "../fixtures/spaces";
 
 const panel = (page: Page) => page.locator("[data-attachments]");
 const row = (page: Page, name: string) => panel(page).locator(`[data-attachment="${name}"]`);
-const notice = (page: Page) => page.locator("[data-attachment-notice]");
 const csv = (body: string) => ({ name: "budget.csv", mimeType: "text/csv", buffer: Buffer.from(body) });
 
 async function textOf(page: Page, href: string | null): Promise<string> {
@@ -38,7 +37,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
   test("an author uploads a file again, restores the first version as the latest, and deletes a version and then the file", async ({ page, api }, testInfo) => {
     test.slow();
     const { key, page: wiki } = await aPage(api, testInfo);
-    const path = `/s/${key}/p/${wiki.id}/budget`;
+    const path = `/spaces/${key}/p/${wiki.id}/budget`;
     await page.goto(path);
     await expect(panel(page)).toContainText("Nothing attached yet.");
 
@@ -53,7 +52,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
     const budget = row(page, "budget.csv");
     await budget.getByText("1 earlier version").click();
     await budget.getByRole("button", { name: "Restore budget.csv, version 1" }).click();
-    await expect(notice(page)).toHaveText("Restored version 1 of budget.csv as version 3.");
+    await expect(toast(page, "Restored version 1 of budget.csv as version 3.")).toBeVisible();
     await expect(budget).toHaveAttribute("data-version", "3");
     await expect(budget).toContainText("Version 3, restored from version 1");
     expect(await textOf(page, await budget.locator('[data-action="download-attachment"]').first().getAttribute("href"))).toBe("q1,10\n");
@@ -70,22 +69,17 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
     expect(await textOf(page, await first.locator('[data-action="download-attachment"]').getAttribute("href"))).toBe("q1,10\n");
     expect(await textOf(page, await second.locator('[data-action="download-attachment"]').getAttribute("href"))).toBe("q1,10\nq2,12\n");
     await expectAccessible(page);
-
-    page.once("dialog", (dialog) => void dialog.accept());
     await first.getByRole("button", { name: "Delete budget.csv, version 1" }).click();
-    await expect(notice(page)).toHaveText("Deleted version 1 of budget.csv.");
+    await confirm(page);
+    await expect(toast(page, "Deleted version 1 of budget.csv.")).toBeVisible();
     await expect(budget.getByText("1 earlier version")).toBeVisible();
     await expect(budget).toHaveAttribute("data-version", "3");
 
-    const asked: string[] = [];
-    page.once("dialog", (dialog) => {
-      asked.push(dialog.message());
-      void dialog.accept();
-    });
     await budget.locator('[data-action="delete-attachment"]').click();
-    await expect(notice(page)).toHaveText("Deleted budget.csv.");
+    await expect(page.locator('[role="dialog"][data-confirm]')).toContainText("All 2 of its versions go with it.");
+    await confirm(page);
+    await expect(toast(page, "Deleted budget.csv.")).toBeVisible();
     await expect(row(page, "budget.csv")).toHaveCount(0);
-    expect(asked[0]).toContain("Delete budget.csv and all 2 of its versions for good?");
     const left = (await api.GET("/pages/{pageID}/attachments", { params: { path: { pageID: wiki.id } } })).data?.attachments;
     expect(left).toEqual([]);
   });
@@ -109,10 +103,10 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
         await route.fulfill({ response: answeredBefore });
       })();
     });
-    await page.goto(`/s/${key}/p/${wiki.id}/budget`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/budget`);
     await expect(row(page, "budget.csv")).toHaveCount(0);
     await panel(page).locator("[data-attachment-input]").setInputFiles(csv("one\n"));
-    await expect(page.locator("[data-attachment-notice]")).toHaveText("Attached budget.csv.");
+    await expect(toast(page, "Attached budget.csv.")).toBeVisible();
     const arrived = page.waitForResponse((r) => r.url().endsWith(`/pages/${wiki.id}/attachments`) && r.request().method() === "GET");
     release();
     await fulfilled;
@@ -124,7 +118,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
   test("a member who may only read the page sees the versions but restores none", async ({ page, api, pageAs }, testInfo) => {
     test.slow();
     const { key, page: wiki } = await aPage(api, testInfo);
-    const path = `/s/${key}/p/${wiki.id}/budget`;
+    const path = `/spaces/${key}/p/${wiki.id}/budget`;
     await page.goto(path);
     const input = panel(page).locator("[data-attachment-input]");
     await input.setInputFiles(csv("one\n"));

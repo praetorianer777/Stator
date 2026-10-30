@@ -55,11 +55,11 @@ func TestAGrantListLetsAReaderEditOnePage(t *testing.T) {
 	locked := docs.add(docs.homeID, "Locked")
 	lockedLow := docs.add(locked, "Locked low")
 	hidden := docs.add(docs.homeID, "Hidden")
-	want(t, owner.put(t, "/api/v1/spaces/GRANT/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "GRANT", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addComments"}},
 		map[string]any{"subject": user(daveID), "permissions": []any{"addPages"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "GRANT is read only but for dave and ann")
+	}), http.StatusOK, "GRANT is read only but for dave and ann")
 	other := newTree(t, owner, "ELSEWHERE", "Elsewhere")
 	elsewhere := other.add(other.homeID, "Elsewhere")
 	gwenID := invite(t, h, owner, "GRANT", "viewer")

@@ -28,14 +28,14 @@ export function PageLink({
 }) {
   if (home) {
     return (
-      <Link to="/s/$spaceKey" params={{ spaceKey }} className={className} tabIndex={tabIndex} onClick={onClick}>
+      <Link to="/spaces/$spaceKey" params={{ spaceKey }} className={className} tabIndex={tabIndex} onClick={onClick}>
         {children ?? title}
       </Link>
     );
   }
   return (
     <Link
-      to="/s/$spaceKey/p/$pageId/$slug"
+      to="/spaces/$spaceKey/p/$pageId/$slug"
       params={{ spaceKey, pageId: id, slug: pageSlug(title) }}
       hash={hash}
       className={className}

@@ -7,7 +7,7 @@ import { locale, t } from "@/i18n";
 import { outdatedSentence } from "./outdated";
 import { BadQuery, Note, OpenInArmature } from "./IssueList";
 import { useWidth } from "./useWidth";
-import { donutPaths, foldSlices, linePoints, percent, readoutAnchor, ticks, type ChartSettings, type Slice } from "./chart";
+import { CHART_OTHER_COLOR, chartColor, donutPaths, foldSlices, linePoints, percent, readoutAnchor, ticks, type ChartSettings, type Slice } from "./chart";
 import { ConnectArmatureLink } from "./connectLink";
 
 type Chart = NonNullable<ArmatureChartAnswer["chart"]>;
@@ -22,9 +22,9 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 function sliceColor(slice: Slice, index: number, byCategory: boolean): string {
-  if (slice.other) return "var(--chart-other)";
+  if (slice.other) return CHART_OTHER_COLOR;
   if (byCategory && CATEGORY_COLOR[slice.category]) return CATEGORY_COLOR[slice.category]!;
-  return `var(--chart-${index + 1})`;
+  return chartColor(index);
 }
 
 // Armature labels a status category and a priority with its own value, such
@@ -163,11 +163,11 @@ function Flow({ chart, days }: { chart: Chart; days: number }) {
     <div className="doc-chart-flow">
       <ul className="doc-chart-keys" data-chart-legend="">
         <li>
-          <span className="doc-chart-key" style={{ background: "var(--chart-1)" }} aria-hidden="true" />
+          <span className="doc-chart-key" style={{ background: "var(--color-chart-1)" }} aria-hidden="true" />
           {c.created(totalCreated)}
         </li>
         <li>
-          <span className="doc-chart-key" style={{ background: "var(--chart-2)" }} aria-hidden="true" />
+          <span className="doc-chart-key" style={{ background: "var(--color-chart-2)" }} aria-hidden="true" />
           {c.resolved(totalResolved)}
         </li>
       </ul>
@@ -208,12 +208,24 @@ function Flow({ chart, days }: { chart: Chart; days: number }) {
             </text>
           ))}
           {shown && <line x1={xAt(active!)} x2={xAt(active!)} y1={PAD.top} y2={PAD.top + height} className="doc-chart-crosshair" />}
-          <polyline points={line(created)} className="doc-chart-line" stroke="var(--chart-1)" data-series="created" />
-          <polyline points={line(resolved)} className="doc-chart-line" stroke="var(--chart-2)" data-series="resolved" />
+          <polyline points={line(created)} className="doc-chart-line" stroke="var(--color-chart-1)" data-series="created" />
+          <polyline points={line(resolved)} className="doc-chart-line" stroke="var(--color-chart-2)" data-series="resolved" />
           {shown && (
             <>
-              <circle cx={xAt(active!)} cy={PAD.top + height - (shown.created / highest) * height} r={4} fill="var(--chart-1)" className="doc-chart-dot" />
-              <circle cx={xAt(active!)} cy={PAD.top + height - (shown.resolved / highest) * height} r={4} fill="var(--chart-2)" className="doc-chart-dot" />
+              <circle
+                cx={xAt(active!)}
+                cy={PAD.top + height - (shown.created / highest) * height}
+                r={4}
+                fill="var(--color-chart-1)"
+                className="doc-chart-dot"
+              />
+              <circle
+                cx={xAt(active!)}
+                cy={PAD.top + height - (shown.resolved / highest) * height}
+                r={4}
+                fill="var(--color-chart-2)"
+                className="doc-chart-dot"
+              />
             </>
           )}
         </svg>
@@ -228,11 +240,11 @@ function Flow({ chart, days }: { chart: Chart; days: number }) {
           >
             <span className="doc-chart-tooltip-day">{dayLabel(shown.day)}</span>
             <span>
-              <span className="doc-chart-key" style={{ background: "var(--chart-1)" }} aria-hidden="true" />
+              <span className="doc-chart-key" style={{ background: "var(--color-chart-1)" }} aria-hidden="true" />
               <strong>{shown.created}</strong> {c.createdWord}
             </span>
             <span>
-              <span className="doc-chart-key" style={{ background: "var(--chart-2)" }} aria-hidden="true" />
+              <span className="doc-chart-key" style={{ background: "var(--color-chart-2)" }} aria-hidden="true" />
               <strong>{shown.resolved}</strong> {c.resolvedWord}
             </span>
           </div>

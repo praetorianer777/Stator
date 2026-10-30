@@ -30,7 +30,7 @@ async function publishAgain(api: StatorApi, pageId: string, title: string, text:
 
 /** Exports the space from its settings in the format given and downloads the file. */
 async function exportFromSettings(page: Page, key: string, format: "archive" | "html"): Promise<Download> {
-  await openUntil(page, `/s/${key}/settings?tab=export`, () => expect(page.locator("[data-space-export]")).toBeVisible(ONE_LOOK));
+  await openUntil(page, `/spaces/${key}/settings/export`, () => expect(page.locator("[data-space-export]")).toBeVisible(ONE_LOOK));
   await page.locator(`[data-export-format="${format}"]`).click();
   await page.locator('[data-action="export-space"]').click();
   const link = page.locator('[data-export-row="done"] [data-action="download-export"]').first();
@@ -71,12 +71,12 @@ test.describe("space export and import", { tag: ["@auth"] }, () => {
       await expect(page.locator("[data-import-report]")).toContainText(/2 pages with \d+ versions/);
       await expectAccessible(page);
       await page.locator('[data-action="open-imported"]').click();
-      await expect(page).toHaveURL(new RegExp(`/s/${landed}`));
+      await expect(page).toHaveURL(new RegExp(`/spaces/${landed}`));
 
       const { pages } = must(await api.GET("/spaces/{spaceKey}/outline", { params: { path: { spaceKey: landed } } }));
       const copy = pages.find((p) => p.title === "Packing");
       expect(copy).toBeDefined();
-      await openUntil(page, `/s/${landed}/p/${copy!.id}/packing/history`, () => expect(page.getByText("Second thoughts")).toBeVisible(ONE_LOOK));
+      await openUntil(page, `/spaces/${landed}/p/${copy!.id}/packing/history`, () => expect(page.getByText("Second thoughts")).toBeVisible(ONE_LOOK));
       await expect(page.locator("[data-version-row]")).toHaveCount(2);
     } finally {
       await deleteSpace(api, key);
@@ -119,7 +119,7 @@ test.describe("space export and import", { tag: ["@auth"] }, () => {
       await createSpace(api, key, "Accessible handbook");
       try {
         await startInScheme(page, scheme);
-        await openUntil(page, `/s/${key}/settings?tab=export`, () => expect(page.locator("[data-space-export]")).toBeVisible(ONE_LOOK));
+        await openUntil(page, `/spaces/${key}/settings/export`, () => expect(page.locator("[data-space-export]")).toBeVisible(ONE_LOOK));
         await expect(page.getByText("This space has not been exported yet.")).toBeVisible();
         await expectAccessible(page);
         await page.goto("/spaces/import");

@@ -1,19 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useLogout, useMe } from "@/api/auth";
 import { useConnectedTools } from "@/api/tools";
-import { Avatar, Button, Menu, type MenuEntry, type MenuItem } from "@/components/ui";
+import { Avatar, IconButton, Menu, type MenuEntry, type MenuItem } from "@/components/ui";
 import type { AnchoredSide } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
-import { CONNECTED_TOOLS, SETTINGS_PATH } from "@/config";
+import { CONNECTED_TOOLS } from "@/config";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
-import { usePlaces } from "./places";
+import { adminEntry, usePlaces } from "./places";
 
 /**
- * The avatar and its menu, "Your account": who is signed in, their own pages,
- * the other tools, Settings for site administrators, and Sign out.
+ * The round avatar and its menu, "Your account": who is signed in, their own
+ * pages, the other tools, Admin for administrators, and Sign out.
  */
-export function AccountMenu({ showName = false, side = "right" }: { showName?: boolean; side?: AnchoredSide }) {
+export function AccountMenu({ side = "right" }: { side?: AnchoredSide }) {
   const navigate = useNavigate();
   const { data: me } = useMe();
   const logout = useLogout();
@@ -46,16 +46,19 @@ export function AccountMenu({ showName = false, side = "right" }: { showName?: b
     });
   }
   if (siteAdmin) {
+    const admin = adminEntry();
     items.push({
-      label: t.account.settings,
+      label: admin.label,
       icon: <Icon.Settings />,
-      onSelect: () => void navigate({ to: SETTINGS_PATH }),
-      attrs: { "data-action": "settings" },
+      separated: true,
+      onSelect: () => void navigate({ to: admin.to }),
+      attrs: { "data-action": "admin" },
     });
   }
   items.push({
     label: t.account.signOut,
     icon: <Icon.External />,
+    separated: true,
     // Wherever the request ends, the session is no longer this browser's to use.
     onSelect: () => logout.mutate(undefined, { onSettled: () => navigate({ to: "/login" }) }),
     disabled: !me,
@@ -66,38 +69,36 @@ export function AccountMenu({ showName = false, side = "right" }: { showName?: b
     <Menu
       label={t.account.menu}
       side={side}
+      // As wide as the rail, so the list opens past the rail's edge rather than over it.
+      className={side === "right" ? "w-full justify-center" : undefined}
       header={
-        <div className="border-b border-border px-2 pt-1 pb-2" data-account-header>
-          <p className="truncate text-sm font-medium text-ink" data-account-header-name>
-            {name}
-          </p>
-          {me?.user.email && <p className="truncate text-xs text-ink-muted">{me.user.email}</p>}
-          {role && (
-            <p className="text-xs text-ink-subtle" data-account-role={role}>
-              {t.sso.roleNames[role] ?? role}
-            </p>
-          )}
+        <div className="mb-1 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2" data-account-header>
+          <Avatar name={name} src={me?.user.avatarUrl} size="md" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-ink" data-account-header-name>
+              {name}
+            </span>
+            {me?.user.email && <span className="block truncate text-xs text-ink-muted">{me.user.email}</span>}
+            {role && (
+              <span className="block text-2xs text-ink-subtle" data-account-role={role}>
+                {t.sso.roleNames[role] ?? role}
+              </span>
+            )}
+          </span>
         </div>
       }
       trigger={(props) => (
-        <Button
-          variant="ghost"
+        <IconButton
+          icon={<Avatar name={name} src={me?.user.avatarUrl} size="sm" />}
+          label={t.account.menu}
           size="sm"
           onClick={props.toggle}
           aria-haspopup={props["aria-haspopup"]}
           aria-expanded={props["aria-expanded"]}
           aria-controls={props["aria-controls"]}
-          aria-label={t.account.menu}
-          className="px-1!"
+          className="rounded-full"
           data-action="account"
-        >
-          <Avatar name={name} src={me?.user.avatarUrl} size="sm" />
-          {showName && (
-            <span className="min-w-0 truncate text-sm text-ink" data-account-name>
-              {name}
-            </span>
-          )}
-        </Button>
+        />
       )}
       items={items}
     />

@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { labelPath, useAddLabel, useRemoveLabel } from "@/api/labels";
 import type { Page } from "@/api/pages";
-import { ErrorBanner, IconButton, SectionTitle } from "@/components/ui";
+import { ErrorBanner, IconButton, SectionTitle, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { LabelCombobox } from "./LabelCombobox";
@@ -39,7 +38,7 @@ export function LabelLink({ name, spaceKey, onRemove }: { name: string; spaceKey
 export function PageLabels({ page }: { page: Page }) {
   const add = useAddLabel(page.id);
   const remove = useRemoveLabel(page.id);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const editable = page.can.edit;
   if (!editable && page.labels.length === 0) return null;
   const error = add.error ?? remove.error;
@@ -58,7 +57,7 @@ export function PageLabels({ page }: { page: Page }) {
                   editable
                     ? () => {
                         add.reset();
-                        remove.mutate(name, { onSuccess: () => setNotice(t.labels.removed(name)) });
+                        remove.mutate(name, { onSuccess: () => toast.success(t.labels.removed(name)) });
                       }
                     : undefined
                 }
@@ -74,15 +73,12 @@ export function PageLabels({ page }: { page: Page }) {
             exclude={page.labels}
             onPick={(name) => {
               remove.reset();
-              add.mutate(name, { onSuccess: () => setNotice(t.labels.added(name)) });
+              add.mutate(name, { onSuccess: () => toast.success(t.labels.added(name)) });
             }}
           />
         </div>
       )}
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
-      <p role="status" className="sr-only" data-label-notice>
-        {notice}
-      </p>
     </section>
   );
 }

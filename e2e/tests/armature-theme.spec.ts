@@ -107,7 +107,7 @@ test.describe("following the Armature theme", { tag: ["@auth"] }, () => {
     test(`a danger button in Deep-Tech is accessible in ${scheme}`, async ({ page, api }) => {
       await startInScheme(page, scheme);
       must(await api.PUT("/armature/theme"));
-      await page.goto("/settings/armature");
+      await page.goto("/admin/armature");
       await expect(customStyle(page)).toBeAttached();
       await expect(page.locator('[data-action="disconnect-armature"]')).toBeVisible();
       await expectAccessible(page);

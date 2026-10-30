@@ -27,6 +27,7 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/httpapi"
 	"github.com/praetorianer777/stator/backend/internal/instance"
 	"github.com/praetorianer777/stator/backend/internal/oidc"
+	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/secret"
 )
 
@@ -97,6 +98,7 @@ func (h *harness) startAPI(t *testing.T, sessionTTL time.Duration, tweaks ...fun
 		OIDCCallbackURL: base + httpapi.APIPrefix + "/auth/oidc/callback",
 		Log:             discard(),
 		Audit:           audit.NewService(h.cluster),
+		Perms:           perm.NewService(h.cluster),
 		CookieName:      h.cfg.Auth.SessionCookie,
 		AppBaseURL:      "http://" + appHost,
 	}
@@ -377,7 +379,8 @@ func (k *keycloak) newPerson(t *testing.T, h *harness, username, password string
 }
 
 // letIn makes the address a member ahead of its first sign-in, the
-// way the seed does, making the account if need be.
+// way the seed does, making the account if need be; owner and admin
+// administer the site through the administrator role.
 func (h *harness) letIn(t *testing.T, email, role string) {
 	t.Helper()
 	ctx := context.Background()
@@ -387,8 +390,17 @@ func (h *harness) letIn(t *testing.T, email, role string) {
 		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING id`, email, email).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, id, role); err != nil {
+	standing := role
+	if role == "owner" || role == "admin" {
+		standing = "member"
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, id, standing); err != nil {
 		t.Fatal(err)
+	}
+	if standing != role {
+		if _, err := h.super.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', $1)`, id); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

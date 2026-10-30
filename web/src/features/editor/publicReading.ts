@@ -27,8 +27,10 @@ export function publicLinkPath(token: string): string {
   return `${PUBLIC_PATH}/${PUBLIC_LINK_SEGMENT}/${encodeURIComponent(token)}`;
 }
 
-const SPACE_ADDRESS = /^\/s\/([A-Za-z0-9]+)\/?$/;
-const PAGE_ADDRESS = /^\/s\/([A-Za-z0-9]+)\/p\/([0-9a-f-]{36})(?:\/([^/]*))?\/?$/;
+// Pages written before spaces moved to /spaces/ still link to /s/; /spaces/new
+// and /spaces/import are the app's own pages, not spaces.
+const SPACE_ADDRESS = /^\/(?:s|spaces)\/(?!(?:new|import)\/?$)([A-Za-z0-9]+)\/?$/;
+const PAGE_ADDRESS = /^\/(?:s|spaces)\/([A-Za-z0-9]+)\/p\/([0-9a-f-]{36})(?:\/([^/]*))?\/?$/;
 
 /** Where the public pages start. */
 export function publicSitePath(): string {
@@ -36,7 +38,7 @@ export function publicSitePath(): string {
 }
 
 export function publicSpacePath(spaceKey: string): string {
-  return `${PUBLIC_PATH}/s/${spaceKey.toUpperCase()}`;
+  return `${PUBLIC_PATH}/spaces/${spaceKey.toUpperCase()}`;
 }
 
 /** The public reading view of a page; without its space, the page is looked up and the address put right. */

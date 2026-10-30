@@ -22,8 +22,23 @@ export function RenameFolderDialog({ folder, onClose }: { folder: Page; onClose:
   }
 
   return (
-    <Dialog title={t.page.renameTitle(folder.title)} onClose={onClose} data-rename-dialog="">
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={t.page.renameTitle(folder.title)}
+      onClose={onClose}
+      attrs={{ "data-rename-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.page.cancel}
+          </Button>
+          <Button type="submit" form="rename-folder-dialog-form" loading={rename.isPending} data-action="confirm-rename">
+            {t.page.renameSubmit}
+          </Button>
+        </>
+      }
+    >
+      <form id="rename-folder-dialog-form" onSubmit={submit} className="space-y-3" noValidate>
         {rename.error && <ErrorBanner>{rename.error.message}</ErrorBanner>}
         <Field
           label={t.page.title}
@@ -33,14 +48,6 @@ export function RenameFolderDialog({ folder, onClose }: { folder: Page; onClose:
           error={error}
           autoFocus
         />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.page.cancel}
-          </Button>
-          <Button type="submit" loading={rename.isPending} data-action="confirm-rename">
-            {t.page.renameSubmit}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

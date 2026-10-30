@@ -1,6 +1,6 @@
 import { useId, useMemo, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { ARMATURE_PIE_HOLE, ARMATURE_PIE_SIZE, TABLE_CHART_BAR_GAP, TABLE_CHART_HEIGHT, TABLE_CHART_TICKS, TABLE_CHART_WIDTH } from "@/config";
-import { donutPaths, foldSlices, percent, readoutAnchor } from "@/features/armature/chart";
+import { CHART_OTHER_COLOR, chartColor, donutPaths, foldSlices, percent, readoutAnchor } from "@/features/armature/chart";
 import { useWidth } from "@/features/armature/useWidth";
 import type { DocNode } from "@/features/editor/schema";
 import { t } from "@/i18n";
@@ -12,7 +12,7 @@ const PAD = { left: 44, right: 12, top: 12, bottom: 28 };
 const READOUT_WIDTH = 140;
 
 // Colour follows the series' place in the table, never its rank.
-const color = (i: number) => `var(--chart-${i + 1})`;
+const color = chartColor;
 
 function Keys({ data }: { data: ChartData }) {
   if (data.series.length < 2) return null;
@@ -220,7 +220,7 @@ function Pie({ data, summary }: { data: ChartData; summary: string }) {
   );
   const [active, setActive] = useState<number | null>(null);
   const shown = active !== null ? slices[active] : null;
-  const fill = (i: number) => (slices[i]!.other ? "var(--chart-other)" : color(i));
+  const fill = (i: number) => (slices[i]!.other ? CHART_OTHER_COLOR : color(i));
   return (
     <div className="doc-chart-pie">
       <svg

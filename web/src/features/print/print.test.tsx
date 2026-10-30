@@ -176,7 +176,7 @@ describe("exporting a page as PDF", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
       saved.push(this.download);
     });
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await openExport();
     await waitFor(() => expect(saved).toEqual(["DOCS-guide-2026-10-07.pdf"]));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -188,7 +188,7 @@ describe("exporting a page as PDF", () => {
     stubReading([pdfAnswer(busy), pdfAnswer()]);
     stubObjectUrls();
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await openExport();
     const dialog = within(await screen.findByRole("dialog"));
     expect(await dialog.findByRole("alert")).toHaveTextContent("Too many PDFs are being made right now.");
@@ -206,7 +206,7 @@ describe("exporting a page as PDF", () => {
       [`GET /pages/${pageId}`]: { status: 200, body: { page: { ...guide(), unpublished: true, version: 0 }, space } },
       [`GET /pages/${pageId}/attachments`]: { status: 200, body: { attachments: [] } },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     expect(await screen.findByRole("menuitem", { name: "Export as Markdown" })).toBeVisible();
     expect(screen.queryByRole("menuitem", { name: "Export as PDF" })).toBeNull();
@@ -241,7 +241,7 @@ describe("exporting a page as Word", () => {
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
       saved.push(this.download);
     });
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await openExport();
     await waitFor(() => expect(saved).toEqual(["DOCS-guide-2026-10-07.docx"]));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
@@ -256,7 +256,7 @@ describe("exporting a page as Word", () => {
     stubReading([wordAnswer(large), wordAnswer()]);
     stubObjectUrls();
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await openExport();
     const dialog = within(await screen.findByRole("dialog", { name: "Export Guide as Word" }));
     expect(await dialog.findByRole("alert")).toHaveTextContent("The Word file came out larger");

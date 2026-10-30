@@ -314,10 +314,22 @@ func idText(id *uuid.UUID) string {
 	return id.String()
 }
 
+// readGrants writes the space's grants as the permissions their roles hold,
+// which every installation reads alike whatever its roles are called;
+// Everyone and reading without signing in go by their own names.
 func (s *snapshot) readGrants(ctx context.Context, tx db.DBTX, note func(*uuid.UUID), groups map[uuid.UUID]bool) error {
 	rows, err := tx.Query(ctx, `
-		SELECT permission, subject_type, user_id, group_id FROM space_grant WHERE space_id = $1
-		ORDER BY permission, subject_type, user_id, group_id`, s.space.ID)
+		SELECT DISTINCT p.word,
+		       CASE WHEN g.builtin = 'everyone' THEN 'everyone' WHEN a.user_id IS NOT NULL THEN 'user' ELSE 'group' END AS subject_type,
+		       a.user_id, CASE WHEN g.builtin = 'everyone' THEN NULL ELSE a.group_id END AS group_id
+		FROM role_assignment a
+		JOIN role r ON r.key = a.role
+		CROSS JOIN LATERAL unnest(r.permissions) AS p (word)
+		LEFT JOIN groups g ON g.id = a.group_id
+		WHERE a.space_id = $1 AND p.word IN ('view', 'addPages', 'addComments', 'delete', 'administer')
+		UNION
+		SELECT 'view', 'anonymous', NULL, NULL FROM space WHERE id = $1 AND anonymous_view
+		ORDER BY 1, 2, 3, 4`, s.space.ID)
 	if err != nil {
 		return err
 	}

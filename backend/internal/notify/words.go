@@ -70,7 +70,7 @@ func Sentence(kind Kind, actor, title string, inComment bool) string {
 // PageURL is where a notification leads: the page, with its thread open when
 // there is one, or at its task. The client puts the slug right.
 func PageURL(appURL, spaceKey string, s Subject) string {
-	link := fmt.Sprintf("%s/s/%s/p/%s", appURL, spaceKey, s.PageID)
+	link := fmt.Sprintf("%s/spaces/%s/p/%s", appURL, spaceKey, s.PageID)
 	if s.ThreadID != nil {
 		link += "?thread=" + s.ThreadID.String()
 	}

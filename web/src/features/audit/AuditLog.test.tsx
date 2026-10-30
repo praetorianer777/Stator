@@ -147,10 +147,10 @@ describe("the audit log", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("tells a member it is the administrators' to read", async () => {
+  it("is refused to a member, with the rest of Admin", async () => {
     const sent = log();
-    await renderAt(AUDIT_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member" } } });
-    expect(await screen.findByText(/Only an administrator reads the audit log/)).toBeInTheDocument();
+    await renderAt(AUDIT_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } } });
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
     expect(sent).toHaveLength(0);
   });
 });
@@ -161,6 +161,17 @@ describe("an entry in words", () => {
     expect(targetName(entry({ data: {} }))).toBe(spaceId);
     const details = describeEntry(entry({ data: { key: "DOC", authorId: "x", grants: [{ subject: "a" }, { subject: "b" }], scopes: ["read"] } }));
     expect(details).toBe("key: DOC · grants: 2 · scopes: read");
+  });
+
+  it("names the group that let somebody in, and keeps the person as the target", () => {
+    const joined = entry({
+      action: "member.joined",
+      targetType: "user",
+      targetId: "0199a000-0000-7000-8000-0000000000b0",
+      data: { role: "member", group: "quality", groups: ["quality"], via: "sign_in" },
+    });
+    expect(describeEntry(joined)).toBe("admitted by group quality · role: member · via: sign_in");
+    expect(targetName(joined)).toBe("0199a000-0000-7000-8000-0000000000b0");
   });
 
   it("asks for the reader's days as the instants they span", () => {

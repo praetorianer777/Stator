@@ -3,6 +3,72 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-30: Spaces live at /spaces/, and the old /s/ addresses lead there (#586)
+
+The suite's standard puts a project's or space's settings at
+`/projects/<key>/settings/<section>` and `/spaces/<key>/settings/<section>`,
+since `/p/` means a project in Exciter and a page here. So a space and
+everything in it moved from `/s/<key>` to `/spaces/<key>`, and its settings
+became one route per section, as Armature's are.
+
+Nothing that was handed out stops working. `/s/<rest>` and `/public/s/<rest>`
+redirect to `/spaces/<rest>` with search and hash, before sign-in, and
+`/spaces/<key>/settings?tab=` opens the section the tab moved to. Stored
+pages are not rewritten: the links in them keep `/s/`, which the redirect
+serves, and the Markdown export, a space or site import and public reading
+read both forms. What the server writes from now on, in mails, webhooks,
+issues, tasks and imported pages, uses `/spaces/`.
+
+Keys are upper case, so `/spaces/new` and `/spaces/import` match only in
+lower case and a space called NEW or IMPORT keeps its address.
+
+## 2026-10-30: A mapped group lets somebody new in once an administrator says so (#583)
+
+Armature lets people in by their groups only once an administrator turns it
+on (Cloudster1/Armature#301), and the three tools share one realm, so Stator
+has the same setting under the same name and default: `admitByGroup` on the
+identity provider, "Let people in by their groups" under Settings, Single
+sign-on, off unless turned on.
+
+Off, a mapped group still settles the role of somebody already in at each
+sign-in, but lets nobody new in: they wait to be let in, at sign-in, and a
+partner's token exchange is refused with no account kept. On, somebody new in
+a mapped group is let in with its role, at sign-in and at a token exchange,
+and `member.joined` names the group and where, which the audit log shows as
+admitted by group <name>. Somebody switched off is refused either way.
+
+An installation that already maps a group let such people in from the moment
+it was mapped, so the migration turns the setting on wherever a group role
+exists, and an organization archive made before the setting does the same on
+import.
+
+## 2026-10-30: The shell and its feedback follow the suite's standard (#587)
+
+Dynamo's look-and-feel standard settles where Stator, Armature and Exciter
+drifted apart; Stator now follows it, with Armature's code where it has some.
+
+- **What happened is a toast.** Every page sits under a `ToastProvider` with
+  `MutationErrorToasts`, and mutations go through `api/mutation.ts`, which
+  tells whether the caller shows a failure itself; one nobody shows is said
+  in the server's words. "Saved." beside a control that saved as it was
+  watched may stay where it is.
+- **Asking before something goes is `useConfirm`.** It draws the kit's
+  `ConfirmDialog` with the verb and the thing in its title and what goes
+  with it in its body. ESLint refuses `window.confirm`, which ignores the
+  theme and cannot word a consequence.
+- **A dialog's buttons are pinned in its footer**, a form's submit naming its
+  form; `DialogFooter` draws them from a part of the body that holds their
+  state.
+- **The shell derives what pages passed.** Pages take their width from
+  `Page` and no longer pass crumbs: `features/shell/Crumbs.tsx` reads the
+  trail off the address and the page or space it names.
+- **The chrome matches the other tools.** A strip as tall as the rail on a phone with the
+  installation's name, the installation's name beside the mark at the
+  sidebar's head, a round avatar whose menu opens past the rail, counts
+  drawn by the shared `Count`, a Notifications page with a count in the
+  sidebar, and a palette that finds spaces and actions in groups of their
+  own and says Cmd K on a Mac.
+
 ## 2026-10-26: PlantUML, C4, Graphviz and D2 through a Kroki inside the installation (#466)
 
 Authors ask for PlantUML, C4 and BPMN next to Mermaid. Kroki draws these
@@ -5306,7 +5372,9 @@ without undoing what administrators already decided. The owner is never moved,
 and the database refuses to let the provider manage an owner's role.
 
 A mapped group is the administrators' approval given in advance, so somebody
-in one joins on their first sign-in, with no request to answer. Every role the
+in one joins on their first sign-in, with no request to answer. **Amended on
+2026-10-30** by "A mapped group lets somebody new in once an administrator
+says so (#583)": only while `admitByGroup` is on. Every role the
 mapping changes, and every change to the mapping, goes to `audit_log`.
 
 Changes apply at the next sign-in rather than when the mapping is saved: only

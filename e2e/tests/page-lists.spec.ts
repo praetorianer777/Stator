@@ -37,7 +37,7 @@ test.describe("page lists", { tag: ["@auth"] }, () => {
     const runbook = await createPage(api, space.homePageId, "Runbook", { type: "doc", content: [paragraph("On call.")] });
     await label(api, runbook.id, tag);
     const overview = await createPage(api, space.homePageId, "Overview", { type: "doc", content: [paragraph("Start here."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${overview.id}/overview`;
+    const path = `/spaces/${space.key}/p/${overview.id}/overview`;
 
     await openShowing(page, `${path}/edit`, "Start here.");
     await caretTo(editorBox(page), "end");
@@ -95,7 +95,7 @@ test.describe("page lists", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${overview.id}/lists`, "Labelled one");
+      await openShowing(page, `/spaces/${space.key}/p/${overview.id}/lists`, "Labelled one");
       await expect(shown(page).locator('[data-page-list][data-state="empty"]')).toHaveCount(1);
       await page.screenshot({ path: testInfo.outputPath(`lists-${scheme}.png`), fullPage: true });
       await expectAccessible(page);

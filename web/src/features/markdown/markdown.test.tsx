@@ -52,7 +52,7 @@ function inFolder(path: string, content: string, type = "text/markdown"): File {
 describe("exporting a page as Markdown", () => {
   it("offers the page alone, with its files, or with the pages below it, as downloads", async () => {
     stubPage({ edit: false });
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openMenuItem("Export as Markdown");
     const download = dialog.getByRole("link", { name: "Download" });
     expect(download).toHaveAttribute("href", `/api/v1/pages/${pageId}/export`);
@@ -69,7 +69,7 @@ describe("exporting a page as Markdown", () => {
 
   it("is open to readers, and importing is not", async () => {
     stubPage({ edit: false });
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     expect(await screen.findByRole("menuitem", { name: "Export as Markdown" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Import Markdown" })).toBeNull();
@@ -80,7 +80,7 @@ describe("importing Markdown under a page", () => {
   it("sends a folder's files with their paths and lists the pages it made", async () => {
     stubPage();
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openMenuItem("Import Markdown");
     expect(dialog.getByRole("button", { name: "Import" })).toBeDisabled();
     const folder = document.querySelector<HTMLInputElement>("[data-markdown-folder]")!;
@@ -109,7 +109,7 @@ describe("importing Markdown under a page", () => {
       }),
     );
     expect(await dialog.findByText("Imported 2 pages.")).toBeInTheDocument();
-    expect(dialog.getByRole("link", { name: "Setup" })).toHaveAttribute("href", `/s/DOCS/p/${childId}/setup`);
+    expect(dialog.getByRole("link", { name: "Setup" })).toHaveAttribute("href", `/spaces/DOCS/p/${childId}/setup`);
     expect(dialog.getByText(/points outside the import/)).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });
@@ -117,7 +117,7 @@ describe("importing Markdown under a page", () => {
   it("says what is wrong before sending, and shows the server's refusal", async () => {
     stubPage();
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openMenuItem("Import Markdown");
     const input = document.querySelector<HTMLInputElement>("[data-markdown-files]")!;
     await userEvent.upload(input, [new File(["png"], "logo.png", { type: "image/png" })]);
@@ -143,7 +143,7 @@ describe("importing Markdown under a page", () => {
 
   it("works from the keyboard and gives focus back when it closes", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const trigger = await screen.findByRole("button", { name: "Page actions" });
     trigger.focus();
     await userEvent.keyboard("{Enter}");

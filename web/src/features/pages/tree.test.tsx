@@ -95,7 +95,7 @@ describe("where a dragged page lands", () => {
 describe("the page tree", () => {
   it("is walked with the arrow keys and opens a level as it goes", async () => {
     stubTree();
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     await screen.findByRole("tree", { name: "Pages in Handbook" });
     const one = await screen.findByRole("treeitem", { name: "One" });
     expect(one).toHaveAttribute("tabindex", "0");
@@ -116,24 +116,24 @@ describe("the page tree", () => {
     expect(screen.queryByRole("treeitem", { name: "One A" })).toBeNull();
 
     await userEvent.keyboard("{End}{Enter}");
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${ids.two}/two`));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${ids.two}/two`));
   });
 
   it("opens the way to the page being read and marks it", async () => {
     stubTree();
-    await renderAt(`/s/DOCS/p/${ids.oneA}/one-a`);
+    await renderAt(`/spaces/DOCS/p/${ids.oneA}/one-a`);
     const current = await screen.findByRole("treeitem", { name: "One A" });
     expect(current).toHaveAttribute("aria-selected", "true");
     expect(current).toHaveAttribute("tabindex", "0");
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(within(crumbs).getByRole("link", { name: "Handbook" })).toHaveAttribute("href", "/s/DOCS");
-    expect(within(crumbs).getByRole("link", { name: "One" })).toHaveAttribute("href", `/s/DOCS/p/${ids.one}/one`);
+    expect(within(crumbs).getByRole("link", { name: "Handbook" })).toHaveAttribute("href", "/spaces/DOCS");
+    expect(within(crumbs).getByRole("link", { name: "One" })).toHaveAttribute("href", `/spaces/DOCS/p/${ids.one}/one`);
     expect(await axeViolations()).toEqual([]);
   });
 
   it("moves a page dropped on the middle of another under it", async () => {
     const sent = stubTree({ [`POST /pages/${ids.two}/move`]: { status: 200, body: { page: aPage({ id: ids.two, title: "Two", home: false }) } } });
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     const two = await screen.findByRole("treeitem", { name: "Two" });
     const oneRow = item("One").querySelector("[data-tree-row]")!;
     const dataTransfer = { setData: vi.fn(), effectAllowed: "", dropEffect: "" };
@@ -151,7 +151,7 @@ describe("the page tree", () => {
 
   it("refuses a page dropped onto itself or below itself", async () => {
     const sent = stubTree();
-    await renderAt(`/s/DOCS/p/${ids.oneA}/one-a`);
+    await renderAt(`/spaces/DOCS/p/${ids.oneA}/one-a`);
     const below = (await screen.findByRole("treeitem", { name: "One A" })).querySelector("[data-tree-row]")!;
     const one = item("One");
     const dataTransfer = { setData: vi.fn(), effectAllowed: "", dropEffect: "" };
@@ -167,7 +167,7 @@ describe("the page tree", () => {
     const sent = stubTree({
       [`POST /pages/${ids.two}/move`]: { status: 200, body: { page: aPage({ id: ids.two, title: "Two", home: false, parentId: ids.one }) } },
     });
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     (await screen.findByRole("treeitem", { name: "Two" })).focus();
     await userEvent.keyboard("m");
     const dialog = await screen.findByRole("dialog", { name: "Move Two" });
@@ -179,7 +179,7 @@ describe("the page tree", () => {
 
     await waitFor(() => expect(sent.some(isChange)).toBe(true));
     expect(sent.find(isChange)?.body).toEqual({ parentId: ids.one, withChildren: true });
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${ids.two}/two`));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${ids.two}/two`));
   });
 });
 
@@ -187,14 +187,14 @@ describe("a new page", () => {
   it("is named in a dialog and opens in the editor", async () => {
     const made = aPage({ id: "0195f000-0000-7000-8000-0000000000c1", title: "Onboarding", home: false, parentId: home.id });
     const sent = stubTree({ "POST /pages": { status: 201, body: { page: made } } });
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "New page" }));
     const dialog = await screen.findByRole("dialog", { name: "New page under Handbook" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
     expect(await within(dialog).findByText("A page needs a title.")).toBeInTheDocument();
     await userEvent.type(within(dialog).getByLabelText("Title"), "Onboarding");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await arrival(router, `/s/DOCS/p/${made.id}/onboarding/edit`);
+    await arrival(router, `/spaces/DOCS/p/${made.id}/onboarding/edit`);
     expect(sent.find(isChange)?.body).toEqual({ parentId: home.id, title: "Onboarding" });
   });
 });
@@ -226,7 +226,7 @@ describe("folders", () => {
 
   it("say they are folders in the tree, and show what they hold instead of a body", async () => {
     folderTree();
-    await renderAt(`/s/DOCS/p/${folderId}/guides`);
+    await renderAt(`/spaces/DOCS/p/${folderId}/guides`);
     expect(await screen.findByRole("treeitem", { name: "Guides, folder" })).toBeInTheDocument();
     const children = await screen.findByRole("link", { name: "Install" });
     expect(children.closest("[data-folder-children]")).not.toBeNull();
@@ -239,7 +239,7 @@ describe("folders", () => {
 
   it("are renamed in a dialog, by their title alone", async () => {
     const sent = folderTree({ [`PATCH /pages/${folderId}`]: { status: 200, body: { page: { ...guides, title: "How-tos" } } } });
-    await renderAt(`/s/DOCS/p/${folderId}/guides`);
+    await renderAt(`/spaces/DOCS/p/${folderId}/guides`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Rename" }));
     const dialog = await screen.findByRole("dialog", { name: "Rename Guides" });
@@ -256,14 +256,14 @@ describe("folders", () => {
       [`GET /pages/${folderId}`]: { status: 200, body: { page: guides, space } },
       [`GET /pages/${folderId}/below`]: { status: 200, body: { pages: [], truncated: false } },
     });
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "New folder" }));
     const dialog = await screen.findByRole("dialog", { name: "New folder under Handbook" });
     expect(within(dialog).queryByText(/template/i)).toBeNull();
     await userEvent.type(within(dialog).getByLabelText("Title"), "Guides");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create folder" }));
-    await arrival(router, `/s/DOCS/p/${folderId}/guides`);
+    await arrival(router, `/spaces/DOCS/p/${folderId}/guides`);
     expect(sent.find(isChange)?.body).toEqual({ parentId: home.id, title: "Guides", kind: "folder" });
   });
 });

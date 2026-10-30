@@ -43,6 +43,7 @@ import {
   type Size,
 } from "./annotation";
 import { drawEditing, drawSaved, measureWith } from "./draw";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 type Tool = "select" | "crop" | "arrow" | "box" | "text";
 
@@ -124,10 +125,12 @@ export function AnnotateDialog({
   const shown = live ?? present;
   const type = mediaType(file.contentType);
 
+  const confirm = useConfirm();
   const requestClose = useCallback(() => {
-    if (size && isChanged(present, size) && !window.confirm(t.annotate.confirmDiscard)) return;
-    onClose();
-  }, [size, present, onClose]);
+    if (!size || !isChanged(present, size)) return onClose();
+    const ask = { noun: t.kit.confirm.things.drawing, verb: t.kit.confirm.verbs.discard, body: t.annotate.confirmDiscard };
+    void confirm(ask).then((yes) => yes && onClose());
+  }, [size, present, onClose, confirm]);
   useEscape(true, requestClose);
   useFocusReturn(true, dialog, true);
 
@@ -385,7 +388,7 @@ export function AnnotateDialog({
           onClick={() => setHistory(redo)}
           data-action="annotate-redo"
         />
-        <IconButton icon={<Icon.X />} label={t.common.close} size="sm" onClick={requestClose} data-focus-last="" data-action="annotate-close" />
+        <IconButton icon={<Icon.X />} label={t.kit.close} size="sm" onClick={requestClose} data-focus-last="" data-action="annotate-close" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">

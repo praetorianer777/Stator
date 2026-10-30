@@ -5,11 +5,11 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { openPage, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, openSettingsPage } from "../fixtures/shell";
+import { expectAccessible, openAdminPage } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 import { apiFromStubURL, exciterURL } from "../fixtures/stack";
 
-const SETTINGS_PATH = "/settings/exciter";
+const SETTINGS_PATH = "/admin/exciter";
 const PROFILE_PATH = "/settings/profile";
 // The stub makes a person of any name on first use; each spec's tenant is its
 // own. alice may still find a trashed requirement, as an administrator does.
@@ -64,7 +64,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
 
   test("an administrator connects Exciter, and alice connects her account from a chip", async ({ page, api, team }, testInfo) => {
     await page.goto("/");
-    await openSettingsPage(page, "exciter-settings");
+    await openAdminPage(page, "exciter-settings");
     await expect(page).toHaveURL(new RegExp(`${SETTINGS_PATH}$`));
     await expect(page.locator("main").getByRole("heading", { level: 1, name: "Exciter" })).toBeVisible();
 
@@ -128,7 +128,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
     // Exciter answers bob 404 for CHK-R2, so his reading of the same page shows him only its key.
     must(await (await apiAs("bob")).PUT("/exciter/account/token", { body: { token: patFor(team.label, "bob") } }));
     const bob = await pageAs("bob");
-    await openShowing(bob, `/s/${space.key}/p/${target.id}/page`, BASKET);
+    await openShowing(bob, `/spaces/${space.key}/p/${target.id}/page`, BASKET);
     await expect(chip(bob, "CHK-R2")).toHaveAttribute("data-state", "hidden");
     await expect(chip(bob, "CHK-R2")).not.toContainText("Payment providers");
 
@@ -163,7 +163,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "Scope." }] }, { type: "paragraph" }],
     } as Body);
-    const path = `/s/${space.key}/p/${target.id}/page`;
+    const path = `/spaces/${space.key}/p/${target.id}/page`;
     const box = page.locator("#page-body");
     const menu = page.getByRole("listbox", { name: "Insert a block" });
 
@@ -226,7 +226,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
     await expectAccessible(page);
 
     const bob = await pageAs("bob");
-    await openShowing(bob, `/s/${space.key}/p/${target.id}/page`, "Statement");
+    await openShowing(bob, `/spaces/${space.key}/p/${target.id}/page`, "Statement");
     await expect(bob.locator("main [data-doc] [data-exciter-requirement-list]").first().locator("[data-requirement-row]")).toHaveText([/CHK-R4/]);
   });
 
@@ -238,7 +238,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
       content: [{ type: "paragraph", content: [{ type: "text", text: "Scope." }] }, { type: "paragraph" }],
     } as Body);
     const box = page.locator("#page-body");
-    await openShowing(page, `/s/${space.key}/p/${target.id}/page/edit`, "Scope.");
+    await openShowing(page, `/spaces/${space.key}/p/${target.id}/page/edit`, "Scope.");
 
     await caretTo(box, "end");
     await page.keyboard.type("/rationale");

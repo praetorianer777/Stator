@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { hasPreview, previewUrl, type Attachment } from "@/api/attachments";
-import { stubApi } from "@/test/app";
+import { stubApi, Feedback } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { AttachmentList } from "./AttachmentList";
 
@@ -47,10 +47,12 @@ const notes = file({ id: "0195f000-0000-7000-8000-0000000000f4", fileName: "note
 function shown() {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <main>
-        <h1>Plan</h1>
-        <AttachmentList pageId={pageId} editable={false} />
-      </main>
+      <Feedback>
+        <main>
+          <h1>Plan</h1>
+          <AttachmentList pageId={pageId} editable={false} />
+        </main>
+      </Feedback>
     </QueryClientProvider>,
   );
 }

@@ -56,7 +56,7 @@ test.describe("Markdown import and export", { tag: ["@auth"] }, () => {
       "pixel.png": PIXEL_PNG,
     });
 
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
     await openPageMenuItem(page, "import-markdown");
     await importDialog(page).locator("[data-markdown-folder]").setInputFiles(root);
     await expect(importDialog(page)).toContainText("3 files chosen");
@@ -98,7 +98,7 @@ test.describe("Markdown import and export", { tag: ["@auth"] }, () => {
 
   test("an import runs from the keyboard alone", async ({ page, api }, testInfo) => {
     const space = await aSpace(api, testInfo);
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
     const trigger = page.locator('[data-action="page-menu"]');
     await trigger.focus();
     await page.keyboard.press("Enter");
@@ -128,7 +128,7 @@ test.describe("Markdown import and export", { tag: ["@auth"] }, () => {
       await startInScheme(page, scheme);
       const space = await aSpace(api, testInfo);
       const guide = await createPage(api, space.homePageId, "Guide");
-      await page.goto(`/s/${space.key}/p/${guide.id}/guide`);
+      await page.goto(`/spaces/${space.key}/p/${guide.id}/guide`);
       await openPageMenuItem(page, "export-markdown");
       await expect(exportDialog(page)).toBeVisible();
       await expectAccessible(page);

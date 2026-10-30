@@ -12,7 +12,7 @@ vi.mock("@/config", async (original) => ({ ...(await original<typeof config>()),
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 
 function anExport(over: Partial<SiteExport> = {}): SiteExport {
   return {
@@ -86,23 +86,23 @@ describe("exporting the organization", () => {
         return { status: 202, body: { export: jobs[0] } };
       },
     });
-    await renderAt("/settings/transfer");
-    expect(await screen.findByText("The organization has not been exported yet.")).toBeInTheDocument();
+    await renderAt("/admin/transfer");
+    expect(await screen.findByText("The installation has not been exported yet.")).toBeInTheDocument();
     expect(screen.getByText("Passwords.")).toBeInTheDocument();
     expect(screen.getByText("Webhook signing secrets.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Export organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Export installation" }));
     const link = await screen.findByRole("link", { name: "Download" });
     expect(link).toHaveAttribute("href", "/api/v1/site/exports/e-1/file");
     expect(sent.filter((r) => r.method === "POST").map((r) => r.path)).toEqual(["/site/exports"]);
-    expect(screen.getByRole("button", { name: "Export organization" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Export installation" })).toBeEnabled();
     expect(await axeViolations()).toEqual([]);
   });
 
   it("tells a member who exports and imports the organization", async () => {
     stubApi({});
-    await renderAt("/settings/transfer", { me: member });
-    expect(await screen.findByText(/Only an administrator of the organization exports or imports all of it/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Export organization" })).toBeNull();
+    await renderAt("/admin/transfer", { me: member });
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Export installation" })).toBeNull();
   });
 });
 
@@ -119,11 +119,11 @@ describe("importing an organization", () => {
       },
       "GET /spaces": { status: 200, body: { spaces: [] } },
     });
-    await renderAt("/settings/transfer");
-    await screen.findByText("The organization has not been exported yet.");
+    await renderAt("/admin/transfer");
+    await screen.findByText("The installation has not been exported yet.");
     const file = new File(["zip"], "acme-organization.zip", { type: "application/zip" });
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-site-import-file]")!, file);
-    await userEvent.click(screen.getByRole("button", { name: "Import organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import installation" }));
     const sent = upload(uploads, 0);
     expect(sent.url).toBe("/api/v1/site/imports");
     expect(sent.file.name).toBe("acme-organization.zip");
@@ -131,7 +131,7 @@ describe("importing an organization", () => {
     sent.respond(202, { import: jobs[0] });
     const card = (await screen.findByText("What came across")).closest("[data-site-import-report]") as HTMLElement;
     expect(within(card).getByText("Spaces").nextElementSibling).toHaveTextContent("2");
-    expect(within(card).getByText("This organization kept its own sign-in provider.")).toBeInTheDocument();
+    expect(within(card).getByText("This installation kept its own sign-in provider.")).toBeInTheDocument();
     expect(within(card).getByText(/Webhooks came across switched off/)).toBeInTheDocument();
     expect(within(card).getByText(/View list for Writers on Plans/)).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
@@ -143,10 +143,10 @@ describe("importing an organization", () => {
       "GET /site/exports": { status: 200, body: { exports: [] } },
       "GET /site/imports": { status: 200, body: { imports: [] } },
     });
-    await renderAt("/settings/transfer");
-    await screen.findByText("The organization has not been exported yet.");
+    await renderAt("/admin/transfer");
+    await screen.findByText("The installation has not been exported yet.");
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-site-import-file]")!, new File(["zip"], "a.zip", { type: "application/zip" }));
-    await userEvent.click(screen.getByRole("button", { name: "Import organization" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import installation" }));
     upload(uploads, 0).respond(409, {
       error: { code: "org_not_empty", message: "This organization has spaces already, and an organization's archive is imported only into one without any." },
     });

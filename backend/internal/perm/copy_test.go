@@ -18,7 +18,7 @@ func team(name string) CopySubject {
 }
 
 var (
-	everybody = CopySubject{Type: SubjectEveryone, Name: EveryoneName}
+	everybody = team("Everyone")
 	anybody   = CopySubject{Type: SubjectAnonymous, Name: "Anybody"}
 	ann       = person("Ann", false)
 	bob       = person("Bob", false)
@@ -167,7 +167,7 @@ func TestTheFingerprintFollowsTheTablesAndTheMode(t *testing.T) {
 	if CopyFingerprint(CopyReplace, src, dst, reordered, b) != base {
 		t.Error("the order the rows were read in changes the fingerprint")
 	}
-	renamed := []CopyGrant{grant(CopySubject{Type: SubjectEveryone, Name: "All"}, SpaceView), grant(ann, SpaceAdminister)}
+	renamed := []CopyGrant{grant(CopySubject{Type: SubjectGroup, ID: everybody.ID, Name: "All"}, SpaceView), grant(ann, SpaceAdminister)}
 	if CopyFingerprint(CopyReplace, src, dst, renamed, b) != base {
 		t.Error("a name changes the fingerprint")
 	}

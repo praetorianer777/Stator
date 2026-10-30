@@ -3,7 +3,7 @@ import { must, type StatorApi } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, confirm } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 
 const tree = (page: Page) => page.locator("[data-page-tree]");
@@ -35,7 +35,7 @@ test.describe("folders", { tag: ["@auth"] }, () => {
   test("a folder is made, filled, renamed, moved and deleted from the tree's pages", { tag: "@desktop" }, async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Folders");
     const archive = await createPage(api, space.homePageId, "Archive");
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
 
     await menu(page, "new-folder");
     const made = page.getByRole("dialog");
@@ -70,9 +70,8 @@ test.describe("folders", { tag: ["@auth"] }, () => {
     await move.locator('[data-action="confirm-move"]').click();
     await expect(item(page, "How-tos, folder")).toHaveAttribute("aria-level", "2");
     expect(await childTitles(api, space.key, archive.id)).toEqual(["How-tos"]);
-
-    page.on("dialog", (dialog) => void dialog.accept());
     await menu(page, "trash-page");
+    await confirm(page);
     await expect(page).toHaveURL(new RegExp(`/p/${archive.id}/archive$`));
     expect(await childTitles(api, space.key, archive.id)).toEqual([]);
   });
@@ -84,7 +83,7 @@ test.describe("folders", { tag: ["@auth"] }, () => {
       await createFolder(api, box.id, "Inner");
       await createPage(api, box.id, "Note");
       await startInScheme(page, scheme);
-      await page.goto(`/s/${space.key}/p/${box.id}/box`);
+      await page.goto(`/spaces/${space.key}/p/${box.id}/box`);
       await expect(children(page).getByRole("link", { name: "Note" })).toBeVisible();
       await expectAccessible(page);
     });

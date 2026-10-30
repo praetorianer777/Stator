@@ -1,25 +1,6 @@
 import { createRoute } from "@tanstack/react-router";
-import { EmptyState, PageHeader } from "@/components/ui";
-import { Icon } from "@/components/icons";
 import { AuditLog } from "@/features/audit/AuditLog";
-import { useCanAdministerSite } from "@/features/permissions/access";
-import { t } from "@/i18n";
-import { appRoute } from "./app";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
+import { adminRoute } from "./admin";
 
-/** Who did what to the organization, newest first, for its administrators. */
-export const auditRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/audit",
-  component: function AuditRoute() {
-    if (!useCanAdministerSite()) {
-      return (
-        <div className="mx-auto max-w-3xl" data-audit-refused>
-          <PageHeader crumbs={[settingsCrumb()]} title={t.audit.title} />
-          <EmptyState icon={<Icon.Lock />} title={t.audit.title} description={t.audit.notAdmin} />
-        </div>
-      );
-    }
-    return <AuditLog />;
-  },
-});
+/** Who did what to the installation, newest first, for its administrators. */
+export const auditRoute = createRoute({ getParentRoute: () => adminRoute, path: "/audit", component: AuditLog });

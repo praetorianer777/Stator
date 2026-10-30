@@ -16,7 +16,7 @@ afterEach(() => {
 
 const home = aPage();
 const pageId = "0195f000-0000-7000-8000-0000000000e1";
-const PATH = `/s/DOCS/p/${pageId}/guide`;
+const PATH = `/spaces/DOCS/p/${pageId}/guide`;
 const counts = (over: Partial<PageViews> = {}): PageViews => ({
   views: 1234,
   readers: 56,

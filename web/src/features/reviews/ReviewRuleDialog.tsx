@@ -9,7 +9,7 @@ export function ReviewRuleDialog({ page, onClose }: { page: Page; onClose: () =>
   const own = rule?.page?.id === page.id ? rule : null;
   const above = rule?.page && rule.page.id !== page.id ? rule.page : null;
   return (
-    <Dialog title={t.review.ruleTitle(page.title)} wide onClose={onClose} data-review-rule-dialog={page.id}>
+    <Dialog open title={t.review.ruleTitle(page.title)} onClose={onClose} size="lg" attrs={{ "data-review-rule-dialog": page.id }}>
       <div className="space-y-4">
         <p className="text-sm text-ink-muted">{t.review.ruleIntro}</p>
         <div className="space-y-1 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink" data-review-held-by={held(page)}>
@@ -23,7 +23,11 @@ export function ReviewRuleDialog({ page, onClose }: { page: Page; onClose: () =>
         </div>
         <section className="space-y-2" aria-label={t.review.ownRuleTitle}>
           <SectionTitle>{t.review.ownRuleTitle}</SectionTitle>
-          <ReviewRuleForm target={{ pageId: page.id }} rule={own} confirmRemove={t.review.confirmRemovePage(page.title)} />
+          <ReviewRuleForm
+            target={{ pageId: page.id }}
+            rule={own}
+            confirmRemove={{ noun: t.kit.confirm.things.ruleOf(page.title), body: t.review.confirmRemovePage }}
+          />
         </section>
       </div>
     </Dialog>

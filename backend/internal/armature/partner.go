@@ -359,13 +359,13 @@ func (s *Service) TestWebhook(ctx context.Context, ip string) (*PartnerWebhookTe
 func (s *Service) removePartnerWebhook(ctx context.Context) {
 	caller, _, err := s.partnerCaller(ctx)
 	if err != nil {
-		s.opts.Log.Info("Stator's webhook in Armature was left there; an Armature administrator removes it under Settings, Webhooks", "error", err)
+		s.opts.Log.Info("Stator's webhook in Armature was left there; an Armature administrator removes it under Admin, Webhooks", "error", err)
 		return
 	}
 	call, cancel := context.WithTimeout(ctx, PartnerTimeout)
 	defer cancel()
 	if err := partnerError(caller.Send(call, http.MethodDelete, PartnerWebhookPath, nil, nil)); err != nil {
-		s.opts.Log.Info("Stator's webhook in Armature could not be removed; an Armature administrator removes it under Settings, Webhooks", "error", err)
+		s.opts.Log.Info("Stator's webhook in Armature could not be removed; an Armature administrator removes it under Admin, Webhooks", "error", err)
 	}
 }
 

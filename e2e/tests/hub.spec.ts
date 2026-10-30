@@ -4,7 +4,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, openAdminPage, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
@@ -25,7 +25,8 @@ test.describe("the organization's hub", { tag: ["@auth"] }, () => {
     const space = await createSpace(api, key, uniqueName(testInfo, "News"));
     const front = await createPage(api, space.homePageId, "Front page");
 
-    await page.goto("/settings/hub");
+    await page.goto("/");
+    await openAdminPage(page, "site-hub");
     await page.getByLabel("Space", { exact: true }).selectOption(key);
     await page.getByLabel("Page", { exact: true }).selectOption(front.id);
     await page.getByLabel("Everybody lands on the hub when they open Stator").check();
@@ -49,7 +50,7 @@ test.describe("the organization's hub", { tag: ["@auth"] }, () => {
       const front = await createPage(api, space.homePageId, "Front page");
       must(await api.PUT("/site/hub", { body: { pageId: front.id, landing: false } }));
       await startInScheme(page, scheme);
-      await page.goto("/settings/hub");
+      await page.goto("/admin/hub");
       await expect(page.locator("[data-hub-current]")).toContainText("Front page");
       await expectAccessible(page);
     });

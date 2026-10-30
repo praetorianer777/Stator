@@ -20,20 +20,6 @@ export function LabelScreen({ name, space, page, onPage }: { name: string; space
   return (
     <div data-label-screen={name}>
       <PageHeader
-        crumbs={
-          space
-            ? [
-                {
-                  label: space.name,
-                  render: (label) => (
-                    <Link to="/s/$spaceKey" params={{ spaceKey: space.key }}>
-                      {label}
-                    </Link>
-                  ),
-                },
-              ]
-            : undefined
-        }
         title={
           <span className="inline-flex items-center gap-2">
             <Icon.Label />

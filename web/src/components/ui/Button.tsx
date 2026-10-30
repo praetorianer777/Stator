@@ -95,6 +95,17 @@ export function ButtonLink({
   );
 }
 
+/** A button that reads as words in running text and wraps with them, as a name in a sentence does. */
+export function WordButton({ className, type = "button", ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement> }) {
+  return (
+    <button
+      {...rest}
+      type={type}
+      className={cx("inline cursor-pointer rounded-sm p-0 text-left font-[inherit] focus-visible:outline-2 focus-visible:outline-focus", className)}
+    />
+  );
+}
+
 /** A button that is only an icon. The label is required: it is the name. */
 export function IconButton({
   icon,

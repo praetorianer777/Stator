@@ -3,7 +3,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import type { Attachment } from "@/api/attachments";
 import type { Doc } from "@/features/editor/schema";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { renderAt, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 import { stubUploads, upload } from "@/test/xhr";
@@ -92,7 +92,7 @@ const panel = async () => within(await screen.findByRole("region", { name: /Atta
 describe("the attachments of a page", () => {
   it("lists every file with its size and who attached it, and links to the bytes", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByRole("heading", { name: "Attachments (3)" })).toBeInTheDocument();
     const row = (await list.findByText("plan.pdf")).closest("li")!;
@@ -110,7 +110,7 @@ describe("the attachments of a page", () => {
 
   it("draws the document's pictures and files, and the deleted ones as missing", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const doc = await screen.findByText((_, el) => el?.hasAttribute("data-doc") ?? false);
     await waitFor(() => expect(within(doc).getByText("old.pdf (file deleted)")).toBeInTheDocument());
     const picture = within(doc).getByRole("img", { name: "The login screen" });
@@ -128,7 +128,7 @@ describe("the attachments of a page", () => {
   it("uploads picked files side by side, with progress, and lists them when stored", async () => {
     const { setList } = stubPage({ attachments: [] });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByText("Nothing attached yet. Drop files here, or choose them with Attach files.")).toBeInTheDocument();
     const input = document.querySelector<HTMLInputElement>("[data-attachment-input]")!;
@@ -154,7 +154,7 @@ describe("the attachments of a page", () => {
   it("takes files dropped on the panel", async () => {
     stubPage({ attachments: [] });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const region = await screen.findByRole("region", { name: /Attachments/ });
     const dropped = new File(["png"], "screen.png", { type: "image/png" });
     const dataTransfer = { types: ["Files"], files: [dropped], dropEffect: "none" };
@@ -169,7 +169,7 @@ describe("the attachments of a page", () => {
   it("says what is wrong with a file too large, and what to do about it", async () => {
     stubPage({ attachments: [] });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     await panel();
     const input = document.querySelector<HTMLInputElement>("[data-attachment-input]")!;
     await userEvent.upload(input, new File(["x".repeat(3000)], "huge.iso", { type: "application/octet-stream" }));
@@ -185,20 +185,21 @@ describe("the attachments of a page", () => {
   });
 
   it("deletes a file for good, only after asking", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValue(true);
     const { sent, setList } = stubPage({
       more: { [`DELETE /attachments/${archive.id}`]: { status: 204 } },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     const remove = await list.findByRole("button", { name: "Delete logs.zip" });
     await userEvent.click(remove);
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Delete logs.zip for good? It cannot be restored, and the page and its older versions will show it as a missing file.",
-    );
+    const asked = await confirmDialog();
+    expect(asked).toHaveAccessibleName("Delete attachment logs.zip?");
+    expect(asked).toHaveTextContent("It cannot be restored, and the page and its older versions will show it as a missing file.");
+    await answerConfirm(false);
     expect(sent.some((r) => r.method === "DELETE")).toBe(false);
     setList([plan, shot]);
     await userEvent.click(remove);
+    await answerConfirm(true);
     await waitFor(() => expect(list.queryByText("logs.zip")).toBeNull());
     expect(sent.some((r) => r.method === "DELETE" && r.path === `/attachments/${archive.id}`)).toBe(true);
     expect(await screen.findByText("Deleted logs.zip.")).toBeInTheDocument();
@@ -209,7 +210,6 @@ describe("the attachments of a page", () => {
     const v1 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e1", version: 1, versions: 2 });
     const v2 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e2", version: 2, versions: 2, uploadedByName: "Grace Hopper" });
     const v3 = file({ ...csv, id: "0195f000-0000-7000-8000-0000000000e3", version: 3, versions: 3, restoredFrom: 1 });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const deletes: string[] = [];
     const { setList } = stubPage({
       attachments: [v2, v1],
@@ -230,7 +230,7 @@ describe("the attachments of a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByRole("heading", { name: "Attachments (1)" })).toBeInTheDocument();
     const latest = () => list.getByText("budget.csv").closest("li")!;
@@ -242,20 +242,18 @@ describe("the attachments of a page", () => {
     await userEvent.click(list.getByRole("button", { name: "Restore budget.csv, version 1" }));
     expect(await screen.findByText("Restored version 1 of budget.csv as version 3.")).toBeInTheDocument();
     await waitFor(() => expect(latest()).toHaveTextContent("Version 3, restored from version 1"));
-    expect(confirm).not.toHaveBeenCalled();
+    expect(document.querySelector("[data-confirm]")).toBeNull();
 
     await userEvent.click(list.getByText("2 earlier versions"));
     await userEvent.click(list.getByRole("button", { name: "Delete budget.csv, version 1" }));
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Delete version 1 of budget.csv for good? The other versions stay, and wherever the page shows this version it will show a missing file.",
-    );
+    expect(await confirmDialog()).toHaveAccessibleName("Delete version 1 of budget.csv?");
+    await answerConfirm(true);
     expect(await screen.findByText("Deleted version 1 of budget.csv.")).toBeInTheDocument();
     await waitFor(() => expect(list.getByText("1 earlier version")).toBeInTheDocument());
 
     await userEvent.click(list.getByRole("button", { name: "Delete budget.csv" }));
-    expect(confirm).toHaveBeenLastCalledWith(
-      "Delete budget.csv and all 2 of its versions for good? None of them can be restored, and the page and its older versions will show them as missing files.",
-    );
+    expect(await confirmDialog()).toHaveTextContent("All 2 of its versions go with it.");
+    await answerConfirm(true);
     await waitFor(() => expect(list.queryByText("budget.csv")).toBeNull());
     expect(deletes).toEqual(["", "?versions=all"]);
     expect(await axeViolations()).toEqual([]);
@@ -263,7 +261,7 @@ describe("the attachments of a page", () => {
 
   it("offers its editors to annotate the pictures, and no other file", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByRole("button", { name: "Annotate screen.png" })).toBeInTheDocument();
     expect(list.queryByRole("button", { name: "Annotate plan.pdf" })).toBeNull();
@@ -272,7 +270,7 @@ describe("the attachments of a page", () => {
 
   it("shows a reader who may not edit the files, but no way to add or delete them", async () => {
     stubPage({ edit: false });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByText("plan.pdf")).toBeInTheDocument();
     expect(list.queryByRole("button", { name: "Attach files" })).toBeNull();

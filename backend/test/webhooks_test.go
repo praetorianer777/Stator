@@ -400,7 +400,7 @@ func TestContentEventsReachTheReceiverAsTheOwnerMayReadThem(t *testing.T) {
 		t.Error("a published page's delivery is not signed with the secret")
 	}
 	p := published.payload()["page"].(map[string]any)
-	if p["title"] != "Plans" || p["space"].(map[string]any)["key"] != "HOOK" || !strings.HasSuffix(p["url"].(string), "/s/HOOK/p/"+page) {
+	if p["title"] != "Plans" || p["space"].(map[string]any)["key"] != "HOOK" || !strings.HasSuffix(p["url"].(string), "/spaces/HOOK/p/"+page) {
 		t.Errorf("the published page reads %s", published.Body)
 	}
 	if actor := published.payload()["actor"].(map[string]any); actor["id"] != home.user.String() {
@@ -614,16 +614,16 @@ func TestAPayloadIsWithheldWhatItsOwnerMayNotViewWhenItIsSent(t *testing.T) {
 	annID := h.addPerson(t, "admin")
 	ann := api.as(t, annID)
 	docs := newTree(t, owner, "PRM", "Permissions")
-	want(t, owner.put(t, "/api/v1/spaces/PRM/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "PRM", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments"}},
 		map[string]any{"subject": user(home.user), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "everybody reads the space")
+	}), http.StatusOK, "everybody reads the space")
 	bin, address := hookBin(t)
 	id, _ := makeHook(t, ann, "Ann's", address, events.TopicPagePublished)
 
 	// Ann made it while an administrator; she is a member now, and the
 	// payloads are read as she may read them when they are sent.
-	h.cleanupExec(t, h.super, `UPDATE member SET role = 'member' WHERE user_id = $1`, annID)
+	h.cleanupExec(t, h.super, `DELETE FROM role_assignment WHERE user_id = $1 AND space_id IS NULL AND role = 'administrator'`, annID)
 	h.settle(t)
 
 	open := docs.add(docs.homeID, "Open")

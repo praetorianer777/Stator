@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgconn"
 
@@ -162,6 +163,16 @@ const (
 	postTreeConstraint  = "page_post_outside_tree"
 )
 
+// accessConstraints are the database's guards of roles, groups and grants
+// (#585); each refusal is a sentence that says what to do.
+var accessConstraints = []string{
+	"installation_keeps_administrator", "space_keeps_administrator",
+	"role_builtin_stays", "role_key_fixed", "role_administrator_administers",
+	"role_assignment_guest_not_administrator", "role_assignment_everyone_administers",
+	"role_assignment_guest_one_space", "role_assignment_installation_wide",
+	"groups_builtin_fixed", "group_member_keeps_everyone",
+}
+
 // toAPIError maps a domain error onto the wire shape. One place for it is what
 // stops handlers leaking internals into responses by accident.
 func toAPIError(err error) *APIError {
@@ -180,6 +191,11 @@ func toAPIError(err error) *APIError {
 	}
 	if errors.As(err, &pgErr) && (pgErr.ConstraintName == underPostConstraint || pgErr.ConstraintName == postTreeConstraint) {
 		err = page.ErrPostPlace
+	}
+	// The guards of access refuse in sentences that say what to do, whichever
+	// change ran into them.
+	if errors.As(err, &pgErr) && slices.Contains(accessConstraints, pgErr.ConstraintName) {
+		return &APIError{Status: http.StatusConflict, Code: pgErr.ConstraintName, Message: pgErr.Message}
 	}
 	var alreadyLatest *attachment.AlreadyLatestError
 	var editType *attachment.EditTypeError
@@ -424,16 +440,28 @@ func toAPIError(err error) *APIError {
 			Message: "Stator is not set up yet. Ask its operator to run seed bootstrap.", cause: err}
 	case errors.Is(err, auth.ErrBadLocale):
 		return ErrValidation(map[string]string{"locale": "Choose English, German, or the language of your browser."})
+	case errors.Is(err, auth.ErrBadTimezone):
+		return ErrValidation(map[string]string{"timezone": "Choose a time zone from the list, or the one of your browser."})
 	case errors.Is(err, auth.ErrNoSuchRequest):
 		return ErrNotFound("That person is not waiting to be let in. Reload the list; somebody may have answered already.")
 	case errors.Is(err, auth.ErrNoSuchMember):
 		return ErrNotFound("That person is not a member here. Reload the list; somebody may have removed them already.")
-	case errors.Is(err, auth.ErrOwnerStays):
-		return ErrConflict("The owner of an organization cannot be removed. Remove somebody else, or ask the owner.")
 	case errors.Is(err, auth.ErrRemoveSelf):
 		return ErrConflict("You cannot remove yourself. Ask another administrator to do it.")
-	case errors.Is(err, oidc.ErrNoSuchGroupRole):
-		return ErrNotFound("That group is not mapped to a role. Reload the list; somebody may have removed it already.")
+	case errors.Is(err, auth.ErrSwitchSelfOff):
+		return ErrConflict("You cannot switch your own account off. Ask another administrator to do it.")
+	case errors.Is(err, perm.ErrNoSuchRole):
+		return ErrNotFound("There is no such role. Reload the list; somebody may have deleted it already.")
+	case errors.Is(err, perm.ErrBuiltinRole):
+		return &APIError{Status: http.StatusConflict, Code: "role_builtin_stays", Message: "A built-in role cannot be deleted. Take its grants away instead, or change what it holds in the matrix."}
+	case errors.Is(err, perm.ErrNoSuchGroup):
+		return ErrNotFound("There is no such group. Reload the list; somebody may have deleted it already.")
+	case errors.Is(err, perm.ErrBuiltinGroup):
+		return &APIError{Status: http.StatusConflict, Code: "groups_builtin_fixed", Message: "Everyone holds every member of the installation, so it is not renamed, deleted or filled by hand. Make a group of your own instead."}
+	case errors.Is(err, perm.ErrProviderGroup):
+		return &APIError{Status: http.StatusConflict, Code: "provider_group", Message: "The identity provider fills this group at every sign-in, so a change here would not last. Change the group at the provider instead."}
+	case errors.Is(err, perm.ErrNoSuchAssignment):
+		return ErrNotFound("That grant is not there any more. Reload the list; somebody may have taken it away already.")
 	case errors.Is(err, auth.ErrBadJoinRole):
 		return ErrValidation(map[string]string{"role": "Let the person in as member or admin."})
 	case errors.Is(err, auth.ErrBadMemberEmail):
@@ -459,7 +487,7 @@ func toAPIError(err error) *APIError {
 			Message: "Signing in through an identity provider is not set up here. Sign in with a password, or ask an administrator to set up the provider."}
 	case errors.Is(err, exciter.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "exciter_not_configured",
-			Message: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Settings, Exciter."}
+			Message: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Admin, Exciter."}
 	case errors.Is(err, exciter.ErrNotConnected):
 		return &APIError{Status: http.StatusConflict, Code: "exciter_not_connected",
 			Message: "You have not connected your Exciter account. Paste an Exciter token under Your profile, Exciter, then try again."}
@@ -468,13 +496,13 @@ func toAPIError(err error) *APIError {
 			Message: "Exciter did not answer. Try again in a moment, and tell an administrator if it keeps happening.", cause: err}
 	case errors.Is(err, armature.ErrWebhookAdmin):
 		return &APIError{Status: http.StatusConflict, Code: "armature_webhook_admin",
-			Message: "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Settings, Armature, and allow it in Armature as an Armature administrator."}
+			Message: "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Admin, Armature, and allow it in Armature as an Armature administrator."}
 	case errors.Is(err, armature.ErrWebhookUnavailable):
 		return &APIError{Status: http.StatusConflict, Code: "armature_outdated",
-			Message: "The connected Armature does not let Stator make its own webhook. Add the webhook in Armature and paste its secret under Settings, Armature instead."}
+			Message: "The connected Armature does not let Stator make its own webhook. Add the webhook in Armature and paste its secret under Admin, Armature instead."}
 	case errors.Is(err, armature.ErrNotConfigured):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_configured",
-			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature."}
+			Message: "Your organization has not connected Armature yet. Ask an administrator to connect it under Admin, Armature."}
 	case errors.Is(err, armature.ErrNotConnected):
 		return &APIError{Status: http.StatusConflict, Code: "armature_not_connected",
 			Message: "You have not connected your Armature account. Paste an Armature token under Profile, Armature, then try again."}
@@ -542,10 +570,6 @@ func toAPIError(err error) *APIError {
 		return ErrConflict("That thread id is taken. Pick the passage again, which gives it a new id.")
 	case errors.Is(err, comment.ErrNotYours):
 		return ErrForbidden("You can only change or delete your own comments. Ask an administrator of the space to delete somebody else's.")
-	case errors.Is(err, perm.ErrFixed):
-		return ErrConflict("Administering the organization follows the owner and admin roles. Change somebody's role under Single sign-on in the settings instead.")
-	case errors.Is(err, perm.ErrUnknownPermission):
-		return ErrNotFound("There is no such global permission. Choose use, createSpace or administer.")
 	case errors.Is(err, page.ErrNotStewardable):
 		return ErrConflict("Publish the page before you name its owner or verify it.")
 	case errors.Is(err, page.ErrLocksOut):

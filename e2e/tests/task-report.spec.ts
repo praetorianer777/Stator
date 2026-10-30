@@ -62,7 +62,7 @@ test.describe("task report", { tag: ["@auth"] }, () => {
       checklist("The plan.", [words("Ship the release "), mention(bobId, BOB), words(" by "), day(TODAY)], [words("Write the notes by "), day(LONG_AGO)]),
     );
     const status = await createPage(api, space.homePageId, "Status", { type: "doc", content: [{ type: "paragraph", content: [words("Where we are.")] }] });
-    const path = `/s/${space.key}/p/${status.id}/status`;
+    const path = `/spaces/${space.key}/p/${status.id}/status`;
 
     await openShowing(page, `${path}/edit`, "Where we are.");
     await caretTo(editorBox(page), "end");
@@ -113,7 +113,7 @@ test.describe("task report", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${overview.id}/reports`, "Overdue thing");
+      await openShowing(page, `/spaces/${space.key}/p/${overview.id}/reports`, "Overdue thing");
       await expect(shown(page).locator('[data-task-report][data-state="empty"]')).toHaveCount(1);
       await expect(shown(page).locator("[data-task-due]")).toHaveText([/Overdue/]);
       await page.screenshot({ path: testInfo.outputPath(`task-report-${scheme}.png`), fullPage: true });

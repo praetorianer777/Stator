@@ -255,7 +255,7 @@ export function Lightbox({ items, start = 0, onClose }: { items: readonly Lightb
           title={t.attachments.download(item.name)}
           data-action="download-lightbox"
         />
-        <IconButton icon={<Icon.X />} label={t.common.close} size="sm" onClick={onClose} data-focus-last="" data-action="close-lightbox" />
+        <IconButton icon={<Icon.X />} label={t.kit.close} size="sm" onClick={onClose} data-focus-last="" data-action="close-lightbox" />
       </div>
 
       {/* biome-ignore lint/a11y/useSemanticElements: a fieldset groups form controls; this is the room a picture zooms in, focused for its keys */}

@@ -51,7 +51,7 @@ test.describe("link previews", { tag: ["@auth"] }, () => {
     // The empty paragraph at the end takes the card: an empty line is where
     // an address pasted alone is meant to be shown.
     const notes = await createPage(api, space.homePageId, "Reading", { type: "doc", content: [paragraph("Worth a look."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${notes.id}/reading`;
+    const path = `/spaces/${space.key}/p/${notes.id}/reading`;
 
     await openEditor(page, path, "Worth a look.");
     await caretTo(editorBox(page), "end");
@@ -84,7 +84,7 @@ test.describe("link previews", { tag: ["@auth"] }, () => {
   test("a link preview is asked for from the slash menu", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Slash");
     const notes = await createPage(api, space.homePageId, "Slash", { type: "doc", content: [paragraph("Below."), { type: "paragraph" }] });
-    await openEditor(page, `/s/${space.key}/p/${notes.id}/slash`, "Below.");
+    await openEditor(page, `/spaces/${space.key}/p/${notes.id}/slash`, "Below.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/link");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -110,7 +110,7 @@ test.describe("link previews", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openUntil(page, `/s/${space.key}/p/${notes.id}/cards`, () =>
+      await openUntil(page, `/spaces/${space.key}/p/${notes.id}/cards`, () =>
         expect(shown(page).locator("[data-link-card-title]").first()).toHaveText("Stator", ONE_LOOK),
       );
       await expect(shown(page).locator("iframe")).toHaveCount(1);

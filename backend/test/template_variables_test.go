@@ -72,11 +72,11 @@ func TestTemplatesWithVariablesOverTheAPI(t *testing.T) {
 
 	kick := newTree(t, owner, "KICK", "Kickoffs")
 	hide := newTree(t, owner, "HIDE", "Hidden")
-	want(t, owner.put(t, "/api/v1/spaces/KICK/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "KICK", []any{
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
 		map[string]any{"subject": user(bobID), "permissions": []any{"view", "addPages"}},
-	}}), http.StatusOK, "KICK is ann's and bob's")
-	want(t, owner.put(t, "/api/v1/spaces/HIDE/permissions", map[string]any{"grants": []any{map[string]any{"subject": user(home.user), "permissions": []any{"administer"}}}}), http.StatusOK, "HIDE is the owner's")
+	}), http.StatusOK, "KICK is ann's and bob's")
+	want(t, owner.setTable(t, "HIDE", []any{map[string]any{"subject": user(home.user), "permissions": []any{"administer"}}}), http.StatusOK, "HIDE is the owner's")
 	h.settle(t)
 
 	var tplID string
@@ -337,7 +337,7 @@ func TestTemplateRowsAreHeldByTheDatabase(t *testing.T) {
 	bobID := h.addPerson(t, "member")
 	docs := newTree(t, owner, "TSQL", "Templates in SQL")
 	hide := newTree(t, owner, "TSQH", "Hidden")
-	want(t, owner.put(t, "/api/v1/spaces/TSQH/permissions", map[string]any{"grants": []any{map[string]any{"subject": user(home.user), "permissions": []any{"administer"}}}}), http.StatusOK, "TSQH is the owner's")
+	want(t, owner.setTable(t, "TSQH", []any{map[string]any{"subject": user(home.user), "permissions": []any{"administer"}}}), http.StatusOK, "TSQH is the owner's")
 	spaceID := obj(t, want(t, owner.get(t, "/api/v1/spaces/TSQL"), http.StatusOK, "TSQL"), "space")["id"].(string)
 	hideID := obj(t, want(t, owner.get(t, "/api/v1/spaces/TSQH"), http.StatusOK, "TSQH"), "space")["id"].(string)
 	spaceTpl := obj(t, want(t, owner.post(t, "/api/v1/templates", kickoff("TSQL", "Space")), http.StatusCreated, "a space template"), "template")["key"].(string)

@@ -61,7 +61,7 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
   }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Roadmaps");
     const notes = await createPage(api, space.homePageId, "Plan", { type: "doc", content: [paragraph("Where we are going."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${notes.id}/plan`;
+    const path = `/spaces/${space.key}/p/${notes.id}/plan`;
 
     await openShowing(page, `${path}/edit`, "Where we are going.");
     await caretTo(editorBox(page), "end");
@@ -106,7 +106,7 @@ test.describe("Armature roadmaps", { tag: ["@auth"] }, () => {
         content: [{ type: "armatureRoadmap", attrs: { project: "CP", query: "project = CP", groupBy: "epic" } }],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${notes.id}/roadmap`, "Roadmap");
+      await openShowing(page, `/spaces/${space.key}/p/${notes.id}/roadmap`, "Roadmap");
       const roadmap = shown(page).locator('[data-armature-roadmap="epic"]');
       await expect(roadmap).toHaveAttribute("data-state", "roadmap");
       await expect(roadmap.locator('[data-roadmap-group="CP-6"] .doc-roadmap-head .doc-roadmap-bar')).toHaveAttribute("data-derived", "true");

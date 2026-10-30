@@ -127,7 +127,28 @@ export function CreateIssuesDialog({
   const n = kept.length;
 
   return (
-    <Dialog title={c.title(plan.items.length)} onClose={onClose} wide data-create-issues-dialog="">
+    <Dialog
+      open
+      title={c.title(plan.items.length)}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-create-issues-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {c.cancel}
+          </Button>
+          <Button
+            type="submit"
+            form="create-issues-dialog-form"
+            disabled={outdated || status !== "ok" || creatable.length === 0 || create.isPending || n === 0}
+            data-action="create-issues"
+          >
+            {c.submit(n)}
+          </Button>
+        </>
+      }
+    >
       {result ? (
         <div className="space-y-3">
           <p role="status" className="text-sm text-ink">
@@ -172,7 +193,7 @@ export function CreateIssuesDialog({
           </div>
         </div>
       ) : (
-        <form onSubmit={submit} className="space-y-4" noValidate>
+        <form id="create-issues-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
           {projects.isPending && (
             <p role="status" className="text-sm text-ink-muted">
               {c.loading}
@@ -245,14 +266,6 @@ export function CreateIssuesDialog({
               {c.creating}
             </p>
           )}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              {c.cancel}
-            </Button>
-            <Button type="submit" disabled={outdated || status !== "ok" || creatable.length === 0 || create.isPending || n === 0} data-action="create-issues">
-              {c.submit(n)}
-            </Button>
-          </div>
         </form>
       )}
     </Dialog>

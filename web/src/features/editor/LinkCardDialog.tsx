@@ -14,8 +14,19 @@ export function LinkCardDialog({ onInsert, onClose }: { onInsert: (url: string) 
   const problem = tried && !url ? l.invalid : undefined;
   const fieldId = `${id}-url`;
   return (
-    <Dialog title={l.dialog} onClose={onClose} data-link-card-dialog="">
+    <Dialog
+      open
+      title={l.dialog}
+      onClose={onClose}
+      attrs={{ "data-link-card-dialog": "" }}
+      footer={
+        <Button type="submit" form={`${id}-form`} data-action="insert-link-card">
+          {l.insert}
+        </Button>
+      }
+    >
       <form
+        id={`${id}-form`}
         noValidate
         className="space-y-3"
         onSubmit={(event) => {
@@ -41,11 +52,6 @@ export function LinkCardDialog({ onInsert, onClose }: { onInsert: (url: string) 
             }}
           />
         </Labelled>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="submit" data-action="insert-link-card">
-            {l.insert}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

@@ -21,7 +21,7 @@ const shareButton = (page: Page) => page.locator('[data-action="share-page"]');
 const dialog = (page: Page) => page.locator("[data-share-dialog]");
 const picker = (page: Page) => dialog(page).getByRole("combobox", { name: "Send to" });
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
-const badge = (page: Page) => page.locator("[data-unread-badge]");
+const badge = (page: Page) => page.locator('[data-count="bell"] [aria-hidden="true"]').first();
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
@@ -72,7 +72,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     // Every spec shares the one organization, and a guest another spec has let in
     // cannot view this space, so the open page may read as everyone or as a count.
     await expect(dialog(page).locator("[data-viewers-everyone], [data-viewers-total]")).toHaveText(
-      /^(Everyone in the organization can view this page\.|\d+ (person|people) can view this page:)$/,
+      /^(Everyone in the installation can view this page\.|\d+ (person|people) can view this page:)$/,
     );
     await pick(page, BOB, BOB);
     await expect(async () => {
@@ -102,14 +102,14 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`shared ${runbook.title} with you`);
     await expect(told).toContainText("Read the rollback part before Friday.");
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${runbook.id}/`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${runbook.id}/`));
 
     await expect.poll(async () => (await mailsTo(BOB_EMAIL, runbook.title)).length, { timeout: DELIVERY_MS }).toBe(1);
     const [mail] = await mailsTo(BOB_EMAIL, runbook.title);
     expect(mail!.Subject).toContain(`shared "${runbook.title}" with you`);
     const text = await mailText(mail!.ID);
     expect(text).toContain("Read the rollback part before Friday.");
-    expect(text).toContain(`/s/${space.key}/p/${runbook.id}`);
+    expect(text).toContain(`/spaces/${space.key}/p/${runbook.id}`);
     expect((await bobApi.POST("/notifications/read", { body: { all: true } })).response.status).toBe(204);
   });
 

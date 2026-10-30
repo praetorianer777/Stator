@@ -21,7 +21,7 @@ const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragr
 const LAPSE_TOLD_MS = 60_000;
 
 async function openPageShowing(page: Page, spaceKey: string, target: WikiPage, shown: (page: Page) => Locator) {
-  await openShowing(page, `/s/${spaceKey}/p/${target.id}/page`, shown(page));
+  await openShowing(page, `/spaces/${spaceKey}/p/${target.id}/page`, shown(page));
 }
 
 async function publishAs(api: StatorApi, target: WikiPage, text: string) {
@@ -133,7 +133,7 @@ test.describe("owners and verified pages", { tag: ["@auth"] }, () => {
       await expect(told).toContainText(`The verification of ${target.title} has run out.`, ONE_LOOK);
     }).toPass({ timeout: LAPSE_TOLD_MS });
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${target.id}/`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${target.id}/`));
     await expect(badge(bob, "expired")).toBeVisible();
 
     await openPage(page, space.key, target);

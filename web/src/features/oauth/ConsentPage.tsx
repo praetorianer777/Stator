@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiError } from "@/api/client";
 import { useConsent, useDecideConsent, type Consent } from "@/api/oauth";
 import { useSpaces } from "@/api/spaces";
-import { Button, Card, ErrorBanner, OptionCard, PageHeader, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, Card, OptionCard, ErrorBanner, Skeleton } from "@/components/ui";
 import { OAUTH_SCOPE_READ, OAUTH_SCOPE_WRITE } from "@/config";
 import { SpacePicker } from "@/features/spaces/SpacePicker";
 import { t } from "@/i18n";
@@ -22,21 +22,21 @@ export function ConsentPage({ query }: { query: string }) {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-2xl" data-consent-error>
+      <Page width="narrow" data-consent-error>
         <PageHeader title={t.oauth.titleRefused} />
         <ErrorBanner>{error.message}</ErrorBanner>
-      </div>
+      </Page>
     );
   }
   if (isLoading || to || !data?.consent) {
     return (
-      <div className="mx-auto max-w-2xl">
+      <Page width="narrow">
         <PageHeader title={t.oauth.titleWaiting} />
         <p role="status" className="text-sm text-ink-muted">
           {to ? t.oauth.leaving : t.oauth.loading}
         </p>
         {!to && <Skeleton />}
-      </div>
+      </Page>
     );
   }
   return <ConsentCard consent={data.consent} query={query} />;
@@ -71,7 +71,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <Page width="narrow">
       <PageHeader title={t.oauth.title(client.name)} meta={client.clientUri} />
       <Card className="space-y-4 p-4" data-consent={client.id} data-consent-pending={consent.pending ? "true" : "false"}>
         <p className="text-base font-medium text-ink">{t.oauth.asks(client.name, consent.person)}</p>
@@ -187,7 +187,7 @@ function ConsentCard({ consent, query }: { consent: Consent; query: string }) {
         </div>
         {consent.mayAllow && <p className="text-xs text-ink-muted">{t.oauth.disconnect}</p>}
       </Card>
-    </div>
+    </Page>
   );
 }
 

@@ -1,0 +1,87 @@
+import type { reviewEn, waitingReviewsEn } from "./reviews.en";
+
+/** The German strings of reviews, held to the English shape. */
+export const reviewDe: typeof reviewEn = {
+  names: (names: string[]) => (names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} und ${names[names.length - 1]}`),
+  submit: "Zur Prüfung geben",
+  submitTitle: (title: string) => `${title} zur Prüfung geben`,
+  submitIntro: (required: number) =>
+    required === 1
+      ? "Ihr gespeicherter Entwurf geht an die Prüfenden und wird als Ihre nächste Version veröffentlicht, sobald einer von ihnen ihn freigibt. Sie können den Entwurf währenddessen weiter bearbeiten."
+      : `Ihr gespeicherter Entwurf geht an die Prüfenden und wird als Ihre nächste Version veröffentlicht, sobald ${required} von ihnen ihn freigeben. Sie können den Entwurf währenddessen weiter bearbeiten.`,
+  submitLater: "Zum gewählten Zeitpunkt wird der Entwurf zur Prüfung gegeben, statt veröffentlicht zu werden.",
+  confirmSubmit: "Zur Prüfung geben",
+  keepAndSubmit: "Meinen Entwurf behalten und zur Prüfung geben",
+  bannerTitle: "Ein Entwurf dieser Seite wartet auf Prüfung.",
+  submittedBy: (name: string, when: string) => `Eingereicht von ${name} am ${when}.`,
+  approvals: (count: number, required: number) => `${count} von ${required} Freigaben`,
+  reviewers: (names: string) => `Prüfende: ${names}`,
+  authorComment: (comment: string) => `Die Autorin oder der Autor schreibt: ${comment}`,
+  decisionsLabel: "Bisherige Entscheidungen",
+  approved: (name: string) => `${name} hat freigegeben`,
+  changesRequested: (name: string) => `${name} bittet um Änderungen`,
+  open: "Prüfen",
+  withdraw: "Zurückziehen",
+  confirmWithdraw: "Der Entwurf bleibt Ihrer, Sie können ihn weiter bearbeiten und erneut einreichen.",
+  skip: "Ohne Prüfung veröffentlichen",
+  draftSide: "Der Entwurf zur Prüfung",
+  reviewTitle: (title: string) => `Entwurf von ${title} prüfen`,
+  reviewIntro: "Was der Entwurf gegenüber der veröffentlichten Seite ändert. Geben Sie ihn frei, oder bitten Sie um Änderungen und sagen Sie, welche.",
+  decisionComment: "Kommentar",
+  decisionCommentHint: "Nötig, wenn Sie um Änderungen bitten; die Autorin oder der Autor liest ihn.",
+  approve: "Freigeben",
+  requestChanges: "Änderungen anfordern",
+  commentNeeded: "Schreiben Sie, was sich ändern soll, damit die Autorin oder der Autor weiß, was zu tun ist.",
+  decided: "Ihre Entscheidung ist festgehalten.",
+  skipTitle: (title: string) => `${title} ohne Prüfung veröffentlichen`,
+  skipIntro:
+    "Der Entwurf geht jetzt als nächste Version seiner Autorin oder seines Autors hinaus, ohne die Freigaben, auf die er wartet. Der Grund steht im Verlauf und wird im Audit-Log festgehalten.",
+  reason: "Grund",
+  reasonNeeded: "Geben Sie einen Grund an, damit andere sehen, warum die Prüfung übersprungen wurde.",
+  confirmSkip: "Ohne Prüfung veröffentlichen",
+  approvedBy: (names: string) => `Freigegeben von ${names}`,
+  skippedBy: (name: string, reason: string) => `Ohne Prüfung veröffentlicht von ${name}: ${reason}`,
+  ruleMenu: "Prüfregel",
+  ruleTitle: (title: string) => `Prüfregel für ${title}`,
+  ruleIntro:
+    "Eine Regel hier verlangt für diese Seite und alle Seiten darunter eine Prüfung durch die genannten Personen und Gruppen, anstelle der Regel des Bereichs. Eine geänderte Regel ändert keine Prüfung, die schon läuft.",
+  heldBySpace: "Für diese Seite gilt die Regel des Bereichs.",
+  heldByOwn: "Für diese Seite und die Seiten darunter gilt eine eigene Regel.",
+  heldByAbove: (title: string) => `Für diese Seite gilt die Regel von ${title} darüber.`,
+  notHeld: "Diese Seite kann ohne Prüfung veröffentlicht werden.",
+  ruleSummary: (names: string, required: number) =>
+    required === 1 ? `Geprüft von ${names}; 1 Freigabe nötig.` : `Geprüft von ${names}; ${required} Freigaben nötig.`,
+  ownRuleTitle: "Eigene Regel dieser Seite",
+  reviewersTitle: "Prüfende",
+  pickerLabel: "Person oder Gruppe hinzufügen",
+  reviewersEmpty: "Noch niemand. Fügen Sie die Personen oder Gruppen hinzu, die prüfen.",
+  required: "Nötige Freigaben",
+  requiredHint: (max: number) => `Von 1 bis ${max}; die Mitglieder einer Gruppe zählen jeweils einmal.`,
+  requiredRange: (max: number) => `Wählen Sie eine Zahl von 1 bis ${max}.`,
+  reviewersNeeded: "Fügen Sie mindestens eine Person oder Gruppe hinzu, die prüft.",
+  save: "Regel speichern",
+  saved: "Gespeichert.",
+  remove: "Regel entfernen",
+  removed: "Die Regel ist entfernt.",
+  confirmRemovePage: "Dort gilt dann wieder die Regel des Bereichs.",
+  confirmRemoveSpace: "Zweige mit eigener Regel behalten sie, und laufende Prüfungen bleiben zu entscheiden.",
+  updated: (name: string, when: string) => `Zuletzt geändert von ${name} am ${when}.`,
+  spaceTitle: "Der ganze Bereich",
+  spaceIntro:
+    "Jede Seite und jeder Beitrag des Bereichs wird vor dem Veröffentlichen von den hier genannten Personen und Gruppen geprüft, außer wo ein Zweig eine eigene Regel hat. Eine Regel kann keine Live-Seite erfassen.",
+  noSpaceRule: "Der Bereich hat keine Regel. Veröffentlichen braucht keine Prüfung, außer wo ein Zweig eine hat.",
+  branchesTitle: "Zweige mit eigener Regel",
+  branchesIntro: "Festgelegt über die Seitenaktionen einer Seite; die Regel gilt für diese Seite und alle Seiten darunter.",
+  branchesEmpty: "Kein Zweig hat eine eigene Regel.",
+  removeBranch: (title: string) => `Regel von ${title} entfernen`,
+};
+
+export const waitingReviewsDe: typeof waitingReviewsEn = {
+  title: "Prüfungen, die auf Sie warten",
+  intro:
+    "Entwürfe, die Ihnen zur Prüfung vorgelegt wurden, die ältesten zuerst. Öffnen Sie einen, um ihn mit der veröffentlichten Seite zu vergleichen und zu entscheiden.",
+  empty: "Keine Prüfung wartet auf Sie. Sobald jemand einen Entwurf einreicht, den Sie prüfen, erscheint er hier.",
+  button: (n: number) => (n === 1 ? "1 Prüfung wartet auf Sie" : `${n} Prüfungen warten auf Sie`),
+  submitted: (name: string, when: string) => `${name}, eingereicht am ${when}`,
+  all: "Alle Prüfungen, die auf Sie warten",
+};

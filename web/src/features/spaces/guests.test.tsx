@@ -17,10 +17,10 @@ const gwen = {
   permissions: ["view", "addComments"],
   invitedAt: "2026-10-01T08:00:00Z",
 };
-const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member" } };
+const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } };
 const guest: Me = {
   ...signedIn,
-  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: space.id, key: space.key, name: space.name } },
+  organization: { ...signedIn.organization!, role: "guest", administers: false, guestSpace: { id: space.id, key: space.key, name: space.name } },
 };
 
 async function guestsCard() {
@@ -40,7 +40,7 @@ describe("a space's guests", () => {
         return { status: 201, body: { guest: hal } };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=guests");
+    await renderAt("/spaces/DOCS/settings/members");
     const card = await guestsCard();
     const row = (await within(card).findByText("Gwen Guest")).closest("tr")!;
     expect(row).toHaveTextContent("gwen@contractor.test");
@@ -50,7 +50,7 @@ describe("a space's guests", () => {
     await userEvent.selectOptions(within(card).getByLabelText("May"), "editor");
     await userEvent.click(within(card).getByRole("button", { name: "Invite guest" }));
     await waitFor(() => expect(sent.find((r) => r.method === "POST")?.body).toEqual({ email: "hal@contractor.test", role: "editor" }));
-    expect(await within(card).findByText("hal@contractor.test may sign in to this space now.")).toBeInTheDocument();
+    expect(await screen.findByText("hal@contractor.test may sign in to this space now.")).toBeInTheDocument();
     expect((await within(card).findByText("hal", { selector: "div" })).closest("tr")).toHaveTextContent("Read, comment and edit");
     expect(within(card).getByLabelText("Email address")).toHaveValue("");
     expect(await axeViolations()).toEqual([]);
@@ -71,7 +71,7 @@ describe("a space's guests", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=guests");
+    await renderAt("/spaces/DOCS/settings/members");
     const card = await guestsCard();
     expect(await within(card).findByText("This space has no guests.")).toBeInTheDocument();
     await userEvent.type(within(card).getByLabelText("Email address"), "bob@stator.test");
@@ -90,20 +90,20 @@ describe("a space's guests", () => {
         return { status: 204 };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=guests");
+    await renderAt("/spaces/DOCS/settings/members");
     const card = await guestsCard();
     await userEvent.click(await within(card).findByRole("button", { name: "Remove Gwen Guest" }));
     await userEvent.click(within(card).getByRole("button", { name: /^Remove$/ }));
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE")).toBe(true));
-    expect(await within(card).findByText("Gwen Guest was removed.")).toBeInTheDocument();
+    expect(await screen.findByText("Gwen Guest was removed.")).toBeInTheDocument();
     expect(await within(card).findByText("This space has no guests.")).toBeInTheDocument();
   });
 
-  it("are no tab for a member", async () => {
+  it("are not shown to somebody who does not administer the installation", async () => {
     stubApi({ "GET /spaces/DOCS": { status: 200, body: { space } } });
-    await renderAt("/s/DOCS/settings?tab=guests", { me: member });
-    expect(await screen.findByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("tab", { name: "Guests" })).toBeNull();
+    await renderAt("/spaces/DOCS/settings/members", { me: member });
+    expect(await screen.findByRole("tab", { name: "Members and permissions" })).toHaveAttribute("aria-selected", "true");
+    expect(document.querySelector("[data-space-guests]")).toBeNull();
   });
 });
 
@@ -114,8 +114,8 @@ describe("a guest", () => {
       [`GET /pages/${space.homePageId}`]: { status: 200, body: { page: aPage(), space } },
     });
     const router = await renderAt("/", { me: guest });
-    await arrival(router, "/s/DOCS");
-    expect(router.state.location.pathname).toBe("/s/DOCS");
+    await arrival(router, "/spaces/DOCS");
+    expect(router.state.location.pathname).toBe("/spaces/DOCS");
   });
 
   it("is shown no space directory, hub or tokens", async () => {
@@ -133,12 +133,11 @@ describe("a guest", () => {
   });
 });
 
-describe("the organization's members", () => {
+describe("the installation's members", () => {
   it("mark a guest with the space they belong to", async () => {
     stubApi({
       "GET /oidc-provider": { status: 200, body: { provider: null, callbackUrl: "http://localhost/cb" } },
       "GET /users/requests": { status: 200, body: { requests: [] } },
-      "GET /oidc-provider/group-roles": { status: 200, body: { groupRoles: [] } },
       "GET /users": {
         status: 200,
         body: {
@@ -148,18 +147,19 @@ describe("the organization's members", () => {
               email: gwen.email,
               name: gwen.name,
               role: "guest",
-              roleSource: "manual",
+              active: true,
               joinedAt: gwen.invitedAt,
               guestSpace: { id: space.id, key: space.key, name: space.name },
+              roles: [],
             },
           ],
         },
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/admin/access/members");
     const row = (await screen.findByText("Gwen Guest")).closest("tr")!;
     expect(row).toHaveAttribute("data-member", gwen.email);
-    expect(within(row).getByText("Guest")).toBeInTheDocument();
-    expect(within(row).getByRole("link", { name: "Guest of Handbook" })).toHaveAttribute("href", "/s/DOCS/settings?tab=guests");
+    expect(within(row).getByText("Guest", { selector: "[data-member-role]" })).toBeInTheDocument();
+    expect(within(row).getByRole("link", { name: "Guest of Handbook" })).toHaveAttribute("href", "/spaces/DOCS/settings/members#guests");
   });
 });

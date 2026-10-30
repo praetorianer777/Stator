@@ -406,7 +406,7 @@ func TestNotificationsAreMailed(t *testing.T) {
 			t.Fatalf("ann caught %v", got)
 		}
 		text := pit.text(t, got[0].ID)
-		for _, want := range []string{"Dates fixed.", "/s/MAIL/p/" + page, "/settings/notifications"} {
+		for _, want := range []string{"Dates fixed.", "/spaces/MAIL/p/" + page, "/settings/notifications"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("the mail lacks %q:\n%s", want, text)
 			}

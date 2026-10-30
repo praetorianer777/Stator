@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { useCheckExciter, useConnectExciter, useDisconnectExciter, useExciterAccount, type ExciterAccount } from "@/api/exciter";
-import { Button, Card, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, SectionTitle, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { EXCITER_SECTION_ID, EXCITER_TOKEN_PREFIX, EXCITER_TOKENS_PATH } from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
 
@@ -22,18 +23,17 @@ export function ExciterAccountSection({ focusToken = false, onReturn }: { focusT
   const { data: account, isLoading, error } = useExciterAccount();
   const check = useCheckExciter();
   const disconnect = useDisconnectExciter();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const a = t.exciter.account;
 
-  function forget() {
-    if (!window.confirm(a.confirmDisconnect)) return;
-    setNotice("");
-    disconnect.mutate(undefined, { onSuccess: () => setNotice(a.disconnected) });
+  async function forget() {
+    if (!(await confirm({ noun: a.thing, verb: t.kit.confirm.verbs.disconnect, body: a.confirmDisconnect }))) return;
+    disconnect.mutate(undefined, { onSuccess: () => toast.success(a.disconnected) });
   }
 
   function checkNow() {
-    setNotice("");
-    check.mutate(undefined, { onSuccess: (checked) => checked.status === "ok" && setNotice(a.checked) });
+    check.mutate(undefined, { onSuccess: (checked) => checked.status === "ok" && toast.success(a.checked) });
   }
 
   const failure = error ?? check.error ?? disconnect.error;
@@ -41,9 +41,6 @@ export function ExciterAccountSection({ focusToken = false, onReturn }: { focusT
     <section id={EXCITER_SECTION_ID} aria-labelledby="exciter-account" className="scroll-mt-16 space-y-3" data-exciter-account>
       <SectionTitle id="exciter-account">{t.exciter.title}</SectionTitle>
       <p className="text-sm text-ink-muted">{a.intro}</p>
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-exciter-notice>
-        {notice}
-      </p>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
       {isLoading || !account ? (
         isLoading && <Skeleton />
@@ -59,7 +56,7 @@ export function ExciterAccountSection({ focusToken = false, onReturn }: { focusT
               <Button variant="secondary" size="sm" onClick={checkNow} loading={check.isPending} data-action="check-exciter">
                 {a.check}
               </Button>
-              <Button variant="ghost" size="sm" onClick={forget} loading={disconnect.isPending} data-action="disconnect-exciter-account">
+              <Button variant="ghost" size="sm" onClick={() => void forget()} loading={disconnect.isPending} data-action="disconnect-exciter-account">
                 {a.disconnect}
               </Button>
             </div>
@@ -76,7 +73,6 @@ export function ExciterAccountSection({ focusToken = false, onReturn }: { focusT
               focus={focusToken}
               returns={Boolean(onReturn)}
               onConnected={() => {
-                setNotice("");
                 onReturn?.();
               }}
             />

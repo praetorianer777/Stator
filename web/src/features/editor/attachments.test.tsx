@@ -229,7 +229,7 @@ describe("files in the page editor", () => {
   }
 
   async function pageEditor(): Promise<EditorView> {
-    await renderAt(`/s/DOCS/p/${pageId}/notes/edit`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes/edit`);
     const box = await screen.findByRole("textbox", { name: "Page content" }, { timeout: 5000 });
     const view = (box as HTMLElement & { editor?: Editor }).editor?.view;
     if (!view) throw new Error("The page editor has no editor view.");

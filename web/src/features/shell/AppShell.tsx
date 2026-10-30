@@ -3,7 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
 import { useAccess } from "@/api/permissions";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
-import { ShellHeaderContext } from "@/components/ui";
+import { PageCrumbsContext, ShellHeaderContext } from "@/components/ui";
 import { ReturnNotice } from "@/features/armature/connectLink";
 import { NoAccess } from "@/features/permissions/NoAccess";
 import { QuickSearch } from "@/features/search/QuickSearch";
@@ -12,7 +12,8 @@ import { ThemeLoader } from "@/features/themes/ThemeLoader";
 import { IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
-import { inSettings } from "./places";
+import { PlaceCrumbs } from "./Crumbs";
+import { inSettings, installationName } from "./places";
 import { useSearchShortcut } from "./searchShortcut";
 import { rememberOutsideSettings } from "./settingsReturn";
 import { Sidebar } from "./Sidebar";
@@ -66,8 +67,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar narrow={narrow} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} settings={settings} />
       <div className="flex min-w-0 flex-1 flex-col">
         {narrow && (
-          // All that is left above the page on a narrow screen: the way into the drawer, and the bell.
-          <div className="flex h-10 shrink-0 items-center border-b border-border bg-surface px-2" data-nav-strip data-print-hide>
+          // All that is left above the page on a narrow screen: the way into the drawer, the installation, and the bell.
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-nav-strip data-print-hide>
             <IconButton
               icon={<Icon.Menu />}
               label={t.nav.openDrawer}
@@ -78,12 +79,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-controls={drawerOpen ? DRAWER_ID : undefined}
               data-action="drawer"
             />
-            {me?.organization && (
-              <div className="ml-auto">
-                <NotificationBell />
-              </div>
-            )}
-          </div>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+              {installationName(me)}
+            </span>
+            {me?.organization && <NotificationBell />}
+          </header>
         )}
         {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}
         <ThemeLoader />
@@ -95,10 +95,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             data-shell-header
           />
           <ShellHeaderContext.Provider value={strip}>
-            <div className="px-4 py-6 shell:px-8">
-              <ReturnNotice pathname={pathname} />
-              {children}
-            </div>
+            <PageCrumbsContext.Provider value={<PlaceCrumbs />}>
+              <div className="px-4 py-6 shell:px-8">
+                <ReturnNotice pathname={pathname} />
+                {children}
+              </div>
+            </PageCrumbsContext.Provider>
           </ShellHeaderContext.Provider>
         </main>
       </div>

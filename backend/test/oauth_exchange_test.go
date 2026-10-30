@@ -269,7 +269,7 @@ func TestAPartnerTradesAPersonsSignInForAStatorToken(t *testing.T) {
 		}
 	})
 
-	t.Run("carol is let in only by the group mapping", func(t *testing.T) {
+	t.Run("carol is let in only by the group mapping, once it lets people in", func(t *testing.T) {
 		carol := partnerToken(t, kc, exciterClient, exciterSecret, "carol", carolPassword)
 		got := oauthPost(t, a, "/oauth/token", id, secret, exchangeForm(carol))
 		if got.Status != http.StatusBadRequest || got.str("error") != "invalid_grant" || !strings.Contains(got.str("error_description"), "has no Stator account yet") {
@@ -279,12 +279,13 @@ func TestAPartnerTradesAPersonsSignInForAStatorToken(t *testing.T) {
 			t.Errorf("a refused exchange kept carol's account")
 		}
 		mapGroup(t, admin, a, "quality", "member")
+		admitByGroup(t, admin, a, true)
 		got = oauthPost(t, a, "/oauth/token", id, secret, exchangeForm(carol))
 		if got.Status != http.StatusOK {
 			t.Fatalf("carol, in a mapped group, answered %d %v", got.Status, got.Body)
 		}
-		if role, source := h.standing(t, "carol@suite.test"); role != "member" || source != "oidc" {
-			t.Errorf("carol's membership is %s from %s", role, source)
+		if role := h.standing(t, "carol@suite.test"); role != "member" {
+			t.Errorf("carol's membership is %s", role)
 		}
 	})
 

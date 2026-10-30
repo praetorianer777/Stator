@@ -10,7 +10,7 @@ import {
   type TemplateVariable,
   type VariableKind,
 } from "@/api/templates";
-import { Button, Checkbox, ErrorBanner, Field, IconButton, PageHeader, Select, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, Checkbox, Field, IconButton, ErrorBanner, Select, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import {
   TEMPLATE_DEFAULT_TODAY,
@@ -114,7 +114,7 @@ function TemplateForm({ template, spaceKey }: { template?: Template; spaceKey?: 
   const [rows, setRows] = useState<Row[]>(() => (template?.variables ?? []).map(rowOf));
   const editor = useRef<EditorHandle | null>(null);
   const fields = save.error instanceof ApiError ? save.error.fields : {};
-  const back = spaceKey ? { to: "/s/$spaceKey/settings" as const, params: { spaceKey }, search: { tab: "templates" as const } } : { to: TEMPLATES_PATH };
+  const back = spaceKey ? { to: "/spaces/$spaceKey/settings/templates" as const, params: { spaceKey } } : { to: TEMPLATES_PATH };
 
   function change(key: number, next: Partial<Row>) {
     setRows((current) =>
@@ -137,14 +137,8 @@ function TemplateForm({ template, spaceKey }: { template?: Template; spaceKey?: 
 
   const banner = save.error && !["name", "description", "title"].some((field) => fields[field]) ? (fields.variables ?? fields.body ?? save.error.message) : "";
   return (
-    <div className="mx-auto max-w-4xl space-y-4" data-template-editor={template?.key ?? "new"}>
+    <Page width="narrow" className="space-y-4" data-template-editor={template?.key ?? "new"}>
       <PageHeader
-        crumbs={[
-          {
-            label: spaceKey ? t.templates.spaceCrumb(spaceKey) : t.templates.title,
-            render: (label) => <Link {...back}>{label}</Link>,
-          },
-        ]}
         title={template ? t.templates.editTitle(template.name) : spaceKey ? t.templates.newSpaceTitle(spaceKey) : t.templates.newSiteTitle}
         actions={
           <>
@@ -210,7 +204,7 @@ function TemplateForm({ template, spaceKey }: { template?: Template; spaceKey?: 
           />
         </section>
       </form>
-    </div>
+    </Page>
   );
 }
 

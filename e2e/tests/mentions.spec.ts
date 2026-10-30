@@ -91,7 +91,7 @@ test.describe("mentions", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`mentioned you on ${plan.title}`);
     await expect(told).toContainText(`Owner: @${BOB}`);
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${plan.id}/`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${plan.id}/`));
     await expect(bob.locator("main [data-mention]")).toHaveText(`@${BOB}`);
   });
 
@@ -118,7 +118,7 @@ test.describe("mentions", { tag: ["@auth"] }, () => {
     const told = await toldAbout(bob, notes.title);
     await expect(told).toContainText(`mentioned you in a comment on ${notes.title}`);
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${notes.id}/[^?]+\\?thread=${threadId}`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${notes.id}/[^?]+\\?thread=${threadId}`));
     await expect(bob.locator(`[data-thread="${threadId}"]`)).toBeFocused();
   });
 

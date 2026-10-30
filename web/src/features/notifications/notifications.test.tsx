@@ -76,14 +76,14 @@ describe("the notification bell", () => {
     await renderAt("/spaces");
     const bell = await screen.findByRole("button", { name: "Notifications, 3 unread" });
     expect(bell).toHaveAttribute("aria-haspopup", "dialog");
-    expect(document.querySelector("[data-unread-badge]")).toHaveTextContent("3");
+    expect(document.querySelector('[data-count="bell"] [aria-hidden="true"]')).toHaveTextContent("3");
   });
 
   it("shows no badge while nothing is unread", async () => {
     stubShell({ "GET /notifications/unread-count": { status: 200, body: { unread: 0 } } });
     await renderAt("/spaces");
     expect(await screen.findByRole("button", { name: "Notifications" })).toBeInTheDocument();
-    expect(document.querySelector("[data-unread-badge]")).toBeNull();
+    expect(document.querySelector('[data-count="bell"]')).toBeNull();
   });
 
   it("asks again when the window regains focus and every poll interval", async () => {
@@ -141,7 +141,7 @@ describe("the notification bell", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(first);
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${runbookId}/runbook`));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${runbookId}/runbook`));
     expect(sent.find((each) => each.method === "POST" && each.path === "/notifications/read")?.body).toEqual({ ids: ["0195f000-0000-7000-8000-0000000000e1"] });
     expect(screen.queryByRole("dialog", { name: "Notifications" })).toBeNull();
     await screen.findByRole("button", { name: "Notifications" });

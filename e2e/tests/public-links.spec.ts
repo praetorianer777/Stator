@@ -3,7 +3,7 @@ import { must } from "../fixtures/api";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -46,7 +46,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     await createPage(api, guide.id, `Below ${word}`);
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     try {
-      await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
+      await openTitled(page, `/spaces/${key}/p/${guide.id}/guide`, guide.title);
       await page.locator('[data-action="share-page"]').click();
       await links(page).getByRole("textbox", { name: "Label (optional)" }).fill("For the auditors");
       await links(page).getByRole("combobox", { name: "Runs out" }).selectOption("7");
@@ -95,19 +95,19 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     const reader = await context.newPage();
     const settings = page.locator("[data-public-links-settings]");
     try {
-      await page.goto("/settings/permissions");
+      await page.goto("/admin/access/roles");
       await settings.locator('[data-action="public-links"]').click();
-      await expect(settings.getByRole("status")).toHaveText("Saved.");
+      await expect(toast(page, "Saved.")).toBeVisible();
       await openShowing(reader, made.path, reader.locator("[data-link-gone]"));
 
-      await openTitled(page, `/s/${key}/p/${plan.id}/plan`, plan.title);
+      await openTitled(page, `/spaces/${key}/p/${plan.id}/plan`, plan.title);
       await page.locator('[data-action="share-page"]').click();
-      await expect(links(page).locator('[data-public-links-refusal="off"]')).toContainText("Your organization does not allow public links.");
+      await expect(links(page).locator('[data-public-links-refusal="off"]')).toContainText("This installation does not allow public links.");
       await expect(links(page).locator('[data-action="create-public-link"]')).toHaveCount(0);
 
-      await page.goto("/settings/permissions");
+      await page.goto("/admin/access/roles");
       await settings.locator('[data-action="public-links"]').click();
-      await expect(settings.getByRole("status")).toHaveText("Saved.");
+      await expect(toast(page, "Saved.")).toBeVisible();
       await openTitled(reader, made.path, plan.title);
     } finally {
       await context.close();

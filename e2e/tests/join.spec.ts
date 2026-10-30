@@ -2,24 +2,33 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { ME_PATH, authTest as test, expect, startSSO, submitKeycloak } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible, openNavigation, settingsSidebar } from "../fixtures/shell";
+import { expectAccessible, openNavigation, toast } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
-const SSO_PATH = "/settings/sso";
+const USERS_PATH = "/admin/users";
+const MEMBERS_PATH = "/admin/access/members";
+const GROUPS_PATH = "/admin/access/groups";
 
 // A realm user the seed has not let into the demo organisation, from deploy/keycloak/realm.json.
 const CAROL = { username: "carol", password: "carol password", email: "carol@suite.test", name: "Carol Checker" };
 const BOB = { username: "bob", password: "bob password", email: "bob@suite.test" };
-// A group of bob's at the provider that alice, who maps it, is not in. He is
-// a member here already, so mapping it to member changes who decides his role
-// and never the role itself, which keeps every other spec that signs him in
-// unaffected.
+// A group of bob's at the provider that alice is not in. He is a member here
+// already, so a group granting him Member adds a grant he holds anyway, which
+// keeps every other spec that signs him in unaffected.
 const BOB_GROUP = "developers";
 
 const member = (page: Page, email: string) => page.locator(`[data-member="${email}"]`);
-const groupRole = (page: Page, group: string) => page.locator(`[data-group-role="${group}"]`);
+const groupCard = (page: Page, name: string) => page.locator(`[data-group="${name}"]`);
+
+/** Deletes the group of that name, with its grants; one that is gone already is fine. */
+async function dropGroup(api: StatorApi, name: string) {
+  const { groups } = must(await api.GET("/groups", { params: { query: { q: name, limit: 50 } } }));
+  for (const group of groups.filter((each) => each.name === name)) {
+    await api.DELETE("/groups/{groupID}", { params: { path: { groupID: group.id } } });
+  }
+}
 
 /** Signs somebody in through Keycloak in a browser of their own, and says where they landed. */
 async function signInFresh(browser: Browser, username: string, password: string): Promise<{ context: BrowserContext; page: Page }> {
@@ -30,12 +39,15 @@ async function signInFresh(browser: Browser, username: string, password: string)
   return { context, page };
 }
 
-/** The badge beside single sign-on in the settings sidebar, read on a settings page, with a phone's drawer closed again. */
+/** The badges beside Admin in the sidebar and beside Users in the Admin area's navigation, read on the Users page, with a phone's drawer closed again. */
 async function expectWaiting(page: Page, count: number) {
   const opened = await openNavigation(page);
-  const badge = settingsSidebar(page).locator('[data-nav="sso-settings"] [data-join-badge]');
-  if (count === 0) await expect(badge).toHaveCount(0);
-  else await expect(badge).toContainText(`${count} waiting`);
+  const badges = page.locator('[data-nav="admin"] [data-count="join-requests"], [data-admin-nav] [data-nav="users"] [data-count="join-requests"]');
+  if (count === 0) await expect(badges).toHaveCount(0);
+  else {
+    await expect(badges).toHaveCount(2);
+    for (const badge of await badges.all()) await expect(badge).toContainText(`${count} waiting`);
+  }
   if (opened) await page.keyboard.press("Escape");
 }
 
@@ -54,8 +66,7 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
 
   test.afterEach(async ({ api }) => {
     await forgetCarol(api);
-    const mapped = must(await api.GET("/oidc-provider/group-roles")).groupRoles.find((each) => each.group === BOB_GROUP);
-    if (mapped) await api.DELETE("/oidc-provider/group-roles/{groupRoleID}", { params: { path: { groupRoleID: mapped.id } } });
+    await dropGroup(api, BOB_GROUP);
   });
 
   test("a Keycloak user nobody has approved waits, and turning her away takes the count down", async ({ browser, page }) => {
@@ -66,7 +77,7 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     await expectAccessible(carol.page);
     await carol.context.close();
 
-    await page.goto(SSO_PATH);
+    await page.goto(USERS_PATH);
     const request = page.locator(`[data-join-request="${CAROL.email}"]`);
     await expect(request).toBeVisible();
     await expectWaiting(page, 1);
@@ -82,7 +93,7 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     await expect(first.page).toHaveURL(/\/login\?sso=not_a_member/);
     await first.context.close();
 
-    await page.goto(SSO_PATH);
+    await page.goto(USERS_PATH);
     await expectWaiting(page, 1);
     await page.locator(`[data-join-request="${CAROL.email}"]`).getByRole("button", { name: "Let in as member" }).click();
     await expect(page.getByText(`${CAROL.name} may sign in now.`)).toBeVisible();
@@ -95,14 +106,14 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     expect(me.status()).toBe(200);
     expect((await me.json()).organization.role).toBe("member");
 
-    await openUntil(page, SSO_PATH, async () => {
+    await openUntil(page, MEMBERS_PATH, async () => {
       await expect(member(page, CAROL.email).locator("[data-member-role]")).toHaveText("Member", ONE_LOOK);
     });
-    await expect(member(page, CAROL.email).locator("[data-role-source]")).toHaveCount(0);
+    await expect(member(page, CAROL.email).locator('[data-member-holds="member"]')).toContainText("through Everyone");
     await member(page, CAROL.email)
       .getByRole("button", { name: `Remove ${CAROL.name}` })
       .click();
-    await page.locator('[data-action="confirm-remove-member"]').click();
+    await page.locator("[data-confirm]").locator('[data-action="confirm"]').click();
     await expect(page.getByText(`${CAROL.name} was removed.`)).toBeVisible();
     await expect(member(page, CAROL.email)).toHaveCount(0);
 
@@ -111,71 +122,77 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     await carol.context.close();
   });
 
-  test("a group mapped to a role marks the roles it decides as coming from the identity provider", async ({ browser, page }) => {
-    await page.goto(SSO_PATH);
-    const card = page.locator("[data-group-roles]");
-    await card.getByLabel("Group", { exact: true }).fill(BOB_GROUP);
-    await card.getByLabel("Role", { exact: true }).selectOption("member");
-    await card.locator('[data-action="map-group"]').click();
-    await expect(groupRole(page, BOB_GROUP)).toContainText("Member");
+  test("a group the provider fills holds its grants for whoever signs in through it, and takes them along when it goes", async ({ browser, page }) => {
+    await page.goto(GROUPS_PATH);
+    await page.getByRole("textbox", { name: "New group" }).fill(BOB_GROUP);
+    await page.getByRole("textbox", { name: "Provider claim" }).fill(BOB_GROUP);
+    await page.locator('[data-action="create-group"]').click();
+    await expect(toast(page, `${BOB_GROUP} was made.`)).toBeVisible();
+    await expect(groupCard(page, BOB_GROUP)).toContainText("From the identity provider");
+
+    await page.goto("/admin/access/roles");
+    const form = page.locator("[data-grant-form]");
+    await form.getByRole("combobox").first().fill(BOB_GROUP);
+    await form.locator(`[data-subject-option="${BOB_GROUP}"]`).click();
+    await form.locator("[data-grant-role-choice]").selectOption("member");
+    await form.locator('[data-action="grant-role"]').click();
+    await expect(toast(page, `${BOB_GROUP} holds Member now.`)).toBeVisible();
 
     const bob = await signInFresh(browser, BOB.username, BOB.password);
     await expect(bob.page).not.toHaveURL(/\/login/);
     await bob.context.close();
-    await openUntil(page, SSO_PATH, async () => {
-      await expect(member(page, BOB.email).locator("[data-role-source]")).toHaveText("From identity provider", ONE_LOOK);
+    await openUntil(page, MEMBERS_PATH, async () => {
+      await expect(
+        member(page, BOB.email)
+          .locator('[data-member-holds="member"]')
+          .filter({ hasText: `through ${BOB_GROUP}` }),
+      ).toBeVisible(ONE_LOOK);
     });
     await expect(member(page, BOB.email).locator("[data-member-role]")).toHaveText("Member");
 
-    await groupRole(page, BOB_GROUP)
-      .getByRole("button", { name: `Unmap ${BOB_GROUP}` })
-      .click();
-    await expect(groupRole(page, BOB_GROUP)).toHaveCount(0);
+    await page.goto(GROUPS_PATH);
+    await groupCard(page, BOB_GROUP).locator('[data-action="delete-group"]').click();
+    await page.locator("[data-confirm]").locator('[data-action="confirm"]').click();
+    await expect(toast(page, `${BOB_GROUP} was deleted.`)).toBeVisible();
+    await expect(groupCard(page, BOB_GROUP)).toHaveCount(0);
 
-    // His next sign-in hands the role back to the administrators, as it was.
-    const again = await signInFresh(browser, BOB.username, BOB.password);
-    await again.context.close();
-    await openUntil(page, SSO_PATH, async () => {
+    await openUntil(page, MEMBERS_PATH, async () => {
       await expect(member(page, BOB.email).locator("[data-member-role]")).toHaveText("Member", ONE_LOOK);
-      await expect(member(page, BOB.email).locator("[data-role-source]")).toHaveCount(0, ONE_LOOK);
+      await expect(
+        member(page, BOB.email)
+          .locator('[data-member-holds="member"]')
+          .filter({ hasText: `through ${BOB_GROUP}` }),
+      ).toHaveCount(0, ONE_LOOK);
     });
   });
 });
 
-test.describe("mapping groups to roles", { tag: "@auth" }, () => {
-  test("an administrator maps a group to admin and unmaps it again", async ({ page, api }, testInfo) => {
-    // A group nobody at the provider is in, so the mapping changes nobody's role.
+test.describe("groups", { tag: "@auth" }, () => {
+  test("an administrator makes a group kept by hand, fills it and deletes it", async ({ page, api }, testInfo) => {
     const group = uniqueName(testInfo, "group").replaceAll(" ", "-");
+    const alice = must(await api.GET("/auth/me")).user.name;
     try {
-      await page.goto(SSO_PATH);
-      const card = page.locator("[data-group-roles]");
-      await expect(card.getByRole("heading", { name: "Roles from groups" })).toBeVisible();
-      await card.getByLabel("Group", { exact: true }).fill(group);
-      await card.getByLabel("Role", { exact: true }).selectOption("admin");
-      await card.locator('[data-action="map-group"]').click();
-      await expect(card.getByRole("status")).toHaveText(`${group} now grants Admin.`);
-      await expect(groupRole(page, group)).toContainText("Admin");
-      await expect(card.getByLabel("Group", { exact: true })).toHaveValue("");
+      await page.goto(GROUPS_PATH);
+      await expect(page.locator('[data-group-builtin="everyone"]')).toBeVisible();
+      await page.getByRole("textbox", { name: "New group" }).fill(group);
+      await page.locator('[data-action="create-group"]').click();
+      await expect(toast(page, `${group} was made.`)).toBeVisible();
+      const card = groupCard(page, group);
+      await card.getByRole("combobox").fill(alice);
+      await card.locator(`[data-subject-option="${alice}"]`).click();
+      await expect(toast(page, `${alice} is in ${group} now.`)).toBeVisible();
+      await expect(card.locator(`[data-group-member="${alice}"]`)).toBeVisible();
 
       await page.reload();
-      await expect(groupRole(page, group)).toContainText("Admin");
+      await expect(groupCard(page, group).locator(`[data-group-member="${alice}"]`)).toBeVisible();
       await expectAccessible(page);
 
-      await groupRole(page, group)
-        .getByRole("button", { name: `Unmap ${group}` })
-        .click();
-      await expect(card.getByRole("status")).toHaveText(`${group} no longer grants a role.`);
-      await expect(groupRole(page, group)).toHaveCount(0);
+      await groupCard(page, group).locator('[data-action="delete-group"]').click();
+      await page.locator("[data-confirm]").locator('[data-action="confirm"]').click();
+      await expect(toast(page, `${group} was deleted.`)).toBeVisible();
+      await expect(groupCard(page, group)).toHaveCount(0);
     } finally {
-      const left = must(await api.GET("/oidc-provider/group-roles")).groupRoles.find((each) => each.group === group);
-      if (left) await api.DELETE("/oidc-provider/group-roles/{groupRoleID}", { params: { path: { groupRoleID: left.id } } });
+      await dropGroup(api, group);
     }
-  });
-
-  test("a blank group is refused with a sentence beside the field", async ({ page }) => {
-    await page.goto(SSO_PATH);
-    const card = page.locator("[data-group-roles]");
-    await card.locator('[data-action="map-group"]').click();
-    await expect(card.getByText("Enter the group's name as the provider sends it in the groups claim.")).toBeVisible();
   });
 });

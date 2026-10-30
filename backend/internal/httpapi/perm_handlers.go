@@ -3,8 +3,6 @@ package httpapi
 import (
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/perm"
 	"github.com/praetorianer777/stator/backend/internal/space"
@@ -14,7 +12,7 @@ import (
 // and the pickers that name whom to grant them.
 
 var errNoAccess = &APIError{Status: http.StatusForbidden, Code: "no_access",
-	Message: "You are a member of this organization but may not use Stator in it. Ask one of its administrators for access."}
+	Message: "You are a member here but may not use Stator. Ask an administrator for access."}
 
 // requireUse refuses a member without the use permission every route but
 // the ones that say who they are, so a client can tell them why.
@@ -43,54 +41,6 @@ func (s *Server) handleMyAccess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respondJSON(w, r, http.StatusOK, map[string]any{"can": can})
-}
-
-func (s *Server) handleListGlobalPermissions(w http.ResponseWriter, r *http.Request) {
-	grants, err := s.Perms.GlobalGrants(r.Context(), actorFrom(r))
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"permissions": grants})
-}
-
-func (s *Server) handleSetGlobalPermission(w http.ResponseWriter, r *http.Request) {
-	var req perm.GlobalGrantInput
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
-	}
-	grant, lsn, err := s.Perms.SetGlobalGrant(r.Context(), actorFrom(r), perm.GlobalPermission(chi.URLParam(r, "permission")), req)
-	noteWrite(r.Context(), lsn)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"permission": grant})
-}
-
-func (s *Server) handleListSpacePermissions(w http.ResponseWriter, r *http.Request) {
-	grants, err := s.Spaces.Permissions(r.Context(), actorFrom(r), spaceKey(r))
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"grants": grants})
-}
-
-func (s *Server) handleSetSpacePermissions(w http.ResponseWriter, r *http.Request) {
-	var req perm.SpaceGrantsInput
-	if err := decodeJSON(w, r, &req); err != nil {
-		respondError(w, r, err)
-		return
-	}
-	grants, lsn, err := s.Spaces.SetPermissions(r.Context(), actorFrom(r), spaceKey(r), req)
-	noteWrite(r.Context(), lsn)
-	if err != nil {
-		respondError(w, r, err)
-		return
-	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"grants": grants})
 }
 
 func (s *Server) handlePreviewPermissionCopy(w http.ResponseWriter, r *http.Request) {

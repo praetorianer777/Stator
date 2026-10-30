@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { TEMPLATE_DATE_TOKEN } from "@/config";
 import type { Doc } from "@/features/editor/schema";
 import { api } from "./client";

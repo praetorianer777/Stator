@@ -11,20 +11,19 @@ import {
   useRenewExampleSpace,
 } from "@/api/exampleSpace";
 import type { Space } from "@/api/spaces";
-import { Button, EmptyState, ErrorBanner, PageHeader, Segmented, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, ErrorBanner, Segmented, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { EXAMPLE_SPACE_GIVE_UP_MS, EXAMPLE_SPACE_SLOW_MS } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 /** The example space by its name, linked, with a word when it is archived. */
 function ExistingExample({ space }: { space: Space }) {
   return (
     <p className="text-sm text-ink" role="status" data-example-exists="">
       {t.exampleSpace.exists}{" "}
-      <Link to="/s/$spaceKey" params={{ spaceKey: space.key }} className="font-medium text-accent hover:underline">
+      <Link to="/spaces/$spaceKey" params={{ spaceKey: space.key }} className="font-medium text-accent hover:underline">
         {space.name}
       </Link>
       {space.archivedAt && <span className="text-ink-muted"> {t.exampleSpace.archived}</span>}
@@ -68,7 +67,7 @@ function useMakeExample(admin: boolean) {
   useEffect(() => {
     if (!madeKey) return;
     void exampleSpaceMade(queryClient);
-    void navigate({ to: "/s/$spaceKey", params: { spaceKey: madeKey } });
+    void navigate({ to: "/spaces/$spaceKey", params: { spaceKey: madeKey } });
   }, [madeKey, navigate, queryClient]);
 
   const run = () => make.mutate();
@@ -112,22 +111,13 @@ export function ExampleSpaceButton() {
   );
 }
 
-/** The organization settings' page for the example space. */
+/** The Admin page for the example space; the Admin area lets only administrators in. */
 export function ExampleSpaceSettings() {
-  const admin = useCanAdministerSite();
-  const { query, make, run, found, underWay, failure, note } = useMakeExample(admin);
-  if (!admin) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <PageHeader crumbs={[settingsCrumb()]} title={t.exampleSpace.title} />
-        <EmptyState icon={<Icon.Lock />} title={t.exampleSpace.title} description={t.exampleSpace.notAdmin} />
-      </div>
-    );
-  }
+  const { query, make, run, found, underWay, failure, note } = useMakeExample(true);
   const shown = found ?? query.data?.space ?? undefined;
   return (
-    <div className="mx-auto max-w-3xl space-y-4" data-example-space-settings="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.exampleSpace.title} />
+    <Page width="narrow" className="space-y-4" data-example-space-settings="">
+      <PageHeader title={t.exampleSpace.title} />
       <p className="text-sm text-ink-muted">{t.exampleSpace.intro}</p>
       {query.isLoading && <Skeleton />}
       {query.error && <ErrorBanner>{query.error.message}</ErrorBanner>}
@@ -137,7 +127,7 @@ export function ExampleSpaceSettings() {
       <Button icon={<Icon.Seal />} onClick={run} disabled={underWay || query.isLoading} data-action="create-example-space">
         {underWay ? t.exampleSpace.creating : t.exampleSpace.create}
       </Button>
-    </div>
+    </Page>
   );
 }
 

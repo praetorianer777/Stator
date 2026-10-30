@@ -37,7 +37,7 @@ test.describe("expand blocks", { tag: ["@auth", "@desktop"] }, () => {
     // The empty paragraph at the end takes the block: an Enter after the caret
     // key would split wherever ProseMirror last saw the caret.
     const runbook = await createPage(api, space.homePageId, "Runbook", { type: "doc", content: [paragraph("Deploy on Tuesdays."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${runbook.id}/runbook`;
+    const path = `/spaces/${space.key}/p/${runbook.id}/runbook`;
 
     await openEditor(page, path, "Deploy on Tuesdays.");
     await caretTo(editorBox(page), "end");
@@ -89,7 +89,7 @@ test.describe("expand blocks", { tag: ["@auth", "@desktop"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      const path = `/s/${space.key}/p/${notes.id}/notes`;
+      const path = `/spaces/${space.key}/p/${notes.id}/notes`;
 
       await openShowing(page, path, shown(page).getByRole("button", { name: "The long version" }));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);

@@ -16,6 +16,8 @@ PAGES=2
 EDITS=2
 # The worker makes the example space, a few dozen pages, in the background.
 EXAMPLE_WAIT_SECONDS=300
+# Who signs in besides the administrator, to show what the upgrade left them.
+PERSON_PASSWORD="seeded person password 1"
 trap 'rm -f "$JAR" "$JAR".*' EXIT
 
 fail() { printf '   ❌ %s\n' "$*" >&2; exit 1; }
@@ -34,6 +36,43 @@ call() {
 
 sign_in() {
   call POST /auth/login "$(jq -nc --arg e "$EMAIL" --arg p "$PASSWORD" '{email: $e, password: $p}')" >/dev/null
+}
+
+# access <email>: what somebody may do across the installation and in the
+# seeded space, as the web app is told it, signed in in a browser of their own.
+access() {
+  local JAR out
+  JAR="$(mktemp)"
+  call POST /auth/login "$(jq -nc --arg e "$1" --arg p "$PERSON_PASSWORD" '{email: $e, password: $p}')" >/dev/null
+  out="$(jq -nc --arg who "$1" --argjson me "$(call GET /access/me | jq -c .can)" --argjson space "$(call GET "/spaces/$SPACE" | jq -c .space.can)" \
+    '{who: $who, me: $me, space: $space}')"
+  rm -f "$JAR" "$JAR".*
+  printf '%s\n' "$out"
+}
+
+# seed_access lets people in with every kind of access the release before
+# granted: a member who comments by name, one who may create spaces, an
+# administrator by hand, and everyone else reading. It answers what each may do.
+seed_access() {
+  local p email role ids admin commenter creator
+  for p in commenter:member creator:member chief:admin; do
+    email="seeded-${p%%:*}@upgrade.test"
+    role="${p##*:}"
+    call POST /users "$(jq -nc --arg e "$email" --arg r "$role" --arg pw "$PERSON_PASSWORD" '{email: $e, name: $e, role: $r, password: $pw}')" >/dev/null
+  done
+  ids="$(call GET /users)"
+  id_of() { jq -r --arg e "$1" '.members[] | select(.email == ($e | ascii_downcase)) | .userId' <<<"$ids"; }
+  admin="$(id_of "$EMAIL")" commenter="$(id_of seeded-commenter@upgrade.test)" creator="$(id_of seeded-creator@upgrade.test)"
+  call PUT "/spaces/$SPACE/permissions" "$(jq -nc --arg a "$admin" --arg c "$commenter" '{grants: [
+    {subject: {type: "everyone"}, permissions: ["view"]},
+    {subject: {type: "user", id: $c}, permissions: ["view", "addComments"]},
+    {subject: {type: "user", id: $a}, permissions: ["administer"]}]}')" >/dev/null
+  call PUT /site/permissions/createSpace "$(jq -nc --arg c "$creator" '{subjects: [{type: "user", id: $c}]}')" >/dev/null
+  local all=()
+  for p in commenter creator chief; do
+    all+=("$(access "seeded-$p@upgrade.test")")
+  done
+  printf '%s\n' "${all[@]}" | jq -sc .
 }
 
 doc() {
@@ -82,9 +121,13 @@ seed() {
   [[ -n "$example" ]] || fail "the example space was not made in ${EXAMPLE_WAIT_SECONDS}s"
   ok "the example space $example"
 
+  local granted
+  granted="$(seed_access)"
+  ok "people who comment, create spaces and administer, and everyone reading $SPACE"
+
   jq -n --arg space "$SPACE" --argjson pages "[$(IFS=,; echo "${pages[*]}")]" --arg attachment "$attachment" \
-    --arg sha "$(sha256sum "$JAR.file" | cut -d' ' -f1)" --arg theme "$theme" --arg token "$token" --arg example "$example" \
-    '{space: $space, pages: $pages, attachment: $attachment, sha: $sha, theme: $theme, token: $token, example: $example}' >"$STATE"
+    --arg sha "$(sha256sum "$JAR.file" | cut -d' ' -f1)" --arg theme "$theme" --arg token "$token" --arg example "$example" --argjson access "$granted" \
+    '{space: $space, pages: $pages, attachment: $attachment, sha: $sha, theme: $theme, token: $token, example: $example, access: $access}' >"$STATE"
 }
 
 check() {
@@ -115,6 +158,14 @@ check() {
   got="$(call GET /example-space | jq -r '.space.key // empty')"
   [[ "$got" == "$(jq -r .example <<<"$s")" ]] || fail "the example space is [$got], want $(jq -r .example <<<"$s")"
   ok "the example space"
+
+  local person was now
+  while read -r person; do
+    was="$(jq -S . <<<"$person")"
+    now="$(access "$(jq -r .who <<<"$person")" | jq -S .)"
+    [[ "$now" == "$was" ]] || fail "$(jq -r .who <<<"$person") may now $(jq -c . <<<"$now"), before $(jq -c . <<<"$was")"
+  done < <(jq -c '.access[]' <<<"$s")
+  ok "everybody may do what they could before"
 }
 
 case "$MODE" in

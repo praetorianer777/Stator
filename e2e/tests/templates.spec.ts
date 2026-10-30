@@ -14,7 +14,7 @@ const draftStatus = (page: Page) => page.locator("[data-draft-status]");
 
 /** Opens the new page dialog under the space's home page and waits for the templates. */
 async function openNewPage(page: Page, space: Space) {
-  await page.goto(`/s/${space.key}`);
+  await page.goto(`/spaces/${space.key}`);
   await page.locator('[data-action="new-page"]').click();
   await expect(option(page, "Project plan")).toBeVisible();
 }

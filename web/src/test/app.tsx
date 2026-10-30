@@ -7,11 +7,14 @@ import { meQueryKey, type Me } from "@/api/auth";
 import { LocalizedRouter } from "@/features/shell/LocalizedRouter";
 import { createQueryClient } from "@/lib/session";
 import { buildRouter, sendToLogin } from "@/routes";
+import { ToastProvider } from "@/components/ui";
+import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
+import type { ReactNode } from "react";
 
 /** The person every shell test is signed in as unless it says otherwise: an administrator. */
 export const signedIn: Me = {
-  user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace", locale: "", showInReaders: true },
-  organization: { name: "Demo", role: "admin", guestSpace: null },
+  user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace", locale: "", timezone: "", showInReaders: true },
+  organization: { name: "Demo", role: "member", administers: true, guestSpace: null },
 };
 
 /**
@@ -41,11 +44,16 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
   return router;
 }
 
-/** Opens a page of the settings area as a site administrator does: Settings in the avatar menu, then the page in the settings sidebar. */
-export async function viaSettings(name: string | RegExp) {
+/** Opens a page of the Admin area as an administrator does: Admin in the avatar menu, then the page in the Admin area's navigation. */
+export async function viaAdmin(name: string | RegExp) {
   await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-  await userEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
-  await userEvent.click(within(await settingsSidebar()).getByRole("link", { name }));
+  await userEvent.click(await screen.findByRole("menuitem", { name: "Admin" }));
+  await userEvent.click(within(await adminNavigation()).getByRole("link", { name }));
+}
+
+/** The Admin area's navigation beside its pages. */
+export function adminNavigation() {
+  return screen.findByRole("navigation", { name: "Admin sections" });
 }
 
 /** The settings area's own sidebar. */
@@ -112,4 +120,29 @@ export const unauthorized: Answer = { status: 401, body: { error: { code: "unaut
 export function setViewportWidth(width: number) {
   Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: width });
   window.dispatchEvent(new Event("resize"));
+}
+
+/** The dialog that asks before something goes, once it is open. */
+export function confirmDialog() {
+  return screen.findByRole("dialog", { name: /\?$/ });
+}
+
+/** Answers the question before something goes with its danger button, or with Cancel. */
+export async function answerConfirm(yes: boolean) {
+  const dialog = await confirmDialog();
+  const button = yes
+    ? dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]')
+    : within(dialog).getByRole("button", { name: /^(Cancel|Abbrechen)$/ });
+  if (!button) throw new Error("The confirm dialog has no confirm button.");
+  await userEvent.click(button);
+  await waitFor(() => expect(dialog).not.toBeInTheDocument());
+}
+
+/** The toasts and the question before something goes, which the router's root gives every page; for a component drawn alone. */
+export function Feedback({ children }: { children: ReactNode }) {
+  return (
+    <ToastProvider>
+      <ConfirmProvider>{children}</ConfirmProvider>
+    </ToastProvider>
+  );
 }

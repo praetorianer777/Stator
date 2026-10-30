@@ -18,6 +18,9 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "error",
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "@typescript-eslint/consistent-type-imports": "error",
+      // The browser's own dialog ignores the theme and cannot word what goes; useConfirm asks in the kit's ConfirmDialog.
+      "no-restricted-globals": ["error", { name: "confirm", message: "Ask with useConfirm, which draws the kit's ConfirmDialog." }],
+      "no-restricted-properties": ["error", { object: "window", property: "confirm", message: "Ask with useConfirm, which draws the kit's ConfirmDialog." }],
       "no-restricted-syntax": [
         "error",
         {

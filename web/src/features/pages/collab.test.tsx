@@ -23,7 +23,7 @@ const plans = aPage({
   ancestors: [{ id: home.id, title: "Handbook", home: true }],
   version: 3,
 });
-const EDIT_PATH = `/s/DOCS/p/${PAGE_ID}/plans/edit`;
+const EDIT_PATH = `/spaces/DOCS/p/${PAGE_ID}/plans/edit`;
 const paragraph = (text: string) => ({ type: "paragraph", content: [{ type: "text", text }] });
 
 function stubPage(more: Record<string, Answer | ((request: Request) => Answer | Promise<Answer>)> = {}) {
@@ -99,7 +99,7 @@ describe("editing a page together", () => {
       await userEvent.click(screen.getByRole("button", { name: "Publish" }));
       const dialog = await screen.findByRole("dialog", { name: "Publish Shared plans" });
       await userEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/shared-plans`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/shared-plans`));
       const save = sent.find((r) => r.method === "PUT" && r.path === `/pages/${PAGE_ID}/draft`);
       expect(save?.body).toMatchObject({ title: "Shared plans", baseVersion: 3, body: { type: "doc", content: [paragraph("Written by Bob.")] } });
       await vi.waitFor(() => expect(bob.state.base).toBe(4));

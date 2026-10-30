@@ -29,6 +29,19 @@ describe("the shell", () => {
     expect(await screen.findByText("Welcome to Stator")).toBeInTheDocument();
   });
 
+  it("names the installation beside its mark at the head of the sidebar", async () => {
+    await renderAt("/");
+    const head = document.querySelector<HTMLElement>('[data-sidebar="open"] [data-sidebar-head]')!;
+    expect(head).toHaveTextContent("Demo");
+    expect(head.querySelector("[data-logo-mark]")).not.toBeNull();
+  });
+
+  it("keeps the rail's toggle inside its navigation", async () => {
+    await renderAt("/");
+    const everywhere = within(document.querySelector<HTMLElement>("[data-rail]")!).getByRole("navigation", { name: "Everywhere" });
+    expect(within(everywhere).getByRole("button", { name: "Collapse the sidebar" })).toBeInTheDocument();
+  });
+
   it("lists the rail in its order, the bell after Search and the avatar at the bottom", async () => {
     await renderAt("/");
     const rail = document.querySelector<HTMLElement>("[data-rail]")!;
@@ -36,7 +49,7 @@ describe("the shell", () => {
     const names = Array.from(everywhere.querySelectorAll<HTMLElement>("[data-nav], [data-action]")).map(
       (el) => el.getAttribute("data-nav") ?? el.getAttribute("data-action"),
     );
-    expect(names).toEqual(["home", "search", "notifications", "spaces", "tasks"]);
+    expect(names).toEqual(["sidebar", "home", "search", "notifications", "spaces", "tasks"]);
     const bottom = rail.lastElementChild as HTMLElement;
     expect(within(bottom).getByRole("button", { name: "Auto" })).toBeInTheDocument();
     expect(within(bottom).getByRole("button", { name: "Your account" })).toBeInTheDocument();
@@ -46,7 +59,7 @@ describe("the shell", () => {
     await renderAt("/");
     const wiki = document.querySelector<HTMLElement>('[data-sidebar-group="wiki"]')!;
     const names = Array.from(wiki.querySelectorAll<HTMLElement>("[data-nav]")).map((el) => el.getAttribute("data-nav"));
-    expect(names).toEqual(["home", "search", "reviews", "tasks", "spaces"]);
+    expect(names).toEqual(["home", "search", "notifications", "reviews", "tasks", "spaces"]);
     expect(within(wiki).getByRole("link", { name: /Reviews/ })).toHaveAttribute("href", "/reviews");
   });
 
@@ -158,7 +171,7 @@ describe("search", () => {
 describe("the space in the sidebar", () => {
   const docs = { key: "DOCS", name: "Handbook" };
 
-  it("keeps the space visited last on a page that names none, with the switcher and a folded Space admin group", async () => {
+  it("keeps the space visited last on a page that names none, with the switcher and one Settings entry", async () => {
     stubApi({
       "GET /spaces": { status: 200, body: { spaces: [aSpace(docs), aSpace({ key: "OPS", name: "Operations" })] } },
       "GET /spaces/DOCS": { status: 200, body: { space: aSpace(docs) } },
@@ -169,13 +182,9 @@ describe("the space in the sidebar", () => {
     const group = document.querySelector<HTMLElement>('[data-sidebar-group="space"]')!;
     await within(group).findByRole("link", { name: "Space home" });
     expect(within(group).getByRole("button", { name: "Handbook" })).toHaveAttribute("aria-expanded", "true");
-    const admin = within(group).getByRole("button", { name: "Space admin" });
-    expect(admin).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(admin);
-    expect(within(group).getByRole("link", { name: "Space settings" })).toHaveAttribute("href", "/s/DOCS/settings");
-    expect(within(group).getByRole("link", { name: "Trash" })).toHaveAttribute("href", "/s/DOCS/settings?tab=trash");
-    expect(within(group).getByRole("link", { name: "Archive" })).toHaveAttribute("href", "/s/DOCS/settings?tab=archive");
-    expect(within(group).getByRole("link", { name: "Stale pages" })).toHaveAttribute("href", "/settings/stale?space=DOCS");
+    expect(within(group).queryByRole("button", { name: "Space admin" })).toBeNull();
+    expect(within(group).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/spaces/DOCS/settings");
+    for (const gone of ["Trash", "Archive", "Stale pages"]) expect(within(group).queryByRole("link", { name: gone })).toBeNull();
 
     await userEvent.click(within(group).getByRole("button", { name: "Switch space: Handbook" }));
     const menu = screen.getByRole("menu", { name: "Switch space" });
@@ -186,10 +195,10 @@ describe("the space in the sidebar", () => {
         .map((item) => item.textContent),
     ).toEqual(["OperationsOPS", "All spaces"]);
     await userEvent.click(within(menu).getByRole("menuitem", { name: /Operations/ }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/s/OPS"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/spaces/OPS"));
   });
 
-  it("leaves the space admin pages a reader may not use out", async () => {
+  it("leads a reader who administers nothing to the space's settings too", async () => {
     const reader = aSpace({ ...docs, can: { ...aSpace(docs).can, deletePages: false, administer: false } });
     stubApi({
       "GET /spaces/DOCS": { status: 200, body: { space: reader } },
@@ -199,10 +208,7 @@ describe("the space in the sidebar", () => {
     await renderAt("/tasks");
     const group = document.querySelector<HTMLElement>('[data-sidebar-group="space"]')!;
     await within(group).findByRole("link", { name: "Space home" });
-    await userEvent.click(within(group).getByRole("button", { name: "Space admin" }));
-    expect(within(group).getByRole("link", { name: "Space settings" })).toBeInTheDocument();
-    expect(within(group).queryByRole("link", { name: "Trash" })).toBeNull();
-    expect(within(group).queryByRole("link", { name: "Stale pages" })).toBeNull();
+    expect(within(group).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/spaces/DOCS/settings");
   });
 });
 

@@ -9,13 +9,21 @@ afterEach(() => vi.unstubAllGlobals());
 
 const member: Me = {
   ...signedIn,
-  user: { id: "u-bob", email: "bob@stator.test", name: "Bob Builder", avatarUrl: "https://pictures.test/bob.png", locale: "", showInReaders: true },
-  organization: { ...signedIn.organization!, role: "member" },
+  user: {
+    id: "u-bob",
+    email: "bob@stator.test",
+    name: "Bob Builder",
+    avatarUrl: "https://pictures.test/bob.png",
+    locale: "",
+    timezone: "",
+    showInReaders: true,
+  },
+  organization: { ...signedIn.organization!, role: "member", administers: false },
 };
 
 const guest: Me = {
   ...signedIn,
-  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
+  organization: { ...signedIn.organization!, role: "guest", administers: false, guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
 };
 
 async function openMenu() {
@@ -34,33 +42,54 @@ describe("the account menu", () => {
     expect(head.querySelector("[data-account-role]")).toHaveTextContent("Member");
   });
 
+  it("is a round button that opens past the rail's edge, its avatar beside who is signed in", async () => {
+    await renderAt("/", { me: member });
+    const trigger = screen.getByRole("button", { name: "Your account" });
+    expect(trigger).toHaveClass("rounded-full");
+    // The menu is anchored on a wrapper as wide as the rail, so it opens beside the rail, not over it.
+    expect(trigger.parentElement).toHaveClass("w-full");
+    expect(document.querySelector("[data-rail-foot]")).toHaveClass("w-full");
+    await openMenu();
+    const head = document.querySelector<HTMLElement>("[data-account-header]")!;
+    expect(within(head).getByRole("img", { name: "Bob Builder" })).toHaveAttribute("src", "https://pictures.test/bob.png");
+  });
+
+  it("sets Admin and Sign out apart from the person's own pages", async () => {
+    await renderAt("/");
+    const menu = await openMenu();
+    const separators = within(menu).getAllByRole("separator");
+    expect(separators).toHaveLength(2);
+    expect(separators[0]!.nextElementSibling).toHaveTextContent("Admin");
+    expect(separators[1]!.nextElementSibling).toHaveTextContent("Sign out");
+  });
+
   it("draws initials for somebody without a picture", async () => {
     await renderAt("/");
     const trigger = screen.getByRole("button", { name: "Your account" });
     expect(within(trigger).getByText("AL")).toBeInTheDocument();
   });
 
-  it("holds an administrator's own pages, Settings and Sign out, and no page of the organization's", async () => {
+  it("holds an administrator's own pages, one Admin entry and Sign out, and no page of the installation's", async () => {
     await renderAt("/");
     const menu = await openMenu();
     expect(
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Settings", "Sign out"]);
+    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Admin", "Sign out"]);
   });
 
-  it("opens the settings area from Settings", async () => {
+  it("opens the Admin page from Admin", async () => {
     const router = await renderAt("/");
-    await userEvent.click(within(await openMenu()).getByRole("menuitem", { name: "Settings" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+    await userEvent.click(within(await openMenu()).getByRole("menuitem", { name: "Admin" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin"));
   });
 
-  it("gives a member their own pages without Settings", async () => {
+  it("gives a member their own pages without Admin", async () => {
     stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/", { me: member });
     const menu = await openMenu();
-    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Settings" })).toBeNull());
+    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Admin" })).toBeNull());
     expect(
       within(menu)
         .getAllByRole("menuitem")
@@ -68,11 +97,11 @@ describe("the account menu", () => {
     ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Sign out"]);
   });
 
-  it("gives a guest no Access tokens and no Settings", async () => {
+  it("gives a guest no Access tokens and no Admin", async () => {
     stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/", { me: guest });
     const menu = await openMenu();
-    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Settings" })).toBeNull());
+    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Admin" })).toBeNull());
     expect(
       within(menu)
         .getAllByRole("menuitem")
@@ -103,6 +132,8 @@ describe("the tools to switch to", () => {
     expect(within(group).getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", "https://armature.example.test");
     expect(within(group).getByRole("menuitem", { name: "Exciter" })).toHaveAttribute("href", "https://exciter.example.test");
     expect(links.every((l) => l.tagName === "A" && !l.hasAttribute("target"))).toBe(true);
+    // Each tool's own mark, in the one format the suite's tools share.
+    expect(links.map((l) => l.querySelector("img")?.getAttribute("src"))).toEqual(["/tools/armature.webp", "/tools/exciter.webp"]);
   });
 
   it("lists only the one connected", async () => {
@@ -136,8 +167,8 @@ describe("the tools to switch to", () => {
 describe("a session that ends while the page is open", () => {
   it("sends the reader to sign in, and back to the page afterwards", async () => {
     stubApi({ "GET /oidc-provider": unauthorized, "GET /auth/me": unauthorized });
-    const router = await renderAt("/settings/sso");
+    const router = await renderAt("/admin/access/sso");
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
-    expect(router.state.location.search).toEqual({ next: "/settings/sso" });
+    expect(router.state.location.search).toEqual({ next: "/admin/access/sso" });
   });
 });

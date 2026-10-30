@@ -13,7 +13,7 @@ import {
   type Subject,
 } from "@/api/permissions";
 import { Icon } from "@/components/icons";
-import { Button, Dialog, ErrorBanner, Skeleton } from "@/components/ui";
+import { Button, Dialog, ErrorBanner, Skeleton, DialogFooter } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { SubjectList } from "./SubjectList";
@@ -37,7 +37,7 @@ function cannotEditLabel(entry: CannotEdit): string {
 export function RestrictionsDialog({ page, spaceKey, onClose }: { page: Page; spaceKey: string; onClose: () => void }) {
   const { data, error, refetch } = usePageRestrictions(page.id);
   return (
-    <Dialog title={t.restrictions.title(page.title)} wide onClose={onClose} data-restrictions-dialog={page.id}>
+    <Dialog open title={t.restrictions.title(page.title)} onClose={onClose} size="lg" attrs={{ "data-restrictions-dialog": page.id }}>
       {error ? (
         <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>
       ) : !data ? (
@@ -115,7 +115,7 @@ function Lists({ page, spaceKey, saved, onClose }: { page: Page; spaceKey: strin
       <p className="text-xs text-ink-subtle">{t.restrictions.adminNote}</p>
       {!editable && <p className="text-sm text-ink-muted">{t.restrictions.readOnly}</p>}
       {save.error && !fields.view && !fields.edit && !fields.editGrant && <ErrorBanner>{restrictionsError(save.error)}</ErrorBanner>}
-      <div className="flex justify-end gap-2">
+      <DialogFooter>
         <Button variant="secondary" onClick={onClose}>
           {editable ? t.restrictions.cancel : t.restrictions.close}
         </Button>
@@ -128,7 +128,7 @@ function Lists({ page, spaceKey, saved, onClose }: { page: Page; spaceKey: strin
             {t.restrictions.save}
           </Button>
         )}
-      </div>
+      </DialogFooter>
     </div>
   );
 }

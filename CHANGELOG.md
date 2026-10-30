@@ -15,11 +15,74 @@ and the versioning [Semantic Versioning](https://semver.org/).
   (3.3.20 and 5.1.16) under Excalidraw and Mermaid, and Mermaid draws with
   the same KaTeX as the editor (#556).
 
+### Added
+
+- Admin at `/admin`, the installation's pages for its administrators, laid out
+  as Armature's: an index of every page with what it is for, in the sections
+  People and access, Work, Integrations and Records, with its sections beside
+  it or behind one menu on a phone. Anybody else is refused once, for the
+  whole of it. One Admin entry leads there from the sidebar and the avatar
+  menu, and the palette names each page "Admin / <page>". New pages: Users,
+  with the join requests, adding somebody with a password and switching an
+  account off or back on (`PATCH /users/{userID}`, audited as
+  `member.switched_off` and `member.switched_on`), and Connected apps, with
+  the partner apps and every token of the installation (#584).
+- "Let people in by their groups" under Admin, Access, Single sign-on, as in
+  Armature: `admitByGroup` on `GET` and `PUT /oidc-provider`, off by
+  default. Only while it is on does somebody new in a mapped group get in,
+  at sign-in or at a partner's token exchange, and the audit log names the
+  group that let them in. Off, a mapped group still sets the role of
+  somebody already in. An installation that maps a group keeps letting
+  people in by it: the upgrade turns the setting on there (#583).
+- The time zone is chosen on the profile beside the language, saved with one
+  Save, and every date and time is written in it; until somebody chooses, the
+  browser's zone is used. `GET` and `PATCH /auth/me` carry `timezone` (#588).
+- The kit gains Armature's `Page`, `Popover`, `Toolbar`, `Pager`,
+  `ListSearch`, `SearchPicker`, `Stat`, `ProgressBar`, `DateInput`,
+  `MentionTextarea`, `Spotlight`, `Drawer`, `DockedPanel`, `ConfirmDialog`,
+  `Toast` and `Count`, and Exciter's `Radio` and `WordButton`. Menu items take
+  `checked` and `separated` beside their groups (#588).
+
 ### Changed
 
 - CI audits what the web app ships every night and on every change to its
   dependencies, and fails on high or critical advisories (`make audit-npm`)
   (#556).
+- Dialogs take the suite's API: `open`, a `size` of sm, md or lg, a
+  `description` and a pinned `footer`. A file preview and a review open in a
+  drawer from the side (#588).
+- Tabs scroll sideways on a phone, a chip cuts a long name short and shows it
+  whole on hover, and an error banner can bring itself into view (#588).
+- The archive, comment and folder glyphs are drawn as Armature and Exciter
+  draw them, and charts use the six chart colours of the theme only (#588).
+- The default theme is called everyone's default, not the organization's
+  (#588).
+- The strings live in one catalogue per feature, in English and German,
+  instead of one file per language (#588).
+- Settings at `/settings` holds only the person's own pages, each with a
+  sentence on what it is for. The installation's pages moved to `/admin`:
+  Installation (with the brand), Access, Hub, Templates, Stale pages,
+  Example space, Armature, Exciter, Webhooks, Audit log and Export and
+  import, and every old `/settings/<page>` address leads there. A space's
+  stale pages and its new templates sit below the space's settings (#584).
+- Single sign-on, a tab of Access, holds the standard's form: issuer, client
+  ID, client secret, groups claim and "Let people in by their groups", with
+  Set up or Save and "Turn it off". Scopes, creating groups and the callback
+  address leave the form and stay in the API for dynamo-connect (#584).
+- The pages say "installation", "people" and "administrator" (#584).
+- A space lives at `/spaces/{key}`, and its settings at
+  `/spaces/{key}/settings/{section}`, one address per section, as the suite's
+  standard lays them out: General (the details, a link to the stale pages,
+  archiving and deleting), Workflow, Templates, Members and permissions,
+  Integrations, Import and export, and Trash and archive. The tabs sit in the
+  page header, and one Settings entry in the space's sidebar and the palette
+  replaces the folded Space admin group. Every member sees the settings,
+  read-only where they may not change them; a section only administrators
+  use is hidden, and opened by its address says who to ask. Archiving a
+  space happens at once and offers Undo. Mails, notifications, webhooks,
+  issues filed in Armature and imported pages link to `/spaces/`, and every
+  `/s/{key}` and `/public/s/{key}` address people hold, an old
+  `/settings?tab=` among them, leads to where it now lives (#586).
 
 ## [0.2.1] - 2026-10-29
 

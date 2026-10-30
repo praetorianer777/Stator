@@ -31,7 +31,7 @@ func (h *harness) signInRows(t *testing.T, m member) {
 		args  []any
 	}{
 		{`INSERT INTO groups (name, source, external_ref) VALUES ('staff', 'oidc', 'staff')`, nil},
-		{`INSERT INTO group_member (group_id, user_id) SELECT id, $1 FROM groups`, []any{m.user}},
+		{`INSERT INTO group_member (group_id, user_id) SELECT id, $1 FROM groups WHERE builtin IS NULL`, []any{m.user}},
 		{`INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://id.test', 'stator', '\x01'::bytea)`, nil},
 		{`INSERT INTO oidc_login (state, nonce, code_verifier, expires_at) VALUES (gen_random_uuid()::text, 'n', 'v', now() + interval '1 hour')`, nil},
 		{`INSERT INTO join_request (user_id) VALUES ($1)`, []any{m.user}},
@@ -86,8 +86,13 @@ func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 
 	t.Run("acting for the owner only the organization's rows show", func(t *testing.T) {
 		for _, table := range orgTables {
-			if got := countOf(t, `SELECT count(*) FROM `+table); got != 1 {
-				t.Errorf("the owner sees %d rows in %s, want the 1 there is", got, table)
+			// The built-in Everyone group and its membership are there besides the rows signInRows wrote.
+			var there int
+			if err := h.super.QueryRow(ctx, `SELECT count(*) FROM `+table).Scan(&there); err != nil {
+				t.Fatal(err)
+			}
+			if got := countOf(t, `SELECT count(*) FROM `+table); got != there || got == 0 {
+				t.Errorf("the owner sees %d rows in %s, want the %d there are", got, table, there)
 			}
 		}
 		for _, table := range globalTables {
@@ -171,8 +176,11 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 	if _, err := h.super.Exec(ctx, `INSERT INTO oidc_provider (issuer, client_id, client_secret) VALUES ('https://id.test', 'stator', '\x01'::bytea)`); err != nil {
 		t.Fatal(err)
 	}
-	var staff uuid.UUID
-	if err := h.super.QueryRow(ctx, `INSERT INTO oidc_group_role (group_ref, role) VALUES ('staff', 'member') RETURNING id`).Scan(&staff); err != nil {
+	var staff, staffGroup uuid.UUID
+	if err := h.super.QueryRow(ctx, `INSERT INTO groups (name, source, external_ref) VALUES ('staff', 'oidc', 'staff') RETURNING id`).Scan(&staffGroup); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.super.QueryRow(ctx, `INSERT INTO role_assignment (role, group_id) VALUES ('member', $1) RETURNING id`, staffGroup).Scan(&staff); err != nil {
 		t.Fatal(err)
 	}
 	walledOff := func(t *testing.T, who string) {
@@ -180,16 +188,16 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 		if got := count(`SELECT count(*) FROM oidc_provider`); got != 0 {
 			t.Errorf("%s sees the sign-in provider", who)
 		}
-		if got := count(`SELECT count(*) FROM oidc_group_role`); got != 0 {
-			t.Errorf("%s sees %d group roles", who, got)
+		if got := count(`SELECT count(*) FROM role_assignment WHERE space_id IS NULL`); got != 0 {
+			t.Errorf("%s sees %d grants across the installation", who, got)
 		}
 		untouched(t, conn, who+" pointing sign-in elsewhere", `UPDATE oidc_provider SET issuer = 'https://evil.test', client_secret = NULL`)
-		untouched(t, conn, who+" raising a group to admin", `UPDATE oidc_group_role SET role = 'admin' WHERE id = $1`, staff)
-		untouched(t, conn, who+" unmapping a group", `DELETE FROM oidc_group_role WHERE id = $1`, staff)
-		if _, err := conn.Exec(ctx, `INSERT INTO oidc_group_role (group_ref, role) VALUES ('everyone', 'admin')`); !isPolicyViolation(err) {
-			t.Errorf("%s mapped a group to admin: %v", who, err)
+		untouched(t, conn, who+" raising a provider group to administrator", `UPDATE role_assignment SET role = 'administrator' WHERE id = $1`, staff)
+		untouched(t, conn, who+" taking a provider group's grant", `DELETE FROM role_assignment WHERE id = $1`, staff)
+		if _, err := conn.Exec(ctx, `INSERT INTO role_assignment (role, group_id) VALUES ('administrator', $1)`, staffGroup); !isPolicyViolation(err) {
+			t.Errorf("%s made a provider group administer: %v", who, err)
 		}
-		// Last, since the provider going takes its group roles with it.
+		untouched(t, conn, who+" handing the group to another claim", `UPDATE groups SET external_ref = 'stator-administrators' WHERE id = $1`, staffGroup)
 		untouched(t, conn, who+" removing the sign-in provider", `DELETE FROM oidc_provider`)
 	}
 
@@ -210,11 +218,11 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 	if got := h.countRows(t, `SELECT count(*) FROM oidc_provider WHERE issuer = 'https://id.test' AND client_secret IS NOT NULL`); got != 1 {
 		t.Error("the sign-in provider is not as the administrator left it")
 	}
-	if got := h.countRows(t, `SELECT count(*) FROM oidc_group_role`); got != 1 {
-		t.Errorf("the organization holds %d group roles, want its one", got)
+	if got := h.countRows(t, `SELECT count(*) FROM role_assignment WHERE id = $1 AND role = 'member' AND group_id = $2`, staff, staffGroup); got != 1 {
+		t.Error("the provider group's grant is not as the administrator left it")
 	}
-	if got := h.countRows(t, `SELECT count(*) FROM oidc_group_role WHERE id = $1 AND role = 'member'`, staff); got != 1 {
-		t.Error("the group role is not as the administrator left it")
+	if got := h.countRows(t, `SELECT count(*) FROM groups WHERE id = $1 AND external_ref = 'staff'`, staffGroup); got != 1 {
+		t.Error("the provider group is not as the administrator left it")
 	}
 
 	t.Run("an administrator", func(t *testing.T) {
@@ -222,14 +230,14 @@ func TestSignInSettingsAreWalledByTheDatabase(t *testing.T) {
 		if got := count(`SELECT count(*) FROM oidc_provider`); got != 1 {
 			t.Errorf("an administrator sees %d sign-in providers, want the one", got)
 		}
-		if got := count(`SELECT count(*) FROM oidc_group_role`); got != 1 {
-			t.Errorf("an administrator sees %d group roles, want the one", got)
+		if got := count(`SELECT count(*) FROM role_assignment WHERE id = '` + staff.String() + `'`); got != 1 {
+			t.Errorf("an administrator sees %d of the provider group's grants, want the one", got)
 		}
 		for _, change := range []struct{ what, sql string }{
 			{"change the sign-in provider", `UPDATE oidc_provider SET enabled = false`},
-			{"map a group", `INSERT INTO oidc_group_role (group_ref, role) VALUES ('leads', 'admin')`},
-			{"remap a group", `UPDATE oidc_group_role SET role = 'admin' WHERE group_ref = 'staff'`},
-			{"unmap a group", `DELETE FROM oidc_group_role WHERE group_ref = 'leads'`},
+			{"make the provider group administer", `INSERT INTO role_assignment (role, group_id) VALUES ('administrator', '` + staffGroup.String() + `')`},
+			{"change the provider group's other grant", `UPDATE role_assignment SET role = 'space_creator' WHERE id = '` + staff.String() + `'`},
+			{"take its administering away", `DELETE FROM role_assignment WHERE role = 'administrator' AND group_id = '` + staffGroup.String() + `'`},
 			{"remove the sign-in provider", `DELETE FROM oidc_provider`},
 		} {
 			if tag, err := conn.Exec(ctx, change.sql); err != nil || tag.RowsAffected() != 1 {

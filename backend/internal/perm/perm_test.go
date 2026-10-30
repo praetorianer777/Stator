@@ -6,20 +6,23 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-
-	"github.com/praetorianer777/stator/backend/internal/auth"
 )
 
 // A space as it starts: everyone views, adds pages, comments and deletes.
 var openSpace = []SpacePermission{SpaceView, SpaceAddPages, SpaceAddComments, SpaceDelete}
 
 func member(space ...SpacePermission) Facts {
-	return Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator}, Space: space}
+	return Facts{Member: true, Global: []GlobalPermission{UseStator}, Space: space}
+}
+
+// administrator holds what the built-in administrator role holds, granted
+// across the installation.
+func administrator() Facts {
+	return Facts{Member: true, Global: []GlobalPermission{UseStator, CreateSpaces, AdministerSite}, Space: SpacePermissions}
 }
 
 func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
-	admin := Facts{Member: true, Role: auth.RoleAdmin}
-	owner := Facts{Member: true, Role: auth.RoleOwner}
+	admin := administrator()
 	for _, tt := range []struct {
 		name   string
 		facts  Facts
@@ -58,23 +61,24 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 		{"a member of an open space does not grant editing", member(openSpace...), GrantEdit, false},
 		{"an administrator of the space grants editing", member(SpaceAdminister), GrantEdit, true},
 		{"no grant is no view", member(), ViewSpace, false},
-		{"without use nothing holds", Facts{Member: true, Role: auth.RoleMember, Space: openSpace}, ViewSpace, false},
+		{"without use nothing holds", Facts{Member: true, Space: openSpace}, ViewSpace, false},
 		{"a stranger holds nothing", Facts{Space: openSpace, Global: []GlobalPermission{UseStator}}, ViewSpace, false},
 		{"an organization admin holds every space permission", admin, AdministerSpace, true},
-		{"an owner holds every space permission", owner, PurgeTrash, true},
-		{"an admin without use still uses", admin, ViewSpace, true},
+		{"an administrator holds what the role grants in every space", admin, PurgeTrash, true},
+		{"administering without use views nothing", Facts{Member: true, Global: []GlobalPermission{AdministerSite}, Space: SpacePermissions}, ViewSpace, false},
+		{"a renamed or new role holds what it lists", Facts{Member: true, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateSpace, true},
 		{"members do not create spaces by default", member(), CreateSpace, false},
-		{"a member granted createSpace creates", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateSpace, true},
-		{"createSpace without use is nothing", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{CreateSpaces}}, CreateSpace, false},
+		{"a member granted createSpace creates", Facts{Member: true, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateSpace, true},
+		{"createSpace without use is nothing", Facts{Member: true, Global: []GlobalPermission{CreateSpaces}}, CreateSpace, false},
 		{"admins create spaces", admin, CreateSpace, true},
 		{"every member creates a personal space", member(), CreatePersonalSpace, true},
-		{"a personal space takes use", Facts{Member: true, Role: auth.RoleMember}, CreatePersonalSpace, false},
+		{"a personal space takes use", Facts{Member: true}, CreatePersonalSpace, false},
 		{"a stranger creates no personal space", Facts{Global: []GlobalPermission{UseStator}}, CreatePersonalSpace, false},
 		{"admins create the example space", admin, CreateExampleSpace, true},
-		{"owners create the example space", owner, CreateExampleSpace, true},
-		{"a member granted createSpace makes no example space", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateExampleSpace, false},
+		{"administering without a role's other permissions still makes the example", Facts{Member: true, Global: []GlobalPermission{AdministerSite}}, CreateExampleSpace, true},
+		{"a member granted createSpace makes no example space", Facts{Member: true, Global: []GlobalPermission{UseStator, CreateSpaces}}, CreateExampleSpace, false},
 		{"admins move the organization", admin, MoveSite, true},
-		{"a member granted createSpace moves no organization", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}}, MoveSite, false},
+		{"a member granted createSpace moves no organization", Facts{Member: true, Global: []GlobalPermission{UseStator, CreateSpaces}}, MoveSite, false},
 		{"an unknown action is refused", admin, Action("space.unknown"), false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -83,13 +87,16 @@ func TestSpacePermissionsImplyAsTheContractSays(t *testing.T) {
 	}
 }
 
-func TestGlobalAdministerFollowsTheRoles(t *testing.T) {
-	granted := Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, AdministerSite}}
-	if granted.HoldsGlobal(AdministerSite) {
-		t.Error("a member holds administer through a grant")
+func TestGlobalAdministerFollowsTheGrants(t *testing.T) {
+	granted := Facts{Member: true, Global: []GlobalPermission{UseStator, AdministerSite}}
+	if !granted.HoldsGlobal(AdministerSite) {
+		t.Error("a member granted administer does not hold it")
 	}
-	if !(Facts{Member: true, Role: auth.RoleAdmin}).GlobalCan().Administer {
-		t.Error("an admin does not administer")
+	if (Facts{Member: true, Guest: true, Global: []GlobalPermission{UseStator, AdministerSite}}).HoldsGlobal(AdministerSite) {
+		t.Error("a guest administers the installation")
+	}
+	if !(administrator()).GlobalCan().Administer {
+		t.Error("an administrator does not administer")
 	}
 	if got := member().GlobalCan(); got != (GlobalCan{Use: true}) {
 		t.Errorf("a member is offered %+v", got)
@@ -137,9 +144,9 @@ func TestRestrictionsInheritAndNarrow(t *testing.T) {
 			PageAccess{View: true, ViewRestricted: true, EditRestricted: true}},
 		{"a space administrator is not bound", member(SpaceAdminister), []ChainLink{link(true, false, true, false)},
 			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true, GrantEdit: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
-		{"an organization administrator is not bound", Facts{Member: true, Role: auth.RoleAdmin}, []ChainLink{free, link(true, false, true, false)},
+		{"an organization administrator is not bound", administrator(), []ChainLink{free, link(true, false, true, false)},
 			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true, GrantEdit: true, Archive: true, ViewRestricted: true, EditRestricted: true}},
-		{"nobody sees another's unpublished page", Facts{Member: true, Role: auth.RoleOwner}, []ChainLink{free, {HiddenDraft: true}},
+		{"nobody sees another's unpublished page", administrator(), []ChainLink{free, {HiddenDraft: true}},
 			PageAccess{}},
 		{"no chain is no page", member(openSpace...), nil, PageAccess{}},
 	} {
@@ -185,11 +192,11 @@ func TestAGrantListOpensEditingAndNothingElse(t *testing.T) {
 			PageAccess{View: true, Edit: true, Delete: true, Granted: true, EditRestricted: true}},
 		{"somebody who adds pages also arranges a granted page", member(openSpace...), []ChainLink{granted(free)},
 			PageAccess{View: true, Edit: true, Delete: true, Comment: true, Add: true}},
-		{"a grant without use is nothing", Facts{Member: true, Role: auth.RoleMember, Space: []SpacePermission{SpaceView}}, []ChainLink{granted(free)},
+		{"a grant without use is nothing", Facts{Member: true, Space: []SpacePermission{SpaceView}}, []ChainLink{granted(free)},
 			PageAccess{}},
 		{"a space it does not reach is nothing", Facts{}, []ChainLink{granted(free)},
 			PageAccess{}},
-		{"a guest who reads their space edits a granted page there", Facts{Member: true, Role: auth.RoleGuest, Global: []GlobalPermission{UseStator}, Space: []SpacePermission{SpaceView}, SpacesOnly: true},
+		{"a guest who reads their space edits a granted page there", Facts{Member: true, Guest: true, Global: []GlobalPermission{UseStator}, Space: []SpacePermission{SpaceView}, SpacesOnly: true},
 			[]ChainLink{granted(free)}, PageAccess{View: true, Edit: true, Granted: true}},
 		{"an unpublished page stays its author's", reader, []ChainLink{granted(ChainLink{HiddenDraft: true})},
 			PageAccess{}},
@@ -262,8 +269,8 @@ func TestPickerLimits(t *testing.T) {
 // A token limited to spaces is handed facts only for a space it reaches, so
 // within one its owner's role holds as ever, and the organization never.
 func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
-	admin := Facts{Member: true, Role: auth.RoleAdmin, SpacesOnly: true}
-	creator := Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator, CreateSpaces}, SpacesOnly: true}
+	admin := Facts{Member: true, Global: administrator().Global, Space: SpacePermissions, SpacesOnly: true}
+	creator := Facts{Member: true, Global: []GlobalPermission{UseStator, CreateSpaces}, SpacesOnly: true}
 	for _, tt := range []struct {
 		name   string
 		facts  Facts
@@ -276,7 +283,7 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 		{"a creator's token creates no space", creator, CreateSpace, false},
 		{"an admin's token creates no example space", admin, CreateExampleSpace, false},
 		{"an admin's token moves no organization", admin, MoveSite, false},
-		{"a member's token edits where the member may", Facts{Member: true, Role: auth.RoleMember, Global: []GlobalPermission{UseStator}, Space: openSpace, SpacesOnly: true}, EditPages, true},
+		{"a member's token edits where the member may", Facts{Member: true, Global: []GlobalPermission{UseStator}, Space: openSpace, SpacesOnly: true}, EditPages, true},
 		{"a space it does not reach comes as no facts at all", Facts{}, ViewSpace, false},
 	} {
 		if got := Decide(tt.facts, tt.action); got != tt.want {
@@ -286,7 +293,7 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 	if admin.SiteAdmin() || admin.GlobalCan().Administer || admin.GlobalCan().CreateSpace || !admin.GlobalCan().Use {
 		t.Errorf("an admin's limited token = %+v, want use and nothing more", admin.GlobalCan())
 	}
-	if !(Facts{Member: true, Role: auth.RoleAdmin}).SiteAdmin() {
+	if !(administrator()).SiteAdmin() {
 		t.Error("an admin without a limited token stopped administering the organization")
 	}
 	if Decide(admin, CreatePersonalSpace) {
@@ -299,7 +306,7 @@ func TestATokenLimitedToSpacesHoldsNothingOfTheOrganization(t *testing.T) {
 // as a whole, which the database marks as for a limited token.
 func TestAGuestHoldsTheirGrantsAndNothingOfTheOrganization(t *testing.T) {
 	guest := func(space ...SpacePermission) Facts {
-		return Facts{Member: true, Role: auth.RoleGuest, Global: []GlobalPermission{UseStator, CreateSpaces}, Space: space, SpacesOnly: true}
+		return Facts{Member: true, Guest: true, Global: []GlobalPermission{UseStator, CreateSpaces}, Space: space, SpacesOnly: true}
 	}
 	for _, tt := range []struct {
 		name   string

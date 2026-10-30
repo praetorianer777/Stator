@@ -392,7 +392,9 @@ func TestUpdatesReadAWindowNotTheWholeOrganization(t *testing.T) {
 	}
 	bulk("PLN", open.homeID, pages)
 	bulk("PLC", closed.homeID, hidden)
-	if _, err := h.super.Exec(ctx, `DELETE FROM space_grant g USING space s WHERE g.space_id = s.id AND s.key = 'PLC' AND g.subject_type = 'everyone'`); err != nil {
+	if _, err := h.super.Exec(ctx, `
+		DELETE FROM role_assignment a USING space s, groups g
+		WHERE a.space_id = s.id AND s.key = 'PLC' AND a.group_id = g.id AND g.builtin = 'everyone'`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := h.super.Exec(ctx, `ANALYZE page`); err != nil {

@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from "react";
-import { subjectKey, useInspectAccess, type AccessReport, type AccessRight, type AccessStep, type SpaceGrant, type Subject } from "@/api/permissions";
+import { groupLabel } from "@/api/access";
+import { useInspectAccess, type AccessGrant, type AccessRight, type AccessStep, type Subject } from "@/api/permissions";
 import { Icon } from "@/components/icons";
 import { Dialog, ErrorBanner, Skeleton, Tag, cx } from "@/components/ui";
 import { t } from "@/i18n";
@@ -12,15 +13,11 @@ export function decidingStep(right: AccessRight): number {
 }
 
 /** One step as a sentence about the person checked. */
-export function stepSentence(step: AccessStep, report: Pick<AccessReport, "role" | "roleSource">): string {
+export function stepSentence(step: AccessStep): string {
   const permission = step.permission ? t.permissions.spaceNames[step.permission] : "";
   const title = step.page?.title ?? "";
   const list = step.list === "view" ? "view" : "edit";
   switch (step.kind) {
-    case "orgAdmin": {
-      const role = t.access.orgAdmin(report.role === "owner");
-      return report.roleSource === "oidc" ? `${role} ${t.access.fromProvider}` : role;
-    }
     case "use":
       return step.passed ? t.access.useYes : t.access.useNo;
     case "space":
@@ -50,7 +47,7 @@ export function stepSentence(step: AccessStep, report: Pick<AccessReport, "role"
 export function AccessDialog({ pageId, pageTitle, onClose }: { pageId: string; pageTitle: string; onClose: () => void }) {
   const [person, setPerson] = useState<Subject>();
   return (
-    <Dialog title={t.access.title(pageTitle)} wide onClose={onClose} data-access-dialog={pageId}>
+    <Dialog open title={t.access.title(pageTitle)} onClose={onClose} size="lg" attrs={{ "data-access-dialog": pageId }}>
       <div className="space-y-4">
         <p className="text-sm text-ink-muted">{t.access.intro}</p>
         <SubjectPicker label={t.access.pickerLabel} peopleOnly inline onPick={setPerson} />
@@ -77,14 +74,14 @@ function Report({ pageId, userId }: { pageId: string; userId: string }) {
       </h3>
       <ul className="space-y-3">
         {data.rights.map((right) => (
-          <RightCard key={right.right} right={right} report={data} />
+          <RightCard key={right.right} right={right} />
         ))}
       </ul>
     </section>
   );
 }
 
-function RightCard({ right, report }: { right: AccessRight; report: AccessReport }) {
+function RightCard({ right }: { right: AccessRight }) {
   const deciding = decidingStep(right);
   const name = t.access.rights[right.right];
   return (
@@ -96,14 +93,14 @@ function RightCard({ right, report }: { right: AccessRight; report: AccessReport
       </h4>
       <ol className="space-y-2">
         {right.steps.map((step, i) => (
-          <Step key={`${step.kind}-${step.page?.id ?? ""}-${step.list ?? ""}-${step.permission ?? ""}`} step={step} report={report} deciding={i === deciding} />
+          <Step key={`${step.kind}-${step.page?.id ?? ""}-${step.list ?? ""}-${step.permission ?? ""}`} step={step} deciding={i === deciding} />
         ))}
       </ol>
     </li>
   );
 }
 
-function Step({ step, report, deciding }: { step: AccessStep; report: AccessReport; deciding: boolean }) {
+function Step({ step, deciding }: { step: AccessStep; deciding: boolean }) {
   const passed = step.passed;
   return (
     <li
@@ -118,7 +115,7 @@ function Step({ step, report, deciding }: { step: AccessStep; report: AccessRepo
       <div className="min-w-0 flex-1 space-y-1.5">
         <p>
           <span className="sr-only">{passed ? t.access.passed : t.access.failed}: </span>
-          {stepSentence(step, report)}
+          {stepSentence(step)}
           {deciding && <strong className="ml-1.5 font-semibold text-danger">{t.access.decides}</strong>}
         </p>
         {step.grants.length > 0 && (
@@ -127,7 +124,7 @@ function Step({ step, report, deciding }: { step: AccessStep; report: AccessRepo
           </Named>
         )}
         {step.via.length > 0 && (
-          <Named label={step.kind === "use" ? t.access.grantedTo : t.access.namedAs}>
+          <Named label={t.access.namedAs}>
             <SubjectList subjects={step.via} empty={t.access.nobody} />
           </Named>
         )}
@@ -150,21 +147,25 @@ function Named({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** The space's grants that bring the person in, each with the permissions that count. */
-function GrantList({ grants }: { grants: SpaceGrant[] }) {
+/** The grants that bring the person in: whose, which role, and where it holds. */
+function GrantList({ grants }: { grants: AccessGrant[] }) {
   return (
     <ul className="flex flex-wrap gap-1.5" data-grant-list>
-      {grants.map((grant) => (
-        <li
-          key={subjectKey(grant.subject)}
-          className="inline-flex h-7 items-center gap-1.5 rounded-control border border-border bg-surface-raised px-2 text-sm text-ink"
-          data-grant={grant.subject.name}
-        >
-          <SubjectGlyph type={grant.subject.type} />
-          <span>{grant.subject.type === "everyone" ? t.permissions.everyone : grant.subject.name}</span>
-          <span className="text-xs text-ink-subtle">{grant.permissions.map((p) => t.permissions.spaceNames[p]).join(", ")}</span>
-        </li>
-      ))}
+      {grants.map((grant) => {
+        const who = grant.groupId ? groupLabel(grant) : (grant.userName ?? "");
+        return (
+          <li
+            key={grant.id}
+            className="inline-flex min-h-7 flex-wrap items-center gap-1.5 rounded-control border border-border bg-surface-raised px-2 text-sm text-ink"
+            data-grant={who}
+            data-grant-role={grant.role}
+          >
+            <SubjectGlyph type={grant.groupId ? "group" : "user"} />
+            <span>{who}</span>
+            <span className="text-xs text-ink-subtle">{grant.spaceId ? t.access.roleHere(grant.roleName) : t.access.roleEverywhere(grant.roleName)}</span>
+          </li>
+        );
+      })}
     </ul>
   );
 }

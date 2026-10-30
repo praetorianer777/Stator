@@ -142,11 +142,11 @@ func TestInlineCommentsOverTheAPI(t *testing.T) {
 	docs := newTree(t, owner, "INL", "Inline")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("We ship on Friday after the review.", "Notes follow here.")})
 	draft := obj(t, want(t, owner.post(t, "/api/v1/pages", map[string]any{"parentId": docs.homeID, "title": "Draft", "body": textDoc("Not yet.")}), http.StatusCreated, "an unpublished page"), "page")["id"].(string)
-	want(t, owner.put(t, "/api/v1/spaces/INL/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "INL", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"view", "addComments"}},
 		map[string]any{"subject": user(benID), "permissions": []any{"view", "addComments"}},
-	}}), http.StatusOK, "ann and ben comment, nobody but the owner edits")
+	}), http.StatusOK, "ann and ben comment, nobody but the owner edits")
 	h.settle(t)
 
 	before := readPage(t, ann, plan)
@@ -317,11 +317,11 @@ func TestInlineCommentsAreEnforcedByTheDatabase(t *testing.T) {
 
 	docs := newTree(t, owner, "IRAW", "Inline raw")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("We ship on Friday.")})
-	want(t, owner.put(t, "/api/v1/spaces/IRAW/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "IRAW", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"view", "addComments"}},
 		map[string]any{"subject": user(benID), "permissions": []any{"view", "addComments"}},
-	}}), http.StatusOK, "ann and ben comment")
+	}), http.StatusOK, "ann and ben comment")
 	h.settle(t)
 	r, anns := startInline(t, ann, plan, 0, "Friday", "Why Friday?")
 	want(t, r, http.StatusCreated, "ann's thread")

@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, confirm, toast } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
@@ -23,20 +23,20 @@ test.describe("the trash", { tag: ["@auth"] }, () => {
     await createPage(api, old.id, "Older plans");
 
     // The page asks before it goes; a person accepts.
-    page.on("dialog", (dialog) => void dialog.accept());
-    await page.goto(`/s/${key}/p/${old.id}/old-plans`);
+    await page.goto(`/spaces/${key}/p/${old.id}/old-plans`);
     await page.locator('[data-action="page-menu"]').click();
     await page.locator('[role="menu"] [data-action="trash-page"]').click();
+    await confirm(page);
     await expect(page).toHaveURL(new RegExp(`/p/${plans.id}/plans$`));
     await expect(heading(page)).toHaveText("Plans");
     expect(await childTitles(api, key, plans.id)).toEqual([]);
 
-    await page.goto(`/s/${key}/settings?tab=trash`);
+    await page.goto(`/spaces/${key}/settings/trash`);
     await expect(trashRow(page, "Old plans")).toContainText("2 pages");
     await expect(trashRow(page, "Old plans")).toContainText("Under Plans");
     await expectAccessible(page);
     await trashRow(page, "Old plans").locator('[data-action="restore-page"]').click();
-    await expect(page.locator("[data-trash-notice]")).toHaveText("Restored Old plans.");
+    await expect(toast(page, "Restored Old plans.")).toBeVisible();
     await expect(trashRow(page, "Old plans")).toHaveCount(0);
     expect(await childTitles(api, key, plans.id)).toEqual(["Old plans"]);
     expect(await childTitles(api, key, old.id)).toEqual(["Older plans"]);
@@ -48,11 +48,10 @@ test.describe("the trash", { tag: ["@auth"] }, () => {
     const space = await createSpace(api, key, uniqueName(testInfo, "Purge"));
     const doomed = await createPage(api, space.homePageId, "Doomed");
     await api.DELETE("/pages/{pageID}", { params: { path: { pageID: doomed.id } } });
-
-    page.on("dialog", (dialog) => void dialog.accept());
-    await page.goto(`/s/${key}/settings?tab=trash`);
+    await page.goto(`/spaces/${key}/settings/trash`);
     await trashRow(page, "Doomed").locator('[data-action="purge-page"]').click();
-    await expect(page.locator("[data-trash-notice]")).toHaveText("Deleted Doomed for good.");
+    await confirm(page);
+    await expect(toast(page, "Deleted Doomed for good.")).toBeVisible();
     await expect(page.getByText("The trash is empty.")).toBeVisible();
     const { response } = await api.GET("/pages/{pageID}", { params: { path: { pageID: doomed.id } } });
     expect(response.status).toBe(404);

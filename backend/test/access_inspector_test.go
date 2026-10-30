@@ -29,11 +29,11 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 	top := docs.add(docs.homeID, "Top")
 	low := docs.add(top, "Low")
 	open := docs.add(docs.homeID, "Open")
-	want(t, owner.put(t, "/api/v1/spaces/INSP/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "INSP", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addComments"}},
 		map[string]any{"subject": group(writers), "permissions": []any{"addPages", "delete"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "INSP's grants")
+	}), http.StatusOK, "INSP's grants")
 	want(t, restrict(t, ann, top, []any{group(writers), user(annID)}, []any{user(annID)}), http.StatusOK, "ann restricts Top")
 	draft := obj(t, want(t, ann.post(t, "/api/v1/pages", map[string]any{"parentId": open, "title": "Draft"}), http.StatusCreated, "ann's unpublished page"), "page")["id"].(string)
 	h.settle(t)
@@ -119,33 +119,38 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 		if d := decider(openCarl.Rights[1]); d == nil || d.Kind != perm.StepSpace || *d.Permission != perm.SpaceAddPages || len(d.Grants) != 0 {
 			t.Errorf("carl's edit of Open is decided by %+v", d)
 		}
-		if s := openCarl.Rights[0].Steps[1]; s.Kind != perm.StepSpace || len(s.Grants) != 1 || s.Grants[0].Subject.Type != perm.SubjectEveryone {
+		if s := openCarl.Rights[0].Steps[1]; s.Kind != perm.StepSpace || len(s.Grants) != 1 || s.Grants[0].GroupBuiltin != "everyone" || s.Grants[0].Role != "commenter" {
 			t.Errorf("carl views Open through %+v", s)
 		}
 		if d := decider(inspect(ann, draft, bobID).Rights[0]); d == nil || d.Kind != perm.StepUnpublished || d.Page.Title != "Draft" {
 			t.Errorf("bob's view of ann's unpublished page is decided by %+v", d)
 		}
+		// An administrator of the installation edits through the administrator
+		// role granted across it, which administers every space and so passes
+		// the lists.
 		lowOwner := inspect(ann, low, home.user)
-		if lowOwner.Role != "owner" || lowOwner.Rights[1].Steps[1].Kind != perm.StepSiteAdmin || !lowOwner.Rights[1].Steps[2].Bypassed {
-			t.Errorf("the owner edits Low through %+v", lowOwner.Rights[1].Steps)
+		steps := lowOwner.Rights[1].Steps
+		if lowOwner.Role != "member" || len(steps) != 4 || steps[1].Kind != perm.StepSpace || len(steps[1].Grants) != 1 ||
+			steps[1].Grants[0].Role != "administrator" || steps[1].Grants[0].SpaceID != nil || *steps[2].Permission != perm.SpaceAdminister || !steps[3].Bypassed {
+			t.Errorf("the administrator edits Low through %+v", steps)
 		}
 		if again := inspect(owner, low, carlID); again.Rights[0].Allowed {
-			t.Errorf("an organization administrator is told carl may view Low")
+			t.Errorf("an administrator of the installation is told carl may view Low")
 		}
 	})
 
 	t.Run("use granted to a group decides who uses the organization", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{group(writers), user(annID)}}), http.StatusOK, "use for Writers and ann")
+		want(t, owner.setAcross(t, "use", []any{group(writers), user(annID)}), http.StatusOK, "use for Writers and ann")
 		// Through the API rather than a cleanup, so the next reader waits for the replica to have it.
 		defer func() {
-			want(t, owner.put(t, "/api/v1/site/permissions/use", map[string]any{"subjects": []any{everyone}}), http.StatusOK, "use for everyone again")
+			want(t, owner.setAcross(t, "use", []any{everyone}), http.StatusOK, "use for everyone again")
 		}()
 		h.settle(t)
 		if d := decider(inspect(ann, open, carlID).Rights[0]); d == nil || d.Kind != perm.StepUse {
 			t.Errorf("carl's view of Open without use is decided by %+v", d)
 		}
 		use := inspect(ann, open, bobID).Rights[0].Steps[0]
-		if use.Kind != perm.StepUse || !use.Passed || len(use.Via) != 1 || use.Via[0].Name != "Writers" {
+		if use.Kind != perm.StepUse || !use.Passed || len(use.Grants) != 1 || use.Grants[0].GroupName != "Writers" || use.Grants[0].Role != "member" {
 			t.Errorf("bob uses the organization through %+v", use)
 		}
 		agree(t)
@@ -174,7 +179,8 @@ func TestTheInspectorAgreesWithTheDatabase(t *testing.T) {
 			t.Helper()
 			var n int
 			actAs(t, conn, caller)
-			if err := conn.QueryRow(ctx, `SELECT count(*) FROM perm_global_grant_sources($1, 'use')`, person).Scan(&n); err != nil {
+			if err := conn.QueryRow(ctx, `
+				SELECT count(*) FROM perm_grants_reaching($1, (SELECT id FROM space WHERE key = 'INSP')) WHERE space_id IS NULL`, person).Scan(&n); err != nil {
 				t.Fatal(err)
 			}
 			return n

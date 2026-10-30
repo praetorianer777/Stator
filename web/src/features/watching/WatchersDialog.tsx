@@ -13,7 +13,7 @@ function via(watcher: Watcher): string {
 export function WatchersDialog({ page, onClose }: { page: Page; onClose: () => void }) {
   const { data, error, isLoading, refetch } = useWatchers(page.id);
   return (
-    <Dialog title={t.watch.watchersTitle(page.title)} onClose={onClose} data-watchers-dialog="">
+    <Dialog open title={t.watch.watchersTitle(page.title)} onClose={onClose} attrs={{ "data-watchers-dialog": "" }}>
       <p className="mb-3 text-sm text-ink-muted">{t.watch.watchersIntro}</p>
       {error ? (
         <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>

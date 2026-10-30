@@ -90,7 +90,7 @@ async function harbourPage(api: StatorApi, page: Page, testInfo: TestInfo) {
       },
     }),
   );
-  return { key, target, harbour, lighthouse, clip, path: `/s/${key}/p/${target.id}/harbour-tour` };
+  return { key, target, harbour, lighthouse, clip, path: `/spaces/${key}/p/${target.id}/harbour-tour` };
 }
 
 /** Plays the video until the browser has asked for a stretch of it and has its first frame. */

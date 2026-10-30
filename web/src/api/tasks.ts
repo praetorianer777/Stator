@@ -1,4 +1,5 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { HOME_TASKS_PAGE_SIZE, TASKS_PAGE_SIZE } from "@/config";
 import { api } from "./client";
 import { pageQueryKey } from "./pages";

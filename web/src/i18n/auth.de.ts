@@ -1,0 +1,77 @@
+import type { loginEn, ssoEn } from "./auth.en";
+
+/** The German strings of signing in and single sign-on, held to the English shape. */
+export const loginDe: typeof loginEn = {
+  title: "Anmelden",
+  subtitle: "Melden Sie sich über Ihren Identitätsanbieter an.",
+  sso: "Mit SSO anmelden",
+  passwordTitle: "Anmeldung für Administratoren",
+  passwordHint: "Für den lokalen Administrator, der mit dem Server eingerichtet wurde. Alle anderen melden sich mit SSO an.",
+  email: "E-Mail",
+  password: "Passwort",
+  submit: "Mit Passwort anmelden",
+  waitingTitle: "Ihre Anfrage wartet",
+  waitingBody:
+    "Ihr Identitätsanbieter kennt Sie, aber hier hat Sie noch niemand zugelassen. Ihre Anfrage wartet auf einen Administrator; melden Sie sich erneut an, sobald Sie zugelassen sind.",
+  failures: {
+    expired: "Diese Anmeldung hat zu lange gedauert oder wurde schon verwendet. Beginnen Sie sie neu.",
+    not_configured:
+      "Die Anmeldung mit SSO ist hier noch nicht eingerichtet. Melden Sie sich mit Passwort an, oder bitten Sie einen Administrator, sie einzurichten.",
+    no_email: "Ihr Identitätsanbieter hat keine E-Mail-Adresse gesendet. Bitten Sie seinen Administrator, den E-Mail-Claim für Stator freizugeben.",
+    unverified_email: "Ihr Identitätsanbieter hat Ihre E-Mail-Adresse nicht bestätigt. Bestätigen Sie sie dort und melden Sie sich dann erneut an.",
+    inactive: "Dieses Konto wurde deaktiviert. Bitten Sie einen Administrator, es wieder zu aktivieren.",
+    denied: "Ihr Identitätsanbieter hat Sie nicht hereingelassen. Versuchen Sie es noch einmal, oder fragen Sie seinen Administrator.",
+    unreachable:
+      "Stator hat Ihren Identitätsanbieter nicht erreicht. Versuchen Sie es gleich noch einmal, und sagen Sie einem Administrator Bescheid, wenn es weiter scheitert.",
+    failed:
+      "Die Anmeldung über Ihren Identitätsanbieter hat nicht geklappt. Versuchen Sie es noch einmal, und sagen Sie einem Administrator Bescheid, wenn es weiter scheitert.",
+  },
+};
+
+export const ssoDe: typeof ssoEn = {
+  title: "Single Sign-on",
+  intro: "Personen melden sich über Ihren Identitätsanbieter an, und ihre Gruppen kommen von dort mit.",
+  issuer: "Aussteller",
+  issuerHint: "Die Aussteller-URL des Anbieters, unter der sein Discovery-Dokument liegt.",
+  clientId: "Client-ID",
+  clientSecret: "Client-Geheimnis",
+  clientSecretStored: "Gespeichert. Leer lassen, um es zu behalten.",
+  groupsClaim: "Gruppen-Claim",
+  groupsClaimHint: "Der Claim mit den Gruppen einer Person; ein Pfad mit Punkten erreicht einen verschachtelten.",
+  admitByGroup: "Personen über ihre Gruppen einlassen",
+  admitByGroupDetail:
+    "Wer sich neu hier oder über Armature oder Exciter anmeldet und dessen Gruppe beim Anbieter hier eine Vergabe hat, wird eingelassen und darf, was die Vergaben der Gruppe umfassen. Alle anderen warten weiterhin darauf, eingelassen zu werden.",
+  signInAt: "Personen können sich anmelden unter",
+  offAddress: "Abgeschaltet. Die Adresse wäre",
+  save: "Speichern",
+  setUp: "Single Sign-on einrichten",
+  turnOff: "Abschalten",
+  saved: "Single Sign-on ist gespeichert.",
+  turnedOff: "Single Sign-on ist abgeschaltet. Personen melden sich nur mit Passwort an.",
+  notAdmin: "Nur ein Administrator kann ändern, wie sich Personen anmelden.",
+  waitingTitle: "Warten auf Zulassung",
+  waitingIntro: "Diese Personen haben sich über den Identitätsanbieter angemeldet, sind aber noch keine Mitglieder.",
+  asked: (email: string, when: string) => `${email}, angefragt ${when}`,
+  admit: "Als Mitglied zulassen",
+  decline: "Abweisen",
+  admitted: (name: string) => `${name} kann sich jetzt anmelden.`,
+  declined: (name: string) => `${name} wurde abgewiesen.`,
+  waitingCount: (count: number) => `${count} wartend`,
+  role: "Rolle",
+  roleNames: { admin: "Administrator", member: "Mitglied", guest: "Gast" } as Record<string, string>,
+  cancel: "Abbrechen",
+  addPerson: "Person hinzufügen",
+  addPersonIntro: "Fügt eine Person hinzu, die sich mit E-Mail-Adresse und Passwort anmeldet, ohne Identity Provider.",
+  addEmail: "E-Mail-Adresse",
+  addName: "Name",
+  addNameHint: "Optional. Ohne Angabe wird der Teil der Adresse vor dem @ verwendet.",
+  addPassword: "Passwort",
+  addPasswordHint: "Mindestens 12 Zeichen. Leer lassen, dann wird eines erzeugt und einmal angezeigt.",
+  addPersonSubmit: "Hinzufügen",
+  addedNew: (name: string) => `${name} wurde hinzugefügt und kann sich jetzt anmelden.`,
+  addedExisting: (name: string) => `${name} hatte schon ein Konto und wurde hier hinzugefügt. Die Person meldet sich mit dem eigenen Passwort an.`,
+  passwordOnce: "Gib der Person dieses Passwort weiter. Es wird nur jetzt angezeigt und lässt sich später nicht nachsehen.",
+  copyPassword: "Passwort kopieren",
+  copied: "Kopiert",
+  done: "Fertig",
+};

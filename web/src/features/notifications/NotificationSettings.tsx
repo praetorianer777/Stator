@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { DIGESTS, NOTIFICATION_KINDS, usePreferences, useSavePreferences, type Digest, type NotificationKind, type Preferences } from "@/api/notifications";
-import { Button, Card, Checkbox, ErrorBanner, PageHeader, Select, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Table, Page, PageHeader, Button, Card, Checkbox, Td, Th, ErrorBanner, Select, Skeleton, useToast } from "@/components/ui";
 import { DAILY_DIGEST_HOUR_UTC } from "@/config";
 import { t } from "@/i18n";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 function digestLabel(digest: Digest): string {
   return digest === "daily" ? t.notifications.digests.daily(DAILY_DIGEST_HOUR_UTC) : t.notifications.digests[digest];
@@ -13,20 +12,19 @@ function digestLabel(digest: Digest): string {
 export function NotificationSettings() {
   const { data, error, isLoading, refetch } = usePreferences();
   return (
-    <div className="mx-auto max-w-3xl" data-notification-settings="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.notifications.preferencesTitle} meta={t.notifications.preferencesIntro} />
+    <Page width="narrow" data-notification-settings="">
+      <PageHeader title={t.notifications.preferencesTitle} meta={t.notifications.preferencesIntro} />
       {error ? <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner> : isLoading || !data ? <Skeleton /> : <PreferencesForm saved={data} />}
-    </div>
+    </Page>
   );
 }
 
 function PreferencesForm({ saved }: { saved: Preferences }) {
   const save = useSavePreferences();
   const [draft, setDraft] = useState<Preferences>(saved);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
 
   function toggle(channel: "inApp" | "email", kind: NotificationKind, on: boolean) {
-    setNotice("");
     setDraft((current) => ({ ...current, [channel]: { ...current[channel], [kind]: on } }));
   }
 
@@ -35,7 +33,7 @@ function PreferencesForm({ saved }: { saved: Preferences }) {
     save.mutate(draft, {
       onSuccess: (next) => {
         setDraft(next);
-        setNotice(t.notifications.saved);
+        toast.success(t.notifications.saved);
       },
     });
   }
@@ -86,7 +84,6 @@ function PreferencesForm({ saved }: { saved: Preferences }) {
           hint={t.notifications.digestHint}
           value={draft.digest}
           onChange={(event) => {
-            setNotice("");
             setDraft({ ...draft, digest: event.target.value as Digest });
           }}
           data-field="digest"
@@ -102,7 +99,6 @@ function PreferencesForm({ saved }: { saved: Preferences }) {
             label={t.notifications.autoWatch}
             checked={draft.autoWatch}
             onChange={(event) => {
-              setNotice("");
               setDraft({ ...draft, autoWatch: event.target.checked });
             }}
             aria-describedby="auto-watch-hint"
@@ -114,11 +110,6 @@ function PreferencesForm({ saved }: { saved: Preferences }) {
         </div>
       </Card>
       <div className="flex items-center justify-end gap-3">
-        {notice && (
-          <p role="status" className="text-sm text-ink-muted" data-preferences-saved="">
-            {notice}
-          </p>
-        )}
         <Button type="submit" loading={save.isPending} data-action="save-preferences">
           {t.notifications.save}
         </Button>

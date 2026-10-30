@@ -4,6 +4,7 @@ import { openShowing } from "../fixtures/replica";
 import { teamTest as test } from "../fixtures/team";
 import { armatureURL } from "../fixtures/stack";
 import { answered, armatureSignedIn, passwordOf, readSeed, realArmatureURL, type ArmaturePerson } from "./armature";
+import { confirm, toast } from "../fixtures/shell";
 
 // Connecting the real Armature as an administrator and a member would: the
 // address and slug Armature answers to, Armature's own sign-in and consent
@@ -50,7 +51,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const seed = readSeed();
     const { admin, member } = seed.people;
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await page.getByLabel("Armature address", { exact: true }).fill(seed.url);
     await page.getByLabel("Webhook secret", { exact: true }).fill(seed.webhookSecret);
     await page.locator('[data-action="save-armature"]').click();
@@ -103,9 +104,9 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const mia = await armatureSignedIn(member.email);
     try {
       expect(await grantsOf(mia, clientId)).toHaveLength(1);
-      bob.once("dialog", (dialog) => dialog.accept());
       await bobs.locator('[data-action="disconnect-armature-account"]').click();
-      await expect(bobs.getByText("Your Armature account is disconnected.")).toBeVisible();
+      await confirm(bob);
+      await expect(toast(bob, "Your Armature account is disconnected.")).toBeVisible();
       await expect(bobs.locator('[data-action="connect-armature-app"]')).toBeVisible();
       // Stator revokes the grant at Armature, so it is gone from her token list there too.
       await expect.poll(async () => grantsOf(mia, clientId)).toHaveLength(0);
@@ -128,7 +129,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     await expect(section.locator("[data-armature-user]")).toHaveText(`Connected as ${seed.people.member.name} (${seed.people.member.email}).`);
     await expect(page.locator("body")).not.toContainText(seed.people.member.token);
     await section.locator('[data-action="check-armature"]').click();
-    await expect(section.getByText("Armature accepts your token.")).toBeVisible();
+    await expect(toast(page, "Armature accepts your token.")).toBeVisible();
 
     // A member without access to any project is still somebody in Armature.
     const bob = await pageAs("bob");
@@ -158,7 +159,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const stub = (await (await request.get(`${armatureURL()}/api/v1/meta`)).json()) as { capabilities: string[] };
     expect([...stub.capabilities, ...BEYOND_THE_STUB].sort()).toEqual([...real.capabilities].sort());
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await expect(page.locator("[data-armature-capabilities]")).toHaveAttribute("data-armature-capabilities", "all");
     await expect(page.getByText("Armature offers everything Stator uses.")).toBeVisible();
   });
@@ -170,6 +171,6 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     await paste(page, seed.people.member.token);
     await expect(page.locator("[data-armature-account]")).not.toContainText("another Armature installation");
     await expect.poll(async () => (await api.GET("/armature/connection")).data?.connection?.installationId).toBe(seed.installationId);
-    await openShowing(page, "/settings/armature", page.getByText(/confirmed its installation through a member's token/));
+    await openShowing(page, "/admin/armature", page.getByText(/confirmed its installation through a member's token/));
   });
 });

@@ -39,7 +39,7 @@ test.describe("chart from table", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "By quarter." }] }, sales],
     });
-    const path = `/s/${space.key}/p/${report.id}/report`;
+    const path = `/spaces/${space.key}/p/${report.id}/report`;
 
     await openShowing(page, `${path}/edit`, "By quarter.");
     await editorBox(page).getByRole("cell", { name: "Q3" }).click();
@@ -84,7 +84,7 @@ test.describe("chart from table", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${target.id}/charts`, "North, South");
+      await openShowing(page, `/spaces/${space.key}/p/${target.id}/charts`, "North, South");
       await expect(shown(page).locator('[data-table-chart="pie"] figcaption')).toHaveText("North");
       await expect(shown(page).locator('[data-table-chart][data-state="chart"]')).toHaveCount(2);
       await page.screenshot({ path: testInfo.outputPath(`table-charts-${scheme}.png`), fullPage: true });

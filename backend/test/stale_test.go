@@ -62,10 +62,10 @@ func TestStaleReportOverTheAPI(t *testing.T) {
 	nobody := api.anonymous()
 
 	ops := newTree(t, owner, "OPS", "Operations")
-	want(t, owner.put(t, "/api/v1/spaces/OPS/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "OPS", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "ann administers OPS")
+	}), http.StatusOK, "ann administers OPS")
 	docs := newTree(t, owner, "DOCS", "Documents")
 	ancient := ops.add(ops.homeID, "Ancient")
 	lapsed := ops.add(ops.homeID, "Lapsed")
@@ -245,10 +245,10 @@ func TestStaleReportIsWalledByTheDatabase(t *testing.T) {
 	annID, benID := h.addPerson(t, "member"), h.addPerson(t, "member")
 
 	ops := newTree(t, owner, "SRO", "Reviewed")
-	want(t, owner.put(t, "/api/v1/spaces/SRO/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "SRO", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "ann administers SRO")
+	}), http.StatusOK, "ann administers SRO")
 	docs := newTree(t, owner, "SRD", "Not reviewed")
 	h.closeSpace(t, ops.space, annID, benID)
 	h.closeSpace(t, docs.space, annID, benID)
@@ -363,10 +363,10 @@ func TestStaleReportReadsAWindowNotTheWholeOrganization(t *testing.T) {
 	annID := h.addPerson(t, "member")
 	open := newTree(t, owner, "SPL", "Plenty")
 	closed := newTree(t, owner, "SPC", "Closed")
-	want(t, owner.put(t, "/api/v1/spaces/SPL/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "SPL", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "ann administers SPL")
+	}), http.StatusOK, "ann administers SPL")
 	ctx := context.Background()
 	bulk := func(key, home string, n int) {
 		t.Helper()

@@ -5,7 +5,7 @@ import { useRecentPages } from "@/api/search";
 import { useEdited, useStars, useUnstar, useUpdates, type Star, type UpdateScope } from "@/api/stars";
 import { useWaitingReviews } from "@/api/reviews";
 import { useHomeTasks, type Task } from "@/api/tasks";
-import { Button, EmptyState, ErrorBanner, IconButton, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs, Tag, cx } from "@/components/ui";
+import { TabPanel, Tabs, Tag, Page, PageHeader, Button, cx, IconButton, EmptyState, ErrorBanner, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { PageLink } from "@/features/pages/PageLink";
 import { StarGlyph } from "@/features/stars/StarButton";
@@ -106,7 +106,7 @@ function Starred({ onNotice }: { onNotice: (notice: string) => void }) {
             {star.page ? (
               <PageLink spaceKey={star.spaceKey} id={star.page.id} title={star.page.title} className={linkClass} />
             ) : (
-              <Link to="/s/$spaceKey" params={{ spaceKey: star.spaceKey }} className={linkClass}>
+              <Link to="/spaces/$spaceKey" params={{ spaceKey: star.spaceKey }} className={linkClass}>
                 {star.spaceName}
               </Link>
             )}
@@ -263,7 +263,7 @@ export function HomeScreen() {
   const welcome = useWelcome();
 
   return (
-    <div className="mx-auto max-w-5xl" data-home="">
+    <Page width="narrow" data-home="">
       <PageHeader title={t.home.title} />
       {welcome && (
         <div className="mb-8">
@@ -309,7 +309,7 @@ export function HomeScreen() {
           <Edited />
         </div>
       </div>
-    </div>
+    </Page>
   );
 }
 

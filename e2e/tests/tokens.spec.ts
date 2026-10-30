@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { authTest as test, expect, ME_PATH, USERS } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible, openAccountMenu, openShell } from "../fixtures/shell";
+import { expectAccessible, openAccountMenu, openShell, confirm, toast } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
 
@@ -80,12 +80,11 @@ test.describe("personal access tokens", { tag: ["@auth", "@desktop"] }, () => {
     });
     await expect(page.locator("body")).not.toContainText(secret);
     await expect(row(page, name).locator("[data-token-expires]")).not.toHaveText("Never");
-
-    page.once("dialog", (dialog) => dialog.accept());
     await row(page, name)
       .getByRole("button", { name: `Revoke ${name}` })
       .click();
-    await expect(page.locator("[data-tokens-notice]")).toHaveText(`${name} was revoked.`);
+    await confirm(page);
+    await expect(toast(page, `${name} was revoked.`)).toBeVisible();
     await expect(row(page, name)).toHaveCount(0);
 
     expect((await asScript(secret)).status).toBe(401);

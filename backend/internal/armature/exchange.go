@@ -37,7 +37,7 @@ const (
 // The sentences the profile shows when Armature did not connect a person at
 // sign-in and gave no sentence of its own.
 const (
-	signInNoApp        = "Stator is not a connected app of this Armature yet, so it could not connect you when you signed in. Connect Armature below, or ask a Stator administrator to set the app up under Settings, Armature."
+	signInNoApp        = "Stator is not a connected app of this Armature yet, so it could not connect you when you signed in. Connect Armature below, or ask a Stator administrator to set the app up under Admin, Armature."
 	signInUnreachable  = "Armature did not answer when you signed in, so you are not connected yet. Connect Armature below, or sign in again later."
 	signInOther        = "The account Armature connected at sign-in belongs to another Armature installation than this one. Connect Armature below."
 	signInRefusedShape = "Armature would not connect you when you signed in (%s). Connect Armature below."

@@ -13,11 +13,15 @@ export const homeRoute = createRoute({
   beforeLoad: async ({ context }) => {
     // A guest's whole organization is their one space, so that is where they start.
     const own = guestSpaceOf(await context.queryClient.ensureQueryData(meQuery).catch(() => undefined));
-    if (own) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: own.key }, replace: true });
+    if (own) throw redirect({ to: "/spaces/$spaceKey", params: { spaceKey: own.key }, replace: true });
     const hub = await context.queryClient.ensureQueryData(hubQuery).catch(() => undefined);
     const page = hub?.landing ? hub.page : null;
     if (page) {
-      throw redirect({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: page.spaceKey, pageId: page.id, slug: pageSlug(page.title) }, replace: true });
+      throw redirect({
+        to: "/spaces/$spaceKey/p/$pageId/$slug",
+        params: { spaceKey: page.spaceKey, pageId: page.id, slug: pageSlug(page.title) },
+        replace: true,
+      });
     }
   },
   component: HomeScreen,

@@ -32,7 +32,7 @@ test.describe("excerpts", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [paragraph("Who we are."), paragraph("Nine to five on weekdays.")],
     });
-    const path = `/s/${space.key}/p/${support.id}/support`;
+    const path = `/spaces/${space.key}/p/${support.id}/support`;
 
     await openEditor(page, path, "Nine to five on weekdays.");
     await caretTo(editorBox(page), "end");

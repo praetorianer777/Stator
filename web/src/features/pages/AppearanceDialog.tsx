@@ -132,8 +132,24 @@ export function AppearanceDialog({ page, onClose }: { page: Page; onClose: () =>
   };
 
   return (
-    <Dialog title={a.dialog} onClose={onClose} data-appearance-dialog="">
+    <Dialog
+      open
+      title={a.dialog}
+      onClose={onClose}
+      attrs={{ "data-appearance-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {a.cancel}
+          </Button>
+          <Button type="submit" form="appearance-dialog-form" loading={save.isPending} data-action="save-appearance">
+            {a.save}
+          </Button>
+        </>
+      }
+    >
       <form
+        id="appearance-dialog-form"
         className="space-y-4"
         noValidate
         onSubmit={(event) => {
@@ -196,14 +212,6 @@ export function AppearanceDialog({ page, onClose }: { page: Page; onClose: () =>
           </label>
           {cover && <FocusPicker cover={cover} onChange={setCover} />}
         </fieldset>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {a.cancel}
-          </Button>
-          <Button type="submit" loading={save.isPending} data-action="save-appearance">
-            {a.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

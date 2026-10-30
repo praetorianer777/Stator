@@ -4,7 +4,8 @@ import type { Space } from "@/api/spaces";
 import { formatSize } from "@/api/attachments";
 import { Button, ButtonLink, Card, ErrorBanner, OptionCard, SectionTitle, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { language, t } from "@/i18n";
+import { t } from "@/i18n";
+import { localDateFormat } from "@/lib/format";
 
 const FORMATS: ExportFormat[] = ["archive", "html"];
 
@@ -50,7 +51,7 @@ export function SpaceExportPanel({ space }: { space: Space }) {
 }
 
 function ExportRow({ job }: { job: SpaceExport }) {
-  const when = new Intl.DateTimeFormat(language(), { dateStyle: "medium", timeStyle: "short" });
+  const when = localDateFormat({ dateStyle: "medium", timeStyle: "short" });
   const percent = job.progress.total > 0 ? Math.round((job.progress.done / job.progress.total) * 100) : 0;
   return (
     <li data-export-row={job.state} data-export-id={job.id}>

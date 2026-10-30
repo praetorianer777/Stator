@@ -37,14 +37,16 @@ func changesByName(t *testing.T, preview map[string]any) map[string]string {
 	return out
 }
 
-// grantRows lists a space's grants straight from the database, as
-// "subject permission" lines in order.
+// grantRows lists a space's grants straight from the database, as "subject
+// role" lines in order, reading without signing in as Anybody's view.
 func (h *harness) grantRows(t *testing.T, ctx context.Context, space string) []string {
 	t.Helper()
 	rows, err := h.super.Query(ctx, `
-		SELECT g.subject_type || ':' || COALESCE(u.name, gr.name, '') || ' ' || g.permission
-		FROM space_grant g LEFT JOIN app_user u ON u.id = g.user_id LEFT JOIN groups gr ON gr.id = g.group_id
-		WHERE g.space_id = $1`, space)
+		SELECT COALESCE(u.name, gr.name, '') || ' ' || a.role
+		FROM role_assignment a LEFT JOIN app_user u ON u.id = a.user_id LEFT JOIN groups gr ON gr.id = a.group_id
+		WHERE a.space_id = $1
+		UNION ALL
+		SELECT 'Anybody view' FROM space WHERE id = $1 AND anonymous_view`, space)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,17 +77,17 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 
 	source := newTree(t, owner, "SRC", "Source")
 	target := newTree(t, owner, "TGT", "Target")
-	want(t, owner.put(t, "/api/v1/spaces/SRC/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "SRC", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view"}},
 		map[string]any{"subject": group(writers), "permissions": []any{"view", "addPages", "addComments"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "SRC's table")
-	want(t, owner.put(t, "/api/v1/spaces/TGT/permissions", map[string]any{"grants": []any{
+	}), http.StatusOK, "SRC's table")
+	want(t, owner.setTable(t, "TGT", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
 		map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
 		map[string]any{"subject": user(carlID), "permissions": []any{"administer"}},
 		map[string]any{"subject": user(bobID), "permissions": []any{"view"}},
-	}}), http.StatusOK, "TGT's table")
+	}), http.StatusOK, "TGT's table")
 	want(t, owner.put(t, "/api/v1/site/anonymous-access", map[string]any{"enabled": true, "indexable": false}), http.StatusOK, "let anybody read")
 	want(t, owner.put(t, "/api/v1/spaces/SRC/anonymous-access", map[string]any{"view": true}), http.StatusOK, "open SRC to anybody")
 	var guests []uuid.UUID
@@ -167,12 +169,12 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 
 	t.Run("a preview gone stale is refused and changes nothing", func(t *testing.T) {
 		preview := obj(t, want(t, ann.get(t, copyPath("TGT", "SRC", "replace")), http.StatusOK, "preview"), "preview")
-		want(t, owner.put(t, "/api/v1/spaces/SRC/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "SRC", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view", "addComments"}},
 			map[string]any{"subject": group(writers), "permissions": []any{"view", "addPages", "addComments"}},
 			map[string]any{"subject": user(annID), "permissions": []any{"administer"}},
 			map[string]any{"subject": user(gwenID), "permissions": []any{"view"}},
-		}}), http.StatusOK, "SRC changes meanwhile")
+		}), http.StatusOK, "SRC changes meanwhile")
 		h.settle(t)
 		before := h.grantRows(t, ctx, targetID)
 		got := ann.post(t, copyPath("TGT", "", ""), map[string]any{"from": "SRC", "mode": "replace", "fingerprint": preview["fingerprint"]})
@@ -186,9 +188,9 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 
 	t.Run("a copy that leaves the space without an administrator is refused", func(t *testing.T) {
 		newTree(t, owner, "BARE", "Bare")
-		want(t, owner.put(t, "/api/v1/spaces/BARE/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "BARE", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "BARE has no administrator of its own")
+		}), http.StatusOK, "BARE has no administrator of its own")
 		h.settle(t)
 		want(t, ann.get(t, copyPath("TGT", "BARE", "replace")), http.StatusForbidden, "ann does not administer BARE")
 		preview := obj(t, want(t, owner.get(t, copyPath("TGT", "BARE", "replace")), http.StatusOK, "the owner previews BARE onto TGT"), "preview")
@@ -206,12 +208,17 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 		applied := want(t, ann.post(t, copyPath("TGT", "", ""), map[string]any{"from": "SRC", "mode": "replace", "fingerprint": preview["fingerprint"]}), http.StatusOK, "apply the replace")
 		var names []string
 		for _, each := range list(t, applied, "grants") {
-			names = append(names, each.(map[string]any)["subject"].(map[string]any)["name"].(string))
+			a := each.(map[string]any)
+			name, _ := a["userName"].(string)
+			if group, _ := a["groupName"].(string); group != "" {
+				name = group
+			}
+			names = append(names, name+" "+a["role"].(string))
 		}
-		if !slices.Equal(names, []string{"Everyone", "Writers", "Ann Admin", "Hank Guest"}) {
-			t.Errorf("the table answered is %v", names)
+		if !slices.Equal(names, []string{"Ann Admin space_administrator", "Everyone commenter", "Hank Guest viewer", "Writers view_add_pages_and_comment"}) {
+			t.Errorf("the grants answered are %v", names)
 		}
-		wantRows := []string{"anonymous: view", "everyone: addComments", "everyone: view", "group:Writers addComments", "group:Writers addPages", "group:Writers view", "user:Ann Admin administer", "user:Hank Guest view"}
+		wantRows := []string{"Ann Admin space_administrator", "Anybody view", "Everyone commenter", "Hank Guest viewer", "Writers view_add_pages_and_comment"}
 		if got := h.grantRows(t, ctx, targetID); !slices.Equal(got, wantRows) {
 			t.Errorf("TGT holds %v, want %v", got, wantRows)
 		}
@@ -240,7 +247,7 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 			}
 			return n
 		}
-		readSource := `SELECT count(*) FROM space_grant WHERE space_id = $1`
+		readSource := `SELECT count(*) FROM role_assignment WHERE space_id = $1`
 		actAs(t, conn, annID)
 		if count(readSource, sourceID) == 0 {
 			t.Fatal("ann reads none of SRC's grants, so carl's zero would prove nothing")
@@ -250,31 +257,25 @@ func TestSpacePermissionsAreCopiedAsPreviewed(t *testing.T) {
 			t.Errorf("carl, who does not administer SRC, reads %d of its grants", n)
 		}
 		actAs(t, conn, bobID)
-		denied(t, conn, "bob granting in TGT", `INSERT INTO space_grant (space_id, permission, subject_type, group_id)
-			VALUES ($1, 'delete', 'group', $2)`, targetID, writers)
+		denied(t, conn, "bob granting in TGT", `INSERT INTO role_assignment (role, space_id, group_id) VALUES ('editor', $1, $2)`, targetID, writers)
 		actAs(t, conn, annID)
-		denied(t, conn, "SRC's guest copied into TGT", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-			VALUES ($1, 'view', 'user', $2)`, targetID, gwenID)
-		denied(t, conn, "SRC's guest copied into ann's own space", `INSERT INTO space_grant (space_id, permission, subject_type, user_id)
-			VALUES ($1, 'view', 'user', $2)`, personal["id"], gwenID)
-		denied(t, conn, "anybody copied into ann's own space", `INSERT INTO space_grant (space_id, permission, subject_type)
-			VALUES ($1, 'view', 'anonymous')`, personal["id"])
-		denied(t, conn, "anybody given more than view", `INSERT INTO space_grant (space_id, permission, subject_type)
-			VALUES ($1, 'addPages', 'anonymous')`, targetID)
-		denied(t, conn, "ann taking the last administrator from TGT", `DELETE FROM space_grant WHERE space_id = $1 AND permission = 'administer'`, targetID)
-		if n := h.count(t, ctx, `SELECT count(*) FROM space_grant WHERE space_id = $1 AND permission = 'administer'`, targetID); n != 1 {
-			t.Errorf("TGT has %d administer grants after the refusal", n)
+		denied(t, conn, "SRC's guest copied into TGT", `INSERT INTO role_assignment (role, space_id, user_id) VALUES ('viewer', $1, $2)`, targetID, gwenID)
+		denied(t, conn, "SRC's guest copied into ann's own space", `INSERT INTO role_assignment (role, space_id, user_id) VALUES ('viewer', $1, $2)`, personal["id"], gwenID)
+		denied(t, conn, "anybody let into ann's own space", `UPDATE space SET anonymous_view = true WHERE id = $1`, personal["id"])
+		denied(t, conn, "ann taking the last administrator from TGT", `DELETE FROM role_assignment WHERE space_id = $1 AND role = 'space_administrator'`, targetID)
+		if n := h.count(t, ctx, `SELECT count(*) FROM role_assignment WHERE space_id = $1 AND role = 'space_administrator'`, targetID); n != 1 {
+			t.Errorf("TGT has %d administrator grants after the refusal", n)
 		}
 		if _, err := conn.Exec(ctx, `
-			WITH handed AS (INSERT INTO space_grant (space_id, permission, subject_type, group_id) VALUES ($1, 'administer', 'group', $2))
-			DELETE FROM space_grant WHERE space_id = $1 AND permission = 'administer' AND user_id = $3`, targetID, writers, annID); err != nil {
+			WITH handed AS (INSERT INTO role_assignment (role, space_id, group_id) VALUES ('space_administrator', $1, $2))
+			DELETE FROM role_assignment WHERE space_id = $1 AND role = 'space_administrator' AND user_id = $3`, targetID, writers, annID); err != nil {
 			t.Errorf("ann may hand administering TGT on to the writers: %v", err)
 		}
-		// The organization's administrators hold every space anyway, and may
-		// close one down to themselves.
+		// The installation's administrators hold every space through their
+		// own role anyway, and may close one down to themselves.
 		actAs(t, conn, home.user)
-		if _, err := conn.Exec(ctx, `DELETE FROM space_grant WHERE space_id = $1 AND permission = 'administer'`, targetID); err != nil {
-			t.Errorf("the owner may not take the last administrator: %v", err)
+		if _, err := conn.Exec(ctx, `DELETE FROM role_assignment WHERE space_id = $1 AND role = 'space_administrator'`, targetID); err != nil {
+			t.Errorf("the administrator may not take the last space administrator: %v", err)
 		}
 	})
 }

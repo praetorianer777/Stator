@@ -43,8 +43,23 @@ export function TaskReportDialog({
 
   const listed = people.data?.people ?? [];
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} data-task-report-dialog="">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      attrs={{ "data-task-report-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="task-report-dialog-form" data-action="save-task-report">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="task-report-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Select label={d.space} value={space} onChange={(event) => setSpace(event.target.value)}>
           <option value="">{d.everySpace}</option>
           {initial.space && !spaces.data?.some((s) => s.key === initial.space) && <option value={initial.space}>{initial.space}</option>}
@@ -107,14 +122,6 @@ export function TaskReportDialog({
               </option>
             ))}
         </Select>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-task-report">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

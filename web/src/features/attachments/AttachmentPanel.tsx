@@ -10,12 +10,13 @@ import {
   useUploadAttachments,
   type Attachment,
 } from "@/api/attachments";
-import { Button, ButtonLink, ErrorBanner, IconButton, SectionTitle, cx } from "@/components/ui";
+import { Button, ButtonLink, ErrorBanner, IconButton, SectionTitle, cx, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { AnnotateButton } from "@/features/annotate/AnnotateButton";
 import { PreviewButton } from "./PreviewDialog";
 import { byName, versionNote } from "./versions";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const uploadedAt = localDateFormat({ dateStyle: "medium" });
 
@@ -71,7 +72,8 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
   const restore = useRestoreAttachment(pageId);
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
 
   const settle = () => {
     clearErrors();
@@ -81,7 +83,7 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
 
   const send = (files: File[]) => {
     settle();
-    for (const file of files) void upload(file).then((made) => made && setNotice(t.attachments.uploaded(made.fileName)));
+    for (const file of files) void upload(file).then((made) => made && toast.success(t.attachments.uploaded(made.fileName)));
   };
 
   const named = byName(attachments ?? []);
@@ -178,19 +180,20 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
             <li key={latest.id} className="px-3 py-2 text-sm" data-attachment={latest.fileName} data-attachment-id={latest.id} data-version={latest.version}>
               <div className="flex items-center gap-3">
                 <FileRow file={latest} label={latest.fileName} media={media}>
-                  {editable && <AnnotateButton file={latest} onSaved={(made) => setNotice(t.annotate.saved(made.fileName, made.version))} />}
+                  {editable && <AnnotateButton file={latest} onSaved={(made) => toast.success(t.annotate.saved(made.fileName, made.version))} />}
                   {editable && (
                     <IconButton
                       icon={<Icon.Trash />}
                       label={t.attachments.remove(latest.fileName)}
                       size="sm"
                       disabled={busy(latest.id)}
-                      onClick={() => {
+                      onClick={async () => {
                         const every = earlier.length > 0;
-                        const ask = every ? t.attachments.confirmRemoveAll(latest.fileName, earlier.length + 1) : t.attachments.confirmRemove(latest.fileName);
-                        if (!window.confirm(ask)) return;
+                        const body = every ? t.attachments.confirmRemoveAll(earlier.length + 1) : t.attachments.confirmRemove;
+                        const things = t.kit.confirm.things;
+                        if (!(await confirm({ noun: things.named(things.attachment, latest.fileName), body }))) return;
                         settle();
-                        remove.mutate({ id: latest.id, every }, { onSuccess: () => setNotice(t.attachments.removed(latest.fileName)) });
+                        remove.mutate({ id: latest.id, every }, { onSuccess: () => toast.success(t.attachments.removed(latest.fileName)) });
                       }}
                       data-action="delete-attachment"
                     />
@@ -208,7 +211,7 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
                           <FileRow file={file} label={label}>
                             {editable && (
                               <>
-                                <AnnotateButton file={file} label={label} onSaved={(made) => setNotice(t.annotate.saved(made.fileName, made.version))} />
+                                <AnnotateButton file={file} label={label} onSaved={(made) => toast.success(t.annotate.saved(made.fileName, made.version))} />
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -217,7 +220,7 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
                                   onClick={() => {
                                     settle();
                                     restore.mutate(file.id, {
-                                      onSuccess: (made) => setNotice(t.attachments.restored(file.fileName, file.version, made.version)),
+                                      onSuccess: (made) => toast.success(t.attachments.restored(file.fileName, file.version, made.version)),
                                     });
                                   }}
                                   data-action="restore-attachment"
@@ -229,10 +232,14 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
                                   label={t.attachments.removeVersion(file.fileName, file.version)}
                                   size="sm"
                                   disabled={busy(file.id)}
-                                  onClick={() => {
-                                    if (!window.confirm(t.attachments.confirmRemoveVersion(file.fileName, file.version))) return;
+                                  onClick={async () => {
+                                    const noun = t.kit.confirm.things.versionOf(file.version, file.fileName);
+                                    if (!(await confirm({ noun, body: t.attachments.confirmRemoveVersion }))) return;
                                     settle();
-                                    remove.mutate({ id: file.id }, { onSuccess: () => setNotice(t.attachments.removedVersion(file.fileName, file.version)) });
+                                    remove.mutate(
+                                      { id: file.id },
+                                      { onSuccess: () => toast.success(t.attachments.removedVersion(file.fileName, file.version)) },
+                                    );
                                   }}
                                   data-action="delete-attachment-version"
                                 />
@@ -249,9 +256,6 @@ export function AttachmentPanel({ pageId, editable }: { pageId: string; editable
           ))}
         </ul>
       )}
-      <p role="status" className="sr-only" data-attachment-notice>
-        {notice}
-      </p>
     </section>
   );
 }

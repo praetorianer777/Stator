@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ArmatureAccount, ArmatureConnection } from "@/api/armature";
-import { renderAt, stubApi } from "@/test/app";
+import { renderAt, stubApi, answerConfirm } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => {
@@ -66,7 +66,7 @@ describe("connecting Armature in one step", () => {
       "GET /armature/account": { status: 200, body: { account: notConnected } },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     const section = (await screen.findByRole("heading", { name: "Connect in one step" })).closest("section")!;
     expect(within(section).getByText(/no secret is copied by hand/)).toBeInTheDocument();
     expect(within(section).getByRole("link", { name: "Connect" })).toHaveAttribute("href", "/api/v1/armature/connection/webhook/connect");
@@ -95,9 +95,8 @@ describe("connecting Armature in one step", () => {
         return { status: 200, body: { connection: current } };
       },
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
-    await renderAt("/settings/armature?armature=connected");
+    await renderAt("/admin/armature?armature=connected");
     expect(await screen.findByText("Armature is connected: Stator made its webhook there, and your own account is connected.")).toBeInTheDocument();
     expect(screen.getByText(`Stator made its own webhook in Armature, which posts every change to ${RECEIVER}.`)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Connect your own account" })).toBeNull();
@@ -106,6 +105,7 @@ describe("connecting Armature in one step", () => {
     await user.click(screen.getByRole("button", { name: "Test" }));
     expect(await screen.findByText("Armature reached Stator, which answered 204.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "New secret" }));
+    await answerConfirm(true);
     expect(await screen.findByText("The webhook has a new secret, which Stator stored.")).toBeInTheDocument();
     expect(sent.filter((r) => r.method === "POST").map((r) => r.path)).toEqual([
       "/armature/connection/webhook/test",
@@ -119,7 +119,7 @@ describe("connecting Armature in one step", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection({ refusal: GUARD }) } },
       "GET /armature/account": { status: 200, body: { account: admin } },
     });
-    await renderAt("/settings/armature?armature=webhook_refused");
+    await renderAt("/admin/armature?armature=webhook_refused");
     expect(await screen.findByText("Your account is connected, but Armature would not make the webhook. What it said is below.")).toBeInTheDocument();
     expect(screen.getByText("Armature cannot reach Stator, so it would not make the webhook. Armature said:")).toBeInTheDocument();
     expect(document.querySelector("[data-armature-webhook-refusal]")).toHaveTextContent(GUARD);
@@ -129,14 +129,14 @@ describe("connecting Armature in one step", () => {
 
   it("asks for an Armature administrator when the grant may not manage the webhook", async () => {
     const said =
-      "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Settings, Armature, and allow it in Armature as an Armature administrator.";
+      "An Armature administrator must connect Stator again before its webhook can be changed. Choose Connect under Admin, Armature, and allow it in Armature as an Armature administrator.";
     stubApi({
       "GET /armature/connection": { status: 200, body: { connection: connection({ connected: true, manageable: true }) } },
       "GET /armature/account": { status: 200, body: { account: admin } },
       "POST /armature/connection/webhook/test": { status: 409, body: { error: { code: "armature_webhook_admin", message: said } } },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature?armature=webhook_admin");
+    await renderAt("/admin/armature?armature=webhook_admin");
     expect(await screen.findByText(/An Armature administrator must connect again: sign in to Armature as one/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Test" }));
     expect(await screen.findByText(said)).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe("connecting Armature in one step", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection({ connected: true, manageable: false }) } },
       "GET /armature/account": { status: 200, body: { account: notConnected } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/connect again as an Armature administrator yourself/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect again" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Test" })).toBeNull();
@@ -158,7 +158,7 @@ describe("connecting Armature in one step", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection({ offered: false }) } },
       "GET /armature/account": { status: 200, body: { account: admin } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByLabelText("Webhook secret")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Connect in one step" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Paste a webhook secret instead" })).toBeNull();

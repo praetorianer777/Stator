@@ -65,7 +65,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     const setup = await createPage(api, guide.id, "Setup");
     await createPage(api, setup.id, "Linux");
 
-    await openUntil(page, `/s/${space.key}/p/${guide.id}/guide/edit`, () => expect(editorBox(page)).toContainText("Troubleshooting", ONE_LOOK));
+    await openUntil(page, `/spaces/${space.key}/p/${guide.id}/guide/edit`, () => expect(editorBox(page)).toContainText("Troubleshooting", ONE_LOOK));
     await caretTo(editorBox(page), "start");
     await insert(page, "contents");
     const contents = toc(editorBox(page));
@@ -87,7 +87,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
     await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
     await publishFromEditor(page);
     // Opened afresh, so the page starts at its top rather than where the editor was scrolled to.
-    await page.goto(`/s/${space.key}/p/${guide.id}/guide`);
+    await page.goto(`/spaces/${space.key}/p/${guide.id}/guide`);
 
     const shown = toc(page.locator("[data-doc]"));
     await expect(shown.getByRole("link")).toHaveText(["Install", "Troubleshooting"]);
@@ -119,7 +119,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
       ],
     });
 
-    await openShowing(page, `/s/${space.key}/p/${guide.id}/plain`, toc(page.locator("[data-doc]")).getByRole("link", { name: "Troubleshooting" }));
+    await openShowing(page, `/spaces/${space.key}/p/${guide.id}/plain`, toc(page.locator("[data-doc]")).getByRole("link", { name: "Troubleshooting" }));
     const shown = toc(page.locator("[data-doc]"));
     await expect(shown.getByRole("link")).toHaveText(["Install", "Troubleshooting", "Install"]);
 
@@ -151,13 +151,13 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
       }),
     );
 
-    await openListing(page, `/s/${space.key}/p/${guide.id}/team`, "Salary bands");
+    await openListing(page, `/spaces/${space.key}/p/${guide.id}/team`, "Salary bands");
     await expect(children(page).getByRole("link")).toHaveText(["Open notes", "Salaries", "Salary bands"]);
 
     const bobApi = await apiAs("bob");
     await expect.poll(async () => (await bobApi.GET("/pages/{pageID}", { params: { path: { pageID: secret.id } } })).response.status).toBe(404);
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${space.key}/p/${guide.id}/team`, () => expect(children(bob).getByRole("link")).toHaveText(["Open notes"], ONE_LOOK));
+    await openUntil(bob, `/spaces/${space.key}/p/${guide.id}/team`, () => expect(children(bob).getByRole("link")).toHaveText(["Open notes"], ONE_LOOK));
     await expect(bob.getByText("Salar")).toHaveCount(0);
   });
 
@@ -178,7 +178,7 @@ test.describe("table of contents and child pages", { tag: ["@auth", "@desktop"] 
       await createPage(api, first.id, "Gannets");
       await startInScheme(page, scheme);
 
-      await openListing(page, `/s/${space.key}/p/${guide.id}/field-guide`, "Gannets");
+      await openListing(page, `/spaces/${space.key}/p/${guide.id}/field-guide`, "Gannets");
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expect(toc(page).getByRole("link")).toHaveText(["Birds", "Puffins"]);
       await expectAccessible(page);

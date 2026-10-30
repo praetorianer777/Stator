@@ -153,7 +153,10 @@ type saveOIDCProviderRequest struct {
 	GroupsClaim  string `json:"groupsClaim,omitempty"`
 	Scopes       string `json:"scopes,omitempty"`
 	CreateGroups bool   `json:"createGroups"`
-	Enabled      bool   `json:"enabled"`
+	// AdmitByGroup lets somebody new in whose group is mapped to a role, at
+	// sign-in and at a partner's token exchange. Left out, it is off.
+	AdmitByGroup bool `json:"admitByGroup"`
+	Enabled      bool `json:"enabled"`
 }
 
 func (s *Server) handleSaveOIDCProvider(w http.ResponseWriter, r *http.Request) {
@@ -173,6 +176,7 @@ func (s *Server) handleSaveOIDCProvider(w http.ResponseWriter, r *http.Request) 
 		GroupsClaim:  req.GroupsClaim,
 		Scopes:       req.Scopes,
 		CreateGroups: req.CreateGroups,
+		AdmitByGroup: req.AdmitByGroup,
 		Enabled:      req.Enabled,
 	})
 	noteWrite(r.Context(), lsn)

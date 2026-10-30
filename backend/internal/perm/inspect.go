@@ -34,10 +34,7 @@ var Rights = []Right{RightView, RightEdit, RightDelete, RightComment}
 type StepKind string
 
 const (
-	// StepSiteAdmin is administering the organization, which holds every
-	// space permission and passes every list.
-	StepSiteAdmin StepKind = "orgAdmin"
-	// StepUse is the organization's use permission.
+	// StepUse is the installation's use permission.
 	StepUse StepKind = "use"
 	// StepSpace is holding a space permission.
 	StepSpace StepKind = "space"
@@ -60,7 +57,7 @@ const (
 )
 
 // StepKinds lists every StepKind, for the API document.
-var StepKinds = []StepKind{StepSiteAdmin, StepUse, StepSpace, StepUnpublished, StepList, StepGrant, StepView, StepPublished, StepHome, StepArchived}
+var StepKinds = []StepKind{StepUse, StepSpace, StepUnpublished, StepList, StepGrant, StepView, StepPublished, StepHome, StepArchived}
 
 // ListKind is which of a page's lists a restriction is on.
 type ListKind string
@@ -93,10 +90,11 @@ type AccessStep struct {
 	Page *AccessPage `json:"page,omitempty"`
 	// Bypassed is a list the person is not on but passes as an administrator.
 	Bypassed bool `json:"bypassed"`
-	// Via are the subjects of the use grants, or of a list, that name the person.
+	// Via are the subjects of a list that name the person.
 	Via []Subject `json:"via"`
-	// Grants are the space's grants that name the person and give the permission.
-	Grants []SpaceGrant `json:"grants"`
+	// Grants are the grants that reach the person and give the permission a
+	// use or space step asks for.
+	Grants []AccessGrant `json:"grants"`
 	// Listed is everybody a list step's list names.
 	Listed []Subject `json:"listed"`
 }
@@ -111,10 +109,17 @@ type AccessRight struct {
 
 // AccessReport is what one person may do to one page, and why.
 type AccessReport struct {
-	Person     Person          `json:"person"`
-	Role       auth.Role       `json:"role"`
-	RoleSource auth.RoleSource `json:"roleSource"`
-	Rights     []AccessRight   `json:"rights"`
+	Person Person `json:"person"`
+	// Role is the person's standing, member or guest.
+	Role   auth.Role     `json:"role"`
+	Rights []AccessRight `json:"rights"`
+}
+
+// AccessGrant is a grant that reaches the person, in the space or across the
+// installation, with the permissions its role holds.
+type AccessGrant struct {
+	Assignment
+	Permissions []Permission `json:"permissions"`
 }
 
 // ListFacts is one list on one page as it concerns the person.
@@ -136,13 +141,12 @@ type InspectLink struct {
 
 // InspectFacts are the database's answers for one person and one page.
 type InspectFacts struct {
-	SiteAdmin bool
-	Use       bool
-	UseVia    []Subject
+	Use bool
 	// Space is perm_space_holds for each space permission.
 	Space map[SpacePermission]bool
-	// Grants are the space's grants that name the person, before implication.
-	Grants []SpaceGrant
+	// Grants are the grants that reach the person in the space or across the
+	// installation, before implication.
+	Grants []AccessGrant
 	// Chain is the page and every page above it, the home page first.
 	Chain     []InspectLink
 	Published bool
@@ -204,15 +208,12 @@ func step(s AccessStep) AccessStep {
 	return s
 }
 
-// standing is how the person holds a space permission: as an organization
-// administrator, or through use and the space's grants.
+// standing is how the person holds a space permission: through use and the
+// grants that reach them.
 func (f InspectFacts) standing(p SpacePermission, withUse bool) []AccessStep {
-	if f.SiteAdmin {
-		return []AccessStep{step(AccessStep{Kind: StepSiteAdmin, Passed: true})}
-	}
 	var out []AccessStep
 	if withUse {
-		out = append(out, step(AccessStep{Kind: StepUse, Passed: f.Use, Via: f.UseVia}))
+		out = append(out, step(AccessStep{Kind: StepUse, Passed: f.Use, Grants: grantsHolding(f.Grants, Permission(UseStator))}))
 		// Without use the space's grants count for nothing, so showing them would mislead.
 		if !f.Use {
 			return out
@@ -225,19 +226,27 @@ func (f InspectFacts) spaceStep(p SpacePermission) AccessStep {
 	return step(AccessStep{Kind: StepSpace, Permission: &p, Passed: f.Space[p], Grants: grantsGiving(f.Grants, p)})
 }
 
-// grantsGiving keeps the grants, and of each the permissions, that give p:
-// p itself, administer, or anything at all for view.
-func grantsGiving(grants []SpaceGrant, p SpacePermission) []SpaceGrant {
-	var out []SpaceGrant
+// grantsGiving keeps the grants whose role gives p: p itself, administer, or
+// any space permission at all for view.
+func grantsGiving(grants []AccessGrant, p SpacePermission) []AccessGrant {
+	var out []AccessGrant
 	for _, g := range grants {
-		var giving []SpacePermission
-		for _, held := range g.Permissions {
-			if held == p || held == SpaceAdminister || p == SpaceView {
-				giving = append(giving, held)
-			}
+		if slices.ContainsFunc(g.Permissions, func(held Permission) bool {
+			return held == Permission(p) || held == Permission(SpaceAdminister) ||
+				(p == SpaceView && slices.Contains(SpacePermissions, SpacePermission(held)))
+		}) {
+			out = append(out, g)
 		}
-		if len(giving) > 0 {
-			out = append(out, SpaceGrant{Subject: g.Subject, Permissions: giving})
+	}
+	return out
+}
+
+// grantsHolding keeps the grants across the installation whose role holds p.
+func grantsHolding(grants []AccessGrant, p Permission) []AccessGrant {
+	var out []AccessGrant
+	for _, g := range grants {
+		if g.SpaceID == nil && slices.Contains(g.Permissions, p) {
+			out = append(out, g)
 		}
 	}
 	return out
@@ -246,7 +255,7 @@ func grantsGiving(grants []SpaceGrant, p SpacePermission) []SpaceGrant {
 // grantDecides says a grant list, not the space's add pages, is what lets
 // the person edit, or would once the other conditions are met.
 func (f InspectFacts) grantDecides() bool {
-	if f.SiteAdmin || f.Space[SpaceAddPages] || !f.Use {
+	if f.Space[SpaceAddPages] || !f.Use {
 		return false
 	}
 	for _, l := range f.Chain {
@@ -286,7 +295,7 @@ func (f InspectFacts) lists(kind ListKind) []AccessStep {
 		if len(facts.Listed) == 0 {
 			continue
 		}
-		if len(out) == 0 && admin && !f.SiteAdmin {
+		if len(out) == 0 && admin {
 			out = append(out, f.spaceStep(SpaceAdminister))
 		}
 		page, k := l.Page, kind
@@ -301,10 +310,10 @@ func (f InspectFacts) lists(kind ListKind) []AccessStep {
 func Inspect(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (*AccessReport, error) {
 	report := &AccessReport{}
 	err := tx.QueryRow(ctx, `
-		SELECT u.id, u.name, u.email::text, m.role, m.role_source
+		SELECT u.id, u.name, u.email::text, m.role
 		FROM member m JOIN app_user u ON u.id = m.user_id
 		WHERE m.user_id = $1`, person).Scan(
-		&report.Person.ID, &report.Person.Name, &report.Person.Email, &report.Role, &report.RoleSource)
+		&report.Person.ID, &report.Person.Name, &report.Person.Email, &report.Role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, auth.ErrNoSuchMember
 	}
@@ -354,12 +363,12 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 	var view, edit, del, comment bool
 	held := make([]bool, len(SpacePermissions))
 	err = tx.QueryRow(ctx, `
-		SELECT perm_is_admin($1), perm_global_holds($1, 'use'),
+		SELECT perm_global_holds($1, 'use'),
 		       perm_space_holds($1, $3, 'view'), perm_space_holds($1, $3, 'addPages'), perm_space_holds($1, $3, 'addComments'),
 		       perm_space_holds($1, $3, 'delete'), perm_space_holds($1, $3, 'administer'),
 		       perm_page_viewable($2, $1), perm_page_editable($2, $1), perm_page_deletable($2, $1), perm_page_commentable($2, $1),
 		       COALESCE((SELECT page_trashable(parent_id, kind) FROM page WHERE id = $2), false)`,
-		person, page, space).Scan(&f.SiteAdmin, &f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment, &f.Trashable)
+		person, page, space).Scan(&f.Use, &held[0], &held[1], &held[2], &held[3], &held[4], &view, &edit, &del, &comment, &f.Trashable)
 	if err != nil {
 		return f, fmt.Errorf("ask the database: %w", err)
 	}
@@ -384,51 +393,42 @@ func inspectFacts(ctx context.Context, tx db.DBTX, person, page uuid.UUID) (Insp
 	}
 	f.Verdict = map[Right]bool{RightView: view, RightEdit: edit, RightDelete: del && f.Trashable, RightComment: comment}
 
-	if rows, err = tx.Query(ctx, `SELECT `+SubjectColumns+` FROM perm_global_grant_sources($1, 'use') g`+SubjectJoins+`
-		ORDER BY `+SubjectOrder, person); err != nil {
-		return f, fmt.Errorf("read the use grants: %w", err)
-	}
-	if f.UseVia, err = pgx.CollectRows(rows, pgx.RowToStructByPos[Subject]); err != nil {
-		return f, fmt.Errorf("read the use grants: %w", err)
-	}
-	if f.Grants, err = matchingSpaceGrants(ctx, tx, person, space); err != nil {
+	if f.Grants, err = reachingGrants(ctx, tx, person, space); err != nil {
 		return f, err
 	}
 	return f, readLists(ctx, tx, person, f.Chain)
 }
 
-// matchingSpaceGrants are the space's grants that name the person, a row per
-// subject with its permissions in the grid's order.
-func matchingSpaceGrants(ctx context.Context, tx db.DBTX, person, space uuid.UUID) ([]SpaceGrant, error) {
-	rows, err := tx.Query(ctx, `SELECT `+SubjectColumns+`, g.permission FROM space_grant g`+SubjectJoins+`
-		WHERE g.space_id = $2 AND perm_is_member($1) AND perm_subject_matches($1, g.subject_type, g.user_id, g.group_id)
-		ORDER BY `+SubjectOrder, person, space)
+// reachingGrants are the grants that reach the person in the space or across
+// the installation, the installation's first.
+func reachingGrants(ctx context.Context, tx db.DBTX, person, space uuid.UUID) ([]AccessGrant, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT a.id, a.role, r.name, a.space_id, COALESCE(s.key, ''), COALESCE(s.name, ''),
+		       a.user_id, COALESCE(u.name, ''), COALESCE(u.email::text, ''), false,
+		       a.group_id, COALESCE(g.name, ''), COALESCE(g.builtin, ''), a.created_at, r.permissions
+		FROM perm_grants_reaching($1, $2) a
+		JOIN role r ON r.key = a.role
+		LEFT JOIN space s ON s.id = a.space_id
+		LEFT JOIN app_user u ON u.id = a.user_id
+		LEFT JOIN groups g ON g.id = a.group_id
+		ORDER BY a.space_id IS NOT NULL, r.sort_order, lower(r.name), a.group_id IS NULL, a.id`, person, space)
 	if err != nil {
-		return nil, fmt.Errorf("read the space's grants: %w", err)
+		return nil, fmt.Errorf("read the grants that reach the person: %w", err)
 	}
-	defer rows.Close()
-	var out []SpaceGrant
-	for rows.Next() {
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (AccessGrant, error) {
 		var (
-			sub Subject
-			p   SpacePermission
+			g     AccessGrant
+			perms []string
 		)
-		if err := rows.Scan(&sub.Type, &sub.ID, &sub.Name, &p); err != nil {
-			return nil, err
+		err := row.Scan(&g.ID, &g.Role, &g.RoleName, &g.SpaceID, &g.SpaceKey, &g.SpaceName,
+			&g.UserID, &g.UserName, &g.UserEmail, &g.Guest, &g.GroupID, &g.GroupName, &g.GroupBuiltin, &g.CreatedAt, &perms)
+		for _, p := range AllPermissions {
+			if slices.Contains(perms, string(p)) {
+				g.Permissions = append(g.Permissions, p)
+			}
 		}
-		i := slices.IndexFunc(out, func(g SpaceGrant) bool { return sameSubject(g.Subject, sub) })
-		if i < 0 {
-			out = append(out, SpaceGrant{Subject: sub})
-			i = len(out) - 1
-		}
-		out[i].Permissions = append(out[i].Permissions, p)
-	}
-	for i := range out {
-		slices.SortFunc(out[i].Permissions, func(a, b SpacePermission) int {
-			return slices.Index(SpacePermissions, a) - slices.Index(SpacePermissions, b)
-		})
-	}
-	return out, rows.Err()
+		return g, err
+	})
 }
 
 func sameSubject(a, b Subject) bool {

@@ -46,6 +46,37 @@ export const ICON_STROKE = 1.5;
 
 /** The gap between a menu's trigger and its list, in pixels. */
 export const MENU_GAP_PX = 4;
+/** The suite's chart palette has six colours, --color-chart-1 to 6; a chart never draws more series than that. */
+export const CHART_SLOTS = 6;
+/** The tallest a menu, popover or list of suggestions grows before it scrolls, in pixels. */
+export const POPOVER_MAX_HEIGHT_PX = 560;
+/** The least room a menu or popover leaves between itself and the window's edge, in pixels. */
+export const POPOVER_EDGE_PX = 8;
+/** How far down the window a dialog starts, in percent of its height. */
+export const DIALOG_TOP_VH = 12;
+/** The room a dialog leaves below itself once scrolled to its end, in pixels. */
+export const DIALOG_BOTTOM_PX = 16;
+/** How wide a drawer or a docked panel opens from the right, in pixels. */
+export const DRAWER_WIDTH = 704;
+/** How wide a drawer that shows a document opens, such as a preview or a review, in pixels. */
+export const DOCUMENT_DRAWER_WIDTH = 1024;
+/** A list's search box waits this long after the last key before it asks the server. */
+export const LIST_SEARCH_DELAY_MS = 250;
+/** A typed date's year below this is one still being typed, such as 0002 on the way to 2026. */
+export const MIN_DATE_YEAR = 1000;
+/** How far a callout sits from the element it points at. */
+export const SPOTLIGHT_GAP_PX = 8;
+/** The callout's width, the room it reserves below the element, and the ring around the element. */
+export const SPOTLIGHT_WIDTH_PX = 320;
+export const SPOTLIGHT_HEIGHT_PX = 120;
+export const SPOTLIGHT_RING_PX = 4;
+/** How long the callout waits for its element to appear after a navigation. */
+export const SPOTLIGHT_WAIT_MS = 3000;
+/** The largest count a badge writes out; more reads as this with a plus. */
+export const COUNT_MAX = 99;
+/** How long a toast stays, and how many stack before the oldest goes. */
+export const TOAST_MS = 6000;
+export const TOAST_MAX = 3;
 /** The room a menu under the caret keeps from the window's edge, and the room below the caret under which it opens above instead. */
 export const CARET_MENU_EDGE_PX = 8;
 export const CARET_MENU_MIN_ROOM_PX = 160;
@@ -68,6 +99,8 @@ export const ME_STALE_MS = 60_000;
 
 /** Where this browser remembers the interface language the profile chose, so a reload starts in it. */
 export const LANGUAGE_STORAGE_KEY = "stator.language";
+/** The most time zones the profile lists for what was typed; the rest wait for a closer search. */
+export const TIME_ZONE_MATCHES_MAX = 50;
 
 /** The groups claim and scopes an identity provider starts with, matching the API's defaults. */
 export const SSO_DEFAULT_GROUPS_CLAIM = "groups";
@@ -249,10 +282,15 @@ export const TEMPLATE_DEFAULT_TODAY = "today";
 /** A variable's name as the API takes it; the form derives one from the label. */
 export const TEMPLATE_VARIABLE_NAME_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
 export const TEMPLATE_VARIABLE_NAME_MAX_LENGTH = 40;
-/** Where administrators keep the organization's templates, and make or change one. */
-export const TEMPLATES_PATH = "/settings/templates";
-export const TEMPLATE_NEW_PATH = "/settings/templates/new";
-export const TEMPLATE_EDIT_PATH = "/settings/templates/$templateKey";
+/** Where administrators keep the installation's templates, and make or change one. */
+export const TEMPLATES_PATH = "/admin/templates";
+export const TEMPLATE_NEW_PATH = "/admin/templates/new";
+export const TEMPLATE_EDIT_PATH = "/admin/templates/$templateKey";
+/** Where a space's administrators make or change one of its templates, below the space's settings. */
+export const SPACE_TEMPLATE_NEW_PATH = "/spaces/$spaceKey/settings/templates/new";
+export const SPACE_TEMPLATE_EDIT_PATH = "/spaces/$spaceKey/settings/templates/$templateKey";
+/** A space's stale pages, below General in its settings. */
+export const SPACE_STALE_PATH = "/spaces/$spaceKey/settings/general/stale";
 /** The picker's value for a space that starts blank; the API takes no template then. */
 export const BLANK_SPACE_TEMPLATE = "";
 /** What everyone may do in a blank space, matching the database's space_default_grants. */
@@ -387,6 +425,8 @@ export const HOME_EDITED_PAGE_SIZE = 8;
 /** How many open tasks the home page shows, and the list of tasks reads at a time, within the API's limit of 100. */
 export const HOME_TASKS_PAGE_SIZE = 5;
 export const TASKS_PAGE_SIZE = 25;
+/** How many grants the Roles tab and a space's permissions list at once. */
+export const ASSIGNMENT_PAGE_SIZE = 50;
 /** How many hits one page of search results shows, within the API's limit of 100. */
 export const SEARCH_PAGE_SIZE = 20;
 /** The longest query, matching the API's limit. */
@@ -406,9 +446,12 @@ export const LABEL_PAGE_SIZE = 20;
 /** How often the notification badge asks for the unread count; it also asks when the window regains focus. */
 export const UNREAD_POLL_MS = 30_000;
 /** Above this many unread the badge shows the number with a plus. */
-export const UNREAD_BADGE_MAX = 99;
 /** How many notifications the panel lists, within the API's limit of 100. */
 export const NOTIFICATION_PANEL_SIZE = 20;
+/** How many notifications a page of the Notifications page lists, within the API's limit of 100. */
+export const NOTIFICATIONS_PAGE_SIZE = 50;
+/** The Notifications page, which the bell's panel leads to. */
+export const NOTIFICATIONS_PATH = "/notifications";
 /** How many watchers the watchers dialog lists, the most the API gives at once. */
 export const WATCHERS_LIMIT = 100;
 /** How many of the caller's watches one page of the watching list shows, within the API's limit of 100. */
@@ -449,7 +492,7 @@ export const ARMATURE_RETURN_MAX_LENGTH = 2000;
 /** Armature's own page for making tokens, under the connected Armature's address. */
 export const ARMATURE_TOKENS_PATH = "/settings/tokens";
 /** Where an administrator connects the organization's Armature. */
-export const ARMATURE_SETTINGS_PATH = "/settings/armature";
+export const ARMATURE_SETTINGS_PATH = "/admin/armature";
 /** Where the browser goes to connect an account with one click; the server sends it on to Armature's consent page. */
 export const ARMATURE_CONNECT_PATH = `${API_BASE}/armature/oauth/start`;
 /** The query parameter the server lands on the profile with, naming how a connect ended. */
@@ -477,13 +520,13 @@ export type ArmatureOutcome = (typeof ARMATURE_OUTCOMES)[number];
 export const ARMATURE_CLIENT_SECRET_PREFIX = "armature_ocs_";
 
 /** Where an administrator reads the organization's audit log. */
-export const AUDIT_PATH = "/settings/audit";
+export const AUDIT_PATH = "/admin/audit";
 /** Entries the audit log shows per page, within the API's 200; the export has the rest. */
 export const AUDIT_PAGE_SIZE = 50;
 /** Where the audit log is downloaded as a spreadsheet, under the API's base. */
 export const AUDIT_EXPORT_PATH = "/audit/export";
 /** Where an administrator keeps the organization's outbound webhooks. */
-export const WEBHOOKS_PATH = "/settings/webhooks";
+export const WEBHOOKS_PATH = "/admin/webhooks";
 /** The topic that takes every event, and the events a webhook may take, as the API lists them. */
 export const WEBHOOK_TOPIC_ANY = "*";
 export const WEBHOOK_TOPICS = ["page.published", "page.moved", "page.deleted", "comment.created", "page.remote_link.removed"] as const;
@@ -498,7 +541,7 @@ export const WEBHOOK_SIGNATURE_HEADER = "X-Stator-Signature-256";
 export const WEBHOOK_TIMESTAMP_HEADER = "X-Stator-Timestamp";
 export const WEBHOOK_TIMESTAMPED_SIGNATURE_HEADER = "X-Stator-Signature-Timestamped-256";
 /** Where administrators read which pages nobody opened or published for a while. */
-export const STALE_PATH = "/settings/stale";
+export const STALE_PATH = "/admin/stale";
 /** Pages the stale report shows per page, within the API's 100. */
 export const STALE_PAGE_SIZE = 25;
 /** The periods the stale report offers, in days; it starts at the API's own default. */
@@ -523,7 +566,7 @@ export const ARMATURE_FEATURE_CAPABILITIES = {
   webhooks: "webhooks@1",
 } as const;
 /** Where an administrator connects Exciter, and the anchor of a person's Exciter section in their profile. */
-export const EXCITER_SETTINGS_PATH = "/settings/exciter";
+export const EXCITER_SETTINGS_PATH = "/admin/exciter";
 export const EXCITER_SECTION_ID = "exciter";
 /** Exciter's own page for making tokens, under the connected Exciter's address. */
 export const EXCITER_TOKENS_PATH = "/settings/tokens";
@@ -682,7 +725,7 @@ export const ARMATURE_CHART_DAY_CHOICES: readonly number[] = [7, 14, 30, 90, 180
 /** A new created against resolved chart's window, as armature.DefaultChartDays. */
 export const ARMATURE_CHART_DEFAULT_DAYS = 30;
 /** The most slices a pie draws; the rest share one slice, Other, rather than take a colour nobody tells apart. */
-export const ARMATURE_CHART_MAX_SLICES = 8;
+export const ARMATURE_CHART_MAX_SLICES = CHART_SLOTS;
 /** A pie's size and its hole, in SVG units. */
 export const ARMATURE_PIE_SIZE = 160;
 export const ARMATURE_PIE_HOLE = 0.6;
@@ -735,7 +778,7 @@ export const CONTRIBUTORS_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
 /** The charts a table becomes, as document.TableCharts. */
 export const TABLE_CHARTS = ["bar", "line", "pie"] as const;
 /** The most series a chart from a table draws, one per categorical colour; more columns are left out. */
-export const TABLE_CHART_MAX_SERIES = 8;
+export const TABLE_CHART_MAX_SERIES = CHART_SLOTS;
 /** The plot of a bar or line chart from a table, before it takes its box's width. */
 export const TABLE_CHART_WIDTH = 640;
 export const TABLE_CHART_HEIGHT = 220;
@@ -837,23 +880,27 @@ export const EXAMPLE_SPACE_POLL_MS = 1000;
 export const EXAMPLE_SPACE_SLOW_MS = 60_000;
 /** After this long, past the API's limit on one making, the page stops asking and says what to do. */
 export const EXAMPLE_SPACE_GIVE_UP_MS = 15 * 60_000;
-/** The other tools the avatar menu links to: the name each goes by, which is never translated, and its own mark under web/public. */
+/** The other tools the avatar menu links to: the name each goes by, which is never translated, and its own 96 px mark under web/public, one format for all. */
 export const CONNECTED_TOOLS = {
   armature: { name: "Armature", mark: "/tools/armature.webp" },
   exciter: { name: "Exciter", mark: "/tools/exciter.webp" },
 } as const;
-/** The settings area: every page under it trades the wiki's sidebar for the settings sidebar. */
+/** The settings area, the person's own pages: every page under it trades the wiki's sidebar for the settings sidebar. */
 export const SETTINGS_PATH = "/settings";
 export const NOTIFICATION_SETTINGS_PATH = "/settings/notifications";
 export const WATCHING_PATH = "/settings/watching";
 export const THEMES_PATH = "/settings/themes";
 export const TOKENS_PATH = "/settings/tokens";
-export const SSO_PATH = "/settings/sso";
-export const SITE_PERMISSIONS_PATH = "/settings/permissions";
-export const HUB_SETTINGS_PATH = "/settings/hub";
-export const BRAND_PATH = "/settings/brand";
-export const SITE_TRANSFER_PATH = "/settings/transfer";
-export const EXAMPLE_SPACE_PATH = "/settings/example-space";
+/** The Admin area, the installation's pages for its administrators. */
+export const ADMIN_PATH = "/admin";
+/** Roles, the matrix, members, groups and single sign-on, a tab each under this path. */
+export const ACCESS_PATH = "/admin/access";
+export const INSTALLATION_PATH = "/admin/installation";
+export const USERS_PATH = "/admin/users";
+export const CONNECTED_APPS_PATH = "/admin/connected-apps";
+export const HUB_SETTINGS_PATH = "/admin/hub";
+export const SITE_TRANSFER_PATH = "/admin/transfer";
+export const EXAMPLE_SPACE_PATH = "/admin/example-space";
 /** Where the person goes back to from the settings area when nothing outside it was open in this tab. */
 export const SETTINGS_LEAVE_FALLBACK = "/";
 /** Keeps the last page outside the settings area for the tab, so "Back to Stator" survives a reload. */

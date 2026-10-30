@@ -22,9 +22,15 @@ const ORIGIN = "https://wiki.example.test";
 
 describe("a link inside the app, read without signing in", () => {
   it("leads a page or a space to its public reading view, keeping the heading", () => {
-    expect(publicHref(`/s/DOCS/p/${PAGE}/install#steps`, ORIGIN)).toBe(`/public/s/DOCS/p/${PAGE}/install#steps`);
-    expect(publicHref(`${ORIGIN}/s/DOCS/p/${PAGE}`, ORIGIN)).toBe(`/public/s/DOCS/p/${PAGE}/page`);
-    expect(publicHref("/s/docs", ORIGIN)).toBe("/public/s/DOCS");
+    expect(publicHref(`/spaces/DOCS/p/${PAGE}/install#steps`, ORIGIN)).toBe(`/public/spaces/DOCS/p/${PAGE}/install#steps`);
+    expect(publicHref(`${ORIGIN}/spaces/DOCS/p/${PAGE}`, ORIGIN)).toBe(`/public/spaces/DOCS/p/${PAGE}/page`);
+    expect(publicHref("/spaces/docs", ORIGIN)).toBe("/public/spaces/DOCS");
+  });
+
+  it("follows a link written before spaces moved to /spaces/", () => {
+    expect(publicHref(`/s/DOCS/p/${PAGE}/install#steps`, ORIGIN)).toBe(`/public/spaces/DOCS/p/${PAGE}/install#steps`);
+    expect(publicHref("/s/docs", ORIGIN)).toBe("/public/spaces/DOCS");
+    expect(publicHref("/spaces/new", ORIGIN)).toBe("/login?next=%2Fspaces%2Fnew");
   });
 
   it("leads anything else of the app to signing in, and leaves other sites alone", () => {
@@ -41,9 +47,9 @@ describe("signing in from a public page", () => {
   const page = { id: PAGE, title: "Install it", home: false, space: { key: "DOCS" } } as PublicPage;
 
   it("comes back to the same page inside the app", () => {
-    expect(privateAddress(`/public/s/DOCS/p/${PAGE}/install-it`, "", page)).toBe(`/s/DOCS/p/${PAGE}/install-it`);
-    expect(privateAddress(`/public/s/DOCS/p/${PAGE}/install-it`, "", { ...page, home: true })).toBe("/s/DOCS");
-    expect(privateAddress("/public/s/docs", "", undefined)).toBe("/s/DOCS");
+    expect(privateAddress(`/public/spaces/DOCS/p/${PAGE}/install-it`, "", page)).toBe(`/spaces/DOCS/p/${PAGE}/install-it`);
+    expect(privateAddress(`/public/spaces/DOCS/p/${PAGE}/install-it`, "", { ...page, home: true })).toBe("/spaces/DOCS");
+    expect(privateAddress("/public/spaces/docs", "", undefined)).toBe("/spaces/DOCS");
     expect(privateAddress("/public/search", "?q=zebra", undefined)).toBe("/search?q=zebra");
     expect(privateAddress("/public", "", undefined)).toBe("/");
   });
@@ -59,7 +65,7 @@ describe("a document read without signing in", () => {
           { type: "text", text: "Ask " },
           { type: "mention" },
           { type: "text", text: " or read ", marks: [] },
-          { type: "text", text: "the guide", marks: [{ type: "link", attrs: { href: `/s/DOCS/p/${PAGE}/guide` } }] },
+          { type: "text", text: "the guide", marks: [{ type: "link", attrs: { href: `/spaces/DOCS/p/${PAGE}/guide` } }] },
         ],
       },
       { type: "image", attrs: { attachmentId: FILE, alt: "A map" } },
@@ -83,7 +89,7 @@ describe("a document read without signing in", () => {
 
   it("links pages and files through the public reads", () => {
     readAnonymously();
-    expect(screen.getByRole("link", { name: "the guide" }).getAttribute("href")).toBe(`/public/s/DOCS/p/${PAGE}/guide`);
+    expect(screen.getByRole("link", { name: "the guide" }).getAttribute("href")).toBe(`/public/spaces/DOCS/p/${PAGE}/guide`);
     expect(screen.getByRole("img", { name: "A map" }).getAttribute("src")).toBe(`/api/v1/public/attachments/${FILE}?inline=1`);
     expect(screen.getByRole("link", { name: t.publicReading.included }).getAttribute("href")).toBe(`/public/p/${PAGE}`);
   });
@@ -102,7 +108,7 @@ describe("a document read without signing in", () => {
       </PublicReadingContext>,
     );
     expect(screen.getByRole("img", { name: "A map" }).getAttribute("src")).toBe(`/api/v1/public/links/t0k3n/attachments/${FILE}?inline=1`);
-    expect(screen.getByRole("link", { name: "the guide" }).getAttribute("href")).toBe(`/public/s/DOCS/p/${PAGE}/guide`);
+    expect(screen.getByRole("link", { name: "the guide" }).getAttribute("href")).toBe(`/public/spaces/DOCS/p/${PAGE}/guide`);
   });
 });
 
@@ -131,6 +137,13 @@ describe("an address from when the public pages named the organization", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/public/search"));
     expect(router.state.location.search).toEqual({ q: "zebra" });
     expect(sent.some((r) => r.path === "/public/acme")).toBe(true);
+  });
+
+  it("goes on from /public/s/ to /public/spaces/, query and heading kept", async () => {
+    stubApi({});
+    const router = await open(`/public/s/DOCS/p/${PAGE}/install?x=1#steps`);
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/public/spaces/DOCS/p/${PAGE}/install`));
+    expect(router.state.location.hash).toBe("steps");
   });
 
   it("is not found when the slug is another organization's", async () => {

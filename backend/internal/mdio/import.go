@@ -198,7 +198,7 @@ func (s *Service) prepare(in []File) (*upload, []*entry, error) {
 				e.files = append(e.files, p)
 			}
 			return markdown.Target{Kind: markdown.TargetFile, AttachmentID: uuid.Nil.String(), FileName: objectstore.CleanName(path.Base(p))}
-		}, func(*entry) string { return "/s/X/p/" + uuid.Nil.String() }))
+		}, func(*entry) string { return "/spaces/X/p/" + uuid.Nil.String() }))
 		if err != nil {
 			failed = fileError(e.md, err)
 			return
@@ -331,7 +331,7 @@ func (s *Service) Import(ctx context.Context, actor perm.Actor, parentID uuid.UU
 			converted, err := markdown.Convert(u.files[e.md], u.resolver(e, func(p string) markdown.Target {
 				a := e.uploaded[p]
 				return markdown.Target{Kind: markdown.TargetFile, AttachmentID: a.ID.String(), FileName: a.FileName}
-			}, func(to *entry) string { return "/s/" + parent.SpaceKey + "/p/" + to.id.String() }))
+			}, func(to *entry) string { return "/spaces/" + parent.SpaceKey + "/p/" + to.id.String() }))
 			if err != nil {
 				failed = fileError(e.md, err)
 				return

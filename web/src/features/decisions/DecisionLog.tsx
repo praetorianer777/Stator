@@ -1,6 +1,5 @@
 import { useDecisions, type DecisionFilter } from "@/api/decisions";
-import { useSpace } from "@/api/spaces";
-import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, EmptyState, ErrorBanner, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
@@ -15,11 +14,10 @@ const FILTERS: Array<{ state: DecisionFilter; label: string }> = [
 
 /** Every decision item on a space's pages the reader may read, newest page first, each linked to its page. */
 export function DecisionLog({ spaceKey, state, onState }: { spaceKey: string; state: DecisionFilter; onState: (state: DecisionFilter) => void }) {
-  const { data: space } = useSpace(spaceKey);
   const { data, isLoading, error, refetch } = useDecisions(spaceKey, state);
   return (
-    <div className="mx-auto max-w-3xl" data-decision-log={spaceKey}>
-      <PageHeader crumb={space?.name ?? spaceKey} title={t.decisions.title} />
+    <Page width="narrow" data-decision-log={spaceKey}>
+      <PageHeader title={t.decisions.title} />
       <div role="group" aria-label={t.decisions.filter} className="mb-4 flex gap-2">
         {FILTERS.map((filter) => (
           <Button
@@ -59,6 +57,6 @@ export function DecisionLog({ spaceKey, state, onState }: { spaceKey: string; st
         </ul>
       )}
       {data?.truncated && <p className="mt-3 text-sm text-ink-muted">{t.decisions.truncated}</p>}
-    </div>
+    </Page>
   );
 }

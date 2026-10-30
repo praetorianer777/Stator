@@ -35,23 +35,27 @@ export function Rail({ open, onToggle }: { open: boolean; onToggle: () => void }
     });
   return (
     <aside className="flex shrink-0 flex-col items-center border-r border-border bg-surface" style={{ width: SIDEBAR_RAIL_WIDTH }} data-rail data-print-hide>
-      <div className="flex h-12 w-full items-center justify-center border-b border-border">
-        <IconButton
-          icon={open ? <Icon.Collapse /> : <Icon.Expand />}
-          label={open ? t.nav.collapseSidebar : t.nav.expandSidebar}
-          size="sm"
-          onClick={onToggle}
-          aria-expanded={open}
-          aria-controls={open ? SIDEBAR_ID : undefined}
-          data-action="sidebar"
-        />
-      </div>
-      <nav aria-label={t.nav.everywhere} className="flex flex-1 flex-col items-center gap-1 py-3">
-        {items(BEFORE_BELL)}
-        {me?.organization && <NotificationBell side="right" />}
-        {items(AFTER_BELL)}
+      {/* The toggle opens and closes the navigation, so it sits inside it, not in a banner of its own. */}
+      <nav aria-label={t.nav.everywhere} className="flex w-full flex-1 flex-col items-center">
+        <div className="flex h-12 w-full items-center justify-center border-b border-border" data-rail-top>
+          <IconButton
+            icon={open ? <Icon.Collapse /> : <Icon.Expand />}
+            label={open ? t.nav.collapseSidebar : t.nav.expandSidebar}
+            size="sm"
+            onClick={onToggle}
+            aria-expanded={open}
+            aria-controls={open ? SIDEBAR_ID : undefined}
+            data-action="sidebar"
+          />
+        </div>
+        <div className="flex flex-1 flex-col items-center gap-1 py-3">
+          {items(BEFORE_BELL)}
+          {me?.organization && <NotificationBell side="right" />}
+          {items(AFTER_BELL)}
+        </div>
       </nav>
-      <div className="flex flex-col items-center gap-1 border-t border-border py-2">
+      {/* As wide as the rail, unlike its centred controls, so the account menu's anchor reaches the rail's edge. */}
+      <div className="flex w-full flex-col items-center gap-1 border-t border-border py-2" data-rail-foot>
         <ThemeButton />
         <AccountMenu />
       </div>

@@ -174,7 +174,7 @@ func TestAnHTMLExportOfAnotherWikiBecomesASpace(t *testing.T) {
 
 	t.Run("links, pictures and blocks point at the new space", func(t *testing.T) {
 		homePage := string(want(t, owner.get(t, pagePath(ids["Home"])), http.StatusOK, "the home page").Raw)
-		if !strings.Contains(homePage, "/s/WIKI/p/"+ids["Guide"]) {
+		if !strings.Contains(homePage, "/spaces/WIKI/p/"+ids["Guide"]) {
 			t.Errorf("the home page does not link the guide: %s", homePage)
 		}
 		files := list(t, want(t, owner.get(t, pagePath(ids["Guide"], "/attachments")), http.StatusOK, "the guide's files"), "attachments")

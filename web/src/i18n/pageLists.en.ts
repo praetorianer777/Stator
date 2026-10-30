@@ -1,0 +1,32 @@
+/** The English strings of the page list macros. */
+export const pageListsEn = {
+  edit: "Edit list",
+  loading: "Finding the pages",
+  failed: "The pages could not be listed. Reload the page to try again.",
+  labelledTitle: (labels: string[], match: string, space: string | null) =>
+    `Pages labelled ${labels.join(match === "any" ? " or " : " and ")}${space ? ` in ${space}` : ""}`,
+  labelledEmpty: "No published page you can read carries these labels yet.",
+  updatedTitle: (space: string | null) => (space ? `Recently updated in ${space}` : "Recently updated"),
+  updatedEmpty: "Nothing you can read has been published yet.",
+  by: (name: string) => `by ${name}`,
+  dialog: {
+    labelledNew: "Insert a list of pages by label",
+    labelledEdit: "Edit the list of pages by label",
+    updatedNew: "Insert a list of recently updated pages",
+    updatedEdit: "Edit the list of recently updated pages",
+    labels: "Labels",
+    labelsHint: "Separate labels with commas.",
+    labelsNone: "Name at least one label to list pages by.",
+    match: "Pages that carry",
+    matches: { all: "All of the labels", any: "Any of the labels" } as Record<string, string>,
+    space: "Space",
+    everySpace: "Every space",
+    sort: "Order",
+    sorts: { updated: "Latest updated first", title: "By title" } as Record<string, string>,
+    limit: "Show",
+    limitChoice: (n: number) => `${n} pages`,
+    cancel: "Cancel",
+    insert: "Insert",
+    save: "Save",
+  },
+};

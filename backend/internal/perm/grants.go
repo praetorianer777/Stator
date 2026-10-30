@@ -8,17 +8,15 @@ type SubjectType string
 const (
 	SubjectUser  SubjectType = "user"
 	SubjectGroup SubjectType = "group"
-	// SubjectEveryone is every member of the organization who may use it.
-	SubjectEveryone SubjectType = "everyone"
 )
 
 // SubjectTypes lists every SubjectType, for the API document.
-var SubjectTypes = []SubjectType{SubjectUser, SubjectGroup, SubjectEveryone}
+var SubjectTypes = []SubjectType{SubjectUser, SubjectGroup}
 
 // Subject is somebody a permission names, as a list shows them.
 type Subject struct {
 	Type SubjectType `json:"type"`
-	// ID is the person's or the group's, null for everyone.
+	// ID is the person's or the group's.
 	ID   *uuid.UUID `json:"id"`
 	Name string     `json:"name"`
 }
@@ -26,38 +24,24 @@ type Subject struct {
 // SubjectRef names a subject in a request.
 type SubjectRef struct {
 	Type SubjectType `json:"type"`
-	// ID is the person's or the group's, left out for everyone.
+	// ID is the person's or the group's.
 	ID *uuid.UUID `json:"id,omitempty"`
 }
 
-// GlobalPermission is something granted across the whole organization.
+// GlobalPermission is something a grant across the whole installation holds.
 type GlobalPermission string
 
 const (
-	// UseStator is reading anything at all in the organization.
+	// UseStator is reading anything at all in the installation.
 	UseStator GlobalPermission = "use"
 	// CreateSpaces is making new spaces.
 	CreateSpaces GlobalPermission = "createSpace"
-	// AdministerSite is the organization's settings, people and permissions.
-	AdministerSite GlobalPermission = "administer"
+	// AdministerSite is the installation's settings, people and access.
+	AdministerSite GlobalPermission = "administerSite"
 )
 
 // GlobalPermissions lists every GlobalPermission, for the API document.
 var GlobalPermissions = []GlobalPermission{UseStator, CreateSpaces, AdministerSite}
-
-// GlobalGrant is one global permission and whom it is granted to.
-type GlobalGrant struct {
-	Permission GlobalPermission `json:"permission"`
-	Subjects   []Subject        `json:"subjects"`
-	// Fixed grants follow the organization's roles and are changed under
-	// Users rather than here.
-	Fixed bool `json:"fixed"`
-}
-
-// GlobalGrantInput replaces whom a global permission is granted to.
-type GlobalGrantInput struct {
-	Subjects []SubjectRef `json:"subjects"`
-}
 
 // GlobalCan is what the caller may do across the organization.
 type GlobalCan struct {
@@ -86,23 +70,6 @@ const (
 
 // SpacePermissions lists every SpacePermission, for the API document.
 var SpacePermissions = []SpacePermission{SpaceView, SpaceAddPages, SpaceAddComments, SpaceDelete, SpaceAdminister}
-
-// SpaceGrant is what one subject may do in a space.
-type SpaceGrant struct {
-	Subject     Subject           `json:"subject"`
-	Permissions []SpacePermission `json:"permissions"`
-}
-
-// SpaceGrantInput is one row of the space's permission table.
-type SpaceGrantInput struct {
-	Subject     SubjectRef        `json:"subject"`
-	Permissions []SpacePermission `json:"permissions"`
-}
-
-// SpaceGrantsInput replaces a space's whole permission table.
-type SpaceGrantsInput struct {
-	Grants []SpaceGrantInput `json:"grants"`
-}
 
 // PageCan is what the caller may do to one page, its restrictions included.
 type PageCan struct {
@@ -134,11 +101,25 @@ type Mentionable struct {
 	CanView bool `json:"canView"`
 }
 
-// Group is a group of the organization, as a picker offers it.
+// Group is a named set of people, as a picker and the Groups tab show it.
 type Group struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
-	MemberCount int       `json:"memberCount"`
+	Description string    `json:"description"`
+	// Source says who keeps the members: "local" by hand, "oidc" the
+	// identity provider, whose memberships every sign-in replaces.
+	Source string `json:"source"`
+	// ExternalRef is the name in the provider's groups claim that fills the
+	// group; empty for one kept by hand.
+	ExternalRef string `json:"externalRef"`
+	// Builtin marks a group the installation keeps itself: "everyone" holds
+	// every member. Its name and members are not edited.
+	Builtin     string `json:"builtin,omitempty"`
+	MemberCount int    `json:"memberCount"`
+	// RoleCount is how many grants name the group.
+	RoleCount int `json:"roleCount"`
 	// FromProvider groups mirror the identity provider's.
 	FromProvider bool `json:"fromProvider"`
+	// Members are the people in it, when one group is read.
+	Members []Person `json:"members,omitempty"`
 }

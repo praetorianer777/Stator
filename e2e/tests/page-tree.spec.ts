@@ -23,7 +23,7 @@ test.describe("the page tree", { tag: ["@auth"] }, () => {
 
   test("child pages are created from the page they go under", { tag: "@desktop" }, async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Children");
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
 
     await page.locator('[data-action="new-page"]').click();
     await page.getByRole("dialog").getByLabel("Title", { exact: true }).fill("Onboarding");
@@ -48,7 +48,7 @@ test.describe("the page tree", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Drag");
     const target = await createPage(api, space.homePageId, "Target");
     await createPage(api, space.homePageId, "Dragged");
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
 
     const row = item(page, "Target").locator("[data-tree-row]");
     await item(page, "Dragged").dragTo(row);
@@ -65,7 +65,7 @@ test.describe("the page tree", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Keys");
     const parent = await createPage(api, space.homePageId, "Parent");
     await createPage(api, space.homePageId, "Mover");
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
 
     await item(page, "Parent").focus();
     await page.keyboard.press("ArrowDown");
@@ -85,7 +85,7 @@ test.describe("the page tree", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Axe");
     const parent = await createPage(api, space.homePageId, "Parent");
     const child = await createPage(api, parent.id, "Child");
-    await page.goto(`/s/${space.key}/p/${child.id}/child`);
+    await page.goto(`/spaces/${space.key}/p/${child.id}/child`);
     await expect(heading(page)).toHaveText("Child");
     await expectAccessible(page);
     if (await tree(page).isVisible()) {

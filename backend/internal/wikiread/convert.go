@@ -1049,7 +1049,7 @@ func onlyImage(k *node) *node {
 }
 
 // pageHref is a page's address in the new space.
-func (c *converter) pageHref(id uuid.UUID) string { return "/s/" + c.key + "/p/" + id.String() }
+func (c *converter) pageHref(id uuid.UUID) string { return "/spaces/" + c.key + "/p/" + id.String() }
 
 // acLink reads a link of the XML export, which names its target by title,
 // file name or person rather than by address.

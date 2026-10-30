@@ -55,10 +55,10 @@ func (s *Service) Provider(ctx context.Context) (*Provider, error) {
 	err := s.db.ReadPrimary(ctx, func(ctx context.Context, tx db.DBTX) error {
 		return tx.QueryRow(ctx, `
 			SELECT issuer, client_id, client_secret IS NOT NULL, groups_claim, scopes,
-			       create_groups, enabled, updated_at
+			       create_groups, admit_by_group, enabled, updated_at
 			FROM oidc_provider`,
 		).Scan(&p.Issuer, &p.ClientID, &p.HasSecret, &p.GroupsClaim, &p.Scopes,
-			&p.CreateGroups, &p.Enabled, &p.UpdatedAt)
+			&p.CreateGroups, &p.AdmitByGroup, &p.Enabled, &p.UpdatedAt)
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotConfigured
@@ -149,8 +149,8 @@ func (s *Service) store(
 			}
 		}
 		_, err := tx.Exec(ctx, `
-			INSERT INTO oidc_provider (issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
+			INSERT INTO oidc_provider (issuer, client_id, client_secret, groups_claim, scopes, create_groups, enabled, admit_by_group)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			ON CONFLICT (singleton) DO UPDATE SET
 			    issuer = EXCLUDED.issuer,
 			    client_id = EXCLUDED.client_id,
@@ -158,8 +158,9 @@ func (s *Service) store(
 			    groups_claim = EXCLUDED.groups_claim,
 			    scopes = EXCLUDED.scopes,
 			    create_groups = EXCLUDED.create_groups,
-			    enabled = EXCLUDED.enabled`,
-			in.Issuer, in.ClientID, sealed, in.GroupsClaim, in.Scopes, in.CreateGroups, in.Enabled)
+			    enabled = EXCLUDED.enabled,
+			    admit_by_group = EXCLUDED.admit_by_group`,
+			in.Issuer, in.ClientID, sealed, in.GroupsClaim, in.Scopes, in.CreateGroups, in.Enabled, in.AdmitByGroup)
 		if err != nil {
 			return err
 		}
@@ -173,7 +174,7 @@ func (s *Service) store(
 			Action: audit.ActionSSOProviderSaved, TargetType: "oidc_provider", Actor: actor,
 			Data: map[string]any{
 				"issuer": in.Issuer, "clientId": in.ClientID, "clientSecret": secretChange, "groupsClaim": in.GroupsClaim,
-				"scopes": in.Scopes, "createGroups": in.CreateGroups, "enabled": in.Enabled,
+				"scopes": in.Scopes, "createGroups": in.CreateGroups, "admitByGroup": in.AdmitByGroup, "enabled": in.Enabled,
 			},
 		})
 	})

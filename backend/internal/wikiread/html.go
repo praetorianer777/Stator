@@ -163,9 +163,9 @@ func readHTML(b *bundle, opts Options) (*Space, error) {
 		case p == "":
 			return target{}
 		case p == indexPath:
-			return target{href: "/s/" + opts.Key}
+			return target{href: "/spaces/" + opts.Key}
 		case pages[p] != nil:
-			return target{href: "/s/" + opts.Key + "/p/" + pages[p].page.ID.String()}
+			return target{href: "/spaces/" + opts.Key + "/p/" + pages[p].page.ID.String()}
 		case files[p] != nil:
 			return target{file: files[p]}
 		}

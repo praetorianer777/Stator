@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { INLINE_ANCHOR_RETRIES } from "@/config";
 import type { Doc } from "@/features/editor/schema";
 import { t } from "@/i18n";

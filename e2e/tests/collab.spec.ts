@@ -43,7 +43,7 @@ test.describe("editing a page together", { tag: ["@auth", "@desktop"] }, () => {
     const plans = await createPage(api, space.homePageId, "Plans", doc("First words."));
     const aliceName = must(await api.GET("/auth/me")).user.name;
     const bobName = must(await (await apiAs("bob")).GET("/auth/me")).user.name;
-    const path = `/s/${space.key}/p/${plans.id}/plans/edit`;
+    const path = `/spaces/${space.key}/p/${plans.id}/plans/edit`;
 
     await page.goto(path);
     await expect(page.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");

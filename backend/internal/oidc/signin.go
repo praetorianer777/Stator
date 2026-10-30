@@ -81,23 +81,20 @@ func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Durat
 			return auth.ErrUserInactive
 		}
 
-		var create bool
-		err = tx.QueryRow(ctx, `SELECT create_groups FROM oidc_provider WHERE enabled`).Scan(&create)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotConfigured
-		}
+		rules, err := admissionIn(ctx, tx)
 		if err != nil {
 			return err
 		}
-		// Before the groups, whose rows need a membership to hang off: a mapped
-		// group is an administrator's yes given in advance.
-		if out.Role, err = followMapping(ctx, tx, userID, identity.Groups); err != nil {
+		// Before the groups, whose rows need a membership to hang off: a group
+		// that holds a grant is an administrator's yes given in advance, once
+		// they say so.
+		if out.Role, err = followMapping(ctx, tx, userID, identity.Groups, rules.admit, viaSignIn); err != nil {
 			return err
 		}
 		// A guest is in no group, whatever the provider says: a group would
 		// carry them into every space it is granted.
 		if out.Role != auth.RoleGuest {
-			out.Joined, out.Left, err = syncGroups(ctx, tx, userID, identity.Groups, create)
+			out.Joined, out.Left, err = syncGroups(ctx, tx, userID, identity.Groups, rules.createGroups)
 			if err != nil {
 				return err
 			}
@@ -112,6 +109,22 @@ func (s *Service) signIn(ctx context.Context, identity *Identity, ttl time.Durat
 	}
 	out.LSN = lsn
 	return &out, nil
+}
+
+// admission is what the provider's settings say about letting people in.
+type admission struct {
+	createGroups bool
+	admit        bool
+}
+
+// admissionIn reads the switched on provider's settings inside a sign-in.
+func admissionIn(ctx context.Context, tx db.DBTX) (admission, error) {
+	var a admission
+	err := tx.QueryRow(ctx, `SELECT create_groups, admit_by_group FROM oidc_provider WHERE enabled`).Scan(&a.createGroups, &a.admit)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return a, ErrNotConfigured
+	}
+	return a, err
 }
 
 // upsertUser finds the account an identity belongs to by issuer and subject,

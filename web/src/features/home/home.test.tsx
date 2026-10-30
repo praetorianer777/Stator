@@ -72,9 +72,9 @@ describe("the home page", () => {
     await renderAt("/");
     const row = await screen.findByText("Grace Hopper published version 3");
     expect(row.closest("li")).toHaveTextContent("Tidied the steps");
-    expect(within(list("updates")).getByRole("link", { name: "Guide" })).toHaveAttribute("href", `/s/DOCS/p/${guide}/guide`);
+    expect(within(list("updates")).getByRole("link", { name: "Guide" })).toHaveAttribute("href", `/spaces/DOCS/p/${guide}/guide`);
     expect(within(list("starred")).getByRole("link", { name: "Runbook" })).toBeInTheDocument();
-    expect(within(list("starred")).getByRole("link", { name: "Operations" })).toHaveAttribute("href", "/s/OPS");
+    expect(within(list("starred")).getByRole("link", { name: "Operations" })).toHaveAttribute("href", "/spaces/OPS");
     expect(within(list("recent")).getByRole("link", { name: "Guide" })).toBeInTheDocument();
     expect(within(list("edited")).getByText("Draft")).toBeInTheDocument();
     expect(screen.queryByText("Welcome to Stator")).toBeNull();
@@ -113,7 +113,7 @@ describe("the home page", () => {
     });
     await renderAt("/");
     const row = (await within(list("tasks")).findByText("Rotate the keys")).closest("li")!;
-    expect(within(row).getByRole("link", { name: "Runbook" })).toHaveAttribute("href", `/s/DOCS/p/${runbook}/runbook`);
+    expect(within(row).getByRole("link", { name: "Runbook" })).toHaveAttribute("href", `/spaces/DOCS/p/${runbook}/runbook`);
     expect(within(row).getByRole("checkbox", { name: "Done: Rotate the keys" })).toBeEnabled();
     expect(within(row).getByText("Overdue")).toBeInTheDocument();
     expect(within(list("tasks")).getByRole("link", { name: "All my tasks" })).toHaveAttribute("href", "/tasks");
@@ -240,7 +240,7 @@ describe("the star buttons", () => {
         return { status: 204 };
       },
     });
-    await renderAt(`/s/DOCS/p/${runbook}/runbook`);
+    await renderAt(`/spaces/DOCS/p/${runbook}/runbook`);
     const button = await screen.findByRole("button", { name: "Star Runbook" });
     expect(button).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(button);
@@ -252,7 +252,7 @@ describe("the star buttons", () => {
 
   it("says when a star could not be changed", async () => {
     stubPage({ [`PUT /pages/${runbook}/star`]: { status: 500, body: { error: { code: "internal", message: "Something went wrong." } } } });
-    await renderAt(`/s/DOCS/p/${runbook}/runbook`);
+    await renderAt(`/spaces/DOCS/p/${runbook}/runbook`);
     await userEvent.click(await screen.findByRole("button", { name: "Star Runbook" }));
     expect(await screen.findByText("The star could not be changed. Try again in a moment.")).toBeInTheDocument();
   });

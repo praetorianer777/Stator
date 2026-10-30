@@ -7,6 +7,7 @@ import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { childTitles, createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey, type Space } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const editorBox = (page: Page) => page.locator("#page-body");
 const shown = (page: Page) => page.locator("main [data-doc]");
@@ -37,12 +38,7 @@ test.describe("template button and contributors", { tag: ["@auth"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Meetings"));
     // Everybody reads the space; only alice, who made it, adds pages.
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
     return space;
   }
 
@@ -57,7 +53,7 @@ test.describe("template button and contributors", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "Our weekly meetings." }] }],
     });
-    const path = `/s/${space.key}/p/${meetings.id}/team-meetings`;
+    const path = `/spaces/${space.key}/p/${meetings.id}/team-meetings`;
 
     await openShowing(page, `${path}/edit`, "Our weekly meetings.");
     await insertBlock(page, "/template");

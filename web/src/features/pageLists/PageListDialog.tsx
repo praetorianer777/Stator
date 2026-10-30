@@ -58,8 +58,23 @@ export function PageListDialog(props: Props) {
 
   const title = kind === "labelled" ? (isNew ? d.labelledNew : d.labelledEdit) : isNew ? d.updatedNew : d.updatedEdit;
   return (
-    <Dialog title={title} onClose={onClose} data-page-list-dialog={kind}>
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={title}
+      onClose={onClose}
+      attrs={{ "data-page-list-dialog": kind }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="page-list-dialog-form" data-action="save-page-list">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="page-list-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         {kind === "labelled" && (
           <>
             <Field
@@ -113,14 +128,6 @@ export function PageListDialog(props: Props) {
               </option>
             ))}
         </Select>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-page-list">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

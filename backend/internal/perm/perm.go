@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -81,8 +82,8 @@ const (
 	MoveSite Action = "site.move"
 )
 
-// Actor is who asks: a person and their standing in the organization the
-// request acts in.
+// Actor is who asks: a person and their standing in the installation, member
+// or guest; what they may do is read from the grants, never from it.
 type Actor struct {
 	UserID uuid.UUID
 	Role   auth.Role
@@ -209,8 +210,8 @@ func On(ctx context.Context, tx db.DBTX, actor Actor, space uuid.UUID) (Can, err
 	return f.Can(), nil
 }
 
-// LoadFacts reads what the database grants the actor in the organization and
-// in one space, uuid.Nil for none.
+// LoadFacts reads what the database grants the actor across the
+// installation and in one space, uuid.Nil for none.
 func LoadFacts(ctx context.Context, tx db.DBTX, actor Actor, space uuid.UUID) (Facts, error) {
 	if actor.UserID == uuid.Nil {
 		return Facts{}, nil
@@ -232,9 +233,11 @@ func LoadFacts(ctx context.Context, tx db.DBTX, actor Actor, space uuid.UUID) (F
 	if role == nil || (space != uuid.Nil && !reached) {
 		return Facts{}, nil
 	}
-	f := Facts{Member: true, Role: auth.Role(*role), SpacesOnly: !whole}
+	f := Facts{Member: true, Guest: auth.Role(*role) == auth.RoleGuest, SpacesOnly: !whole}
 	for _, g := range global {
-		f.Global = append(f.Global, GlobalPermission(g))
+		if p := GlobalPermission(g); slices.Contains(GlobalPermissions, p) {
+			f.Global = append(f.Global, p)
+		}
 	}
 	for _, s := range held {
 		f.Space = append(f.Space, SpacePermission(s))

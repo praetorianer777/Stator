@@ -245,7 +245,7 @@ test.describe("tasks", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Gone");
     const plans = await createPage(api, space.homePageId, uniqueName(testInfo, "Plans"), checklist("Plans.", [words("Nothing assigned")]));
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${space.key}/p/${plans.id}/page#task-0195f000-0000-7000-8000-00000000ffff`, async () => {
+    await openUntil(bob, `/spaces/${space.key}/p/${plans.id}/page#task-0195f000-0000-7000-8000-00000000ffff`, async () => {
       await expect(bob.locator("[data-task-gone]")).toContainText("no longer on this page", ONE_LOOK);
     });
   });

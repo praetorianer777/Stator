@@ -213,9 +213,9 @@ func TestReactionsOverTheAPI(t *testing.T) {
 	t.Run("a reader without addComments sees reactions and adds none", func(t *testing.T) {
 		th := startThread(t, ann, plan, "Read only soon.")["id"].(string)
 		want(t, react(t, ben, "comments", th, "👍"), http.StatusOK, "ben reacts while he may")
-		want(t, owner.put(t, "/api/v1/spaces/REACT/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "REACT", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "REACT is read only")
+		}), http.StatusOK, "REACT is read only")
 		h.settle(t)
 		for what, r := range map[string]response{
 			"ben reacts to the page":    react(t, ben, "pages", plan, "😀"),
@@ -229,7 +229,7 @@ func TestReactionsOverTheAPI(t *testing.T) {
 			t.Error("ben sees no reactions on a page he may read")
 		}
 		want(t, unreact(t, ben, "comments", th, "👍"), http.StatusOK, "ben takes his own off while he may view")
-		want(t, owner.put(t, "/api/v1/spaces/REACT/permissions", map[string]any{"grants": []any{commenters}}), http.StatusOK, "REACT is open again")
+		want(t, owner.setTable(t, "REACT", []any{commenters}), http.StatusOK, "REACT is open again")
 		h.settle(t)
 	})
 
@@ -317,9 +317,9 @@ func TestReactionsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("without addComments nothing is added, and one's own still comes off", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/spaces/RRAW/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "RRAW", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "RRAW is read only")
+		}), http.StatusOK, "RRAW is read only")
 		h.settle(t)
 		actAs(t, conn, annID)
 		denied(t, conn, "a reaction without addComments", onPage, open, annID, "🎉")

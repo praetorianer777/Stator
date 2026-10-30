@@ -49,7 +49,7 @@ test.describe("page properties", { tag: ["@auth"] }, () => {
     const decision = await createPage(api, space.homePageId, "Drop the cache", { type: "doc", content: [paragraph("Why we drop it."), { type: "paragraph" }] });
     await label(api, decision.id, tag);
 
-    await openShowing(page, `/s/${space.key}/p/${decision.id}/drop-the-cache/edit`, "Why we drop it.");
+    await openShowing(page, `/spaces/${space.key}/p/${decision.id}/drop-the-cache/edit`, "Why we drop it.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/properties");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -77,7 +77,7 @@ test.describe("page properties", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [paragraph("All our decisions."), { type: "paragraph" }],
     });
-    await openShowing(page, `/s/${space.key}/p/${register.id}/decision-register/edit`, "All our decisions.");
+    await openShowing(page, `/spaces/${space.key}/p/${register.id}/decision-register/edit`, "All our decisions.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/report");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -123,13 +123,13 @@ test.describe("page properties", { tag: ["@auth"] }, () => {
         content: [{ type: "propertiesReport", attrs: { labels: [tag], space: null, columns: [] } }],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${register.id}/releases`, "Releases");
+      await openShowing(page, `/spaces/${space.key}/p/${register.id}/releases`, "Releases");
       await expect(shown(page).locator("[data-properties-report]")).toHaveAttribute("data-state", "report");
       await expectAccessible(page);
-      await openShowing(page, `/s/${space.key}/p/${one.id}/release-1`, "Shipped");
+      await openShowing(page, `/spaces/${space.key}/p/${one.id}/release-1`, "Shipped");
       await page.screenshot({ path: testInfo.outputPath(`properties-${scheme}.png`), fullPage: true });
       await expectAccessible(page);
-      await openShowing(page, `/s/${space.key}/p/${one.id}/release-1/edit`, "Shipped");
+      await openShowing(page, `/spaces/${space.key}/p/${one.id}/release-1/edit`, "Shipped");
       await expect(editorBox(page).getByRole("textbox", { name: "Property name" })).toHaveCount(3);
       await page.screenshot({ path: testInfo.outputPath(`properties-edit-${scheme}.png`), fullPage: true });
       await expectAccessible(page);

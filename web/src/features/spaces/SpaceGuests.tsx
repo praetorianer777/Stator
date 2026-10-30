@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { INVITABLE_ROLES, useGuests, useInviteGuest, useRemoveGuest, type Guest, type InvitableRole } from "@/api/guests";
 import type { Space } from "@/api/spaces";
-import { Button, Card, ErrorBanner, Field, Select, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Button, Card, ErrorBanner, Field, Select, Skeleton, Table, Td, Th, useToast } from "@/components/ui";
 import { GUEST_EMAIL_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 
@@ -17,32 +17,30 @@ export function SpaceGuests({ space }: { space: Space }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InvitableRole>("viewer");
   const [confirming, setConfirming] = useState<Guest | null>(null);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const fields = invite.error instanceof ApiError ? invite.error.fields : {};
   const failure = (invite.error && Object.keys(fields).length === 0 ? invite.error : null) ?? remove.error;
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    setNotice("");
     invite.mutate(
       { email, role },
       {
         onSuccess: (made) => {
           setEmail("");
-          setNotice(t.guests.invited(made.email));
+          toast.success(t.guests.invited(made.email));
         },
       },
     );
   }
 
   function removeConfirmed(guest: Guest) {
-    setNotice("");
     remove.mutate(
       { userId: guest.userId },
       {
         onSuccess: () => {
           setConfirming(null);
-          setNotice(t.guests.removed(guest.name || guest.email));
+          toast.success(t.guests.removed(guest.name || guest.email));
         },
       },
     );
@@ -133,11 +131,6 @@ export function SpaceGuests({ space }: { space: Space }) {
         </Button>
       </form>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
-      {notice && (
-        <p role="status" className="text-sm text-ink-muted">
-          {notice}
-        </p>
-      )}
     </Card>
   );
 }

@@ -13,7 +13,7 @@ vi.mock("@/config", async (original) => ({ ...(await original<typeof config>()),
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const space = aSpace();
 
 function anExport(over: Partial<SpaceExport> = {}): SpaceExport {
@@ -72,7 +72,7 @@ describe("exporting a space", () => {
         return { status: 202, body: { export: jobs[0] } };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=export");
+    await renderAt("/spaces/DOCS/settings/export");
     expect(await screen.findByText("This space has not been exported yet.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: /HTML pages/ }));
     await userEvent.click(screen.getByRole("button", { name: "Export space" }));
@@ -101,17 +101,19 @@ describe("exporting a space", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=export");
+    await renderAt("/spaces/DOCS/settings/export");
     expect(await screen.findByText(/you no longer administer it/)).toBeInTheDocument();
     expect(screen.getByText(/The file was deleted after its time/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Download" })).toBeNull();
   });
 
   it("is not offered to somebody who does not administer the space", async () => {
-    stubApi({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { ...space.can, administer: false } }) } } });
-    await renderAt("/s/DOCS/settings?tab=export", { me: member });
-    expect(await screen.findByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("tab", { name: "Export" })).toBeNull();
+    const sent = stubApi({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { ...space.can, administer: false } }) } } });
+    await renderAt("/spaces/DOCS/settings/export", { me: member });
+    expect(await screen.findByRole("tab", { name: "General" })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Import and export" })).toBeNull();
+    expect(document.querySelector('[data-settings-refused="export"]')).toHaveTextContent("Ask one of them, or ask for the role.");
+    expect(sent.some((r) => r.path === "/spaces/DOCS/exports")).toBe(false);
   });
 });
 
@@ -167,7 +169,7 @@ describe("importing a space", () => {
     expect(within(card).getByText("Auditors")).toBeInTheDocument();
     expect(within(card).getByText(/Administer for Grace Hopper/)).toBeInTheDocument();
     expect(within(card).getByText("3 versions, comments and files are now in your name.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open LANDED" })).toHaveAttribute("href", "/s/LANDED");
+    expect(screen.getByRole("link", { name: "Open LANDED" })).toHaveAttribute("href", "/spaces/LANDED");
     expect(await axeViolations()).toEqual([]);
   });
 

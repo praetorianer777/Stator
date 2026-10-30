@@ -40,7 +40,7 @@ const (
 // The sentences the profile shows when Exciter did not connect a person at
 // sign-in and gave no sentence of its own.
 const (
-	signInNoApp        = "Stator is not a partner app of this Exciter yet, so it could not connect you when you signed in. Paste an Exciter token below, or ask a Stator administrator to store the app under Settings, Exciter."
+	signInNoApp        = "Stator is not a partner app of this Exciter yet, so it could not connect you when you signed in. Paste an Exciter token below, or ask a Stator administrator to store the app under Admin, Exciter."
 	signInUnreachable  = "Exciter did not answer when you signed in, so you are not connected yet. Paste an Exciter token below, or sign in again later."
 	signInRefusedShape = "Exciter would not connect you when you signed in (%s). Paste an Exciter token below."
 )

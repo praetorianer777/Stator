@@ -89,7 +89,7 @@ func readSite(ctx context.Context, tx db.DBTX, exporter uuid.UUID) (*siteSnapsho
 
 func (s *siteSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT u.id, u.name, u.email::text, u.timezone, u.locale, u.is_active, u.show_in_readers, m.role, m.role_source,
+		SELECT u.id, u.name, u.email::text, u.timezone, u.locale, u.is_active, u.show_in_readers, m.role,
 		       COALESCE(s.key, ''), m.created_at
 		FROM member m JOIN app_user u ON u.id = m.user_id LEFT JOIN space s ON s.id = m.guest_space_id
 		ORDER BY lower(u.email::text), u.id`)
@@ -101,7 +101,7 @@ func (s *siteSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 			p  SitePerson
 			id uuid.UUID
 		)
-		err := row.Scan(&id, &p.Name, &p.Email, &p.Timezone, &p.Locale, &p.Active, &p.ShowInReaders, &p.Role, &p.RoleSource, &p.GuestSpace, &p.JoinedAt)
+		err := row.Scan(&id, &p.Name, &p.Email, &p.Timezone, &p.Locale, &p.Active, &p.ShowInReaders, &p.Role, &p.GuestSpace, &p.JoinedAt)
 		p.Ref = id.String()
 		return p, err
 	})
@@ -113,10 +113,10 @@ func (s *siteSnapshot) readPeople(ctx context.Context, tx db.DBTX) error {
 
 func (s *siteSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 	rows, err := tx.Query(ctx, `
-		SELECT g.id, g.name, g.description, g.source, g.external_ref,
-		       COALESCE(array_agg(m.user_id ORDER BY m.user_id) FILTER (WHERE m.user_id IS NOT NULL), '{}')
+		SELECT g.id, g.name, g.description, g.source, g.external_ref, COALESCE(g.builtin, ''),
+		       COALESCE(array_agg(m.user_id ORDER BY m.user_id) FILTER (WHERE m.user_id IS NOT NULL AND g.builtin IS NULL), '{}')
 		FROM groups g LEFT JOIN group_member m ON m.group_id = g.id
-		GROUP BY g.id ORDER BY lower(g.name), g.id`)
+		GROUP BY g.id ORDER BY g.builtin IS NULL, lower(g.name), g.id`)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (s *siteSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 			id      uuid.UUID
 			members []uuid.UUID
 		)
-		err := row.Scan(&id, &g.Name, &g.Description, &g.Source, &g.ExternalRef, &members)
+		err := row.Scan(&id, &g.Name, &g.Description, &g.Source, &g.ExternalRef, &g.Builtin, &members)
 		g.Ref, g.Members = id.String(), make([]string, 0, len(members))
 		for _, m := range members {
 			g.Members = append(g.Members, m.String())
@@ -139,24 +139,39 @@ func (s *siteSnapshot) readGroups(ctx context.Context, tx db.DBTX) error {
 	return err
 }
 
+// readPermissions reads the roles and what they grant across the
+// installation; version 2 writes no permissions of before.
 func (s *siteSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
+	s.m.Permissions = []Grant{}
 	rows, err := tx.Query(ctx, `
-		SELECT permission, subject_type, user_id, group_id FROM global_grant
-		ORDER BY permission, subject_type, user_id, group_id`)
+		SELECT key, name, description, installation_wide_only, builtin, permissions FROM role ORDER BY sort_order, key`)
 	if err != nil {
 		return err
 	}
-	s.m.Permissions, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Grant, error) {
+	s.m.Roles, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteRole, error) {
+		var r SiteRole
+		return r, row.Scan(&r.Key, &r.Name, &r.Description, &r.OrgWideOnly, &r.Builtin, &r.Permissions)
+	})
+	if err != nil {
+		return err
+	}
+	rows, err = tx.Query(ctx, `
+		SELECT role, CASE WHEN user_id IS NOT NULL THEN 'user' ELSE 'group' END, user_id, group_id
+		FROM role_assignment WHERE space_id IS NULL ORDER BY role, user_id, group_id`)
+	if err != nil {
+		return err
+	}
+	s.m.RoleGrants, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteRoleGrant, error) {
 		var (
-			g           Grant
+			g           SiteRoleGrant
 			user, group *uuid.UUID
 		)
-		err := row.Scan(&g.Permission, &g.Subject.Type, &user, &group)
+		err := row.Scan(&g.Role, &g.Subject.Type, &user, &group)
 		g.Subject.Person, g.Subject.Group = idText(user), idText(group)
 		return g, err
 	})
-	if s.m.Permissions == nil {
-		s.m.Permissions = []Grant{}
+	if s.m.RoleGrants == nil {
+		s.m.RoleGrants = []SiteRoleGrant{}
 	}
 	return err
 }
@@ -164,29 +179,15 @@ func (s *siteSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
 func (s *siteSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 	var p SiteSignIn
 	err := tx.QueryRow(ctx, `
-		SELECT issuer, client_id, groups_claim, scopes, create_groups, enabled FROM oidc_provider`).
-		Scan(&p.Issuer, &p.ClientID, &p.GroupsClaim, &p.Scopes, &p.CreateGroups, &p.Enabled)
+		SELECT issuer, client_id, groups_claim, scopes, create_groups, admit_by_group, enabled FROM oidc_provider`).
+		Scan(&p.Issuer, &p.ClientID, &p.GroupsClaim, &p.Scopes, &p.CreateGroups, &p.AdmitByGroup, &p.Enabled)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		p = SiteSignIn{}
 	case err != nil:
 		return err
 	}
-	rows, err := tx.Query(ctx, `SELECT group_ref, role FROM oidc_group_role ORDER BY group_ref`)
-	if err != nil {
-		return err
-	}
-	p.GroupRoles, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (SiteGroupRole, error) {
-		var r SiteGroupRole
-		return r, row.Scan(&r.Group, &r.Role)
-	})
-	if err != nil {
-		return err
-	}
-	if p.GroupRoles == nil {
-		p.GroupRoles = []SiteGroupRole{}
-	}
-	if p.Issuer != "" || len(p.GroupRoles) > 0 {
+	if p.Issuer != "" {
 		s.m.SignIn = &p
 	}
 	return nil

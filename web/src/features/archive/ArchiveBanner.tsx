@@ -59,7 +59,7 @@ export function ArchiveBanner({ page, space }: { page: Page; space: Space }) {
           </PageLink>
         )}
         {!item && space.can.administer && (
-          <Link to="/s/$spaceKey/settings" params={{ spaceKey: space.key }} className={link}>
+          <Link to="/spaces/$spaceKey/settings/general" params={{ spaceKey: space.key }} className={link}>
             {t.archive.spaceSettings}
           </Link>
         )}

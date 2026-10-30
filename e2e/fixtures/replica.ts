@@ -46,7 +46,7 @@ export async function openWithout(page: Page, path: string, gone: Locator, loade
 /** Opens a wiki page by id until its title shows as the heading, and `check` passes when given.
  *  The page, or what check looks for, may be another session's write. */
 export async function openPage(page: Page, spaceKey: string, target: { id: string; title: string }, check?: () => Promise<unknown>): Promise<void> {
-  await openUntil(page, `/s/${spaceKey}/p/${target.id}/page`, async () => {
+  await openUntil(page, `/spaces/${spaceKey}/p/${target.id}/page`, async () => {
     await expect(page.locator("main").getByRole("heading", { level: 1, name: target.title, exact: true })).toBeVisible(ONE_LOOK);
     await check?.();
   });

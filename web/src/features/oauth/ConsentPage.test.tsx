@@ -66,7 +66,7 @@ describe("the consent page", () => {
   it("offers a member nothing to allow while an administrator has not allowed the app", async () => {
     const refusal = "A Stator administrator must allow Rotor first. Ask one to connect it once; then you can connect it too.";
     stub({ status: 200, body: { consent: consent({ pending: true, mayAllow: false, mayCancel: false, refusal }) } });
-    await renderAt(PATH, { me: { ...signedIn, organization: { name: "Demo", role: "member", guestSpace: null } } });
+    await renderAt(PATH, { me: { ...signedIn, organization: { name: "Demo", role: "member", administers: false, guestSpace: null } } });
     expect(await screen.findByText(refusal)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Allow" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();

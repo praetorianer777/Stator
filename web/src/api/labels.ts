@@ -1,4 +1,5 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { LABEL_NAME_MAX_LENGTH, LABEL_PAGE_SIZE, LABEL_SUGGESTION_LIMIT } from "@/config";
 import { api } from "./client";
 import { pageQueryKey, type PageInSpace } from "./pages";
@@ -32,7 +33,7 @@ export function normalizeLabel(raw: string): { name: string; problem?: LabelProb
 
 /** Where a label's page lives in the address: the one route or the space's own. */
 export function labelPath(name: string, spaceKey?: string) {
-  return spaceKey ? ({ to: "/s/$spaceKey/labels/$name", params: { spaceKey, name } } as const) : ({ to: "/labels/$name", params: { name } } as const);
+  return spaceKey ? ({ to: "/spaces/$spaceKey/labels/$name", params: { spaceKey, name } } as const) : ({ to: "/labels/$name", params: { name } } as const);
 }
 
 /** Labels on pages the reader may view that start with what was typed, the most used first. */

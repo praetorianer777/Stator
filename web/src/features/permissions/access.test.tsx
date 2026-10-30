@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { AccessReport, AccessStep } from "@/api/permissions";
+import type { AccessGrant, AccessReport, AccessStep } from "@/api/permissions";
 import { renderAt, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
@@ -21,21 +21,30 @@ const ids = {
 const home = aPage();
 const plans = { id: ids.plans, title: "Plans", home: false };
 const secret = aPage({ id: ids.secret, title: "Secret", home: false, parentId: ids.plans, ancestors: [{ id: home.id, title: "Handbook", home: true }, plans] });
-const everyone = { type: "everyone" as const, id: null, name: "Everyone" };
 const eng = { type: "group" as const, id: ids.eng, name: "Engineering" };
+const grant = (over: Partial<AccessGrant>): AccessGrant => ({
+  id: "0195f000-0000-7000-8000-0000000000c1",
+  role: "editor",
+  roleName: "Editor",
+  groupId: "0195f000-0000-7000-8000-00000000e0e0",
+  groupName: "Everyone",
+  groupBuiltin: "everyone",
+  createdAt: "2026-10-01T08:00:00Z",
+  permissions: ["view", "addComments", "addPages", "delete"],
+  ...over,
+});
 const step = (over: Partial<AccessStep>): AccessStep => ({ kind: "view", passed: true, bypassed: false, via: [], grants: [], listed: [], ...over });
 
 const bobsAccess: AccessReport = {
   person: { id: ids.bob, name: "Bob Builder", email: "bob@stator.test" },
   role: "member",
-  roleSource: "manual",
   rights: [
     {
       right: "view",
       allowed: false,
       steps: [
-        step({ kind: "use", via: [everyone] }),
-        step({ kind: "space", permission: "view", grants: [{ subject: everyone, permissions: ["view", "addPages"] }] }),
+        step({ kind: "use", grants: [grant({ id: "0195f000-0000-7000-8000-0000000000c2", role: "member", roleName: "Member", permissions: ["use"] })] }),
+        step({ kind: "space", permission: "view", grants: [grant({ spaceId: "0195f000-0000-7000-8000-0000000000d0", spaceKey: "DOCS" })] }),
         step({ kind: "list", list: "view", page: plans, passed: false, listed: [eng] }),
       ],
     },
@@ -57,7 +66,7 @@ function stubPage(space = aSpace(), more: Parameters<typeof stubApi>[0] = {}) {
 }
 
 async function openInspector() {
-  await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+  await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
   await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
   await userEvent.click(await screen.findByRole("menuitem", { name: "Check access" }));
   return screen.findByRole("dialog", { name: "Who may do what on Secret" });
@@ -78,7 +87,9 @@ describe("checking somebody's access", () => {
     expect(decides).toHaveTextContent("Not on the view list of Plans.");
     expect(decides).toHaveTextContent("This decides it");
     expect(within(decides).getByText("Engineering")).toBeInTheDocument();
-    expect(within(view).getByText("Add pages", { exact: false })).toBeInTheDocument();
+    expect(within(view).getByText("as Editor in this space")).toBeInTheDocument();
+    expect(within(view).getByText("as Member across the installation")).toBeInTheDocument();
+    expect(view.querySelector('[data-grant-role="editor"]')).toHaveTextContent("Everyone");
     const edit = report.querySelector<HTMLElement>("[data-access-right=edit]")!;
     expect(edit.querySelector("[data-decides]")).toHaveTextContent("May not view the page");
     expect(await axeViolations()).toEqual([]);
@@ -130,7 +141,7 @@ describe("checking somebody's access", () => {
 
   it("is not offered to somebody who does not administer the space", async () => {
     stubPage(aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }));
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await screen.findByRole("menuitem", { name: "Copy" });
     expect(screen.queryByRole("menuitem", { name: "Check access" })).toBeNull();
@@ -138,24 +149,20 @@ describe("checking somebody's access", () => {
 });
 
 describe("the sentences of the steps", () => {
-  const member = { role: "member" as const, roleSource: "manual" as const };
-  it("say where an administrator's standing comes from", () => {
-    expect(stepSentence(step({ kind: "orgAdmin" }), { role: "admin", roleSource: "oidc" })).toMatch(
-      /^Administers the organization.*identity provider's groups/,
+  it("say a missing use or space permission comes with a role somebody can grant", () => {
+    expect(stepSentence(step({ kind: "use", passed: false }))).toMatch(/grant a role that holds it under Access/);
+    expect(stepSentence(step({ kind: "space", permission: "addPages", passed: false }))).toMatch(
+      /^Does not hold the Add pages permission.*a role that holds it/,
     );
-    expect(stepSentence(step({ kind: "orgAdmin" }), { role: "owner", roleSource: "manual" })).toMatch(/^Owns the organization/);
   });
 
   it("tell a list passed by being on it from one an administrator passes", () => {
-    expect(stepSentence(step({ kind: "list", list: "edit", page: plans }), member)).toBe("On the edit list of Plans.");
-    expect(stepSentence(step({ kind: "list", list: "edit", page: plans, bypassed: true }), member)).toMatch(
-      /^Not on the edit list of Plans, but administrators/,
-    );
-    expect(stepSentence(step({ kind: "space", permission: "addPages", passed: false }), member)).toMatch(/^Does not hold the Add pages permission/);
+    expect(stepSentence(step({ kind: "list", list: "edit", page: plans }))).toBe("On the edit list of Plans.");
+    expect(stepSentence(step({ kind: "list", list: "edit", page: plans, bypassed: true }))).toMatch(/^Not on the edit list of Plans, but administrators/);
   });
 
   it("say a home page never goes to the trash, and what to do instead", () => {
-    expect(stepSentence(step({ kind: "home", passed: false }), member)).toMatch(/^A space's home page cannot be moved to the trash\..*delete the whole space/);
+    expect(stepSentence(step({ kind: "home", passed: false }))).toMatch(/^A space's home page cannot be moved to the trash\..*delete the whole space/);
   });
 
   it("find the step that decides, or none", () => {

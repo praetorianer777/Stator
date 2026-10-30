@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { useArchivedPages, useArchivePage } from "@/api/archive";
 import type { Space } from "@/api/spaces";
-import { Button, EmptyState, ErrorBanner, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Button, EmptyState, ErrorBanner, Skeleton, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
@@ -14,15 +13,12 @@ export function ArchivePanel({ space }: { space: Space }) {
   const a = t.archive;
   const { data: items, isLoading, error, refetch } = useArchivedPages(space.key);
   const unarchive = useArchivePage();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const mayUnarchive = space.can.administer && !space.archivedAt;
 
   return (
     <div className="space-y-4" data-space-archive={space.key}>
       <p className="max-w-xl text-sm text-ink-muted">{a.intro}</p>
-      <p role="status" className="text-sm text-ink-muted [&:empty]:hidden" data-archive-notice>
-        {notice}
-      </p>
       {unarchive.error && <ErrorBanner>{unarchive.error.message}</ErrorBanner>}
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -55,7 +51,7 @@ export function ArchivePanel({ space }: { space: Space }) {
                         size="sm"
                         variant="secondary"
                         aria-label={a.unarchiveItem(item.title)}
-                        onClick={() => unarchive.mutate({ id: item.id, archived: false }, { onSuccess: () => setNotice(a.unarchived(item.title)) })}
+                        onClick={() => unarchive.mutate({ id: item.id, archived: false }, { onSuccess: () => toast.success(a.unarchived(item.title)) })}
                         data-action="unarchive-item"
                       >
                         {a.unarchive}

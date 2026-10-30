@@ -1,9 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { useDeleteSpace, useSpace, useUpdateSpace, type Space } from "@/api/spaces";
-import { Button, Card, ErrorBanner, Field, PageHeader, SectionTitle, Skeleton, TabPanel, Tabs } from "@/components/ui";
-import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH, STALE_PATH } from "@/config";
+import { TabPanel, Tabs, Page, PageHeader, Button, Card, EmptyState, Field, ErrorBanner, SectionTitle, Skeleton, Tag, useToast } from "@/components/ui";
+import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH, SPACE_STALE_PATH } from "@/config";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { SpacePermissions } from "@/features/permissions/SpacePermissions";
@@ -17,81 +17,141 @@ import { SpaceExportPanel } from "./SpaceExport";
 import { SpaceGuests } from "./SpaceGuests";
 import { SpaceReviews } from "@/features/reviews/SpaceReviews";
 import { TrashPanel } from "./TrashPanel";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { ARCHIVE_ANCHOR, GUESTS_ANCHOR, adminOnly, sectionLabel, sectionsFor, spaceSettingsPath, type SpaceSettingsSection } from "./settingsSections";
 
-export type SettingsTab = "details" | "shortcuts" | "permissions" | "reviews" | "templates" | "guests" | "trash" | "archive" | "export";
+const linkButton =
+  "inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3 text-sm font-medium text-ink no-underline hover:bg-surface-raised";
 
-const SETTINGS_PANEL_ID = "space-settings-panel";
-
-/** A space's details, who may do what in it, and deleting it; changing anything is an administrator's. */
-export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab: SettingsTab; onTab: (tab: SettingsTab) => void }) {
+/**
+ * A space's settings: the tabs of its sections in the header and the one
+ * section shown. Every member opens them to see how the space is set up; what
+ * only its administrators use is neither listed nor mounted for anybody else.
+ */
+export function SpaceSettingsLayout({ spaceKey, section, children }: { spaceKey: string; section: SpaceSettingsSection; children: ReactNode }) {
   const { data: space, error, refetch } = useSpace(spaceKey);
-  const orgAdmin = useCanAdministerSite();
+  const navigate = useNavigate();
+  const panelId = useId();
   if (error) return <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>;
-  if (!space) return <Skeleton />;
-  // Guests are let into team spaces, by the organization's administrators.
-  const guests = orgAdmin && !space.owner;
-  const shown = (tab === "guests" && !guests) || ((tab === "export" || tab === "reviews") && !space.can.administer) ? "details" : tab;
+  if (!space) {
+    return (
+      <Page width="content">
+        <Skeleton lines={6} />
+      </Page>
+    );
+  }
+  const administers = space.can.administer;
+  const refused = adminOnly(section) && !administers;
   return (
-    <div className="mx-auto max-w-3xl" data-space-settings={space.key}>
+    <Page width="content" data-space-settings={space.key}>
       <PageHeader
-        crumbs={[
-          { label: t.spaces.title, render: (label) => <Link to="/spaces">{label}</Link> },
-          {
-            label: space.name,
-            render: (label) => (
-              <Link to="/s/$spaceKey" params={{ spaceKey: space.key }}>
-                {label}
-              </Link>
-            ),
-          },
-        ]}
         title={t.spaceSettings.title}
-        actions={
-          space.can.administer && (
-            <Link
-              to={STALE_PATH}
-              search={{ space: space.key }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3 text-sm font-medium text-ink no-underline hover:bg-surface-raised"
-              data-action="space-stale"
-            >
-              <Icon.Calendar />
-              {t.spaceSettings.stale}
-            </Link>
-          )
-        }
+        meta={<Tag className="font-mono">{space.key}</Tag>}
         tabs={
-          <Tabs<SettingsTab>
+          <Tabs<SpaceSettingsSection>
             label={t.spaceSettings.tabs}
-            value={shown}
-            onChange={onTab}
-            panelId={SETTINGS_PANEL_ID}
-            tabs={[
-              { value: "details", label: t.spaceSettings.details, attrs: { "data-settings-tab": "details" } },
-              { value: "shortcuts", label: t.spaceSettings.shortcuts, attrs: { "data-settings-tab": "shortcuts" } },
-              { value: "permissions", label: t.spaceSettings.permissions, attrs: { "data-settings-tab": "permissions" } },
-              ...(space.can.administer ? [{ value: "reviews" as const, label: t.spaceSettings.reviews, attrs: { "data-settings-tab": "reviews" } }] : []),
-              { value: "templates", label: t.spaceSettings.templates, attrs: { "data-settings-tab": "templates" } },
-              ...(guests ? [{ value: "guests" as const, label: t.spaceSettings.guests, attrs: { "data-settings-tab": "guests" } }] : []),
-              { value: "trash", label: t.spaceSettings.trash, attrs: { "data-settings-tab": "trash" } },
-              { value: "archive", label: t.spaceSettings.archive, attrs: { "data-settings-tab": "archive" } },
-              ...(space.can.administer ? [{ value: "export" as const, label: t.spaceSettings.export, attrs: { "data-settings-tab": "export" } }] : []),
-            ]}
+            value={section}
+            onChange={(next) => void navigate({ href: spaceSettingsPath(space.key, next) })}
+            panelId={panelId}
+            tabs={sectionsFor(space).map((each) => ({ value: each, label: sectionLabel(each), attrs: { "data-settings-tab": each } }))}
           />
         }
       />
-      <TabPanel id={SETTINGS_PANEL_ID} label={t.spaceSettings[shown]} className="space-y-6">
-        {shown === "details" && <Details key={space.id} space={space} />}
-        {shown === "shortcuts" && <ShortcutsPanel space={space} />}
-        {shown === "permissions" && <SpacePermissions space={space} />}
-        {shown === "permissions" && <SpaceAnonymousAccess space={space} />}
-        {shown === "reviews" && <SpaceReviews space={space} />}
-        {shown === "templates" && <TemplateList spaceKey={space.key} canEdit={space.can.administer} />}
-        {shown === "guests" && <SpaceGuests space={space} />}
-        {shown === "trash" && <TrashPanel space={space} />}
-        {shown === "archive" && <ArchivePanel space={space} />}
-        {shown === "export" && <SpaceExportPanel space={space} />}
+      {!administers && !refused && (
+        <p role="status" className="mb-4 rounded-control border border-border bg-surface-raised px-3 py-2 text-sm text-ink-muted" data-settings-read-only>
+          {t.spaceSettings.readOnly}
+        </p>
+      )}
+      <TabPanel id={panelId} label={sectionLabel(section)}>
+        {refused ? (
+          <div data-settings-refused={section}>
+            <EmptyState icon={<Icon.Lock />} title={t.spaceSettings.notAdmin} description={t.spaceSettings.notAdminDetail} />
+          </div>
+        ) : (
+          <div className="space-y-6" data-settings-section={section}>
+            {children}
+          </div>
+        )}
       </TabPanel>
-    </div>
+    </Page>
+  );
+}
+
+/** A section's body once its space is known; the layout above waits for it and says when it cannot be had. */
+function WithSpace({ spaceKey, children }: { spaceKey: string; children: (space: Space) => ReactNode }) {
+  const { data: space } = useSpace(spaceKey);
+  return space ? <>{children(space)}</> : null;
+}
+
+/** The space's details, a way to its stale pages, and at the foot archiving and deleting it. */
+export function GeneralSection({ spaceKey }: { spaceKey: string }) {
+  return (
+    <WithSpace spaceKey={spaceKey}>
+      {(space) => (
+        <>
+          <Details key={space.id} space={space} />
+          {space.can.administer && <StaleLink space={space} />}
+          {space.can.administer && <SpaceArchive space={space} />}
+          {space.can.delete && <DeleteSpace space={space} />}
+        </>
+      )}
+    </WithSpace>
+  );
+}
+
+export function WorkflowSection({ spaceKey }: { spaceKey: string }) {
+  return <WithSpace spaceKey={spaceKey}>{(space) => <SpaceReviews space={space} />}</WithSpace>;
+}
+
+export function TemplatesSection({ spaceKey }: { spaceKey: string }) {
+  return <WithSpace spaceKey={spaceKey}>{(space) => <TemplateList spaceKey={space.key} canEdit={space.can.administer} />}</WithSpace>;
+}
+
+/** Who holds which role, whether anybody may read without signing in, and the guests of a team space. */
+export function MembersSection({ spaceKey }: { spaceKey: string }) {
+  const siteAdmin = useCanAdministerSite();
+  return (
+    <WithSpace spaceKey={spaceKey}>
+      {(space) => (
+        <>
+          <SpacePermissions space={space} />
+          <SpaceAnonymousAccess space={space} />
+          {/* Guests are let into team spaces, by the installation's administrators. */}
+          {siteAdmin && !space.owner && (
+            <div id={GUESTS_ANCHOR} className="scroll-mt-24">
+              <SpaceGuests space={space} />
+            </div>
+          )}
+        </>
+      )}
+    </WithSpace>
+  );
+}
+
+export function IntegrationsSection({ spaceKey }: { spaceKey: string }) {
+  return <WithSpace spaceKey={spaceKey}>{(space) => <ShortcutsPanel space={space} />}</WithSpace>;
+}
+
+export function ExportSection({ spaceKey }: { spaceKey: string }) {
+  return <WithSpace spaceKey={spaceKey}>{(space) => <SpaceExportPanel space={space} />}</WithSpace>;
+}
+
+export function TrashSection({ spaceKey }: { spaceKey: string }) {
+  return (
+    <WithSpace spaceKey={spaceKey}>
+      {(space) => (
+        <>
+          <section aria-labelledby="space-trash-title" className="space-y-3">
+            <SectionTitle id="space-trash-title">{t.spaceSettings.trash}</SectionTitle>
+            <TrashPanel space={space} />
+          </section>
+          <section id={ARCHIVE_ANCHOR} aria-labelledby="space-archive-title" className="scroll-mt-24 space-y-3">
+            <SectionTitle id="space-archive-title">{t.spaceSettings.archive}</SectionTitle>
+            <ArchivePanel space={space} />
+          </section>
+        </>
+      )}
+    </WithSpace>
   );
 }
 
@@ -99,20 +159,19 @@ function Details({ space }: { space: Space }) {
   const update = useUpdateSpace(space.key);
   const [name, setName] = useState(space.name);
   const [description, setDescription] = useState(space.description);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const fields = update.error instanceof ApiError ? update.error.fields : {};
   const readOnly = !space.can.administer;
 
   function save(event: FormEvent) {
     event.preventDefault();
-    setNotice("");
-    update.mutate({ name, description }, { onSuccess: () => setNotice(t.spaceSettings.saved) });
+    update.mutate({ name, description }, { onSuccess: () => toast.success(t.spaceSettings.saved) });
   }
 
   return (
-    <>
-      {readOnly && <p className="text-sm text-ink-muted">{t.spaceSettings.notAdmin}</p>}
+    <Card className="p-4">
       <form onSubmit={save} className="space-y-4" noValidate data-space-details>
+        <SectionTitle>{t.spaceSettings.details}</SectionTitle>
         {update.error && !Object.keys(fields).length && <ErrorBanner>{update.error.message}</ErrorBanner>}
         <Field label={t.spaces.key} value={space.key} readOnly className="font-mono" hint={t.spaces.keyHint} />
         <Field
@@ -137,21 +196,32 @@ function Details({ space }: { space: Space }) {
             <Button type="submit" loading={update.isPending} data-action="save-space">
               {t.spaceSettings.save}
             </Button>
-            <span role="status" className="text-sm text-ink-muted">
-              {notice}
-            </span>
           </div>
         )}
       </form>
-      {space.can.administer && <SpaceArchive space={space} />}
-      {space.can.delete && <DeleteSpace space={space} />}
-    </>
+    </Card>
+  );
+}
+
+function StaleLink({ space }: { space: Space }) {
+  return (
+    <Card className="flex flex-wrap items-center justify-between gap-3 p-4" data-space-stale-card>
+      <div className="space-y-1">
+        <SectionTitle>{t.spaceSettings.stale}</SectionTitle>
+        <p className="text-sm text-ink-muted">{t.spaceSettings.staleIntro}</p>
+      </div>
+      <Link to={SPACE_STALE_PATH} params={{ spaceKey: space.key }} className={linkButton} data-action="space-stale">
+        <Icon.Calendar />
+        {t.spaceSettings.staleOpen}
+      </Link>
+    </Card>
   );
 }
 
 function DeleteSpace({ space }: { space: Space }) {
   const remove = useDeleteSpace(space.key);
   const navigate = useNavigate();
+  const confirm = useConfirm();
   return (
     <Card className="space-y-3 border-danger/40 p-4" data-space-danger>
       <SectionTitle>{t.spaceSettings.dangerTitle}</SectionTitle>
@@ -160,8 +230,8 @@ function DeleteSpace({ space }: { space: Space }) {
       <Button
         variant="danger"
         loading={remove.isPending}
-        onClick={() => {
-          if (window.confirm(t.spaceSettings.confirmDelete(space.name, space.key))) {
+        onClick={async () => {
+          if (await confirm({ noun: t.kit.confirm.things.space(space.name), body: t.spaceSettings.confirmDelete })) {
             remove.mutate(undefined, { onSuccess: () => void navigate({ to: "/spaces" }) });
           }
         }}

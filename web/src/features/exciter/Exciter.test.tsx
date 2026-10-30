@@ -10,6 +10,8 @@ import { renderAt, standOnHintPage, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { ExciterAccountSection } from "./AccountSection";
 import { normalizeRequirementKey, requirementBatches, requirementKeysOf, requirementUrl, TYPED_REQUIREMENT_KEY } from "./requirementKeys";
+import { ConfirmProvider } from "@/features/shell/ConfirmProvider";
+import { ToastProvider } from "@/components/ui";
 
 afterEach(() => {
   cleanup();
@@ -65,10 +67,14 @@ function wrap(children: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <main>
-        <h1>Page</h1>
-        {children}
-      </main>
+      <ToastProvider>
+        <ConfirmProvider>
+          <main>
+            <h1>Page</h1>
+            {children}
+          </main>
+        </ConfirmProvider>
+      </ToastProvider>
     </QueryClientProvider>,
   );
 }
@@ -217,7 +223,7 @@ describe("the Exciter section of the profile", () => {
   it("says what to do when Stator has no Exciter", async () => {
     stubApi({ "GET /exciter/account": account({ configured: false, baseUrl: null, connected: false, status: "not_configured" }) });
     wrap(<ExciterAccountSection />);
-    expect(await screen.findByText(/Ask an administrator to connect it under Settings, Exciter/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ask an administrator to connect it under Admin, Exciter/)).toBeInTheDocument();
   });
 });
 
@@ -249,7 +255,7 @@ describe("the Exciter settings", () => {
         return { status: 200, body: { connection: saved } };
       },
     });
-    await renderAt("/settings/exciter");
+    await renderAt("/admin/exciter");
     await userEvent.type(await screen.findByLabelText("Exciter address"), BASE);
     await userEvent.click(screen.getByRole("button", { name: "Check" }));
     expect(await screen.findByText(/Exciter 1.4.0 answers at this address. It lacks 1 feature/)).toBeInTheDocument();
@@ -281,7 +287,7 @@ describe("the Exciter settings", () => {
         return { status: 200, body: { connection: connection() } };
       },
     });
-    await renderAt("/settings/exciter");
+    await renderAt("/admin/exciter");
     expect(await screen.findByText(/Exciter offers connecting people at sign-in/)).toBeInTheDocument();
     const form = screen.getByRole("form", { name: "Partner app" });
     await userEvent.type(within(form).getByLabelText("Client id"), "0199-stator");

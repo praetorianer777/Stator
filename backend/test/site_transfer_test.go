@@ -95,7 +95,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	doraEmail := emailOf(t, h, doraID)
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, doraEmail) })
 	writers := h.makeGroup(t, "Writers", annID, doraID)
-	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{group(writers)}}), http.StatusOK, "let the writers create spaces")
+	want(t, owner.setAcross(t, "createSpace", []any{group(writers)}), http.StatusOK, "let the writers create spaces")
 
 	trip := newTree(t, owner, "TRIP", "Trip")
 	top := trip.add(trip.homeID, "Top")
@@ -174,8 +174,15 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		for _, p := range m.People {
 			people[p.Ref] = p
 		}
-		if people[annID.String()].Role != "member" || people[from.user.String()].Role != "owner" || people[guestID].GuestSpace != "TRIP" {
+		if people[annID.String()].Role != "member" || people[from.user.String()].Role != "member" || people[guestID].GuestSpace != "TRIP" {
 			t.Errorf("the people are %+v", m.People)
+		}
+		administers := false
+		for _, g := range m.RoleGrants {
+			administers = administers || (g.Role == "administrator" && g.Subject.Person == from.user.String())
+		}
+		if m.Version != spaceio.SiteVersion || !administers || len(m.Roles) < 5 {
+			t.Errorf("the archive of version %d carries %d roles and grants %+v", m.Version, len(m.Roles), m.RoleGrants)
 		}
 		trip := archiveFiles(t, files["spaces/TRIP.zip"])
 		var sm spaceio.Manifest
@@ -348,7 +355,7 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 	t.Run("a link from one space to another finds its page", func(t *testing.T) {
 		_, opsIDs := outline(t, landed, "OPS")
 		body := string(want(t, landed.get(t, pagePath(opsIDs["Pointer"])), http.StatusOK, "the pointer").Raw)
-		if !strings.Contains(body, "/s/TRIP/p/"+topThere) || strings.Contains(body, top) {
+		if !strings.Contains(body, "/spaces/TRIP/p/"+topThere) || strings.Contains(body, top) {
 			t.Errorf("the pointer reads %s", body)
 		}
 	})
@@ -384,8 +391,8 @@ func TestAnOrganizationTravelsToAFreshOneWhole(t *testing.T) {
 		}
 		var canCreate int
 		if err := fresh.super.QueryRow(ctx, `
-			SELECT count(*) FROM global_grant gg JOIN groups g ON g.id = gg.group_id
-			WHERE gg.permission = 'createSpace' AND g.name = 'Writers'`).Scan(&canCreate); err != nil || canCreate != 1 {
+			SELECT count(*) FROM role_assignment a JOIN groups g ON g.id = a.group_id
+			WHERE a.role = 'space_creator' AND a.space_id IS NULL AND g.name = 'Writers'`).Scan(&canCreate); err != nil || canCreate != 1 {
 			t.Errorf("Writers may create spaces %d times: %v", canCreate, err)
 		}
 		var created int

@@ -5,10 +5,10 @@ import { ageQuietly, lapseVerification } from "../fixtures/db";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoAdminEntry, openAdminPage, scrollsSideways, startInScheme, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
-const STALE_PATH = "/settings/stale";
+const STALE_PATH = "/admin/stale";
 // web/src/config.ts STALE_DEFAULT_DAYS and one of STALE_AGE_DAYS below it.
 const DEFAULT_DAYS = 180;
 const SHORTER_DAYS = 90;
@@ -64,8 +64,8 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     const { space, guide, notes, fresh } = await quietSpace(api, testInfo, bob.id);
 
     await openUntil(page, "/", async () => {
-      await openSettingsPage(page, "stale-pages");
-      await expect(page).toHaveURL(/\/settings\/stale$/);
+      await openAdminPage(page, "stale-pages");
+      await expect(page).toHaveURL(/\/admin\/stale$/);
       await page.locator("#stale-space").selectOption(space.key, ONE_LOOK);
       await expect(row(page, guide.title)).toBeVisible(ONE_LOOK);
     });
@@ -92,7 +92,7 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-stale-row]")).toHaveCount(1);
 
     await quiet.getByRole("link", { name: guide.title }).click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/p/${guide.id}/[^?]*\\?from=stale`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/p/${guide.id}/[^?]*\\?from=stale`));
     await expect(heading(page)).toHaveText(guide.title);
     await expect(page.getByText("Written long ago.")).toBeVisible();
 
@@ -100,9 +100,9 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await openReport(page, space.key, guide.title);
     await expect(row(page, guide.title).locator("[data-stale-viewed]")).toHaveText("Never");
 
-    await page.goto(`/s/${space.key}/settings`);
+    await page.goto(`/spaces/${space.key}/settings/general`);
     await page.locator('[data-action="space-stale"]').click();
-    await expect(page).toHaveURL(new RegExp(`/settings/stale\\?space=${space.key}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/settings/general/stale$`));
     await expect(page.locator("#stale-space")).toHaveValue(space.key);
     await expect(row(page, guide.title)).toBeVisible();
   });
@@ -118,9 +118,9 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await expect(archive).toBeDisabled();
     await page.getByRole("checkbox", { name: "Select every page shown" }).check();
     await expect(archive).toHaveText("Archive 2 pages");
-    page.once("dialog", (dialog) => void dialog.accept());
     await archive.click();
-    await expect(page.locator("[data-stale-actions] [role=status]")).toHaveText("Archived 2 pages.");
+    await confirm(page);
+    await expect(toast(page, "Archived 2 pages.")).toBeVisible();
     await expect(page.locator("[data-stale-row]")).toHaveCount(0);
     expect(must(await api.GET("/pages/{pageID}", { params: { path: { pageID: guide.id } } })).page.archived).not.toBeNull();
 
@@ -148,11 +148,11 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     expect(refused.response.status).toBe(403);
 
     const member = await pageAs("bob");
-    await member.goto(STALE_PATH);
-    await expect(member.locator("[data-stale-refused]")).toContainText("Only administrators of a space, or of the organization, read which pages went stale.");
+    await member.goto(`/spaces/${space.key}/settings/general/stale`);
+    await expect(member.locator("[data-stale-refused]")).toContainText("Only administrators of a space, or of the installation, read which pages went stale.");
     await expect(member.locator("[data-stale-table]")).toHaveCount(0);
     expect(await scrollsSideways(member)).toBe(false);
-    await expectNoSettingsEntry(member, "stale-pages");
+    await expectNoAdminEntry(member, STALE_PATH);
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {

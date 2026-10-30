@@ -57,8 +57,24 @@ export function IssueRoadmapDialog({
 
   const queryId = `${id}-query`;
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-issue-roadmap-dialog="">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-issue-roadmap-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.armature.listDialog.cancel}
+          </Button>
+          <Button type="submit" form="issue-roadmap-dialog-form" data-action="save-issue-roadmap">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="issue-roadmap-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Select
           label={d.project}
           value={project}
@@ -111,14 +127,6 @@ export function IssueRoadmapDialog({
             </label>
           ))}
         </fieldset>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.armature.listDialog.cancel}
-          </Button>
-          <Button type="submit" data-action="save-issue-roadmap">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

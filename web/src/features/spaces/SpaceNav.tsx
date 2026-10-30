@@ -6,7 +6,7 @@ import { useSpace, useSpaces, type Space } from "@/api/spaces";
 import type { TreeNode } from "@/api/tree";
 import { Button, Input, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { LAST_SPACE_KEY, STALE_PATH } from "@/config";
+import { LAST_SPACE_KEY } from "@/config";
 import { PageTree } from "@/features/pages/PageTree";
 import { PlaceDialog } from "@/features/pages/PlaceDialog";
 import { NavItem } from "@/features/shell/nav";
@@ -46,20 +46,8 @@ function useShownSpace(): string {
   return spaceKey ?? last;
 }
 
-/** The space in the sidebar: a switcher, its home, shortcuts, pages, blog and decisions, then the folded Space admin group. */
-export function SpaceNav({
-  open,
-  onToggle,
-  adminOpen,
-  onToggleAdmin,
-  onNavigate,
-}: {
-  open: boolean;
-  onToggle: () => void;
-  adminOpen: boolean;
-  onToggleAdmin: () => void;
-  onNavigate?: () => void;
-}) {
+/** The space in the sidebar: a switcher, its home, shortcuts, pages, blog and decisions, then its settings for every member. */
+export function SpaceNav({ open, onToggle, onNavigate }: { open: boolean; onToggle: () => void; onNavigate?: () => void }) {
   const { pageId } = useParams({ strict: false });
   const shown = useShownSpace();
   const { data: space } = useSpace(shown);
@@ -70,7 +58,7 @@ export function SpaceNav({
 
   const arrived = (page: Page) => {
     setMoving(undefined);
-    void navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: page.spaceKey, pageId: page.id, slug: pageSlug(page.title) } });
+    void navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug", params: { spaceKey: page.spaceKey, pageId: page.id, slug: pageSlug(page.title) } });
   };
 
   return (
@@ -78,37 +66,22 @@ export function SpaceNav({
       <SpaceSwitcher current={space} onNavigate={onNavigate} />
       {space && (
         <div data-space-nav={space.key}>
-          <NavItem to={`/s/${space.key}`} exact icon="Home" rail={false} onNavigate={onNavigate}>
+          <NavItem to={`/spaces/${space.key}`} exact icon="Home" rail={false} onNavigate={onNavigate}>
             {t.space.home}
           </NavItem>
           <SidebarShortcuts spaceKey={space.key} onNavigate={onNavigate} />
           <div className="my-1">
             <PageTree space={space} currentId={pageId} openPath={openPath} onMove={setMoving} />
           </div>
-          <NavItem to={`/s/${space.key}/blog`} icon="Megaphone" rail={false} onNavigate={onNavigate}>
+          <NavItem to={`/spaces/${space.key}/blog`} icon="Megaphone" rail={false} onNavigate={onNavigate}>
             {t.space.blog}
           </NavItem>
-          <NavItem to={`/s/${space.key}/decisions`} icon="Decision" rail={false} onNavigate={onNavigate}>
+          <NavItem to={`/spaces/${space.key}/decisions`} icon="Decision" rail={false} onNavigate={onNavigate}>
             {t.space.decisions}
           </NavItem>
-          <SidebarGroup id="space-admin" title={t.space.admin} open={adminOpen} onToggle={onToggleAdmin} nested>
-            <NavItem id="space-settings" to={`/s/${space.key}/settings`} exact icon="Settings" rail={false} onNavigate={onNavigate}>
-              {t.space.settings}
-            </NavItem>
-            {space.can.deletePages && (
-              <NavItem id="space-trash" to={`/s/${space.key}/settings`} search={{ tab: "trash" }} icon="Trash" rail={false} onNavigate={onNavigate}>
-                {t.space.trash}
-              </NavItem>
-            )}
-            <NavItem id="space-archive" to={`/s/${space.key}/settings`} search={{ tab: "archive" }} icon="Archive" rail={false} onNavigate={onNavigate}>
-              {t.space.archive}
-            </NavItem>
-            {space.can.administer && (
-              <NavItem id="space-stale" to={STALE_PATH} search={{ space: space.key }} icon="Calendar" rail={false} onNavigate={onNavigate}>
-                {t.space.stale}
-              </NavItem>
-            )}
-          </SidebarGroup>
+          <NavItem id="space-settings" to={`/spaces/${space.key}/settings`} icon="Settings" rail={false} onNavigate={onNavigate}>
+            {t.space.settings}
+          </NavItem>
         </div>
       )}
       {moving && space && (
@@ -139,7 +112,7 @@ function SpaceSwitcher({ current, onNavigate }: { current: Space | undefined; on
           <span className="font-mono text-2xs text-ink-subtle">{each.key}</span>
         </>
       ),
-      onSelect: () => go(`/s/${each.key}`),
+      onSelect: () => go(`/spaces/${each.key}`),
       attrs: { "data-space-option": each.key },
     }));
   if (!guestSpaceOf(me)) {

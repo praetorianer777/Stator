@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { Page } from "@/api/pages";
 import type { PageReview, ReviewRule } from "@/api/reviews";
 import type { Comparison } from "@/api/versions";
-import { renderAt, stubApi, type Answer } from "@/test/app";
+import { renderAt, stubApi, type Answer, answerConfirm } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -16,7 +16,7 @@ afterEach(() => {
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000a1";
 const REVIEW_ID = "0195f000-0000-7000-8000-0000000000e1";
-const PATH = `/s/DOCS/p/${PAGE_ID}/policy`;
+const PATH = `/spaces/DOCS/p/${PAGE_ID}/policy`;
 const ids = { ann: "0195f000-0000-7000-8000-0000000000f1", bob: "0195f000-0000-7000-8000-0000000000f2", leads: "0195f000-0000-7000-8000-0000000000f3" };
 const member = { edit: false, delete: false, restrict: false, comment: true, archive: false, add: false, grantEdit: false };
 const notAdmin = aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: false } });
@@ -189,7 +189,6 @@ describe("a pending review on the page", () => {
   });
 
   it("lets its author withdraw it after asking", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     let withdrawn = false;
     const sent = stubPage(
       () => policy({ review: { rule: spaceRule, pending: withdrawn ? null : pending({ can: { decide: false, withdraw: true, skip: false } }) } }),
@@ -204,6 +203,7 @@ describe("a pending review on the page", () => {
     const shown = await banner();
     expect(within(shown).queryByRole("button", { name: "Review" })).toBeNull();
     await userEvent.click(within(shown).getByRole("button", { name: "Withdraw" }));
+    await answerConfirm(true);
     await waitFor(() => expect(screen.queryByText("A draft of this page is waiting for review.")).toBeNull());
     expect(posts(sent, `/pages/${PAGE_ID}/reviews/${REVIEW_ID}/withdraw`)).toHaveLength(1);
   });
@@ -271,7 +271,7 @@ describe("a page's review rule", () => {
     await userEvent.clear(required);
     await userEvent.type(required, "1");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save rule" }));
-    expect(await within(dialog).findByText("Saved.")).toBeInTheDocument();
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
     expect(sent.find((r) => r.method === "PUT" && r.path === `/pages/${PAGE_ID}/review-rule`)!.body).toEqual({
       reviewers: [{ type: "user", id: ids.bob }],
       required: 1,
@@ -295,7 +295,6 @@ describe("a page's review rule", () => {
   });
 
   it("names the page above whose rule holds, and removes the page's own after asking", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const above = { ...spaceRule, page: { id: home.id, title: "Handbook" } };
     const own = { ...spaceRule, id: "r3", page: { id: PAGE_ID, title: "Policy" } };
     let rule: ReviewRule | null = own;
@@ -309,8 +308,9 @@ describe("a page's review rule", () => {
     const dialog = await openRule();
     expect(within(dialog).getByText("This page and the pages below it are held to their own rule.")).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole("button", { name: "Remove rule" }));
+    await answerConfirm(true);
     expect(await within(dialog).findByText("This page is held to the rule of Handbook above it.")).toBeInTheDocument();
-    expect(within(dialog).getByText("The rule is removed.")).toBeInTheDocument();
+    expect(screen.getByText("The rule is removed.")).toBeInTheDocument();
     expect(sent.some((r) => r.method === "DELETE" && r.path === `/pages/${PAGE_ID}/review-rule`)).toBe(true);
   });
 });
@@ -335,9 +335,8 @@ describe("the space's review settings", () => {
   }
 
   it("shows the space's rule and the branches with their own, and removes a branch's", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const sent = stubSettings(aSpace(), { [`DELETE /pages/${PAGE_ID}/review-rule`]: { status: 204 } });
-    await renderAt("/s/DOCS/settings?tab=reviews");
+    await renderAt("/spaces/DOCS/settings/workflow");
     const whole = (await screen.findByText("The whole space")).closest("[data-space-review-rule]") as HTMLElement;
     expect(whole).toHaveAttribute("data-space-review-rule", "set");
     expect(within(whole).getByText("Ann Reviewer")).toBeInTheDocument();
@@ -347,22 +346,25 @@ describe("the space's review settings", () => {
     expect(row).toHaveTextContent("Reviewed by Ann Reviewer; 1 approval needed.");
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(within(row).getByRole("button", { name: "Remove the rule of Policy" }));
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === `/pages/${PAGE_ID}/review-rule`)).toBe(true));
   });
 
   it("removes the space's rule after asking", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const sent = stubSettings(aSpace(), { "DELETE /spaces/DOCS/review-rule": { status: 204 } });
-    await renderAt("/s/DOCS/settings?tab=reviews");
+    await renderAt("/spaces/DOCS/settings/workflow");
     const whole = (await screen.findByText("The whole space")).closest("[data-space-review-rule]") as HTMLElement;
     await userEvent.click(within(whole).getByRole("button", { name: "Remove rule" }));
+    await answerConfirm(true);
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === "/spaces/DOCS/review-rule")).toBe(true));
   });
 
-  it("is no tab for a member who does not administer the space", async () => {
-    stubSettings(notAdmin);
-    await renderAt("/s/DOCS/settings?tab=reviews");
-    expect(await screen.findByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("tab", { name: "Reviews" })).toBeNull();
+  it("is no tab for a member who does not administer the space, and says who to ask at its address", async () => {
+    const sent = stubSettings(notAdmin);
+    await renderAt("/spaces/DOCS/settings/workflow");
+    expect(await screen.findByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.queryByRole("tab", { name: "Workflow" })).toBeNull();
+    expect(document.querySelector('[data-settings-refused="workflow"]')).toHaveTextContent("Only the space's administrators change its settings");
+    expect(sent.some((r) => r.path === "/spaces/DOCS/review-rules")).toBe(false);
   });
 });

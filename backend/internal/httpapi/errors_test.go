@@ -1,33 +1,21 @@
 package httpapi
 
 import (
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
+	"fmt"
+	"net/http"
 	"testing"
 
-	"github.com/praetorianer777/stator/backend/internal/perm"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// The settings name the screen where roles change by account.sso in the web's
-// English strings; the answers about fixed roles send people there by that name.
-func TestFixedRoleAnswersNameTheScreenAsTheSettingsDo(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "src", "i18n", "en.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := regexp.MustCompile(`(?s)\n  account: \{.*?\n    sso: "([^"]+)",`).FindSubmatch(src)
-	if m == nil {
-		t.Fatal("web/src/i18n/en.ts has no account.sso")
-	}
-	screen := "under " + string(m[1])
-	for name, msg := range map[string]string{
-		"the answer":    toAPIError(perm.ErrFixed).Message,
-		"perm.ErrFixed": perm.ErrFixed.Error(),
-	} {
-		if !strings.Contains(msg, screen) {
-			t.Errorf("%s %q does not say %q", name, msg, screen)
+// A guard of access refuses in its own sentence, as a conflict naming the
+// guard, however deep in a transaction the change ran into it.
+func TestAccessGuardsAnswerInTheirOwnSentence(t *testing.T) {
+	for _, name := range accessConstraints {
+		refusal := &pgconn.PgError{Code: "23514", ConstraintName: name, Message: "Do something else first."}
+		got := toAPIError(fmt.Errorf("commit: %w", refusal))
+		if got.Status != http.StatusConflict || got.Code != name || got.Message != refusal.Message {
+			t.Errorf("%s answers %d %s %q", name, got.Status, got.Code, got.Message)
 		}
 	}
 }

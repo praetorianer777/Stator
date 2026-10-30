@@ -1,4 +1,5 @@
-import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { api } from "./client";
 import type { components } from "./schema";
 import { connectedToolsQueryKey } from "./tools";

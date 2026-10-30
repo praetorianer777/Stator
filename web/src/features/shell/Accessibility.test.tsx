@@ -98,7 +98,7 @@ describe("the account menu", () => {
       "Watching",
       "Themes",
       "Access tokens",
-      "Settings",
+      "Admin",
       "Sign out",
     ]);
     expect(items[0]).toHaveFocus();
@@ -201,6 +201,18 @@ describe("on a narrow screen", () => {
     expect(drawer()).toBeNull();
   });
 
+  it("draws a strip as tall as the rail is wide, with the menu button, the installation and the bell", async () => {
+    setViewportWidth(PHONE);
+    await renderAt("/");
+    const strip = document.querySelector<HTMLElement>("[data-nav-strip]")!;
+    // A landmark of its own, so the installation's name is not text outside every landmark.
+    expect(strip.tagName).toBe("HEADER");
+    expect(strip).toHaveClass("h-12");
+    expect(within(strip).getByRole("button", { name: "Open the navigation" })).toBeInTheDocument();
+    expect(within(strip).getByText("Demo")).toBeInTheDocument();
+    expect(within(strip).getByRole("button", { name: "Notifications" })).toBeInTheDocument();
+  });
+
   it("keeps the theme and the avatar's menu in its foot, and the bell on the strip", async () => {
     setViewportWidth(PHONE);
     await renderAt("/");
@@ -232,7 +244,8 @@ describe("on a narrow screen", () => {
     await userEvent.click(menuButton());
     const panel = drawer() as HTMLElement;
     expect(within(panel).getByRole("link", { name: "Back to Stator" })).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Single sign-on" })).toHaveAttribute("href", "/settings/sso");
+    expect(within(panel).getByRole("link", { name: "Themes" })).toHaveAttribute("href", "/settings/themes");
+    expect(within(panel).queryByRole("link", { name: "Access" })).toBeNull();
     expect(within(panel).queryByRole("button", { name: "Wiki" })).toBeNull();
   });
 

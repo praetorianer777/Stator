@@ -30,7 +30,8 @@ func newRenames() renames {
 }
 
 var (
-	pageLink = regexp.MustCompile(`^/s/([^/?#]+)/p/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(.*)$`)
+	// Documents written before spaces moved to /spaces/ still link to /s/.
+	pageLink = regexp.MustCompile(`^/(?:s|spaces)/([^/?#]+)/p/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(.*)$`)
 	fileLink = regexp.MustCompile(`^/api/v1/attachments/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(.*)$`)
 )
 
@@ -167,7 +168,7 @@ func (r *renames) href(href string) string {
 		if key == r.oldKey {
 			key = r.newKey
 		}
-		return "/s/" + key + "/p/" + id + m[3]
+		return "/spaces/" + key + "/p/" + id + m[3]
 	}
 	if m := fileLink.FindStringSubmatch(href); m != nil {
 		old, _ := uuid.Parse(m[1])

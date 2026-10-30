@@ -36,17 +36,19 @@ const SubjectAnonymous SubjectType = "anonymous"
 const AnonymousName = "Anybody"
 
 // CopySubjectTypes lists whom a copy may name, for the API document.
-var CopySubjectTypes = []SubjectType{SubjectUser, SubjectGroup, SubjectEveryone, SubjectAnonymous}
+var CopySubjectTypes = []SubjectType{SubjectUser, SubjectGroup, SubjectAnonymous}
 
 // CopySubject is whom a grant of a copy names.
 type CopySubject struct {
 	Type SubjectType `json:"type"`
-	// ID is the person's or the group's, null for everyone and anybody.
+	// ID is the person's or the group's, null for anybody.
 	ID   *uuid.UUID `json:"id"`
 	Name string     `json:"name"`
 	// Guest marks a person from outside, let into the one space whose grant
 	// names them.
 	Guest bool `json:"guest"`
+	// Builtin marks a group the installation keeps itself, "everyone".
+	Builtin string `json:"builtin,omitempty"`
 }
 
 // Key tells two subjects apart.

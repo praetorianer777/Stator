@@ -3,13 +3,13 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { suggestKey } from "@/api/spaces";
 import { SPACE_KEY_MAX_LENGTH } from "@/config";
-import { renderAt, signedIn, stubApi } from "@/test/app";
+import { arrival, renderAt, signedIn, stubApi } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const home = aPage();
 const space = aSpace();
 
@@ -35,7 +35,7 @@ describe("the space directory", () => {
     const row = (await screen.findByRole("link", { name: "Handbook" })).closest("tr")!;
     expect(row).toHaveTextContent("DOCS");
     expect(row).toHaveTextContent("How we work.");
-    expect(screen.getByRole("link", { name: "Handbook" })).toHaveAttribute("href", "/s/DOCS");
+    expect(screen.getByRole("link", { name: "Handbook" })).toHaveAttribute("href", "/spaces/DOCS");
     expect(screen.getByRole("button", { name: "Create space" })).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });
@@ -43,7 +43,7 @@ describe("the space directory", () => {
   it("tells a member who to ask when there is nothing yet", async () => {
     stubApi({ "GET /spaces": { status: 200, body: { spaces: [] } } });
     await renderAt("/spaces", { me: member });
-    expect(await screen.findByText(/Ask an administrator of your organization to create one/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ask an administrator of your installation to create one/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create space" })).toBeNull();
   });
 });
@@ -171,7 +171,7 @@ describe("creating a space from a template", () => {
     const group = await screen.findByRole("radiogroup", { name: "Start from" });
     expect(within(group).getByRole("radio", { name: /Blank space/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("region", { name: "What Blank space sets up" })).toHaveTextContent(
-      "Everyone in the organization may view, add pages, add comments and delete.",
+      "Everyone in the installation may view, add pages, add comments and delete.",
     );
 
     await userEvent.click(await within(group).findByRole("radio", { name: /Team space/ }));
@@ -182,7 +182,7 @@ describe("creating a space from a template", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual(expect.arrayContaining(["meeting-notes", "onboarding", "team"]));
-    expect(preview).toHaveTextContent("Everyone in the organization may view and add comments.");
+    expect(preview).toHaveTextContent("Everyone in the installation may view and add comments.");
     expect(await axeViolations()).toEqual([]);
 
     // Arrows move the choice as in any radio group.
@@ -234,12 +234,11 @@ describe("a space's home", () => {
       "GET /spaces/DOCS": { status: 200, body: { space } },
       [`GET /pages/${home.id}`]: { status: 200, body: { page: home, space } },
     });
-    await renderAt("/s/docs");
+    await renderAt("/spaces/docs");
     expect(await screen.findByText("Welcome to the handbook.")).toBeInTheDocument();
     const nav = document.querySelector<HTMLElement>("[data-space-nav]")!;
-    expect(within(nav).getByRole("link", { name: "Space home" })).toHaveAttribute("href", "/s/DOCS");
-    await userEvent.click(within(nav).getByRole("button", { name: "Space admin" }));
-    expect(within(nav).getByRole("link", { name: "Space settings" })).toHaveAttribute("href", "/s/DOCS/settings");
+    expect(within(nav).getByRole("link", { name: "Space home" })).toHaveAttribute("href", "/spaces/DOCS");
+    expect(within(nav).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/spaces/DOCS/settings");
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });
@@ -251,7 +250,7 @@ describe("a space's home", () => {
         body: { error: { code: "not_found", message: "That space was not found. Check the key in the address; the space may have been deleted." } },
       },
     });
-    await renderAt("/s/NOPE");
+    await renderAt("/spaces/NOPE");
     expect(await screen.findByText("That space was not found. Check the key in the address; the space may have been deleted.")).toBeInTheDocument();
   });
 });
@@ -262,9 +261,12 @@ describe("space settings", () => {
     const sent = stubApi({
       "GET /spaces/DOCS": { status: 200, body: { space } },
       "PATCH /spaces/DOCS": { status: 200, body: { space: renamed } },
-      "GET /spaces/DOCS/permissions": { status: 200, body: { grants: [] } },
+      "GET /role-assignments": { status: 200, body: { assignments: [], total: 0, limit: 50, offset: 0 } },
+      "GET /roles": { status: 200, body: { roles: [] } },
     });
-    await renderAt("/s/DOCS/settings");
+    const router = await renderAt("/spaces/DOCS/settings");
+    await arrival(router, "/spaces/DOCS/settings/general");
+    expect(screen.getByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "true");
     const name = await screen.findByLabelText("Name");
     await userEvent.clear(name);
     await userEvent.type(name, "Team handbook");
@@ -274,8 +276,9 @@ describe("space settings", () => {
     expect(screen.getByRole("button", { name: "Delete space" })).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
 
-    await userEvent.click(screen.getByRole("tab", { name: "Permissions" }));
-    expect(await screen.findByText(/Who may do what in this space/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Members and permissions" }));
+    await arrival(router, "/spaces/DOCS/settings/members");
+    expect(await screen.findByText(/Who holds which role in this space/)).toBeInTheDocument();
   });
 
   it("show a member the details without letting them change them", async () => {
@@ -285,10 +288,8 @@ describe("space settings", () => {
         body: { space: aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }) },
       },
     });
-    await renderAt("/s/DOCS/settings", { me: member });
-    expect(
-      await screen.findByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization."),
-    ).toBeInTheDocument();
+    await renderAt("/spaces/DOCS/settings/general", { me: member });
+    expect(await screen.findByText("Only the space's administrators change its settings. Ask one of them, or ask for the role.")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: "Save details" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete space" })).toBeNull();

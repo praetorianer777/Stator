@@ -13,12 +13,13 @@ import {
   type ExciterConnectionInput,
   type ExciterPartner,
 } from "@/api/exciter";
-import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, Card, Checkbox, ErrorBanner, Field, SectionTitle, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { COPY_FEEDBACK_MS, EXCITER_CLIENT_SECRET_PREFIX, EXCITER_WEBHOOK_SECRET_PREFIX } from "@/config";
 import { ConnectExciterLink } from "./connectLink";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /** The Exciter installation Stator is connected to and its webhook, for administrators, as Armature's settings are. */
 export function ExciterConnectionSettings() {
@@ -27,24 +28,21 @@ export function ExciterConnectionSettings() {
   // says about that save has to outlive the remount.
   const save = useSaveExciterConnection();
   const remove = useRemoveExciterConnection();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const x = t.exciter;
   if (isLoading) return <Skeleton />;
   if (error) return <ErrorBanner>{error instanceof ApiError && error.status === 403 ? x.notAdmin : error.message}</ErrorBanner>;
   const connection = data ?? null;
 
-  function disconnect() {
-    if (!window.confirm(x.confirmDisconnect)) return;
-    setNotice("");
-    remove.mutate(undefined, { onSuccess: () => setNotice(x.disconnected) });
+  async function disconnect() {
+    if (!(await confirm({ noun: "Exciter", verb: t.kit.confirm.verbs.disconnect, body: x.confirmDisconnect }))) return;
+    remove.mutate(undefined, { onSuccess: () => toast.success(x.disconnected) });
   }
 
   return (
     <div className="space-y-6">
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-exciter-notice>
-        {notice}
-      </p>
-      <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={setNotice} />
+      <ConnectionForm key={connection?.updatedAt ?? "new"} connection={connection} save={save} onSaved={toast.success} />
       {connection && <MembersNext />}
       {connection && <Capabilities partner={connection.partner} />}
       {connection && <PartnerApp connection={connection} />}
@@ -54,7 +52,7 @@ export function ExciterConnectionSettings() {
           <SectionTitle id="exciter-disconnect">{x.disconnectTitle}</SectionTitle>
           <p className="text-sm text-ink-muted">{x.disconnectIntro}</p>
           {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
-          <Button variant="danger" onClick={disconnect} loading={remove.isPending} data-action="disconnect-exciter">
+          <Button variant="danger" onClick={() => void disconnect()} loading={remove.isPending} data-action="disconnect-exciter">
             {x.disconnect}
           </Button>
         </section>
@@ -216,30 +214,29 @@ function PartnerApp({ connection }: { connection: ExciterConnection }) {
   const remove = useRemoveExciterApp();
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const fields = save.error instanceof ApiError ? save.error.fields : {};
   const formError = save.error && Object.keys(fields).length === 0 ? save.error.message : null;
   const state = app.exchanging ? "exchanging" : !app.offered ? "not_offered" : app.clientId ? "off" : "missing";
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    setNotice("");
     save.mutate(
       { clientId: clientId.trim(), clientSecret: clientSecret.trim() },
       {
         onSuccess: () => {
           setClientId("");
           setClientSecret("");
-          setNotice(p.saved);
+          toast.success(p.saved);
         },
       },
     );
   }
 
-  function forget() {
-    if (!window.confirm(p.confirmRemove)) return;
-    setNotice("");
-    remove.mutate(undefined, { onSuccess: () => setNotice(p.removed) });
+  async function forget() {
+    if (!(await confirm({ noun: t.kit.confirm.things.app, verb: t.kit.confirm.verbs.remove, body: p.confirmRemove }))) return;
+    remove.mutate(undefined, { onSuccess: () => toast.success(p.removed) });
   }
 
   return (
@@ -250,9 +247,6 @@ function PartnerApp({ connection }: { connection: ExciterConnection }) {
         {p.states[state]}
       </p>
       {app.clientId && <p className="text-sm text-ink-muted">{p.clientIdShown(app.clientId)}</p>}
-      <p role="status" className="text-sm text-ink-muted empty:hidden" data-exciter-app-notice>
-        {notice}
-      </p>
       {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
       <form onSubmit={submit} noValidate className="space-y-3 rounded-control border border-border p-4" aria-label={p.formTitle} data-exciter-app-form>
         <Field label={p.clientId} autoComplete="off" value={clientId} error={fields.clientId} onChange={(event) => setClientId(event.target.value)} />
@@ -271,7 +265,7 @@ function PartnerApp({ connection }: { connection: ExciterConnection }) {
             {p.save}
           </Button>
           {app.clientId && (
-            <Button variant="ghost" onClick={forget} loading={remove.isPending} data-action="forget-exciter-app">
+            <Button variant="ghost" onClick={() => void forget()} loading={remove.isPending} data-action="forget-exciter-app">
               {p.remove}
             </Button>
           )}

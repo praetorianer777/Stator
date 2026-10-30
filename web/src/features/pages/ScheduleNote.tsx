@@ -3,6 +3,7 @@ import { useCancelSchedule } from "@/api/versions";
 import { Button, cx, ErrorBanner } from "@/components/ui";
 import { t } from "@/i18n";
 import { scheduleTimeFormat } from "./schedule";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /**
  * Tells the page's editors, and the author, of a publish set for a time: when
@@ -10,6 +11,7 @@ import { scheduleTimeFormat } from "./schedule";
  */
 export function ScheduleNote({ page, onEdit }: { page: Page; onEdit: () => void }) {
   const cancel = useCancelSchedule(page.id);
+  const confirm = useConfirm();
   const schedule = page.schedule;
   if (!schedule) return null;
   const when = scheduleTimeFormat.format(new Date(schedule.publishAt));
@@ -23,8 +25,9 @@ export function ScheduleNote({ page, onEdit }: { page: Page; onEdit: () => void 
       : t.schedule.theirs(schedule.authorName, when);
   const mayCancel = schedule.mine || page.can.edit;
 
-  function callOff() {
-    if (window.confirm(t.schedule.confirmCancel)) cancel.mutate();
+  async function callOff() {
+    const ask = { noun: t.kit.confirm.things.scheduledPublish, verb: t.kit.confirm.verbs.callOff, body: t.schedule.confirmCancel };
+    if (await confirm(ask)) cancel.mutate();
   }
 
   return (
@@ -44,7 +47,7 @@ export function ScheduleNote({ page, onEdit }: { page: Page; onEdit: () => void 
           </Button>
         )}
         {mayCancel && (
-          <Button size="sm" variant="ghost" onClick={callOff} loading={cancel.isPending} data-action="cancel-schedule">
+          <Button size="sm" variant="ghost" onClick={() => void callOff()} loading={cancel.isPending} data-action="cancel-schedule">
             {t.schedule.cancel}
           </Button>
         )}

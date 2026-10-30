@@ -73,10 +73,10 @@ type meResponse struct {
 
 func me(p *auth.Principal) *meResponse {
 	out := &meResponse{
-		User: auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL, Locale: p.Locale, ShowInReaders: p.ShowInReaders},
+		User: auth.User{ID: p.UserID, Email: p.Email, Name: p.Name, AvatarURL: p.AvatarURL, Locale: p.Locale, Timezone: p.Timezone, ShowInReaders: p.ShowInReaders},
 	}
 	if p.IsMember() {
-		out.Organization = &auth.Standing{Name: p.SiteName, Role: p.Role, GuestSpace: p.GuestSpace}
+		out.Organization = &auth.Standing{Name: p.SiteName, Role: p.Role, Administers: p.CanAdminister(), GuestSpace: p.GuestSpace}
 	}
 	return out
 }
@@ -139,6 +139,8 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 type updateMeRequest struct {
 	// Locale is the interface language, "en" or "de"; empty follows the browser.
 	Locale *auth.Locale `json:"locale,omitempty"`
+	// Timezone is the IANA zone dates are written in; empty follows the browser.
+	Timezone *string `json:"timezone,omitempty"`
 	// ShowInReaders says whether editors of the pages the caller reads see
 	// their name among its readers.
 	ShowInReaders *bool `json:"showInReaders,omitempty"`
@@ -159,6 +161,15 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.Locale = *req.Locale
+	}
+	if req.Timezone != nil {
+		lsn, err := s.Accounts.SetTimezone(r.Context(), p.UserID, *req.Timezone)
+		noteWrite(r.Context(), lsn)
+		if err != nil {
+			respondError(w, r, err)
+			return
+		}
+		p.Timezone = *req.Timezone
 	}
 	if req.ShowInReaders != nil {
 		lsn, err := s.Accounts.SetShowInReaders(r.Context(), p.UserID, *req.ShowInReaders)

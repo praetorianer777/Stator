@@ -13,7 +13,8 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/perm"
 )
 
-// Role is what a guest may do in their space, as an invitation names it.
+// Role is what a guest may do in their space, as an invitation names it: the
+// built-in role of the same key, granted to them there.
 type Role string
 
 const (

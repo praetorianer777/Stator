@@ -3,10 +3,9 @@ import { ApiError } from "@/api/client";
 import { useHub, useSetHub } from "@/api/hub";
 import { useSpaces } from "@/api/spaces";
 import { useOutline } from "@/api/tree";
-import { Button, Checkbox, ErrorBanner, PageHeader, Select, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, Checkbox, ErrorBanner, Select, Skeleton } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 const INDENT = "   ";
 
@@ -32,8 +31,8 @@ export function HubSettings() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl" data-hub-settings="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.hub.title} />
+    <Page width="narrow" data-hub-settings="">
+      <PageHeader title={t.hub.title} />
       <p className="mb-4 text-sm text-ink-muted">{t.hub.intro}</p>
       {isLoading && <Skeleton />}
       {hub && (
@@ -98,6 +97,6 @@ export function HubSettings() {
           )}
         </div>
       </form>
-    </div>
+    </Page>
   );
 }

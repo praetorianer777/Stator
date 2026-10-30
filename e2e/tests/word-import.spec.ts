@@ -47,7 +47,7 @@ test.describe("Word import", { tag: ["@auth"] }, () => {
     const space = await createSpace(api, key, "Imported handbook");
     try {
       const parent = await createPage(api, space.homePageId, `Releases ${key}`);
-      await openTitled(page, `/s/${key}/p/${parent.id}/releases`, parent.title);
+      await openTitled(page, `/spaces/${key}/p/${parent.id}/releases`, parent.title);
       await openImport(page);
       await importDialog(page)
         .locator("[data-word-files]")
@@ -78,7 +78,7 @@ test.describe("Word import", { tag: ["@auth"] }, () => {
     const space = await createSpace(api, key, "Imported minutes");
     try {
       const parent = await createPage(api, space.homePageId, `Minutes ${key}`);
-      await openTitled(page, `/s/${key}/p/${parent.id}/minutes`, parent.title);
+      await openTitled(page, `/spaces/${key}/p/${parent.id}/minutes`, parent.title);
       await openImport(page);
       const minutes = ["January", "February", "March"].map((month) => ({
         name: `${month.toLowerCase()}.docx`,
@@ -110,7 +110,7 @@ test.describe("Word import", { tag: ["@auth"] }, () => {
       const space = await createSpace(api, key, "Accessible imports");
       try {
         const parent = await createPage(api, space.homePageId, `Inbox ${key}`);
-        await openTitled(page, `/s/${key}/p/${parent.id}/inbox`, parent.title);
+        await openTitled(page, `/spaces/${key}/p/${parent.id}/inbox`, parent.title);
         await openImport(page);
         await expectAccessible(page);
 

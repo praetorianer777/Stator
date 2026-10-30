@@ -169,14 +169,21 @@ export function WordImportDialog({ parent, spaceKey, onClose }: { parent: { id: 
   const answer = importing.data;
   if (answer) {
     return (
-      <Dialog title={t.wordImport.title(parent.title)} onClose={onClose} data-word-import-dialog="done">
+      <Dialog
+        open
+        title={t.wordImport.title(parent.title)}
+        onClose={onClose}
+        attrs={{ "data-word-import-dialog": "done" }}
+        footer={
+          <>
+            <Button type="button" onClick={onClose} data-action="close-word-import">
+              {t.wordImport.close}
+            </Button>
+          </>
+        }
+      >
         {answer.result && <SingleResult result={answer.result} spaceKey={spaceKey} />}
         {answer.job && <Followed queued={answer.job} spaceKey={spaceKey} />}
-        <div className="flex justify-end pt-3">
-          <Button type="button" onClick={onClose} data-action="close-word-import">
-            {t.wordImport.close}
-          </Button>
-        </div>
       </Dialog>
     );
   }
@@ -184,8 +191,30 @@ export function WordImportDialog({ parent, spaceKey, onClose }: { parent: { id: 
   const error = problem ?? importing.error?.message;
   const percent = Math.round(importing.progress * 100);
   return (
-    <Dialog title={t.wordImport.title(parent.title)} onClose={onClose} data-word-import-dialog="">
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={t.wordImport.title(parent.title)}
+      onClose={onClose}
+      attrs={{ "data-word-import-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.wordImport.cancel}
+          </Button>
+          <Button
+            type="submit"
+            form="word-import-dialog-2-form"
+            loading={importing.isPending}
+            disabled={files.length === 0}
+            icon={<Icon.Upload />}
+            data-action="confirm-word-import"
+          >
+            {t.wordImport.submit}
+          </Button>
+        </>
+      }
+    >
+      <form id="word-import-dialog-2-form" onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-ink-muted">{t.wordImport.hint}</p>
         {error && <ErrorBanner>{error}</ErrorBanner>}
         <input
@@ -217,14 +246,6 @@ export function WordImportDialog({ parent, spaceKey, onClose }: { parent: { id: 
           )}
         </div>
         {importing.isPending && <progress className="h-1.5 w-full accent-accent" max={100} value={percent} aria-label={t.wordImport.sending(percent)} />}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.wordImport.cancel}
-          </Button>
-          <Button type="submit" loading={importing.isPending} disabled={files.length === 0} icon={<Icon.Upload />} data-action="confirm-word-import">
-            {t.wordImport.submit}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

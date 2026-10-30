@@ -19,7 +19,29 @@ export function ExportDialog({ page, onClose }: { page: { id: string; title: str
   const [scope, setScope] = useState<ExportScope>("page");
   const name = useId();
   return (
-    <Dialog title={t.markdown.exportTitle(page.title)} onClose={onClose} data-markdown-export="">
+    <Dialog
+      open
+      title={t.markdown.exportTitle(page.title)}
+      onClose={onClose}
+      attrs={{ "data-markdown-export": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.markdown.cancel}
+          </Button>
+          <ButtonLink
+            variant="primary"
+            href={markdownExportHref(page.id, scope)}
+            download
+            onClick={onClose}
+            icon={<Icon.Download />}
+            data-action="download-markdown"
+          >
+            {t.markdown.download}
+          </ButtonLink>
+        </>
+      }
+    >
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-medium text-ink">{t.markdown.exportWhat}</legend>
         {scopes().map((each) => (
@@ -41,21 +63,6 @@ export function ExportDialog({ page, onClose }: { page: { id: string; title: str
         ))}
       </fieldset>
       <p className="mt-3 text-xs text-ink-muted">{t.markdown.exportNote}</p>
-      <div className="flex justify-end gap-2 pt-3">
-        <Button type="button" variant="secondary" onClick={onClose}>
-          {t.markdown.cancel}
-        </Button>
-        <ButtonLink
-          variant="primary"
-          href={markdownExportHref(page.id, scope)}
-          download
-          onClick={onClose}
-          icon={<Icon.Download />}
-          data-action="download-markdown"
-        >
-          {t.markdown.download}
-        </ButtonLink>
-      </div>
     </Dialog>
   );
 }
@@ -94,7 +101,19 @@ export function ImportDialog({ parent, spaceKey, onClose }: { parent: { id: stri
   const result = importing.data;
   if (result) {
     return (
-      <Dialog title={t.markdown.importTitle(parent.title)} onClose={onClose} data-markdown-import="done">
+      <Dialog
+        open
+        title={t.markdown.importTitle(parent.title)}
+        onClose={onClose}
+        attrs={{ "data-markdown-import": "done" }}
+        footer={
+          <>
+            <Button type="button" onClick={onClose} data-action="close-import">
+              {t.markdown.close}
+            </Button>
+          </>
+        }
+      >
         <p role="status" className="text-sm text-ink" data-import-result="">
           {t.markdown.imported(result.pages.length)}
         </p>
@@ -116,19 +135,36 @@ export function ImportDialog({ parent, spaceKey, onClose }: { parent: { id: stri
             </ul>
           </>
         )}
-        <div className="flex justify-end pt-3">
-          <Button type="button" onClick={onClose} data-action="close-import">
-            {t.markdown.close}
-          </Button>
-        </div>
       </Dialog>
     );
   }
 
   const error = problem ?? importing.error?.message;
   return (
-    <Dialog title={t.markdown.importTitle(parent.title)} onClose={onClose} data-markdown-import="">
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={t.markdown.importTitle(parent.title)}
+      onClose={onClose}
+      attrs={{ "data-markdown-import": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.markdown.cancel}
+          </Button>
+          <Button
+            type="submit"
+            form="markdown-dialogs-3-form"
+            loading={importing.isPending}
+            disabled={files.length === 0}
+            icon={<Icon.Upload />}
+            data-action="confirm-import"
+          >
+            {t.markdown.importSubmit}
+          </Button>
+        </>
+      }
+    >
+      <form id="markdown-dialogs-3-form" onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-ink-muted">{t.markdown.importHint}</p>
         {error && <ErrorBanner>{error}</ErrorBanner>}
         <input
@@ -181,14 +217,6 @@ export function ImportDialog({ parent, spaceKey, onClose }: { parent: { id: stri
             aria-label={t.markdown.sending(Math.round(importing.progress * 100))}
           />
         )}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.markdown.cancel}
-          </Button>
-          <Button type="submit" loading={importing.isPending} disabled={files.length === 0} icon={<Icon.Upload />} data-action="confirm-import">
-            {t.markdown.importSubmit}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

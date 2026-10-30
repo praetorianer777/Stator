@@ -72,7 +72,7 @@ const childPages = (scope: string, depth: number | null, sort: string): DocNode 
 describe("the reader", () => {
   it("links a table of contents to the page's headings, and follows a link without leaving the page", async () => {
     stubPage(body(toc(2), heading(1, "Install", "install"), heading(2, "Linux", "linux"), heading(3, "Debian", "debian"), heading(1, "Use", "use")));
-    const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/guide`);
+    const router = await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide`);
     const nav = await screen.findByRole("navigation", { name: "Table of contents" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
@@ -84,13 +84,13 @@ describe("the reader", () => {
     expect(within(nav).getByRole("link", { name: "Install" }).closest("li")).toContainElement(within(nav).getByRole("link", { name: "Linux" }));
     await userEvent.click(within(nav).getByRole("link", { name: "Use" }));
     expect(window.location.hash).toBe("#use");
-    expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/guide`);
+    expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/guide`);
     expect(document.getElementById("use")).toHaveTextContent("Use");
   });
 
   it("says so in a sentence when the page has no headings", async () => {
     stubPage(body(toc(), { type: "paragraph", content: [{ type: "text", text: "Only words." }] }));
-    await renderAt(`/s/DOCS/p/${PAGE_ID}/guide`);
+    await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide`);
     const nav = await screen.findByRole("navigation", { name: "Table of contents" });
     expect(nav).toHaveTextContent("No headings yet. Add a heading to the page and it is listed here.");
   });
@@ -107,13 +107,13 @@ describe("the reader", () => {
         truncated: false,
       },
     });
-    await renderAt(`/s/DOCS/p/${PAGE_ID}/guide`);
+    await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide`);
     const nav = await screen.findByRole("navigation", { name: "Child pages" });
     await within(nav).findByRole("link", { name: "Setup" });
     expect(Object.fromEntries(asked[0]!)).toEqual({ scope: "subtree", depth: "2", sort: "updated" });
     expect(within(nav).getByRole("link", { name: "Install on Linux" })).toHaveAttribute(
       "href",
-      "/s/DOCS/p/0195f000-0000-7000-8000-0000000000c2/install-on-linux",
+      "/spaces/DOCS/p/0195f000-0000-7000-8000-0000000000c2/install-on-linux",
     );
     expect(within(nav).getByRole("link", { name: "Setup" }).closest("li")).toContainElement(within(nav).getByRole("link", { name: "Install on Linux" }));
     expect(within(nav).getByRole("link", { name: "My notes" }).closest("li")).toHaveTextContent("Unpublished");
@@ -123,7 +123,7 @@ describe("the reader", () => {
 
   it("asks for direct children without a depth, and says so when there are none", async () => {
     const { asked } = stubPage(body(childPages("children", 4, "title")));
-    await renderAt(`/s/DOCS/p/${PAGE_ID}/guide`);
+    await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide`);
     const nav = await screen.findByRole("navigation", { name: "Child pages" });
     await waitFor(() => expect(nav).toHaveTextContent("No pages below this one yet. Pages added under it are listed here."));
     expect(Object.fromEntries(asked[0]!)).toEqual({ scope: "children", sort: "title" });
@@ -134,7 +134,7 @@ describe("the reader", () => {
       status: 200,
       body: { pages: [child("0195f000-0000-7000-8000-0000000000c1", "Setup", PAGE_ID, 1)], truncated: true },
     });
-    await renderAt(`/s/DOCS/p/${PAGE_ID}/guide`);
+    await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide`);
     expect(await screen.findByText("Only the first 500 pages are listed. Choose fewer levels to see a shorter list.")).toBeInTheDocument();
   });
 
@@ -165,7 +165,7 @@ describe("the editor", () => {
     "keeps the table of contents up to date as headings are typed, and sets its depth from the keyboard",
     async () => {
       const { sent } = stubPage(body(toc(), heading(1, "Install", "install"), { type: "paragraph" }));
-      const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/guide/edit`);
+      const router = await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide/edit`);
       const box = await screen.findByRole("textbox", { name: "Page content" }, { timeout: 10_000 });
       const nav = await within(box).findByRole("navigation", { name: "Table of contents" });
       expect(
@@ -222,7 +222,7 @@ describe("the editor", () => {
         status: 200,
         body: { pages: [child("0195f000-0000-7000-8000-0000000000c1", "Setup", PAGE_ID, 1)], truncated: false },
       });
-      const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/guide/edit`);
+      const router = await renderAt(`/spaces/DOCS/p/${PAGE_ID}/guide/edit`);
       const box = await screen.findByRole("textbox", { name: "Page content" }, { timeout: 10_000 });
       const nav = await within(box).findByRole("navigation", { name: "Child pages" });
       await within(nav).findByRole("link", { name: "Setup" });

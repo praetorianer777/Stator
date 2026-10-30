@@ -6,7 +6,7 @@ import { mailsTo, mailText } from "../fixtures/mail";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, toast, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
 // The spec's own bob, named after it (fixtures/team.ts).
@@ -19,7 +19,7 @@ const QUIET_MS = 3_000;
 const heading = (page: Page) => page.locator("main").getByRole("heading", { level: 1 });
 const watchButton = (page: Page) => page.locator('[data-action="watch-menu"]');
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
-const badge = (page: Page) => page.locator("[data-unread-badge]");
+const badge = (page: Page) => page.locator('[data-count="bell"] [aria-hidden="true"]').first();
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
@@ -84,7 +84,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`published version 2 of ${runbook.title}`);
     await expect(told).toHaveAttribute("data-unread", "true");
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${runbook.id}/`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${runbook.id}/`));
     await expect(panel(bob)).toHaveCount(0);
     await expect(badge(bob)).toHaveCount(0);
     await bell(bob).click();
@@ -93,7 +93,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
     await expect.poll(async () => (await mailsTo(BOB_EMAIL, runbook.title)).length, { timeout: DELIVERY_MS }).toBe(1);
     const [mail] = await mailsTo(BOB_EMAIL, runbook.title);
     expect(mail!.Subject).toContain(`published a new version of "${runbook.title}"`);
-    expect(await mailText(mail!.ID)).toContain(`/s/${space.key}/p/${runbook.id}`);
+    expect(await mailText(mail!.ID)).toContain(`/spaces/${space.key}/p/${runbook.id}`);
   });
 
   test("a kind switched off by email is still shown in the app, and mailed to nobody", async ({ api, apiAs, pageAs }, testInfo) => {
@@ -108,7 +108,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
       await expect(email).toBeChecked();
       await email.uncheck();
       await bob.getByRole("button", { name: "Save" }).click();
-      await expect(bob.locator("[data-preferences-saved]")).toHaveText("Your notification settings are saved.");
+      await expect(toast(bob, "Your notification settings are saved.")).toBeVisible();
 
       await expect.poll(async () => (await bobApi.PUT("/pages/{pageID}/watch", { params: { path: { pageID: plan.id } }, body: {} })).response.status).toBe(200);
       await publishWithNotice(api, plan.id, "Second words.");
@@ -118,6 +118,33 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
       expect(await mailsTo(BOB_EMAIL, plan.title)).toEqual([]);
     } finally {
       must(await bobApi.PUT("/notification-preferences", { body: saved }));
+      expect((await bobApi.POST("/notifications/read", { body: { all: true } })).response.status).toBe(204);
+    }
+  });
+
+  test("the Notifications page lists what bob was told, counted beside it in the sidebar", { tag: "@desktop" }, async ({ api, apiAs, pageAs }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Listed");
+    const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Plan"), doc("First words."));
+    const bobApi = await apiAs("bob");
+    try {
+      await expect.poll(async () => (await bobApi.PUT("/pages/{pageID}/watch", { params: { path: { pageID: plan.id } }, body: {} })).response.status).toBe(200);
+      await publishWithNotice(api, plan.id, "Second words.");
+      const bob = await pageAs("bob");
+      await openPage(bob, space.key, plan);
+      await expectBadge(bob, 1);
+      const entry = bob.locator('[data-sidebar] [data-nav="notifications"]');
+      await expect(entry.locator('[data-count="notifications"] [aria-hidden="true"]')).toHaveText("1");
+
+      await bell(bob).click();
+      await panel(bob).locator('[data-action="see-all-notifications"]').click();
+      await expect(bob).toHaveURL(/\/notifications$/);
+      const listed = bob.locator("[data-notifications-page]");
+      await expect(listed.locator('[data-notification="published"]').first()).toContainText(plan.title);
+      await expectAccessible(bob);
+      await bob.locator('[data-shell-header] [data-action="mark-all-read"]').click();
+      await expect(listed).toContainText("Nothing unread");
+      await expect(entry.locator('[data-count="notifications"]')).toHaveCount(0);
+    } finally {
       expect((await bobApi.POST("/notifications/read", { body: { all: true } })).response.status).toBe(204);
     }
   });

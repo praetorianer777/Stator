@@ -22,7 +22,7 @@ const (
 	armatureReturnParam = "return"
 	profilePath         = "/settings/profile"
 	// armatureSettingsPath is where an administrator connects Armature.
-	armatureSettingsPath = "/settings/armature"
+	armatureSettingsPath = "/admin/armature"
 	armatureSectionID    = "armature"
 	// maxReturnLength bounds the way back, as the web client does.
 	maxReturnLength = 2000
@@ -40,7 +40,7 @@ const (
 	connectOther       = "other_installation"
 	connectNoArmature  = "not_configured"
 	connectFailed      = "failed"
-	// An administrator's connect, said on Settings, Armature: Armature
+	// An administrator's connect, said on Admin, Armature: Armature
 	// would not make the webhook, the grant may not manage it, or the app
 	// in Armature may not ask for webhooks.partner.
 	connectWebhookRefused = "webhook_refused"
@@ -155,7 +155,7 @@ func (s *Server) landAfterConnect(w http.ResponseWriter, r *http.Request, back, 
 	http.Redirect(w, r, s.AppBaseURL+profilePath+"?"+q.Encode()+"#"+armatureSectionID, http.StatusFound)
 }
 
-// landOnSettings sends an administrator back to Settings, Armature, which
+// landOnSettings sends an administrator back to Admin, Armature, which
 // says how their connect ended.
 func (s *Server) landOnSettings(w http.ResponseWriter, r *http.Request, outcome string) {
 	q := url.Values{armatureOutcomeParam: {outcome}}

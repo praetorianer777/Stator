@@ -378,7 +378,7 @@ func errorCode(t *testing.T, r response) string {
 }
 
 // addPerson makes somebody else a member of the site, behind the policies'
-// back like makeMember.
+// back like makeMember; owner and admin hold the administrator role.
 func (h *harness) addPerson(t *testing.T, role string) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
@@ -387,8 +387,17 @@ func (h *harness) addPerson(t *testing.T, role string) uuid.UUID {
 	if err := h.super.QueryRow(ctx, `INSERT INTO app_user (email, name) VALUES ($1, $2) RETURNING id`, email, "A "+role).Scan(&id); err != nil {
 		t.Fatalf("create a %s: %v", role, err)
 	}
-	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, id, role); err != nil {
+	standing := role
+	if role == "owner" || role == "admin" {
+		standing = "member"
+	}
+	if _, err := h.super.Exec(ctx, `INSERT INTO member (user_id, role) VALUES ($1, $2)`, id, standing); err != nil {
 		t.Fatalf("make the %s a member: %v", role, err)
+	}
+	if standing != role {
+		if _, err := h.super.Exec(ctx, `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', $1)`, id); err != nil {
+			t.Fatalf("make the %s an administrator: %v", role, err)
+		}
 	}
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE id = $1`, id) })
 	h.settle(t)

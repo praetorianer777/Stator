@@ -1,4 +1,5 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { API_BASE, HTTP_PERMANENT_REDIRECT, PUBLIC_SEARCH_LIMIT, PUBLIC_STALE_MS } from "@/config";
 import { ApiError, api } from "./client";
 import type { components } from "./schema";

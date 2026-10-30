@@ -4,8 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
-	"github.com/praetorianer777/stator/backend/internal/auth"
 )
 
 // archive lays an archive over facts as the database would answer them: no
@@ -27,7 +25,7 @@ func TestAnArchivedPageIsExplainedBeforeAnyGrant(t *testing.T) {
 		with  *AccessPage
 	}{
 		{"an archived page", archive(inspected(member(SpaceAdminister), true, home, old), ArchivedPage, &old.Page), &old.Page},
-		{"a page of an archived space", archive(inspected(Facts{Member: true, Role: auth.RoleOwner}, true, home, old), ArchivedSpace, nil), nil},
+		{"a page of an archived space", archive(inspected(administrator(), true, home, old), ArchivedSpace, nil), nil},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			rights := Explain(tt.facts)
@@ -48,7 +46,7 @@ func TestAnArchivedPageIsExplainedBeforeAnyGrant(t *testing.T) {
 }
 
 func TestAnArchivedPageIsReadOnlyForEverybody(t *testing.T) {
-	admin := PageRules(Facts{Member: true, Role: auth.RoleOwner}, []ChainLink{{}})
+	admin := PageRules(administrator(), []ChainLink{{}})
 	for _, how := range []Archived{ArchivedPage, ArchivedSpace} {
 		a := admin
 		a.Archived = how

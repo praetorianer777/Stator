@@ -82,8 +82,24 @@ export function GalleryDialog({
   const move = (from: number, to: number) => setPictures((was) => movePicture(was, from, to));
 
   return (
-    <Dialog title={isNew ? g.titleNew : g.titleEdit} wide onClose={onClose} data-gallery-dialog="">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? g.titleNew : g.titleEdit}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-gallery-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {g.cancel}
+          </Button>
+          <Button type="submit" form="gallery-dialog-form" disabled={pending.length > 0} data-action="save-gallery">
+            {isNew ? g.insert : g.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="gallery-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         {!pageId ? (
           <p className="text-sm text-ink-muted">{g.unsaved}</p>
         ) : (
@@ -205,14 +221,6 @@ export function GalleryDialog({
           ))}
         </Select>
         {problem && <ErrorBanner>{problem}</ErrorBanner>}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {g.cancel}
-          </Button>
-          <Button type="submit" disabled={pending.length > 0} data-action="save-gallery">
-            {isNew ? g.insert : g.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

@@ -20,7 +20,7 @@ const EDITOR_TEST_MS = 20_000;
 const space = aSpace();
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000a3";
-const EDIT_PATH = `/s/DOCS/p/${PAGE_ID}/policy/edit`;
+const EDIT_PATH = `/spaces/DOCS/p/${PAGE_ID}/policy/edit`;
 const rule: ReviewRule = {
   id: "0195f000-0000-7000-8000-0000000000d2",
   spaceKey: "DOCS",
@@ -103,7 +103,7 @@ describe("a draft of a page held to a review", () => {
       expect(await axeViolations()).toEqual([]);
       await userEvent.type(within(dialog).getByLabelText("What changed"), "Locks.");
       await userEvent.click(within(dialog).getByRole("button", { name: "Submit for review" }));
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/policy`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/policy`));
       expect(submits(sent)[0]!.body).toEqual({ comment: "Locks.", notifyWatchers: true });
       expect(sent.some((r) => r.path === `/pages/${PAGE_ID}/publish`)).toBe(false);
       expect(await screen.findByText("A draft of this page is waiting for review.")).toBeInTheDocument();
@@ -184,7 +184,7 @@ describe("the history of a reviewed page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${PAGE_ID}/policy/history`);
+    await renderAt(`/spaces/DOCS/p/${PAGE_ID}/policy/history`);
     expect(await screen.findByText("Approved by Ann Reviewer and Carl Lead")).toHaveAttribute("data-version-review", "approved");
     expect(screen.getByText("Published without review by Ada Lovelace: The office is on fire.")).toHaveAttribute("data-version-review", "skipped");
     expect(document.querySelector('[data-version-row="1"] [data-version-review]')).toBeNull();

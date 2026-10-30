@@ -84,7 +84,10 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 		want(t, limited.post(t, "/api/v1/pages", map[string]any{"parentId": nearPage, "title": "From the pipeline", "publish": true}), http.StatusCreated, "write in its space")
 		want(t, limited.post(t, pagePath(nearPage, "/comments"), map[string]any{"body": commentDoc("Ran.")}), http.StatusCreated, "comment in its space")
 		// The owner's role still holds inside it.
-		want(t, limited.get(t, "/api/v1/spaces/NEAR/permissions"), http.StatusOK, "administer its space")
+		want(t, limited.get(t, "/api/v1/role-assignments?space=NEAR"), http.StatusOK, "administer its space")
+		if got := limited.get(t, "/api/v1/role-assignments?scope=installation"); got.Status != http.StatusForbidden {
+			t.Errorf("the token reads the grants across the installation: %d", got.Status)
+		}
 	})
 
 	t.Run("anything else is not found, while its owner still sees it", func(t *testing.T) {
@@ -210,7 +213,7 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 			"a page of FAR":                 `SELECT count(*) FROM page WHERE id = '` + farPage + `'`,
 			"the audit log":                 `SELECT count(*) FROM audit_log`,
 			"FAR in the home feed":          `SELECT count(*) FROM home_edited(NULL, NULL, 100) WHERE page_id = '` + farPage + `'`,
-			"FAR's grants for the token":    `SELECT count(*) FROM space_grant g JOIN space s ON s.id = g.space_id WHERE s.key = 'FAR'`,
+			"FAR's grants for the token":    `SELECT count(*) FROM role_assignment g JOIN space s ON s.id = g.space_id WHERE s.key = 'FAR'`,
 			"FAR itself, as the owner sees": `SELECT count(*) FROM space WHERE key = 'FAR'`,
 		}
 		for what, sql := range ownRows {
@@ -224,7 +227,7 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 		for what, sql := range map[string]string{
 			"a page of FAR":          `SELECT count(*) FROM page WHERE id = '` + farPage + `'`,
 			"FAR itself":             `SELECT count(*) FROM space WHERE key = 'FAR'`,
-			"FAR's grants":           `SELECT count(*) FROM space_grant g JOIN space s ON s.id = g.space_id WHERE s.key = 'FAR'`,
+			"FAR's grants":           `SELECT count(*) FROM role_assignment g JOIN space s ON s.id = g.space_id WHERE s.key = 'FAR'`,
 			"the audit log":          `SELECT count(*) FROM audit_log`,
 			"the webhooks":           `SELECT count(*) FROM webhook_endpoint`,
 			"the tokens":             `SELECT count(*) FROM api_token`,
@@ -254,7 +257,7 @@ func TestATokenLimitedToSpacesReachesNothingElse(t *testing.T) {
 		denied(t, conn, "a new space", `INSERT INTO space (key, name, created_by) VALUES ('SQL', 'Sql', $1)`, home.user)
 		denied(t, conn, "widening its own token", `INSERT INTO api_token_space (token_id, space_id)
 			SELECT $1, id FROM space WHERE key = 'NEAR'`, tokenID)
-		denied(t, conn, "an organization grant", `INSERT INTO global_grant (permission, subject_type) VALUES ('createSpace', 'everyone')`)
+		denied(t, conn, "a grant across the installation", `INSERT INTO role_assignment (role, group_id) SELECT 'space_creator', id FROM groups WHERE builtin = 'everyone'`)
 		if _, err := conn.Exec(ctx, `SELECT set_config($1, '', false)`, db.TokenSpacesVar); err != nil {
 			t.Fatal(err)
 		}

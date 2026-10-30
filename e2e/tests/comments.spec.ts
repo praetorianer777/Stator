@@ -5,8 +5,9 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openPage } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, startInScheme, type ColourScheme, confirm } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 // Delivery goes through the outbox and the worker.
 const DELIVERY_MS = 30_000;
@@ -14,7 +15,7 @@ const DELIVERY_MS = 30_000;
 const comments = (page: Page) => page.locator("[data-comments]");
 const threads = (page: Page) => comments(page).locator("[data-thread]");
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
-const badge = (page: Page) => page.locator("[data-unread-badge]");
+const badge = (page: Page) => page.locator('[data-count="bell"] [aria-hidden="true"]').first();
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
@@ -73,7 +74,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`replied in a thread on ${plan.title}`);
     await expect(told).toContainText("Monday is safer.");
     await told.click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/p/${plan.id}/[^?]+\\?thread=${threadId}`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/p/${plan.id}/[^?]+\\?thread=${threadId}`));
     const target = comments(page).locator(`[data-thread="${threadId}"]`);
     await expect(target).toBeFocused();
     await expect(target).toBeInViewport();
@@ -104,9 +105,8 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(first).toContainText("First thought. Revised.");
     await expect(first.locator("[data-comment-edited]")).toBeVisible();
     await expect(first.locator('[data-action="edit-comment"]')).toBeFocused();
-
-    page.once("dialog", (dialog) => void dialog.accept());
     await first.locator('[data-action="delete-comment"]').click();
+    await confirm(page);
     await expect(first.locator("[data-comment-placeholder]")).toHaveText("This comment was deleted.");
     await expect(first).toContainText("Alice");
     await expect(comments(page).locator("[data-thread]")).toHaveCount(1);
@@ -114,8 +114,8 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-comment-count]")).toHaveText("1 comment");
 
     const reply = comments(page).locator("[data-comment]").last();
-    page.once("dialog", (dialog) => void dialog.accept());
     await reply.locator('[data-action="delete-comment"]').click();
+    await confirm(page);
     await expect(comments(page).locator("[data-thread]")).toHaveCount(0);
     await expect(comments(page).locator("[data-comments-empty]")).toBeVisible();
     await expect(page.locator("[data-comment-count]")).toHaveCount(0);
@@ -125,12 +125,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Read");
     const plan = await createPage(api, space.homePageId, uniqueName(testInfo, "Read only"), doc("Read me."));
     must(await api.POST("/pages/{pageID}/comments", { params: { path: { pageID: plan.id } }, body: { body: doc("Alice was here.") } }));
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [{ subject: { type: "everyone" }, permissions: ["view"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
 
     const bob = await pageAs("bob");
     await openPage(bob, space.key, plan, () => expect(comments(bob).locator("[data-comments-read-only]").first()).toBeVisible(ONE_LOOK));
@@ -156,16 +151,11 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(comments(bob).locator('[data-action="reply"]')).toBeVisible();
     await expect(alices.locator('[data-action="delete-comment"]')).toHaveCount(0);
 
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: { grants: [everyoneMay, { subject: { type: "user", id: bobId }, permissions: ["administer"] }] },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [everyoneMay, { subject: { type: "user", id: bobId }, permissions: ["administer"] }]);
     await openPage(bob, space.key, plan, () => expect(alices.locator('[data-action="delete-comment"]')).toBeVisible(ONE_LOOK));
     await expectAccessible(bob);
-    bob.once("dialog", (dialog) => void dialog.accept());
     await alices.locator('[data-action="delete-comment"]').click();
+    await confirm(bob);
     await expect(alices).toHaveCount(0);
   });
 

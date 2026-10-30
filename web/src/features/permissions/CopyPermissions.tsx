@@ -63,7 +63,23 @@ function CopyDialog({ space, onClose, onCopied }: { space: Space; onClose: () =>
   }
 
   return (
-    <Dialog title={t.permissionCopy.title(space.name)} wide onClose={onClose} data-permission-copy-dialog="">
+    <Dialog
+      open
+      title={t.permissionCopy.title(space.name)}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-permission-copy-dialog": "" }}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t.permissionCopy.cancel}
+          </Button>
+          <Button disabled={!canApply} loading={copy.isPending} onClick={apply} data-action="apply-permission-copy">
+            {t.permissionCopy.apply}
+          </Button>
+        </>
+      }
+    >
       <div className="space-y-4">
         {spaces.error && <ErrorBanner onRetry={() => void spaces.refetch()}>{spaces.error.message}</ErrorBanner>}
         {spaces.data && sources.length === 0 ? (
@@ -101,14 +117,6 @@ function CopyDialog({ space, onClose, onCopied }: { space: Space; onClose: () =>
         </div>
         {from && <Preview query={preview} />}
         {copy.error && <ErrorBanner>{copy.error.message}</ErrorBanner>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!canApply} loading={copy.isPending} onClick={apply} data-action="apply-permission-copy">
-            {t.permissionCopy.apply}
-          </Button>
-          <Button variant="secondary" onClick={onClose}>
-            {t.permissionCopy.cancel}
-          </Button>
-        </div>
       </div>
     </Dialog>
   );
@@ -177,7 +185,7 @@ function ChangeRow({ change }: { change: PermissionCopyChange }) {
     <tr data-copy-change={name} data-copy-kind={change.kind}>
       <Td className="align-top">
         <span className="flex items-center gap-2 text-ink">
-          <SubjectGlyph type={change.subject.type === "anonymous" ? "everyone" : change.subject.type} />
+          <SubjectGlyph type={change.subject.type === "user" ? "user" : "group"} />
           <span className="min-w-0 break-words">{name}</span>
         </span>
         <span className="mt-1 flex flex-wrap gap-1">
@@ -223,7 +231,7 @@ function Notes({ title, lines, kind }: { title: string; lines: string[]; kind: s
 }
 
 function subjectName(subject: CopySubject): string {
-  if (subject.type === "everyone") return t.permissions.everyone;
+  if (subject.builtin === "everyone") return t.permissions.everyone;
   if (subject.type === "anonymous") return t.permissionCopy.anonymous;
   return subject.name;
 }

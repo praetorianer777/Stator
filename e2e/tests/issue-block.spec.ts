@@ -95,7 +95,7 @@ test.describe("the Armature issue block", { tag: ["@auth"] }, () => {
     await expect(card.getByRole("link", { name: "Open in Armature CP-4" })).toBeFocused();
 
     // A comparison says which issue the block names, in words.
-    await page.goto(`/s/${space.key}/p/${target.id}/page/history?from=1&to=2`);
+    await page.goto(`/spaces/${space.key}/p/${target.id}/page/history?from=1&to=2`);
     await expect(page.locator("[data-diff-view]")).toContainText("Armature issue CP-4");
     await expect(page.locator("[data-diff-view]")).not.toContainText("Rotate the signing keys");
   });

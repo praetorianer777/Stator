@@ -87,11 +87,13 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, owner.patch(t, "/api/v1/spaces/AUD", map[string]any{"name": "Audited log"}), http.StatusOK, "rename the space")
 	once(audit.ActionSpaceUpdated, me, spaceID)
 
-	want(t, owner.put(t, "/api/v1/spaces/AUD/permissions", map[string]any{"grants": []any{
-		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments"}},
-		map[string]any{"subject": user(home.user), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "set the space's table")
-	once(audit.ActionSpacePermissionsSet, me, spaceID)
+	granted := obj(t, want(t, owner.post(t, "/api/v1/role-assignments", map[string]any{"role": "commenter", "spaceKey": "AUD", "userId": annID}),
+		http.StatusCreated, "grant ann commenter in AUD"), "assignment")["id"].(string)
+	if data := once(audit.ActionGrantAdded, me, granted); !strings.Contains(data, "AUD") || !strings.Contains(data, "Commenter") {
+		t.Errorf("the grant's record does not name the space and the role: %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/role-assignments/"+granted), http.StatusNoContent, "take it back")
+	once(audit.ActionGrantRemoved, me, granted)
 
 	guestEmail := fmt.Sprintf("guest-%s@example.test", uuid.NewString()[:8])
 	t.Cleanup(func() { h.cleanupExec(t, h.super, `DELETE FROM app_user WHERE email = $1`, guestEmail) })
@@ -106,8 +108,26 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	want(t, restrict(t, owner, plans, []any{user(home.user), user(annID)}, nil), http.StatusOK, "restrict Plans")
 	once(audit.ActionPageRestrictionsSet, me, plans)
 
-	want(t, owner.put(t, "/api/v1/site/permissions/createSpace", map[string]any{"subjects": []any{user(annID)}}), http.StatusOK, "grant createSpace")
-	once(audit.ActionOrgPermissionSet, me, nil)
+	want(t, owner.post(t, "/api/v1/roles", map[string]any{"name": "Auditor", "permissions": []string{"view"}}), http.StatusCreated, "add a role")
+	if data := once(audit.ActionRoleCreated, me, nil); !strings.Contains(data, "auditor") {
+		t.Errorf("the role's record does not name it: %s", data)
+	}
+	want(t, owner.patch(t, "/api/v1/roles/auditor", map[string]any{"name": "Checker"}), http.StatusOK, "rename the role")
+	if data := once(audit.ActionRoleUpdated, me, nil); !strings.Contains(data, "Checker") || !strings.Contains(data, "Auditor") {
+		t.Errorf("the rename's record does not name both names: %s", data)
+	}
+	want(t, owner.delete(t, "/api/v1/roles/auditor"), http.StatusNoContent, "delete the role")
+	once(audit.ActionRoleDeleted, me, nil)
+	groupID := idOf(t, want(t, owner.post(t, "/api/v1/groups", map[string]any{"name": "Audited group"}), http.StatusCreated, "make a group"), "group")
+	once(audit.ActionGroupCreated, me, groupID)
+	want(t, owner.post(t, "/api/v1/groups/"+groupID+"/members", map[string]any{"userId": annID}), http.StatusOK, "put ann in the group")
+	once(audit.ActionGroupMemberAdded, me, groupID)
+	want(t, owner.delete(t, "/api/v1/groups/"+groupID+"/members/"+annID.String()), http.StatusOK, "take ann out")
+	once(audit.ActionGroupMemberRemoved, me, groupID)
+	want(t, owner.patch(t, "/api/v1/groups/"+groupID, map[string]any{"externalRef": "auditors"}), http.StatusOK, "the provider fills the group")
+	once(audit.ActionGroupUpdated, me, groupID)
+	want(t, owner.delete(t, "/api/v1/groups/"+groupID), http.StatusNoContent, "delete the group")
+	once(audit.ActionGroupDeleted, me, groupID)
 
 	made := want(t, ann.post(t, "/api/v1/tokens", map[string]any{"name": "Ann's script"}), http.StatusCreated, "ann makes a token")
 	tokenID := idOf(t, made, "token")
@@ -214,6 +234,10 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	once(audit.ActionMemberAdmitted, me, carol)
 	want(t, owner.delete(t, "/api/v1/users/requests/"+dave.String()), http.StatusNoContent, "turn dave away")
 	once(audit.ActionMemberDeclined, me, dave)
+	want(t, owner.patch(t, "/api/v1/users/"+carol.String(), map[string]any{"active": false}), http.StatusNoContent, "switch carol off")
+	once(audit.ActionMemberSwitchedOff, me, carol)
+	want(t, owner.patch(t, "/api/v1/users/"+carol.String(), map[string]any{"active": true}), http.StatusNoContent, "switch carol back on")
+	once(audit.ActionMemberSwitchedOn, me, carol)
 	want(t, owner.delete(t, "/api/v1/users/"+carol.String()), http.StatusNoContent, "take carol out again")
 	once(audit.ActionMemberRemoved, me, carol)
 	person := obj(t, want(t, owner.post(t, "/api/v1/users", map[string]any{"email": "audited-" + uuid.NewString()[:8] + "@stator.test", "role": "member"}), http.StatusCreated, "add a person"), "member")
@@ -230,15 +254,6 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	if data := once(audit.ActionSSOProviderSaved, me, nil); !strings.Contains(data, `"clientSecret": "kept"`) || !strings.Contains(data, "id.audit.test") {
 		t.Errorf("the provider's record reads %s", data)
 	}
-	mapped, _, err := sso.SetGroupRole(home.ctx, "auditors", auth.RoleAdmin, home.user, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	once(audit.ActionGroupRoleSet, me, mapped.ID)
-	if _, err := sso.RemoveGroupRole(home.ctx, mapped.ID, home.user, ""); err != nil {
-		t.Fatal(err)
-	}
-	once(audit.ActionGroupRoleRemoved, me, mapped.ID)
 
 	if resp, _ := owner.download(t, "/api/v1/audit/export?targetType=space"); resp.StatusCode != http.StatusOK {
 		t.Fatalf("export the log: %s", resp.Status)
@@ -387,8 +402,14 @@ func TestEveryAuditedActIsRecordedOnceWithItsActorAndTarget(t *testing.T) {
 	// which signs people in through the provider; the worker turning a failing
 	// webhook off, by the webhooks suite.
 	covered[audit.ActionMemberJoined] = true
-	covered[audit.ActionMemberRoleChanged] = true
 	covered[audit.ActionWebhookDisabled] = true
+	// Recorded before roles took their place (#585), kept so the old entries
+	// still read; nothing writes them now.
+	covered[audit.ActionMemberRoleChanged] = true
+	covered[audit.ActionGroupRoleSet] = true
+	covered[audit.ActionGroupRoleRemoved] = true
+	covered[audit.ActionOrgPermissionSet] = true
+	covered[audit.ActionSpacePermissionsSet] = true
 	// An import fills a fresh organization, which the organization transfer
 	// suite holds to one entry.
 	covered[audit.ActionOrgImported] = true

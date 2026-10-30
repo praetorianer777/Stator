@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import { API_BASE } from "@/config";
 import { t } from "@/i18n";
 import type { Progress } from "./attachments";

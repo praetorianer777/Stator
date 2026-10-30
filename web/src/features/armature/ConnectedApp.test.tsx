@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ArmatureAccount, ArmatureConnection } from "@/api/armature";
-import { arrival, renderAt, stubApi } from "@/test/app";
+import { arrival, renderAt, stubApi, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 
 afterEach(() => {
@@ -171,13 +171,13 @@ describe("connecting one's account with one click", () => {
         return { status: 204 };
       },
     });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     await renderAt("/settings/profile");
     expect(await screen.findByText(/Armature ended this connection/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Connect Armature" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Disconnect" }));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Stator also ends its access in Armature"));
+    expect(await confirmDialog()).toHaveTextContent("Stator also ends its access in Armature");
+    await answerConfirm(true);
     expect(await screen.findByText("Your Armature account is disconnected.")).toBeInTheDocument();
     expect(sent.some((r) => r.method === "DELETE")).toBe(true);
   });
@@ -189,9 +189,9 @@ describe("a connect hint where Armature offers connected apps", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection() } },
       "GET /armature/account": { status: 200, body: { account: account() } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     const hint = await screen.findByRole("link", { name: "Connect your own account" });
-    await waitFor(() => expect(hint).toHaveAttribute("href", `${START}?return=%2Fsettings%2Farmature`));
+    await waitFor(() => expect(hint).toHaveAttribute("href", `${START}?return=%2Fadmin%2Farmature`));
     expect(hint).toHaveAttribute("data-one-click");
     expect(screen.getByText(/connects their own Armature account with one click/)).toBeInTheDocument();
   });
@@ -209,7 +209,7 @@ describe("the connected app, for administrators", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
     expect(screen.getByLabelText("Return address")).toHaveValue("http://stator.test/api/v1/armature/oauth/callback");
     expect(await axeViolations()).toEqual([]);
@@ -235,7 +235,7 @@ describe("the connected app, for administrators", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await user.type(await screen.findByLabelText("Client id"), "abc");
     await user.type(screen.getByLabelText("Client secret"), "hunter2");
     await user.click(screen.getByRole("button", { name: "Save app" }));
@@ -253,13 +253,13 @@ describe("the connected app, for administrators", () => {
         return { status: 204 };
       },
     });
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/waits for an Armature administrator to allow it/)).toBeInTheDocument();
     expect(screen.getByText(/Stator registered itself/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Client id")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Forget app" }));
+    await answerConfirm(true);
     expect(await screen.findByText(/The app is forgotten/)).toBeInTheDocument();
     expect(await screen.findByText("Stator registers itself in Armature when the first member connects.")).toBeInTheDocument();
   });
@@ -269,7 +269,7 @@ describe("the connected app, for administrators", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection({ offered: false }) } },
       "GET /armature/account": { status: 200, body: { account: account({}, { offered: false }) } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText("This Armature does not offer connected apps, so members paste a token.")).toBeInTheDocument();
   });
 });

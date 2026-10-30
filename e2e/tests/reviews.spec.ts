@@ -7,6 +7,7 @@ import { ONE_LOOK, openEditor, openShowing, openUntil } from "../fixtures/replic
 import { uniqueName } from "../fixtures/seed";
 import { expectAccessible } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
+import { setSpaceGrants } from "../fixtures/grants";
 
 const doc = (...lines: string[]) => ({ type: "doc" as const, content: lines.map((text) => ({ type: "paragraph", content: [{ type: "text", text }] })) });
 const banner = (page: Page) => page.locator("[data-review-banner]");
@@ -28,19 +29,12 @@ test.describe("page reviews", { tag: ["@auth", "@desktop"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Policies"));
     const policy = await createPage(api, space.homePageId, "Travel policy", doc("Book the train."));
-    const path = `/s/${space.key}/p/${policy.id}/travel-policy`;
+    const path = `/spaces/${space.key}/p/${policy.id}/travel-policy`;
     const aliceId = String(must(await api.GET("/auth/me")).user.id);
-    must(
-      await api.PUT("/spaces/{spaceKey}/permissions", {
-        params: { path: { spaceKey: space.key } },
-        body: {
-          grants: [
-            { subject: { type: "everyone" }, permissions: ["view", "addPages", "addComments"] },
-            { subject: { type: "user", id: aliceId }, permissions: ["administer"] },
-          ],
-        },
-      }),
-    );
+    await setSpaceGrants(api, space.key, [
+      { subject: { type: "everyone" }, permissions: ["view", "addPages", "addComments"] },
+      { subject: { type: "user", id: aliceId }, permissions: ["administer"] },
+    ]);
 
     // Alice holds the page to her own review.
     must(
@@ -71,7 +65,7 @@ test.describe("page reviews", { tag: ["@auth", "@desktop"] }, () => {
 
     // It waits on alice, who reviews the change and approves it.
     await openUntil(page, "/reviews", () => expect(page.locator("[data-waiting-review]")).toHaveCount(1, ONE_LOOK));
-    await expect(page.locator('[data-sidebar] [data-nav="reviews"] [data-waiting-badge]')).toHaveAttribute("data-waiting-badge", "1");
+    await expect(page.locator('[data-sidebar] [data-nav="reviews"] [data-count="reviews"] [aria-hidden="true"]')).toHaveText("1");
     await expectAccessible(page);
     await page.locator("[data-waiting-review]").getByRole("link", { name: "Travel policy" }).click();
     await banner(page).locator('[data-action="open-review"]').click();

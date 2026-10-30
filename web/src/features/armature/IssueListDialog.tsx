@@ -95,8 +95,24 @@ export function IssueListDialog({
   else if (check.data || check.isError) checkText = d.cannotCheck;
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-issue-list-dialog="">
-      <form onSubmit={submit} className="space-y-4" noValidate>
+    <Dialog
+      open
+      title={isNew ? d.titleNew : d.titleEdit}
+      onClose={onClose}
+      size="lg"
+      attrs={{ "data-issue-list-dialog": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {d.cancel}
+          </Button>
+          <Button type="submit" form="issue-list-dialog-form" data-action="save-issue-list">
+            {isNew ? d.insert : d.save}
+          </Button>
+        </>
+      }
+    >
+      <form id="issue-list-dialog-form" onSubmit={submit} className="space-y-4" noValidate>
         <Labelled id={queryId} label={d.query} hint={d.queryHint} error={problems.query}>
           <Textarea
             id={queryId}
@@ -156,14 +172,6 @@ export function IssueListDialog({
             }}
           />
         </Labelled>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {d.cancel}
-          </Button>
-          <Button type="submit" data-action="save-issue-list">
-            {isNew ? d.insert : d.save}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

@@ -38,7 +38,7 @@ test.describe("blog posts", { tag: ["@auth"] }, () => {
     { tag: ["@desktop"] },
     async ({ page, api, pageAs }, testInfo) => {
       const space = await freshSpace(api, testInfo, "News");
-      const blogPath = `/s/${space.key}/blog`;
+      const blogPath = `/spaces/${space.key}/blog`;
 
       const bob = await pageAs("bob");
       await openUntil(bob, blogPath, () => expect(bob.locator('[data-action="watch-blog"]')).toBeVisible(ONE_LOOK));
@@ -56,7 +56,7 @@ test.describe("blog posts", { tag: ["@auth"] }, () => {
       await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
       await publishFromEditor(page);
       await expect(page.locator("[data-post-date]")).toContainText("Posted on");
-      await expect(page.locator("[data-blog-crumb]")).toBeVisible();
+      await expect(page.locator('[data-crumb="blog"]')).toBeVisible();
 
       await page.goto(blogPath);
       await expect(page.locator("[data-post-title]")).toHaveAttribute("data-post-title", "Launch day");
@@ -77,7 +77,7 @@ test.describe("blog posts", { tag: ["@auth"] }, () => {
         type: "doc",
         content: [{ type: "blogPosts", attrs: { space: space.key, limit: 5 } }],
       });
-      const overviewPath = `/s/${space.key}/p/${overview.id}/overview`;
+      const overviewPath = `/spaces/${space.key}/p/${overview.id}/overview`;
       await openShowing(bob, overviewPath, bob.locator('main [data-doc] [data-listed-post="Launch day"]'));
 
       // A post closed to bob stays out of his list. The post after it proves
@@ -101,7 +101,7 @@ test.describe("blog posts", { tag: ["@auth"] }, () => {
       const space = await freshSpace(api, testInfo, `Axe ${scheme}`);
       await post(api, space, "Hello", "The first post.");
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/blog`, page.locator('[data-post-title="Hello"]'));
+      await openShowing(page, `/spaces/${space.key}/blog`, page.locator('[data-post-title="Hello"]'));
       await expect(page.locator("[data-blog-dates]")).toBeVisible();
       await expectAccessible(page);
       expect(await scrollsSideways(page)).toBe(false);

@@ -1,10 +1,9 @@
-import { Link, createRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { useTheme } from "@/api/themes";
-import { ErrorBanner, PageHeader, type Crumb } from "@/components/ui";
+import { Page, PageHeader, ErrorBanner } from "@/components/ui";
 import { ThemeEditor } from "@/features/themes/ThemeEditor";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 export const themeNewRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -21,33 +20,21 @@ export const themeEditRoute = createRoute({
   },
 });
 
-const crumbs = (): Crumb[] => [
-  settingsCrumb(),
-  {
-    label: t.themes.title,
-    render: (label) => (
-      <Link to="/settings/themes" className="hover:text-ink">
-        {label}
-      </Link>
-    ),
-  },
-];
-
 function EditorPage({ themeId }: { themeId?: string }) {
   const { data, error, isLoading } = useTheme(themeId);
   if (themeId && error) {
     return (
-      <div className="mx-auto max-w-5xl">
-        <PageHeader crumbs={crumbs()} title={t.themes.editTheme} />
+      <Page width="narrow">
+        <PageHeader title={t.themes.editTheme} />
         <ErrorBanner>{error.message}</ErrorBanner>
-      </div>
+      </Page>
     );
   }
   if (themeId && (isLoading || !data)) return null;
   return (
-    <div className="mx-auto max-w-5xl">
-      <PageHeader crumbs={crumbs()} title={data?.theme.name ?? t.themes.newTheme} />
+    <Page width="narrow">
+      <PageHeader title={data?.theme.name ?? t.themes.newTheme} />
       <ThemeEditor key={data?.theme.id ?? "new"} theme={data?.theme} />
-    </div>
+    </Page>
   );
 }

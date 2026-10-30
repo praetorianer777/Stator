@@ -46,8 +46,23 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
   const listId = `${id}-issues`;
   const problem = state.kind === "notFound" ? p.notFound(state.key) : state.kind === "unreachable" ? p.unreachable : undefined;
   return (
-    <Dialog title={p.title} onClose={onClose} data-issue-picker="">
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={p.title}
+      onClose={onClose}
+      attrs={{ "data-issue-picker": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {p.cancel}
+          </Button>
+          <Button type="submit" form="issue-picker-form" disabled={current < 0} data-action="insert-issue">
+            {p.insert}
+          </Button>
+        </>
+      }
+    >
+      <form id="issue-picker-form" onSubmit={submit} className="space-y-3" noValidate>
         <Labelled id={fieldId} label={p.field} hint={p.hint} error={problem}>
           <Input
             id={fieldId}
@@ -82,14 +97,6 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
           listRef={follow}
           className={issues.length > 0 ? "max-h-64 overflow-y-hidden" : "hidden"}
         />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {p.cancel}
-          </Button>
-          <Button type="submit" disabled={current < 0} data-action="insert-issue">
-            {p.insert}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

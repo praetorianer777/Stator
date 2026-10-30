@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { StalePage } from "@/api/stale";
 import { STALE_DEFAULT_DAYS, STALE_PATH } from "@/config";
-import { arrival, renderAt, signedIn, stubApi, type Answer } from "@/test/app";
+import { arrival, renderAt, signedIn, stubApi, type Answer, answerConfirm, confirmDialog } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -115,9 +115,9 @@ describe("the stale content report", () => {
     expect(within(screen.getByLabelText("Owner")).getByRole("option", { name: "Carl Owner" })).toBeInTheDocument();
   });
 
-  it("starts in the space a space's settings link to", async () => {
-    const { queries } = report();
-    await renderAt(`${STALE_PATH}?space=docs`);
+  it("starts in the space whose settings it lies below", async () => {
+    const { queries } = report({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace() } } });
+    await renderAt("/spaces/DOCS/settings/general/stale");
     await screen.findByRole("table");
     expect(queries[0]?.get("space")).toBe("DOCS");
     expect(screen.getByLabelText("Space")).toHaveValue("DOCS");
@@ -145,20 +145,22 @@ describe("the stale content report", () => {
     expect(screen.getByText("Every page here was published or opened within the period.")).toBeInTheDocument();
   });
 
-  it("tells a member who administers nothing whom to ask", async () => {
+  it("tells a member who administers nothing whom to ask, below a space's settings", async () => {
     report({
+      "GET /spaces/DOCS": { status: 200, body: { space: aSpace() } },
       "GET /stale-pages": {
         status: 403,
         body: { error: { code: "forbidden", message: "Only administrators of a space, or of the organization, can read which of its pages went stale." } },
       },
     });
-    await renderAt(STALE_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member" } } });
-    expect(await screen.findByText(/Only administrators of a space, or of the organization, read which pages went stale/)).toBeInTheDocument();
+    await renderAt("/spaces/DOCS/settings/general/stale", {
+      me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } },
+    });
+    expect(await screen.findByText(/Only administrators of a space, or of the installation, read which pages went stale/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
   it("archives the chosen pages one at a time once the reader agrees, and reads the report again", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const archived: string[] = [];
     let reads = 0;
     const { sent } = report({
@@ -184,7 +186,8 @@ describe("the stale content report", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Select every page shown" }));
     expect(screen.getByRole("checkbox", { name: "Select Onboarding" })).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Archive these 2 pages and every page below them?"));
+    expect(await confirmDialog()).toHaveAccessibleName("Archive these 2 pages?");
+    await answerConfirm(true);
     expect(await screen.findByText("Archived 2 pages.")).toBeInTheDocument();
     expect(archived).toEqual([runbookId, first[1]!.id]);
     expect(sent.filter((each) => each.method === "PUT")).toHaveLength(2);
@@ -192,7 +195,6 @@ describe("the stale content report", () => {
   });
 
   it("archives nothing when the reader thinks better of it, and says where it stopped when the server refuses", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { sent } = report({
       [`PUT /pages/${runbookId}/archive`]: { status: 200, body: { page: aPage({ id: runbookId }) } },
       [`PUT /pages/${first[1]!.id}/archive`]: {
@@ -203,10 +205,11 @@ describe("the stale content report", () => {
     await renderAt(STALE_PATH);
     await userEvent.click(await screen.findByRole("checkbox", { name: "Select every page shown" }));
     await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    await answerConfirm(false);
     expect(sent.filter((each) => each.method === "PUT")).toHaveLength(0);
 
-    confirm.mockReturnValue(true);
     await userEvent.click(screen.getByRole("button", { name: "Archive 2 pages" }));
+    await answerConfirm(true);
     expect(await screen.findByText(/Archived 1 of the pages, then stopped: Only an administrator of this space can archive pages/)).toBeInTheDocument();
   });
 
@@ -242,9 +245,9 @@ describe("the stale content report", () => {
     });
     const router = await renderAt(STALE_PATH);
     const link = await screen.findByRole("link", { name: "Runbook" });
-    expect(link.getAttribute("href")).toBe(`/s/DOCS/p/${runbookId}/runbook?from=stale`);
+    expect(link.getAttribute("href")).toBe(`/spaces/DOCS/p/${runbookId}/runbook?from=stale`);
     await userEvent.click(link);
-    await arrival(router, `/s/DOCS/p/${runbookId}/runbook`);
+    await arrival(router, `/spaces/DOCS/p/${runbookId}/runbook`);
     expect(await screen.findByRole("heading", { name: "Runbook", level: 1 })).toBeInTheDocument();
     expect(sent.some((each) => each.method === "POST" && each.path.endsWith("/visit"))).toBe(false);
   });

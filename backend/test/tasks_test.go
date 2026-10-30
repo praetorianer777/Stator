@@ -189,7 +189,7 @@ func TestTasksOverTheAPI(t *testing.T) {
 		if told[0]["taskId"] != ids["Send the notes"] {
 			t.Errorf("the notification names the task %v, not %v", told[0]["taskId"], ids["Send the notes"])
 		}
-		if want := "/s/TSK/p/" + minutes + "#task-" + ids["Send the notes"]; first["path"] != want {
+		if want := "/spaces/TSK/p/" + minutes + "#task-" + ids["Send the notes"]; first["path"] != want {
 			t.Errorf("the task's path is %v, not %s", first["path"], want)
 		}
 		if got := kindOf(t, ann, notify.KindMentioned); len(got) != 0 {

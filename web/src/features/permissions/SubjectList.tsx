@@ -45,9 +45,7 @@ export function SubjectList({
                 {warning}
               </span>
             )}
-            <span className="sr-only">
-              , {subject.type === "group" ? t.permissions.group : subject.type === "user" ? t.permissions.person : t.permissions.everyoneDetail}
-            </span>
+            <span className="sr-only">, {subject.type === "group" ? t.permissions.group : t.permissions.person}</span>
             {onRemove && (
               <button
                 type="button"

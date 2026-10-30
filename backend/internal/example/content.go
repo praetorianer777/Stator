@@ -246,7 +246,7 @@ var pageLink = regexp.MustCompile(`^([a-z0-9-]+)\.md(#.*)?$`)
 func (f Facts) resolve(dest string) markdown.Target {
 	if m := pageLink.FindStringSubmatch(dest); m != nil {
 		if id, ok := f.Pages[m[1]]; ok {
-			return markdown.Target{Kind: markdown.TargetPage, Href: "/s/" + f.Key + "/p/" + id.String() + m[2]}
+			return markdown.Target{Kind: markdown.TargetPage, Href: "/spaces/" + f.Key + "/p/" + id.String() + m[2]}
 		}
 		return markdown.Target{}
 	}

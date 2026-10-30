@@ -6,7 +6,7 @@ import { axeViolations } from "@/test/axe";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const empty = { logo: null, footer: { en: "", de: "" } };
 
 describe("the brand of the exports", () => {
@@ -15,7 +15,7 @@ describe("the brand of the exports", () => {
       "GET /site/brand": { status: 200, body: { brand: empty } },
       "PUT /site/brand/footer": { status: 200, body: { brand: { logo: null, footer: { en: "Internal", de: "Intern" } } } },
     });
-    await renderAt("/settings/brand");
+    await renderAt("/admin/installation");
     expect(await screen.findByText(/There is no logo yet/)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("Footer line in English"), "Internal");
     await userEvent.type(screen.getByLabelText("Footer line in German"), "Intern");
@@ -27,8 +27,8 @@ describe("the brand of the exports", () => {
 
   it("shows the logo it has, with a way to replace and remove it", async () => {
     stubApi({ "GET /site/brand": { status: 200, body: { brand: { logo: { contentType: "image/png", size: 100, version: 3 }, footer: { en: "", de: "" } } } } });
-    await renderAt("/settings/brand");
-    const logo = await screen.findByAltText("The organization's logo");
+    await renderAt("/admin/installation");
+    const logo = await screen.findByAltText("The installation's logo");
     expect(logo).toHaveAttribute("src", expect.stringContaining("/site/brand/logo?v=3"));
     expect(screen.getByRole("button", { name: "Replace logo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove logo" })).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe("the brand of the exports", () => {
 
   it("refuses a logo over the limit before sending it", async () => {
     const sent = stubApi({ "GET /site/brand": { status: 200, body: { brand: empty } } });
-    await renderAt("/settings/brand");
+    await renderAt("/admin/installation");
     await screen.findByText(/There is no logo yet/);
     const big = new File([new Uint8Array(3 * 1024 * 1024)], "big.png", { type: "image/png" });
     await userEvent.upload(screen.getByLabelText("Choose a logo picture"), big);
@@ -46,7 +46,7 @@ describe("the brand of the exports", () => {
 
   it("tells a member who changes it", async () => {
     stubApi({ "GET /site/brand": { status: 200, body: { brand: empty } } });
-    await renderAt("/settings/brand", { me: member });
-    expect(await screen.findByText(/Only an administrator of the organization changes the brand/)).toBeInTheDocument();
+    await renderAt("/admin/installation", { me: member });
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
   });
 });

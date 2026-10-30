@@ -11,8 +11,9 @@ import (
 )
 
 // The service refusing is not proof (#530): straight through SQL as
-// stator_app, a plain member changes no role, removes nobody, writes no group
-// or membership and names no default theme, and an administrator still does.
+// stator_app, a plain member grants no role, changes none, removes nobody,
+// writes no group or membership and names no default theme, and an
+// administrator still does.
 func TestRolesGroupsAndTheSiteAreHeldToAdministratorsByTheDatabase(t *testing.T) {
 	h := newHarness(t)
 	api := newAPIServer(t, h)
@@ -40,11 +41,14 @@ func TestRolesGroupsAndTheSiteAreHeldToAdministratorsByTheDatabase(t *testing.T)
 	conn := appConn(t)
 	t.Run("a plain member is refused", func(t *testing.T) {
 		actAs(t, conn, memberID)
-		untouched(t, conn, "a member making themselves an administrator", `UPDATE member SET role = 'admin' WHERE user_id = $1`, memberID)
-		untouched(t, conn, "a member demoting an administrator", `UPDATE member SET role = 'member' WHERE user_id = $1`, adminID)
-		untouched(t, conn, "a member handing a role to the provider", `UPDATE member SET role_source = 'oidc' WHERE user_id = $1`, otherID)
+		denied(t, conn, "a member making themselves an administrator", `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', $1)`, memberID)
+		untouched(t, conn, "a member taking an administrator's grant", `DELETE FROM role_assignment WHERE user_id = $1`, adminID)
+		untouched(t, conn, "a member moving an administrator's grant to themselves", `UPDATE role_assignment SET user_id = $2 WHERE user_id = $1`, adminID, memberID)
+		untouched(t, conn, "a member making a role administer", `UPDATE role SET permissions = permissions || ARRAY['administerSite'] WHERE key = 'member'`)
+		untouched(t, conn, "a member deleting a role", `DELETE FROM role WHERE key = 'space_creator'`)
+		denied(t, conn, "a member adding a role", `INSERT INTO role (key, name, permissions) VALUES ('planted', 'Planted', ARRAY['administerSite'])`)
 		untouched(t, conn, "a member removing somebody", `DELETE FROM member WHERE user_id = $1`, otherID)
-		denied(t, conn, "a member letting somebody in", `INSERT INTO member (user_id, role) VALUES ($1, 'admin')`, outsiderID)
+		denied(t, conn, "a member letting somebody in", `INSERT INTO member (user_id, role) VALUES ($1, 'member')`, outsiderID)
 		denied(t, conn, "a member making a group", `INSERT INTO groups (name) VALUES ('Planted')`)
 		untouched(t, conn, "a member renaming a group", `UPDATE groups SET name = 'Taken' WHERE id = $1`, groupID)
 		untouched(t, conn, "a member deleting a group", `DELETE FROM groups WHERE id = $1`, groupID)
@@ -54,9 +58,12 @@ func TestRolesGroupsAndTheSiteAreHeldToAdministratorsByTheDatabase(t *testing.T)
 		denied(t, conn, "a member naming the default theme", `UPDATE site SET default_theme_id = $1`, shared)
 		denied(t, conn, "a member renaming the site", `UPDATE site SET name = 'Taken'`)
 
-		var role string
-		if err := h.super.QueryRow(ctx, `SELECT role FROM member WHERE user_id = $1`, memberID).Scan(&role); err != nil || role != "member" {
-			t.Errorf("the member's role is %q (%v)", role, err)
+		var administers bool
+		if err := h.super.QueryRow(ctx, `SELECT perm_role_admin($1)`, memberID).Scan(&administers); err != nil || administers {
+			t.Errorf("the member administers: %v (%v)", administers, err)
+		}
+		if n := h.countRows(t, `SELECT count(*) FROM role_assignment WHERE role = 'administrator' AND user_id = $1`, adminID); n != 1 {
+			t.Errorf("the administrator holds %d grants of administrator", n)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM group_member WHERE group_id = $1 AND user_id = $2`, groupID, otherID); n != 1 {
 			t.Errorf("the group holds %d of its one member", n)
@@ -80,7 +87,8 @@ func TestRolesGroupsAndTheSiteAreHeldToAdministratorsByTheDatabase(t *testing.T)
 			sql  string
 			args []any
 		}{
-			{"promoting the member", `UPDATE member SET role = 'admin' WHERE user_id = $1`, []any{memberID}},
+			{"making the member an administrator", `INSERT INTO role_assignment (role, user_id) VALUES ('administrator', $1)`, []any{memberID}},
+			{"changing what a role holds", `UPDATE role SET permissions = permissions || ARRAY['addComments'] WHERE key = 'viewer'`, nil},
 			{"letting the outsider in", `INSERT INTO member (user_id, role) VALUES ($1, 'member')`, []any{outsiderID}},
 			{"renaming the group", `UPDATE groups SET name = 'Wardens' WHERE id = $1`, []any{groupID}},
 			{"putting the member in it", `INSERT INTO group_member (group_id, user_id) VALUES ($1, $2)`, []any{groupID, memberID}},

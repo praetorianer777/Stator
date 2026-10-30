@@ -13,7 +13,25 @@ import {
   type WebhookDelivery,
   type WebhookTopic,
 } from "@/api/webhooks";
-import { Button, Card, Checkbox, Dialog, EmptyState, ErrorBanner, Field, IconButton, Menu, PageHeader, Table, Tag, Td, Th, cx } from "@/components/ui";
+import {
+  Table,
+  Tag,
+  Page,
+  PageHeader,
+  Button,
+  Card,
+  Checkbox,
+  cx,
+  Td,
+  Dialog,
+  Field,
+  Th,
+  IconButton,
+  Menu,
+  EmptyState,
+  ErrorBanner,
+  useToast,
+} from "@/components/ui";
 import { Icon } from "@/components/icons";
 import {
   COPY_FEEDBACK_MS,
@@ -27,7 +45,7 @@ import {
 } from "@/config";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 // Adapted from Armature's webhooks page, with the secret shown as the tokens
 // page shows a new token, and the log in a dialog.
@@ -56,59 +74,55 @@ export function Webhooks() {
   const rotate = useRotateWebhookSecret();
   const test = useTestWebhook();
   const [fresh, setFresh] = useState<{ name: string; secret: string } | null>(null);
-  const [notice, setNotice] = useState("");
   const [logOf, setLogOf] = useState<Webhook | null>(null);
   const hooks = data ?? [];
   const failure = error ?? update.error ?? remove.error ?? rotate.error ?? test.error;
+  const confirm = useConfirm();
+  const toast = useToast();
 
   function toggle(hook: Webhook) {
     update.mutate(
       { id: hook.id, name: hook.name, url: hook.url, topics: hook.topics, enabled: !hook.enabled },
-      { onSuccess: (saved) => setNotice(saved.enabled ? t.webhooks.turnedOn(saved.name) : t.webhooks.turnedOff(saved.name)) },
+      { onSuccess: (saved) => toast.success(saved.enabled ? t.webhooks.turnedOn(saved.name) : t.webhooks.turnedOff(saved.name)) },
     );
   }
 
   function ping(hook: Webhook) {
-    setNotice("");
     test.mutate(hook.id, {
       onSuccess: (d) =>
-        setNotice(d.state === "delivered" && d.status !== null ? t.webhooks.testDelivered(hook.name, d.status) : t.webhooks.testFailed(hook.name, d.error)),
+        d.state === "delivered" && d.status !== null
+          ? toast.success(t.webhooks.testDelivered(hook.name, d.status))
+          : toast.error(t.webhooks.testFailed(hook.name, d.error)),
     });
   }
 
-  function rotateSecret(hook: Webhook) {
-    if (!window.confirm(t.webhooks.confirmRotate(hook.name))) return;
+  async function rotateSecret(hook: Webhook) {
+    const things = t.kit.confirm.things;
+    if (!(await confirm({ noun: things.secretOf(hook.name), verb: t.kit.confirm.verbs.rotate, body: t.webhooks.confirmRotate }))) return;
     rotate.mutate(hook.id, { onSuccess: (r) => setFresh({ name: r.name, secret: r.secret ?? "" }) });
   }
 
-  function deleteHook(hook: Webhook) {
-    if (!window.confirm(t.webhooks.confirmDelete(hook.name))) return;
+  async function deleteHook(hook: Webhook) {
+    const things = t.kit.confirm.things;
+    if (!(await confirm({ noun: things.named(things.webhook, hook.name), body: t.webhooks.confirmDelete }))) return;
     remove.mutate(hook.id, {
       onSuccess: () => {
-        setNotice(t.webhooks.deleted(hook.name));
+        toast.success(t.webhooks.deleted(hook.name));
         if (fresh?.name === hook.name) setFresh(null);
       },
     });
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.webhooks.title} meta={t.webhooks.intro} />
+    <Page width="narrow">
+      <PageHeader title={t.webhooks.title} meta={t.webhooks.intro} />
       {fresh?.secret && <FreshSecret name={fresh.name} secret={fresh.secret} onDone={() => setFresh(null)} />}
-      <CreateWebhookForm
-        onCreated={(hook) => {
-          setNotice("");
-          setFresh({ name: hook.name, secret: hook.secret ?? "" });
-        }}
-      />
+      <CreateWebhookForm onCreated={(hook) => setFresh({ name: hook.name, secret: hook.secret ?? "" })} />
       <section aria-labelledby="webhooks-list" className="space-y-3">
         <h2 id="webhooks-list" className="text-sm font-semibold text-ink">
           {t.webhooks.list}
         </h2>
         {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
-        <p role="status" className="text-sm text-ink-muted empty:hidden" data-webhooks-notice>
-          {notice}
-        </p>
         {isLoading ? null : hooks.length === 0 ? (
           <EmptyState icon={<Icon.Share />} title={t.webhooks.empty} description={t.webhooks.emptyBody} />
         ) : (
@@ -167,12 +181,12 @@ export function Webhooks() {
                           onSelect: () => toggle(hook),
                           attrs: { "data-action": "webhook-toggle" },
                         },
-                        { label: t.webhooks.rotate, icon: <Icon.Key />, onSelect: () => rotateSecret(hook), attrs: { "data-action": "webhook-rotate" } },
+                        { label: t.webhooks.rotate, icon: <Icon.Key />, onSelect: () => void rotateSecret(hook), attrs: { "data-action": "webhook-rotate" } },
                         {
                           label: t.webhooks.delete,
                           icon: <Icon.Trash />,
                           danger: true,
-                          onSelect: () => deleteHook(hook),
+                          onSelect: () => void deleteHook(hook),
                           attrs: { "data-action": "webhook-delete" },
                         },
                       ]}
@@ -185,7 +199,7 @@ export function Webhooks() {
         )}
       </section>
       {logOf && <DeliveryLog hook={logOf} onClose={() => setLogOf(null)} />}
-    </div>
+    </Page>
   );
 }
 
@@ -339,7 +353,7 @@ function DeliveryLog({ hook, onClose }: { hook: Webhook; onClose: () => void }) 
   const deliveries = data ?? [];
   const failure = error ?? redeliver.error;
   return (
-    <Dialog title={t.webhooks.logTitle(hook.name)} wide onClose={onClose} data-webhook-log={hook.name}>
+    <Dialog open title={t.webhooks.logTitle(hook.name)} onClose={onClose} size="lg" attrs={{ "data-webhook-log": hook.name }}>
       <p className="mb-3 text-xs text-ink-muted">{t.webhooks.logIntro}</p>
       {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
       <p role="status" className="mb-2 text-sm text-ink-muted empty:hidden">

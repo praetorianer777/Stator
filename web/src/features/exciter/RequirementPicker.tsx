@@ -98,8 +98,23 @@ export function RequirementPicker({ title, onInsert, onClose }: { title: string;
   const statusId = `${id}-status`;
   const listId = `${id}-requirements`;
   return (
-    <Dialog title={title} onClose={onClose} data-exciter-picker="">
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={title}
+      onClose={onClose}
+      attrs={{ "data-exciter-picker": "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {p.cancel}
+          </Button>
+          <Button type="submit" form="requirement-picker-form" disabled={current < 0} data-action="insert-exciter-requirement">
+            {p.insert}
+          </Button>
+        </>
+      }
+    >
+      <form id="requirement-picker-form" onSubmit={submit} className="space-y-3" noValidate>
         <Labelled id={fieldId} label={p.field} hint={p.fieldHint}>
           <Input
             id={fieldId}
@@ -160,14 +175,6 @@ export function RequirementPicker({ title, onInsert, onClose }: { title: string;
               </span>
             </div>
           ))}
-        </div>
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {p.cancel}
-          </Button>
-          <Button type="submit" disabled={current < 0} data-action="insert-exciter-requirement">
-            {p.insert}
-          </Button>
         </div>
       </form>
     </Dialog>

@@ -55,8 +55,8 @@ describe("the themes page", () => {
   it("says which theme the reader sees and where it came from", () => {
     expect(activeThemeMeta(null, "", undefined)).toBe("You are using the built-in theme.");
     expect(activeThemeMeta(theme({}), "chosen", undefined)).toBe("You are using Magenta.");
-    expect(activeThemeMeta(theme({}), "organization", undefined)).toBe("You are using Magenta, the organization's default.");
-    expect(activeThemeMeta(null, "", theme({ name: "House" }))).toBe("You are using the built-in theme, over the organization's default House.");
+    expect(activeThemeMeta(theme({}), "organization", undefined)).toBe("You are using Magenta, everyone's default.");
+    expect(activeThemeMeta(null, "", theme({ name: "House" }))).toBe("You are using the built-in theme, over everyone's default House.");
     expect(activeThemeMeta(theme({ name: "Deep-Tech" }), "armature", theme({ name: "House" }))).toBe("You are using Deep-Tech, your theme in Armature.");
     expect(activeThemeMeta(null, "armature", theme({ name: "House" }))).toBe("You are using the built-in theme, as you do in Armature.");
   });
@@ -67,7 +67,7 @@ describe("the themes page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Your account" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Themes" }));
     expect(await screen.findByRole("heading", { name: "Themes" })).toBeInTheDocument();
-    expect(screen.getByText("You are using the built-in theme, over the organization's default Shared One.")).toBeInTheDocument();
+    expect(screen.getByText("You are using the built-in theme, over everyone's default Shared One.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Import theme" })).toBeInTheDocument();
     expect(screen.getByLabelText("Theme file")).toHaveAttribute("accept", "application/json,.json");
 

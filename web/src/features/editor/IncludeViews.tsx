@@ -57,7 +57,7 @@ export function IncludeBlock({ pageId, excerptId, draw }: { pageId: string; exce
   return (
     <section className="doc-include" data-include={pageId} data-state="shown" aria-label={from}>
       <div className="doc-include-head">
-        <a href={`/s/${data.page.spaceKey}/p/${data.page.id}/${pageSlug(data.page.title)}`} className="doc-include-source">
+        <a href={`/spaces/${data.page.spaceKey}/p/${data.page.id}/${pageSlug(data.page.title)}`} className="doc-include-source">
           {from}
         </a>
       </div>

@@ -12,12 +12,12 @@ import {
   type Theme,
 } from "@/api/themes";
 import { useViewer } from "@/api/viewer";
-import { Button, EmptyState, ErrorBanner, IconButton, Menu, PageHeader, Segmented, Table, Tag, Td, Th } from "@/components/ui";
+import { Table, Tag, Page, PageHeader, Button, Td, Th, IconButton, Menu, EmptyState, ErrorBanner, Segmented, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { FollowArmatureTheme } from "@/features/armature/FollowArmatureTheme";
 import { t } from "@/i18n";
 import { appRoute } from "./app";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 type View = "mine" | "shared";
 
@@ -51,7 +51,8 @@ function ThemesPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [view, setView] = useState<View>("mine");
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const all = data?.themes ?? [];
   const themes = all.filter((each) => inThemeView(each, view, me));
   const seen = activeData?.theme ?? null;
@@ -60,9 +61,8 @@ function ThemesPage() {
   const failure = error ?? choose.error ?? update.error ?? setDefault.error ?? importTheme.error ?? remove.error;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <Page width="narrow">
       <PageHeader
-        crumbs={[settingsCrumb()]}
         title={t.themes.title}
         meta={activeThemeMeta(seen, source, siteDefault)}
         actions={
@@ -70,7 +70,7 @@ function ThemesPage() {
             {seen && source === "organization" && (
               <Button
                 variant="secondary"
-                onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => setNotice(t.themes.backToBuiltIn) })}
+                onClick={() => choose.mutate({ builtIn: true }, { onSuccess: () => toast.success(t.themes.backToBuiltIn) })}
                 data-action="built-in-theme"
               >
                 {t.themes.useBuiltIn}
@@ -79,7 +79,7 @@ function ThemesPage() {
             {!seen && siteDefault && (
               <Button
                 variant="secondary"
-                onClick={() => choose.mutate(null, { onSuccess: () => setNotice(t.themes.nowUsing(siteDefault.name)) })}
+                onClick={() => choose.mutate(null, { onSuccess: () => toast.success(t.themes.nowUsing(siteDefault.name)) })}
                 data-action="site-default-theme"
               >
                 {t.themes.useSiteDefault}
@@ -104,7 +104,7 @@ function ThemesPage() {
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
-                if (file) importTheme.mutate(file, { onSuccess: (made) => setNotice(t.themes.imported(made.theme.name)) });
+                if (file) importTheme.mutate(file, { onSuccess: (made) => toast.success(t.themes.imported(made.theme.name)) });
               }}
             />
             <Button icon={<Icon.Plus />} onClick={() => navigate({ to: "/settings/themes/new" })} data-action="new-theme">
@@ -127,11 +127,6 @@ function ThemesPage() {
       </div>
       <div className="space-y-3">
         {failure && <ErrorBanner>{failure.message}</ErrorBanner>}
-        {notice && (
-          <p role="status" className="text-sm text-ink-muted" data-themes-notice>
-            {notice}
-          </p>
-        )}
         {isLoading ? null : themes.length === 0 ? (
           <EmptyState
             icon={<Icon.Palette />}
@@ -200,13 +195,13 @@ function ThemesPage() {
                                 label: t.themes.stopUsing,
                                 icon: <Icon.X />,
                                 onSelect: () =>
-                                  choose.mutate(null, { onSuccess: () => setNotice(siteDefault ? t.themes.backToDefault : t.themes.backToBuiltIn) }),
+                                  choose.mutate(null, { onSuccess: () => toast.success(siteDefault ? t.themes.backToDefault : t.themes.backToBuiltIn) }),
                                 attrs: { "data-action": "stop-theme" },
                               }
                             : {
                                 label: t.themes.use,
                                 icon: <Icon.Check />,
-                                onSelect: () => choose.mutate(theme.id, { onSuccess: () => setNotice(t.themes.nowUsing(theme.name)) }),
+                                onSelect: () => choose.mutate(theme.id, { onSuccess: () => toast.success(t.themes.nowUsing(theme.name)) }),
                                 attrs: { "data-action": "use-theme" },
                               },
                           ...(administers && theme.shared
@@ -215,13 +210,13 @@ function ThemesPage() {
                                   ? {
                                       label: t.themes.undefault,
                                       icon: <Icon.X />,
-                                      onSelect: () => setDefault.mutate(null, { onSuccess: () => setNotice(t.themes.defaultCleared) }),
+                                      onSelect: () => setDefault.mutate(null, { onSuccess: () => toast.success(t.themes.defaultCleared) }),
                                       attrs: { "data-action": "undefault-theme" },
                                     }
                                   : {
                                       label: t.themes.makeDefault,
                                       icon: <Icon.Users />,
-                                      onSelect: () => setDefault.mutate(theme.id, { onSuccess: () => setNotice(t.themes.defaultSet(theme.name)) }),
+                                      onSelect: () => setDefault.mutate(theme.id, { onSuccess: () => toast.success(t.themes.defaultSet(theme.name)) }),
                                       attrs: { "data-action": "default-theme" },
                                     },
                               ]
@@ -248,7 +243,7 @@ function ThemesPage() {
                             onSelect: () =>
                               update.mutate(
                                 { id: theme.id, shared: !theme.shared },
-                                { onSuccess: () => setNotice(theme.shared ? t.themes.privateNow(theme.name) : t.themes.sharedNow(theme.name)) },
+                                { onSuccess: () => toast.success(theme.shared ? t.themes.privateNow(theme.name) : t.themes.sharedNow(theme.name)) },
                               ),
                             attrs: { "data-action": "share-theme" },
                           },
@@ -257,9 +252,10 @@ function ThemesPage() {
                             icon: <Icon.Trash />,
                             danger: true,
                             disabled: !editable,
-                            onSelect: () => {
-                              if (window.confirm(t.themes.confirmDelete(theme.name, theme.inUse))) {
-                                remove.mutate(theme.id, { onSuccess: () => setNotice(t.themes.deleted(theme.name)) });
+                            onSelect: async () => {
+                              const things = t.kit.confirm.things;
+                              if (await confirm({ noun: things.named(things.theme, theme.name), body: t.themes.confirmDelete(theme.inUse) })) {
+                                remove.mutate(theme.id, { onSuccess: () => toast.success(t.themes.deleted(theme.name)) });
                               }
                             },
                             attrs: { "data-action": "delete-theme" },
@@ -274,6 +270,6 @@ function ThemesPage() {
           </Table>
         )}
       </div>
-    </div>
+    </Page>
   );
 }

@@ -53,8 +53,23 @@ export function PlaceDialog({ page, mode, onClose, onDone }: { page: PlacedPage;
   }
 
   return (
-    <Dialog title={moving ? t.page.moveTitle(page.title) : t.page.copyTitle(page.title)} onClose={onClose} data-place-dialog={mode}>
-      <form onSubmit={submit} className="space-y-3">
+    <Dialog
+      open
+      title={moving ? t.page.moveTitle(page.title) : t.page.copyTitle(page.title)}
+      onClose={onClose}
+      attrs={{ "data-place-dialog": mode }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.page.cancel}
+          </Button>
+          <Button type="submit" form="place-dialog-form" loading={pending} disabled={!parentId} data-action={moving ? "confirm-move" : "confirm-copy"}>
+            {moving ? t.page.moveSubmit : t.page.copySubmit}
+          </Button>
+        </>
+      }
+    >
+      <form id="place-dialog-form" onSubmit={submit} className="space-y-3">
         {error && <ErrorBanner>{error.message}</ErrorBanner>}
         <Select label={t.page.space} value={spaceKey} onChange={(event) => setSpaceKey(event.target.value)}>
           {(spaces ?? []).map((space) => (
@@ -82,14 +97,6 @@ export function PlaceDialog({ page, mode, onClose, onDone }: { page: PlacedPage;
           checked={withChildren}
           onChange={(event) => setWithChildren(event.target.checked)}
         />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.page.cancel}
-          </Button>
-          <Button type="submit" loading={pending} disabled={!parentId} data-action={moving ? "confirm-move" : "confirm-copy"}>
-            {moving ? t.page.moveSubmit : t.page.copySubmit}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

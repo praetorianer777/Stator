@@ -107,7 +107,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
         content: [{ type: "paragraph", content: [{ type: "text", text: "Words from another page." }] }],
       });
       const guide = await createPage(api, space.homePageId, `Guide ${word}`, richBody(word, included.id));
-      await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
+      await openTitled(page, `/spaces/${key}/p/${guide.id}/guide`, guide.title);
 
       const file = await exportPdf(page, () => openPageMenuItem(page, "export-pdf"));
       await expect(pdfDialog(page)).toHaveCount(0);
@@ -142,7 +142,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       must(await api.PUT("/site/anonymous-access", { body: { enabled: true, indexable: false } }));
       const reader = await context.newPage();
 
-      await openTitled(reader, `/public/s/${key}/p/${guide.id}/open`, guide.title);
+      await openTitled(reader, `/public/spaces/${key}/p/${guide.id}/open`, guide.title);
       const file = await exportPdf(reader, () => reader.locator('[data-action="export-pdf"]').click());
       expect(file.suggestedFilename()).toMatch(new RegExp(`^${key}-open-${word}-`));
       expectPdf(await bytesOf(file), guide.title);
@@ -167,7 +167,7 @@ test.describe("PDF export", { tag: ["@auth"] }, () => {
       const space = await createSpace(api, key, "Accessible prints");
       try {
         const guide = await createPage(api, space.homePageId, `Guide ${key}`);
-        await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
+        await openTitled(page, `/spaces/${key}/p/${guide.id}/guide`, guide.title);
 
         // The print is held until axe has looked at the dialog that waits for it.
         let release!: () => void;

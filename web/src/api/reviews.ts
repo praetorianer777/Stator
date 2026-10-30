@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation } from "./mutation";
 import type { Doc } from "@/features/editor/schema";
 import { api } from "./client";
 import { contributorsQueryKey } from "./contributors";

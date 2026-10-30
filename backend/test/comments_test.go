@@ -76,7 +76,7 @@ func TestCommentsOverTheAPI(t *testing.T) {
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
 	secret := docs.add(docs.homeID, "Secret", map[string]any{"body": textDoc("Hidden.")})
 	want(t, restrict(t, owner, secret, []any{user(home.user), user(annID)}, nil), http.StatusOK, "restrict Secret to ann")
-	want(t, owner.put(t, "/api/v1/spaces/TALK/permissions", map[string]any{"grants": []any{commenters}}), http.StatusOK, "nobody but the owner deletes in TALK")
+	want(t, owner.setTable(t, "TALK", []any{commenters}), http.StatusOK, "nobody but the owner deletes in TALK")
 	h.settle(t)
 
 	var first map[string]any
@@ -178,10 +178,10 @@ func TestCommentsOverTheAPI(t *testing.T) {
 	})
 
 	t.Run("a reader without addComments reads but cannot write", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/spaces/TALK/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "TALK", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
 			map[string]any{"subject": user(annID), "permissions": []any{"view", "addComments"}},
-		}}), http.StatusOK, "TALK is read only for everyone but ann")
+		}), http.StatusOK, "TALK is read only for everyone but ann")
 		h.settle(t)
 		threads := threadsOf(t, ben, plan, "")
 		if threads[0]["can"].(map[string]any)["reply"] != false {
@@ -201,9 +201,9 @@ func TestCommentsOverTheAPI(t *testing.T) {
 		if page := obj(t, want(t, ben.get(t, pagePath(plan)), http.StatusOK, "the page"), "page"); page["can"].(map[string]any)["comment"] != false {
 			t.Errorf("the page offers ben %v", page["can"])
 		}
-		want(t, owner.put(t, "/api/v1/spaces/TALK/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "TALK", []any{
 			commenters,
-		}}), http.StatusOK, "TALK is open again")
+		}), http.StatusOK, "TALK is open again")
 		h.settle(t)
 	})
 
@@ -323,7 +323,7 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	bens := startThread(t, ben, open, "Ben's words.")["id"].(string)
 	hidden := startThread(t, ann, secret, "Hidden words.")["id"].(string)
 	want(t, restrict(t, owner, secret, []any{user(home.user), user(annID)}, nil), http.StatusOK, "restrict Secret")
-	want(t, owner.put(t, "/api/v1/spaces/CRAW/permissions", map[string]any{"grants": []any{commenters}}), http.StatusOK, "nobody but the owner deletes in CRAW")
+	want(t, owner.setTable(t, "CRAW", []any{commenters}), http.StatusOK, "nobody but the owner deletes in CRAW")
 	h.settle(t)
 
 	conn := appConn(t)
@@ -381,9 +381,9 @@ func TestCommentsAreEnforcedByTheDatabase(t *testing.T) {
 	})
 
 	t.Run("without addComments nothing is written, and only an administrator deletes somebody else's", func(t *testing.T) {
-		want(t, owner.put(t, "/api/v1/spaces/CRAW/permissions", map[string]any{"grants": []any{
+		want(t, owner.setTable(t, "CRAW", []any{
 			map[string]any{"subject": everyone, "permissions": []any{"view"}},
-		}}), http.StatusOK, "CRAW is read only")
+		}), http.StatusOK, "CRAW is read only")
 		h.settle(t)
 		actAs(t, conn, annID)
 		denied(t, conn, "a reply without addComments", insert, uuid.New(), anns, open, annID)
@@ -426,10 +426,10 @@ func TestDeletingOthersCommentsTakesAdminister(t *testing.T) {
 
 	docs := newTree(t, owner, "CMOD", "Moderation")
 	plan := docs.add(docs.homeID, "Plan", map[string]any{"body": textDoc("The plan.")})
-	want(t, owner.put(t, "/api/v1/spaces/CMOD/permissions", map[string]any{"grants": []any{
+	want(t, owner.setTable(t, "CMOD", []any{
 		map[string]any{"subject": everyone, "permissions": []any{"view", "addPages", "addComments", "delete"}},
 		map[string]any{"subject": user(danID), "permissions": []any{"administer"}},
-	}}), http.StatusOK, "everyone deletes in CMOD, and dan administers it")
+	}), http.StatusOK, "everyone deletes in CMOD, and dan administers it")
 	h.settle(t)
 	var threads [6]string
 	for i := range threads {

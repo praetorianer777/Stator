@@ -12,6 +12,7 @@ import { drawScene, loadExcalidraw, type ExcalidrawModule } from "./excalidraw";
 import { SketchLink, keepShared, setSketchPresence, sharedIsAhead, sharedScene, sketchCollaborators, sketchMap, type SketchPresence } from "./live";
 import { SketchDrawers, useSketchDrawers } from "./presence";
 import { keepElement, keepScene, readScene, type SketchElement } from "./scene";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 /** A sketch drawn together: the shared draft, which of its sketches this is, and the scene the page holds for it now. */
 export interface LiveCanvas {
@@ -155,10 +156,12 @@ export function SketchDialog({
     return () => awareness.off("change", show);
   }, [awareness, sketchId, ready]);
 
+  const confirm = useConfirm();
   const cancel = useCallback(() => {
-    if (changed() && !window.confirm(s.confirmDiscard)) return;
-    onClose();
-  }, [changed, onClose, s.confirmDiscard]);
+    if (!changed()) return onClose();
+    const ask = { noun: t.kit.confirm.things.changes, verb: t.kit.confirm.verbs.discard, body: s.confirmDiscard };
+    void confirm(ask).then((yes) => yes && onClose());
+  }, [changed, onClose, s.confirmDiscard, confirm]);
 
   async function leave() {
     const now = api.current;

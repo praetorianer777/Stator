@@ -65,8 +65,29 @@ export function PublishDialog({
   ];
 
   return (
-    <Dialog title={review ? t.review.submitTitle(title) : t.draft.publishTitle(title)} onClose={onClose} data-publish-dialog={review ? "review" : ""}>
-      <form onSubmit={submit} className="space-y-3" noValidate>
+    <Dialog
+      open
+      title={review ? t.review.submitTitle(title) : t.draft.publishTitle(title)}
+      onClose={onClose}
+      attrs={{ "data-publish-dialog": review ? "review" : "" }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t.draft.cancel}
+          </Button>
+          {when === "now" ? (
+            <Button type="submit" form="publish-dialog-form" loading={busy} data-action={review ? "confirm-submit-review" : "confirm-publish"}>
+              {review ? t.review.confirmSubmit : t.draft.confirmPublish}
+            </Button>
+          ) : (
+            <Button type="submit" form="publish-dialog-form" loading={busy} data-action="confirm-schedule">
+              {t.schedule.confirm}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <form id="publish-dialog-form" onSubmit={submit} className="space-y-3" noValidate>
         {review && (
           <p className="text-sm text-ink-muted" data-review-submit-note="">
             {when === "now" ? t.review.submitIntro(review.required) : t.review.submitLater}
@@ -118,20 +139,6 @@ export function PublishDialog({
           autoFocus
         />
         <Checkbox label={t.draft.notifyWatchers} checked={notifyWatchers} onChange={(event) => setNotifyWatchers(event.target.checked)} />
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t.draft.cancel}
-          </Button>
-          {when === "now" ? (
-            <Button type="submit" loading={busy} data-action={review ? "confirm-submit-review" : "confirm-publish"}>
-              {review ? t.review.confirmSubmit : t.draft.confirmPublish}
-            </Button>
-          ) : (
-            <Button type="submit" loading={busy} data-action="confirm-schedule">
-              {t.schedule.confirm}
-            </Button>
-          )}
-        </div>
       </form>
     </Dialog>
   );

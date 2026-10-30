@@ -3,7 +3,7 @@ import { ApiError } from "@/api/client";
 import { safeHref, shortcutName, useAddShortcut, useMoveShortcut, useRemoveShortcut, useShortcuts, type Shortcut } from "@/api/shortcuts";
 import { useSpaces, type Space } from "@/api/spaces";
 import { useOutline } from "@/api/tree";
-import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, SectionTitle, Segmented, Select, Skeleton } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, SectionTitle, Segmented, Select, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { EXTERNAL_LINK_REL, SHORTCUT_LABEL_MAX_LENGTH, SHORTCUT_URL_MAX_LENGTH, SHORTCUTS_MAX } from "@/config";
 import { ArchivedMark } from "@/features/archive/ArchiveBanner";
@@ -23,7 +23,7 @@ export function ShortcutsPanel({ space }: { space: Space }) {
   const { data: shortcuts, isLoading, error, refetch } = useShortcuts(space.key);
   const move = useMoveShortcut(space.key);
   const remove = useRemoveShortcut(space.key);
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const list = useRef<HTMLOListElement>(null);
   const [focusNext, setFocusNext] = useState<FocusNext>();
   const admin = space.can.administer;
@@ -54,13 +54,12 @@ export function ShortcutsPanel({ space }: { space: Space }) {
     const rest = all.filter((each) => each.id !== shortcut.id);
     const at = direction === "up" ? index - 1 : index + 1;
     const after = at > 0 ? (rest[at - 1]?.id ?? null) : null;
-    setNotice("");
     move.mutate(
       { id: shortcut.id, after },
       {
         onSuccess: (ordered) => {
           const position = ordered.findIndex((each) => each.id === shortcut.id) + 1;
-          setNotice(s.moved(shortcutName(shortcut), position, ordered.length));
+          toast.success(s.moved(shortcutName(shortcut), position, ordered.length));
           setFocusNext({ moved: shortcut.id, direction });
         },
       },
@@ -70,10 +69,9 @@ export function ShortcutsPanel({ space }: { space: Space }) {
   function drop(all: Shortcut[], index: number) {
     const shortcut = all[index];
     if (!shortcut) return;
-    setNotice("");
     remove.mutate(shortcut.id, {
       onSuccess: () => {
-        setNotice(s.removed(shortcutName(shortcut)));
+        toast.success(s.removed(shortcutName(shortcut)));
         setFocusNext({ removedAt: index });
       },
     });
@@ -83,9 +81,6 @@ export function ShortcutsPanel({ space }: { space: Space }) {
     <div className="space-y-4" data-space-shortcuts={space.key}>
       <p className="max-w-xl text-sm text-ink-muted">{s.intro}</p>
       {!admin && <p className="text-sm text-ink-muted">{s.notAdmin}</p>}
-      <p role="status" className="text-sm text-ink-muted [&:empty]:hidden" data-shortcuts-notice>
-        {notice}
-      </p>
       {(move.error ?? remove.error) && <ErrorBanner>{(move.error ?? remove.error)?.message}</ErrorBanner>}
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
@@ -127,7 +122,7 @@ export function ShortcutsPanel({ space }: { space: Space }) {
           ))}
         </ol>
       )}
-      {admin && shortcuts && <AddShortcut space={space} full={shortcuts.length >= SHORTCUTS_MAX} onAdded={(name) => setNotice(s.added(name))} />}
+      {admin && shortcuts && <AddShortcut space={space} full={shortcuts.length >= SHORTCUTS_MAX} onAdded={(name) => toast.success(s.added(name))} />}
     </div>
   );
 }

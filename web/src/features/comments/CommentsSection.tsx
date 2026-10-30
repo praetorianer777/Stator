@@ -11,6 +11,7 @@ import { DocView } from "@/features/editor/DocView";
 import { CommentReactions } from "@/features/reactions/Reactions";
 import { t } from "@/i18n";
 import { useFocusWhenRendered } from "@/lib/focus";
+import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const CommentEditor = lazy(() => import("./CommentEditor"));
 
@@ -228,6 +229,7 @@ export function ThreadView({
 function CommentView({ pageId, comment, canReact }: { pageId: string; comment: Comment; canReact: boolean }) {
   const edit = useEditComment(pageId);
   const remove = useDeleteComment(pageId);
+  const confirm = useConfirm();
   const me = useMe().data?.user.id;
   const [editing, setEditing] = useState(false);
   const editRef = useRef<HTMLButtonElement>(null);
@@ -302,9 +304,13 @@ function CommentView({ pageId, comment, canReact }: { pageId: string; comment: C
                 size="sm"
                 variant="ghost"
                 loading={remove.isPending}
-                onClick={() => {
+                onClick={async () => {
                   const mine = comment.authorId !== null && comment.authorId === me;
-                  if (!window.confirm(mine ? t.comments.confirmDelete : t.comments.confirmDeleteOthers(author))) return;
+                  const things = t.kit.confirm.things;
+                  const ask = mine
+                    ? { noun: things.comment, body: t.comments.confirmDelete }
+                    : { noun: things.commentOf(author), body: t.comments.confirmDeleteOthers };
+                  if (!(await confirm(ask))) return;
                   remove.mutate(comment.id);
                 }}
                 data-action="delete-comment"

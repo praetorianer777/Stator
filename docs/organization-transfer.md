@@ -8,8 +8,8 @@ instance (#380). A backup (`docs/backup-and-restore.md`) is the other way to
 carry a site: it holds the whole database and bucket, every organization in
 it, and comes back only as the same site.
 
-Both run in the worker, which a page in the settings follows: Settings, then
-**Export and import** (`/settings/transfer`).
+Both run in the worker, which a page under Admin follows: Admin, then
+**Export and import** (`/admin/transfer`).
 
 ## Splitting an instance before the upgrade
 
@@ -19,7 +19,7 @@ service, or the chart's migrate Job) fails with a message naming them:
 
 ```text
 This instance holds 2 organizations (acme, globex), and Stator now serves one
-organization per instance. Export every organization (Settings, Export and
+organization per instance. Export every organization (Admin, Export and
 import; see docs/organization-transfer.md), delete all but one, then upgrade
 again.
 ```
@@ -36,7 +36,7 @@ release, which imports the archives the older one exported.
 
 1. Take a backup (`docs/backup-and-restore.md`), in case a step below goes
    wrong.
-2. In every organization, an administrator exports it under Settings,
+2. In every organization, an administrator exports it under Admin,
    Export and import, and keeps the archive.
 3. Choose the organization that stays on this instance. Delete each of the
    others as the database's owner (`stator` on the compose stack), naming it
@@ -78,8 +78,9 @@ worker checks again that whoever asked is still one before it begins.
   organization's name and settings (anonymous reading, public links, the
   hub page and whether everybody lands on it, the default theme); its people
   with their roles, a guest with the space they were invited to; its groups
-  with their members; its global permissions; the sign-in provider and the
-  roles its groups give, without the client secret; the Armature and Exciter connections,
+  with their members; its global permissions; the sign-in provider, whether
+  its groups let people in, and the roles its groups give, without the
+  client secret; the Armature and Exciter connections,
   without their webhook secrets; the brand's footer lines; its themes; the
   templates every space offers; its webhooks, without their secrets; each
   person's notification settings and chosen theme; the list of its spaces;

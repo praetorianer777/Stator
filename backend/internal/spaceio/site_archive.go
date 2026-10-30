@@ -9,9 +9,12 @@ import (
 
 // SiteFormat names an archive of a whole organization, and SiteVersion its
 // shape; an import reads every version up to its own and refuses a newer one.
+// Version 2 carries roles and the grants across the installation (#585);
+// version 1 carried the permissions and roles of before, which an import
+// moves to the roles they amount to.
 const (
 	SiteFormat  = "stator.organization"
-	SiteVersion = 1
+	SiteVersion = 2
 )
 
 // Paths inside an organization's archive, beside manifest.json.
@@ -36,12 +39,16 @@ type SiteManifest struct {
 	Version    int       `json:"version"`
 	ExportedAt time.Time `json:"exportedAt"`
 	// ExportedBy is a person of People.
-	ExportedBy   string           `json:"exportedBy"`
-	Organization SiteInfo         `json:"organization"`
-	Settings     SiteSettings     `json:"settings"`
-	People       []SitePerson     `json:"people"`
-	Groups       []SiteGroup      `json:"groups"`
+	ExportedBy   string       `json:"exportedBy"`
+	Organization SiteInfo     `json:"organization"`
+	Settings     SiteSettings `json:"settings"`
+	People       []SitePerson `json:"people"`
+	Groups       []SiteGroup  `json:"groups"`
+	// Permissions are version 1's grants across the organization; version 2
+	// writes Roles and RoleGrants instead.
 	Permissions  []Grant          `json:"permissions"`
+	Roles        []SiteRole       `json:"roles"`
+	RoleGrants   []SiteRoleGrant  `json:"roleGrants"`
 	SignIn       *SiteSignIn      `json:"signIn"`
 	Armature     *SiteArmature    `json:"armature"`
 	Exciter      *SiteExciter     `json:"exciter"`
@@ -84,40 +91,65 @@ type SitePerson struct {
 	Ref           string  `json:"ref"`
 	Name          string  `json:"name"`
 	Email         string  `json:"email"`
-	Timezone      string  `json:"timezone"`
+	Timezone      *string `json:"timezone"`
 	Locale        *string `json:"locale"`
 	Active        bool    `json:"active"`
 	ShowInReaders bool    `json:"showInReaders"`
-	Role          string  `json:"role"`
-	RoleSource    string  `json:"roleSource"`
+	// Role is the standing, member or guest; version 1 wrote owner and admin
+	// too, and roleSource beside it.
+	Role       string `json:"role"`
+	RoleSource string `json:"roleSource,omitempty"`
 	// GuestSpace is the key of the one space a guest was invited to.
 	GuestSpace string    `json:"guestSpace,omitempty"`
 	JoinedAt   time.Time `json:"joinedAt"`
 }
 
-// SiteGroup is a group with its members by ref.
+// SiteGroup is a group with its members by ref. Builtin marks Everyone,
+// whose members are whoever is a member where it lands.
 type SiteGroup struct {
 	Ref         string   `json:"ref"`
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Source      string   `json:"source"`
 	ExternalRef *string  `json:"externalRef"`
+	Builtin     string   `json:"builtin,omitempty"`
 	Members     []string `json:"members"`
+}
+
+// SiteRole is one of the installation's roles.
+type SiteRole struct {
+	Key         string   `json:"key"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	OrgWideOnly bool     `json:"orgWideOnly"`
+	Builtin     bool     `json:"builtin"`
+	Permissions []string `json:"permissions"`
+}
+
+// SiteRoleGrant is a role granted across the installation; the spaces'
+// archives carry their own grants.
+type SiteRoleGrant struct {
+	Role    string  `json:"role"`
+	Subject Subject `json:"subject"`
 }
 
 // SiteSignIn is the sign-in provider without its client secret, and the
 // organization roles its groups give.
 type SiteSignIn struct {
-	Issuer       string          `json:"issuer"`
-	ClientID     string          `json:"clientId"`
-	GroupsClaim  string          `json:"groupsClaim"`
-	Scopes       string          `json:"scopes"`
-	CreateGroups bool            `json:"createGroups"`
-	Enabled      bool            `json:"enabled"`
-	GroupRoles   []SiteGroupRole `json:"groupRoles"`
+	Issuer       string `json:"issuer"`
+	ClientID     string `json:"clientId"`
+	GroupsClaim  string `json:"groupsClaim"`
+	Scopes       string `json:"scopes"`
+	CreateGroups bool   `json:"createGroups"`
+	// AdmitByGroup is nil in an archive made before the setting, whose mapped
+	// groups let people in as soon as they were mapped.
+	AdmitByGroup *bool `json:"admitByGroup,omitempty"`
+	Enabled      bool  `json:"enabled"`
+	// GroupRoles are version 1's; a group's grants carry them in version 2.
+	GroupRoles []SiteGroupRole `json:"groupRoles,omitempty"`
 }
 
-// SiteGroupRole is the organization role a group of the provider gives.
+// SiteGroupRole is the organization role a group of the provider gave in version 1.
 type SiteGroupRole struct {
 	Group string `json:"group"`
 	Role  string `json:"role"`

@@ -1,5 +1,5 @@
 import { createRoute } from "@tanstack/react-router";
 import { ExampleSpaceSettings } from "@/features/spaces/ExampleSpace";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 
-export const exampleSpaceRoute = createRoute({ getParentRoute: () => appRoute, path: "/settings/example-space", component: ExampleSpaceSettings });
+export const exampleSpaceRoute = createRoute({ getParentRoute: () => adminRoute, path: "/example-space", component: ExampleSpaceSettings });

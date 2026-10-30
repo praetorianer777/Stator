@@ -65,7 +65,7 @@ test.describe("pages linked in Armature", { tag: ["@auth"] }, () => {
       await startInScheme(page, scheme);
       const space = await freshSpace(api, testInfo);
       const target = await createPage(api, space.homePageId, uniqueName(testInfo, "Key rotation"), withChip("CP-4"));
-      const url = `${WEB_URL}/s/${space.key}/p/${target.id}`;
+      const url = `${WEB_URL}/spaces/${space.key}/p/${target.id}`;
 
       await openPage(page, space.key, target);
       const section = page.locator("[data-armature-links]");

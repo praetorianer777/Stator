@@ -40,8 +40,8 @@ func startWebhookConnect(t *testing.T, c *client) *url.URL {
 
 func onSettings(t *testing.T, landed *url.URL, want string) {
 	t.Helper()
-	if landed.Path != "/settings/armature" || landed.Query().Get("armature") != want {
-		t.Errorf("landed on %s, want Settings, Armature saying %s", landed, want)
+	if landed.Path != "/admin/armature" || landed.Query().Get("armature") != want {
+		t.Errorf("landed on %s, want Admin, Armature saying %s", landed, want)
 	}
 }
 

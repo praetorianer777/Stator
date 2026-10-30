@@ -24,7 +24,7 @@ function refusal(error: Error, field: string): string {
 export function StewardshipDialog({ page, onClose }: { page: Page; onClose: () => void }) {
   const editable = page.can.edit && !page.unpublished;
   return (
-    <Dialog title={t.stewardship.title(page.title)} onClose={onClose} data-stewardship-dialog={page.id}>
+    <Dialog open title={t.stewardship.title(page.title)} onClose={onClose} attrs={{ "data-stewardship-dialog": page.id }}>
       <div className="space-y-5">
         <OwnerSection page={page} editable={editable} />
         <VerificationSection page={page} editable={editable} />

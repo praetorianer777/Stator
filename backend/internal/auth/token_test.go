@@ -161,22 +161,30 @@ func TestATokenNamesItsSpacesOnceEach(t *testing.T) {
 
 func TestATokenLimitedToSpacesAdministersNoSite(t *testing.T) {
 	id := uuid.New()
-	limited := &Principal{Role: RoleOwner, TokenID: &id, SpacesOnly: true}
+	limited := &Principal{Role: RoleMember, Administers: true, TokenID: &id, SpacesOnly: true}
 	if !limited.InSpacesOnly() || limited.CanAdminister() {
-		t.Error("an owner's token limited to spaces administers the site")
+		t.Error("an administrator's token limited to spaces administers the site")
 	}
-	if (&Principal{Role: RoleOwner, TokenID: &id}).InSpacesOnly() {
+	if (&Principal{Role: RoleMember, Administers: true, TokenID: &id}).InSpacesOnly() {
 		t.Error("a token without spaces is limited")
 	}
-	if (&Principal{Role: RoleOwner, SessionID: &id, SpacesOnly: true}).InSpacesOnly() {
+	if (&Principal{Role: RoleMember, Administers: true, SessionID: &id, SpacesOnly: true}).InSpacesOnly() {
 		t.Error("a session is limited to spaces")
 	}
 }
 
-func TestOnlyOwnersAndAdminsAdminister(t *testing.T) {
-	for role, want := range map[Role]bool{RoleOwner: true, RoleAdmin: true, RoleMember: false, RoleGuest: false, "": false} {
-		if got := (&Principal{Role: role}).CanAdminister(); got != want {
-			t.Errorf("%q administers = %v, want %v", role, got, want)
+func TestOnlyAGrantAdministers(t *testing.T) {
+	for _, p := range []struct {
+		principal Principal
+		want      bool
+	}{
+		{Principal{Role: RoleMember, Administers: true}, true},
+		{Principal{Role: RoleMember}, false},
+		{Principal{Role: RoleGuest}, false},
+		{Principal{Administers: true}, false},
+	} {
+		if got := p.principal.CanAdminister(); got != p.want {
+			t.Errorf("%+v administers = %v, want %v", p.principal, got, p.want)
 		}
 	}
 	if (&Principal{UserID: uuid.New()}).IsMember() {

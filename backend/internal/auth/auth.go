@@ -27,6 +27,8 @@ type Principal struct {
 	// Locale is the language the person chose for the interface; empty
 	// means the browser's.
 	Locale Locale
+	// Timezone is the zone the person chose for their dates; empty means the browser's.
+	Timezone string
 	// ShowInReaders says the person's name appears among a page's readers.
 	ShowInReaders bool
 	// SiteName is the site's display name, empty for a person who is no member.
@@ -34,6 +36,8 @@ type Principal struct {
 	// Role is the caller's standing on the site, empty for a person who is no
 	// member.
 	Role Role
+	// Administers says a grant lets the caller administer the installation.
+	Administers bool
 	// SessionID names the sign-in this request rides on, and keys its
 	// read-your-writes position; nil for a caller without a session.
 	SessionID *uuid.UUID
@@ -80,5 +84,5 @@ func (p *Principal) IsMember() bool { return p != nil && p.Role != "" }
 // CanAdminister reports whether the caller may change the settings of the
 // site, which a token limited to spaces may not.
 func (p *Principal) CanAdminister() bool {
-	return p.IsMember() && p.Role.CanAdminister() && !p.InSpacesOnly()
+	return p.IsMember() && p.Administers && !p.InSpacesOnly()
 }

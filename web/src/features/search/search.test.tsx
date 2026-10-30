@@ -99,7 +99,7 @@ describe("quick search", () => {
     expect(input).not.toHaveAttribute("aria-activedescendant");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${oncall.id}/on-call`));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${oncall.id}/on-call`));
     expect(screen.queryByRole("dialog", { name: "Quick search" })).toBeNull();
   });
 
@@ -146,7 +146,7 @@ describe("the full search", () => {
     await renderAt("/search?q=onboarding");
     const rows = await screen.findAllByRole("listitem");
     const first = rows.find((row) => row.getAttribute("data-hit-type") === "page")!;
-    expect(within(first).getByRole("link", { name: "Onboarding" })).toHaveAttribute("href", `/s/DOCS/p/${onboarding.id}/onboarding`);
+    expect(within(first).getByRole("link", { name: "Onboarding" })).toHaveAttribute("href", `/spaces/DOCS/p/${onboarding.id}/onboarding`);
     const snippet = first.querySelector("[data-search-snippet]")!;
     expect([...snippet.querySelectorAll("mark")].map((mark) => mark.textContent)).toEqual(["onboarding"]);
     expect(snippet.querySelector("b")).toBeNull();
@@ -275,11 +275,41 @@ describe("a page view", () => {
     vi.stubGlobal("fetch", (request: Request) =>
       request.method === "POST" ? fetch(request).then((response) => new Promise<Response>((resolve) => (release = () => resolve(response)))) : fetch(request),
     );
-    await renderAt(`/s/DOCS/p/${page.id}/onboarding`);
+    await renderAt(`/spaces/DOCS/p/${page.id}/onboarding`);
     expect(await screen.findByText("Welcome to the handbook.")).toBeInTheDocument();
     await waitFor(() => expect(sent.filter((r) => r.method === "POST" && r.path === `/pages/${page.id}/visit`)).toHaveLength(1));
     release();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(sent.filter((r) => r.method === "POST")).toHaveLength(1);
+  });
+});
+
+describe("the palette's groups", () => {
+  it("finds the spaces and what can be done, each in a group of its own", async () => {
+    stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [space] } },
+      "GET /search/quick": { status: 200, body: { pages: [] } },
+    });
+    const router = await renderAt("/");
+    const input = await openPalette();
+    await userEvent.type(input, "crea");
+    const actions = await screen.findByRole("listbox", { name: "Actions" });
+    expect(within(actions).getByRole("option", { name: /Create space/ })).toBeInTheDocument();
+    await userEvent.clear(input);
+    await userEvent.type(input, space.name.slice(0, 3));
+    const spaces = await screen.findByRole("listbox", { name: "Spaces" });
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(spaces).getByRole("option", { name: new RegExp(space.name) })).toHaveAttribute("aria-selected", "true");
+    expect(await axeViolations({ popupOpen: true })).toEqual([]);
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/${space.key}`));
+  });
+
+  it("says Cmd K on a Mac and Ctrl K elsewhere", async () => {
+    stubApi({});
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    await renderAt("/");
+    const search = within(document.querySelector<HTMLElement>('[data-sidebar-group="wiki"]')!).getByRole("link", { name: /Search/ });
+    expect(search).toHaveTextContent("Cmd K");
   });
 });

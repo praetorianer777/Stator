@@ -42,10 +42,17 @@ export function FileExportDialog({ format, href, title, onClose }: { format: Exp
   const state = error ? "failed" : "making";
   return (
     <Dialog
+      open
       title={words.title(title)}
       onClose={onClose}
-      data-pdf-export={format === "pdf" ? state : undefined}
-      data-docx-export={format === "docx" ? state : undefined}
+      attrs={format === "pdf" ? { "data-pdf-export": state } : { "data-docx-export": state }}
+      footer={
+        <>
+          <Button type="button" variant="secondary" onClick={onClose} data-action={`close-${format}`}>
+            {error ? words.close : words.cancel}
+          </Button>
+        </>
+      }
     >
       {error ? (
         <ErrorBanner onRetry={() => setAttempt((n) => n + 1)}>{error}</ErrorBanner>
@@ -56,11 +63,6 @@ export function FileExportDialog({ format, href, title, onClose }: { format: Exp
         </p>
       )}
       <p className="mt-3 text-xs text-ink-muted">{words.note}</p>
-      <div className="flex justify-end pt-3">
-        <Button type="button" variant="secondary" onClick={onClose} data-action={`close-${format}`}>
-          {error ? words.close : words.cancel}
-        </Button>
-      </div>
     </Dialog>
   );
 }

@@ -2,12 +2,11 @@ import { localDateFormat } from "@/lib/format";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useStopWatching, useWatches, type Watch } from "@/api/watching";
-import { Button, EmptyState, ErrorBanner, PageHeader, Skeleton, Table, Td, Th } from "@/components/ui";
+import { Table, Page, PageHeader, Button, Td, Th, EmptyState, ErrorBanner, Skeleton, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { WATCHES_PAGE_SIZE } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
-import { settingsCrumb } from "@/features/settings/SettingsHome";
 
 const since = localDateFormat({ dateStyle: "medium" });
 
@@ -21,19 +20,14 @@ export function WatchingList() {
   const [offset, setOffset] = useState(0);
   const { data, error, isLoading, refetch } = useWatches(offset);
   const stop = useStopWatching();
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
   const rows = data?.watches ?? [];
   const total = data?.total ?? 0;
 
   return (
-    <div className="mx-auto max-w-3xl" data-watching-list="">
-      <PageHeader crumbs={[settingsCrumb()]} title={t.watch.listTitle} meta={t.watch.listIntro} />
+    <Page width="narrow" data-watching-list="">
+      <PageHeader title={t.watch.listTitle} meta={t.watch.listIntro} />
       {stop.error && <ErrorBanner>{t.watch.failed}</ErrorBanner>}
-      {notice && (
-        <p role="status" className="mb-2 text-sm text-ink-muted">
-          {notice}
-        </p>
-      )}
       {error ? (
         <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>
       ) : isLoading || !data ? (
@@ -62,11 +56,11 @@ export function WatchingList() {
                         {watch.page.title}
                       </PageLink>
                     ) : watch.kind === "blog" ? (
-                      <Link to="/s/$spaceKey/blog" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
+                      <Link to="/spaces/$spaceKey/blog" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
                         {t.watch.blogNamed(watch.spaceName)}
                       </Link>
                     ) : (
-                      <Link to="/s/$spaceKey" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
+                      <Link to="/spaces/$spaceKey" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
                         {watch.spaceName}
                       </Link>
                     )}
@@ -80,7 +74,7 @@ export function WatchingList() {
                       size="sm"
                       aria-label={t.watch.stopNamed(named(watch))}
                       loading={stop.isPending && stop.variables === watch}
-                      onClick={() => stop.mutate(watch, { onSuccess: () => setNotice(t.watch.stopped(named(watch))) })}
+                      onClick={() => stop.mutate(watch, { onSuccess: () => toast.success(t.watch.stopped(named(watch))) })}
                       data-action="stop-watching"
                     >
                       {t.watch.stop}
@@ -103,6 +97,6 @@ export function WatchingList() {
           )}
         </>
       )}
-    </div>
+    </Page>
   );
 }

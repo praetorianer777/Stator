@@ -25,7 +25,6 @@ import (
 	"github.com/praetorianer777/stator/backend/internal/mdio"
 	"github.com/praetorianer777/stator/backend/internal/notify"
 	"github.com/praetorianer777/stator/backend/internal/oauth"
-	"github.com/praetorianer777/stator/backend/internal/oidc"
 	"github.com/praetorianer777/stator/backend/internal/openapi"
 	"github.com/praetorianer777/stator/backend/internal/page"
 	"github.com/praetorianer777/stator/backend/internal/pageview"
@@ -156,17 +155,13 @@ var operations = append([]operation{
 		responses: ok(providerView{})},
 	{method: "PUT", path: "/oidc-provider", handler: "handleSaveOIDCProvider", wholeInstance: true, tag: "access", summary: "Configure the organization's identity provider. For administrators.",
 		request: saveOIDCProviderRequest{}, responses: ok(providerView{})},
-	{method: "GET", path: "/oidc-provider/group-roles", handler: "handleListGroupRoles", wholeInstance: true, tag: "access", summary: "Which provider groups grant which role. For administrators.",
-		responses: ok(env{"groupRoles": []oidc.GroupRole{}})},
-	{method: "POST", path: "/oidc-provider/group-roles", handler: "handleSetGroupRole", wholeInstance: true, tag: "access", summary: "Map a provider group to a role, or change the role it maps to; members follow at their next sign-in. For administrators.",
-		request: setGroupRoleRequest{}, responses: ok(env{"groupRole": oidc.GroupRole{}})},
-	{method: "DELETE", path: "/oidc-provider/group-roles/{groupRoleID}", handler: "handleRemoveGroupRole", wholeInstance: true, tag: "access", summary: "Unmap a provider group; the roles it granted go at each person's next sign-in. For administrators.",
-		responses: none()},
-	{method: "GET", path: "/users", handler: "handleListMembers", wholeInstance: true, tag: "access", summary: "The organization's members, with their roles and whether the identity provider decides them. For administrators.",
+	{method: "GET", path: "/users", handler: "handleListMembers", wholeInstance: true, tag: "access", summary: "The installation's members and guests, with their standing and the roles they hold across the installation, by name or through a group. For administrators.",
 		responses: ok(env{"members": []auth.Member{}})},
 	{method: "POST", path: "/users", handler: "handleCreateMember", wholeInstance: true, tag: "access", summary: "Add a person with a password, so they can sign in without an identity provider; a password left out is made and shown once. An address that already has an account joins with its own password. For administrators.",
 		request: createMemberRequest{}, responses: created(env{"member": auth.CreatedMember{}})},
-	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", wholeInstance: true, tag: "access", summary: "Take somebody out of the organization. The owner stays. For administrators.",
+	{method: "PATCH", path: "/users/{userID}", handler: "handleUpdateMember", wholeInstance: true, tag: "access", summary: "Switch somebody's account off, so they cannot sign in, or back on. Nobody switches their own off, and the last active administrator stays. For administrators.",
+		request: updateMemberRequest{}, responses: none()},
+	{method: "DELETE", path: "/users/{userID}", handler: "handleRemoveMember", wholeInstance: true, tag: "access", summary: "Take somebody out of the installation. The last active administrator stays. For administrators.",
 		responses: none()},
 	{method: "GET", path: "/users/requests", handler: "handleListJoinRequests", wholeInstance: true, tag: "access", summary: "Who signed in through the identity provider and is waiting to be let in. For administrators.",
 		responses: ok(env{"requests": []auth.JoinRequest{}})},
@@ -541,10 +536,6 @@ var operations = append([]operation{
 	// Permissions (#19).
 	{method: "GET", path: "/access/me", handler: "handleMyAccess", tag: "permissions", summary: "What the caller may do across the organization, which decides which buttons to draw.",
 		responses: ok(env{"can": perm.GlobalCan{}})},
-	{method: "GET", path: "/site/permissions", handler: "handleListGlobalPermissions", wholeInstance: true, tag: "permissions", summary: "Each global permission and whom it is granted to. For administrators.",
-		responses: ok(env{"permissions": []perm.GlobalGrant{}})},
-	{method: "PUT", path: "/site/permissions/{permission}", handler: "handleSetGlobalPermission", wholeInstance: true, tag: "permissions", summary: "Replace whom a global permission is granted to. For administrators.",
-		request: perm.GlobalGrantInput{}, responses: ok(env{"permission": perm.GlobalGrant{}})},
 	{method: "POST", path: "/diagrams", handler: "handlePreviewDiagram", tag: "diagrams", binary: true,
 		summary:   "Draw a PlantUML, Structurizr, Graphviz or D2 diagram from its text as SVG, for an author's preview, through the installation's Kroki; GET /meta names the languages this server draws. For people who may edit pages somewhere, and at most 120 a minute for each, then too_many_requests. Answered and refused as GET /pages/{pageID}/diagrams/{hash} is, and with validation_failed for another language or a text that is blank or longer than 20,000 characters, which Kroki never sees.",
 		request:   diagramRequest{},
@@ -613,10 +604,6 @@ var operations = append([]operation{
 	{method: "PUT", path: "/site/public-links", handler: "handleSetPublicLinks", wholeInstance: true, tag: "public",
 		summary: "Allow public links, or stop every one of them and the making of more; stopped links work again once they are allowed again. For administrators.",
 		request: public.LinkSettings{}, responses: ok(env{"publicLinks": public.LinkSettings{}})},
-	{method: "GET", path: "/spaces/{spaceKey}/permissions", handler: "handleListSpacePermissions", tag: "permissions", summary: "Who may do what in a space. For the space's administrators.",
-		responses: ok(env{"grants": []perm.SpaceGrant{}})},
-	{method: "PUT", path: "/spaces/{spaceKey}/permissions", handler: "handleSetSpacePermissions", tag: "permissions", summary: "Replace a space's whole permission table. For the space's administrators.",
-		request: perm.SpaceGrantsInput{}, responses: map[int]any{200: env{"grants": []perm.SpaceGrant{}}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/spaces/{spaceKey}/permissions/copy", handler: "handlePreviewPermissionCopy", tag: "permissions",
 		summary: "What copying another space's permissions onto this one would add, widen, narrow and remove, and what it cannot copy, without changing anything. Replace makes this space's grants the other's, keeping this space's guests; merge only adds. For whoever administers both spaces.",
 		query: []param{
@@ -625,7 +612,7 @@ var operations = append([]operation{
 		}, responses: map[int]any{200: env{"preview": space.CopyPreview{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "POST", path: "/spaces/{spaceKey}/permissions/copy", handler: "handleCopyPermissions", tag: "permissions",
 		summary: "Apply the preview whose fingerprint the request carries, in one step; refused as copy_changed once either space's permissions changed since, and as no_administrator when it would leave this space without one. For whoever administers both spaces.",
-		request: space.CopyInput{}, responses: map[int]any{200: env{"grants": []perm.SpaceGrant{}, "copy": space.CopyPreview{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+		request: space.CopyInput{}, responses: map[int]any{200: env{"grants": []perm.Assignment{}, "copy": space.CopyPreview{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
 	{method: "GET", path: "/spaces/{spaceKey}/guests", handler: "handleListGuests", wholeInstance: true, tag: "permissions", summary: "The people from outside let into this space alone, with what they may do there. For administrators of the organization.",
 		responses: ok(env{"guests": []guest.Guest{}})},
 	{method: "POST", path: "/spaces/{spaceKey}/guests", handler: "handleInviteGuest", wholeInstance: true, tag: "permissions", summary: "Let somebody from outside into this space alone, as a viewer, commenter or editor; they sign in through the organization's provider with the address given. For administrators of the organization.",
@@ -642,8 +629,45 @@ var operations = append([]operation{
 		responses: ok(env{"access": perm.AccessReport{}})},
 	{method: "GET", path: "/people", handler: "handleListPeople", tool: "list_people", toolHelp: "Members of the organization by name, with the ids other tools take.", tag: "permissions", summary: "Members of the organization, to pick whom to grant something.",
 		query: pickerQuery, responses: ok(env{"people": []perm.Person{}})},
-	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "permissions", summary: "Groups of the organization, to pick whom to grant something.",
+	{method: "GET", path: "/groups", handler: "handleListGroups", tag: "access", summary: "The installation's groups, Everyone first, with how many people and grants each has; to pick whom to grant something.",
 		query: pickerQuery, responses: ok(env{"groups": []perm.Group{}})},
+
+	// Roles, the matrix, groups and grants (#585), as Armature answers them.
+	{method: "GET", path: "/roles", handler: "handleListRoles", tag: "access", summary: "The roles and the permissions each holds outright, the built-in ones first.",
+		responses: ok(env{"roles": []perm.Definition{}})},
+	{method: "POST", path: "/roles", handler: "handleCreateRole", wholeInstance: true, tag: "access", summary: "Add a role beside the built-in ones; its key is made from its name unless given. For administrators.",
+		request: perm.RoleInput{}, responses: map[int]any{201: env{"role": perm.Definition{}}, 422: errorEnvelope{}}},
+	{method: "PATCH", path: "/roles/{roleKey}", handler: "handleUpdateRole", wholeInstance: true, tag: "access", summary: "Rename a role, describe it or change what it holds; every grant of it follows. The administrator keeps administering Stator. For administrators.",
+		request: perm.RoleInput{}, responses: map[int]any{200: env{"role": perm.Definition{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/roles/{roleKey}", handler: "handleDeleteRole", wholeInstance: true, tag: "access", summary: "Remove a role that is not built in, and every grant of it. For administrators.",
+		responses: map[int]any{204: nil, 409: errorEnvelope{}}},
+	{method: "GET", path: "/permissions", handler: "handleListPermissions", tag: "access", summary: "Every permission a role may hold, in words, and whether it counts in a space or across the installation only.",
+		responses: ok(env{"permissions": []perm.PermissionView{}})},
+	{method: "POST", path: "/groups", handler: "handleCreateGroup", wholeInstance: true, tag: "access", summary: "Make a group, kept by hand or, with a provider claim, filled by the identity provider at every sign-in. For administrators.",
+		request: perm.GroupInput{}, responses: map[int]any{201: env{"group": perm.Group{}}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/groups/{groupID}", handler: "handleGetGroup", wholeInstance: true, tag: "access", summary: "One group with its members. For administrators.",
+		responses: ok(env{"group": perm.Group{}})},
+	{method: "PATCH", path: "/groups/{groupID}", handler: "handleUpdateGroup", wholeInstance: true, tag: "access", summary: "Rename a group, describe it, or change the provider claim that fills it; Everyone is not changed. For administrators.",
+		request: perm.GroupInput{}, responses: map[int]any{200: env{"group": perm.Group{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/groups/{groupID}", handler: "handleDeleteGroup", wholeInstance: true, tag: "access", summary: "Delete a group and every grant to it; Everyone stays. For administrators.",
+		responses: map[int]any{204: nil, 409: errorEnvelope{}}},
+	{method: "POST", path: "/groups/{groupID}/members", handler: "handleAddGroupMember", wholeInstance: true, tag: "access", summary: "Put a member in a group kept by hand. For administrators.",
+		request: perm.GroupMemberInput{}, responses: map[int]any{200: env{"group": perm.Group{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/groups/{groupID}/members/{userID}", handler: "handleRemoveGroupMember", wholeInstance: true, tag: "access", summary: "Take somebody out of a group kept by hand. For administrators.",
+		responses: map[int]any{200: env{"group": perm.Group{}}, 409: errorEnvelope{}, 422: errorEnvelope{}}},
+	{method: "GET", path: "/role-assignments", handler: "handleListAssignments", tag: "access", summary: "Who holds which role where, a page at a time, with how many there are in all. Across the installation for its administrators; in a space for the space's administrators too.",
+		query: []param{
+			{name: "q", description: "Text the person, the group, the role, or the space's key or name contains."},
+			{name: "space", description: "Only the grants in this space, by key."},
+			{name: "scope", schema: &openapi.Schema{Type: "string", Enum: []string{"installation"}}, description: "installation for only the grants across the whole installation."},
+			{name: "role", description: "Only grants of this role, by its key."},
+			{name: "limit", schema: &openapi.Schema{Type: "integer"}, description: "1 to 200; 50 unless said."},
+			{name: "offset", schema: &openapi.Schema{Type: "integer"}},
+		}, responses: ok(perm.AssignmentPage{})},
+	{method: "POST", path: "/role-assignments", handler: "handleGrantRole", tag: "access", summary: "Grant a role to a person or a group, in a space by its key or, with none, across the installation. In a space for its administrators; across the installation for the installation's.",
+		request: perm.GrantInput{}, responses: map[int]any{201: env{"assignment": perm.Assignment{}}, 422: errorEnvelope{}}},
+	{method: "DELETE", path: "/role-assignments/{assignmentID}", handler: "handleRevokeRole", tag: "access", summary: "Take a grant away. The last grant that administers a space, and the last that leaves the installation an active administrator, stay.",
+		responses: map[int]any{204: nil, 409: errorEnvelope{}}},
 
 	// Attachments (#20), as Armature serves them.
 	{method: "GET", path: "/pages/{pageID}/attachments", handler: "handleListAttachments", tool: "list_attachments", toolHelp: "The files on a page, with their names, sizes, uploaders and versions; current=true for the latest version of each name.", tag: "attachments", summary: "The files on a page, the latest first. A file uploaded under a name the page already has, whatever its case, is that name's next version.",
@@ -1326,11 +1350,21 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(page.Kind(""))] = enumStrings(page.Kinds)
 	b.Enums[reflect.TypeOf(page.Width(""))] = enumStrings(page.Widths)
 	b.Enums[reflect.TypeOf(page.Mode(""))] = enumStrings(page.Modes)
-	b.Enums[reflect.TypeOf(auth.RoleSource(""))] = enumStrings(auth.RoleSources)
 	b.Enums[reflect.TypeOf(auth.Locale(""))] = enumStrings(auth.Locales)
 	b.Enums[reflect.TypeOf(perm.SubjectType(""))] = enumStrings(perm.SubjectTypes)
 	b.Enums[reflect.TypeOf(perm.GlobalPermission(""))] = enumStrings(perm.GlobalPermissions)
 	b.Enums[reflect.TypeOf(perm.SpacePermission(""))] = enumStrings(perm.SpacePermissions)
+	b.Enums[reflect.TypeOf(perm.Permission(""))] = enumStrings(perm.AllPermissions)
+	b.Enums[reflect.TypeOf(perm.PermissionScope(""))] = enumStrings(perm.PermissionScopes)
+	b.Names[reflect.TypeOf(perm.Definition{})] = "Role"
+	b.Names[reflect.TypeOf(perm.RoleInput{})] = "RoleInput"
+	b.Names[reflect.TypeOf(perm.GrantInput{})] = "GrantRoleRequest"
+	b.Names[reflect.TypeOf(perm.GroupInput{})] = "GroupInput"
+	b.Names[reflect.TypeOf(perm.GroupMemberInput{})] = "AddGroupMemberRequest"
+	b.FieldOverrides["Group.source"] = &openapi.Schema{Type: "string", Enum: []string{"local", "oidc"}}
+	b.FieldOverrides["Group.builtin"] = &openapi.Schema{Type: "string", Enum: []string{perm.EveryoneGroup}}
+	b.FieldOverrides["Assignment.groupBuiltin"] = &openapi.Schema{Type: "string", Enum: []string{perm.EveryoneGroup}}
+	b.FieldOverrides["CopySubject.builtin"] = &openapi.Schema{Type: "string", Enum: []string{perm.EveryoneGroup}}
 	b.Enums[reflect.TypeOf(perm.CopyMode(""))] = enumStrings(perm.CopyModes)
 	b.Enums[reflect.TypeOf(perm.CopyChangeKind(""))] = enumStrings(perm.CopyChangeKinds)
 	b.Enums[reflect.TypeOf(perm.CopySkipReason(""))] = enumStrings(perm.CopySkipReasons)
@@ -1368,8 +1402,8 @@ func specBuilder() *openapi.Builder {
 	b.Enums[reflect.TypeOf(exciter.Feature(""))] = enumStrings(exciter.Features)
 	b.FieldOverrides["RequirementStatus.category"] = &openapi.Schema{Type: "string", Enum: exciter.StatusCategories}
 	b.FieldOverrides["ExciterWebhookEnvelope.source"] = &openapi.Schema{Type: "string", Enum: []string{exciter.WebhookSource}}
-	// A group grants member or admin; owner is never the provider's to give.
-	granted := &openapi.Schema{Type: "string", Enum: []string{string(auth.RoleAdmin), string(auth.RoleMember)}}
+	// Letting somebody in makes a member, and admin grants the administrator role besides.
+	granted := &openapi.Schema{Type: "string", Enum: enumStrings(auth.JoinRoles)}
 	b.FieldOverrides["AuditEntry.action"] = &openapi.Schema{Type: "string", Enum: audit.Actions}
 	b.FieldOverrides["AuditFacets.actions"] = &openapi.Schema{Type: "array", Items: &openapi.Schema{Type: "string", Enum: audit.Actions}}
 	b.Enums[reflect.TypeOf(webhook.DeliveryState(""))] = enumStrings(webhook.States)
@@ -1380,10 +1414,10 @@ func specBuilder() *openapi.Builder {
 	b.FieldOverrides["WebhookInput.topics"] = topics
 	b.FieldOverrides["Webhook.disabledReason"] = &openapi.Schema{OneOf: []*openapi.Schema{{Type: "string", Enum: webhook.DisabledReasons}, {Type: "null"}}}
 	b.FieldOverrides["WebhookDelivery.topic"] = &openapi.Schema{Type: "string", Enum: append([]string{webhook.TopicPing}, webhook.Topics...)}
-	b.FieldOverrides["GroupRole.role"] = granted
-	b.FieldOverrides["SetGroupRoleRequest.role"] = granted
-	// Letting somebody in makes a member or an admin; a guest is invited to a space.
 	b.FieldOverrides["AdmitRequest.role"] = granted
+	b.FieldOverrides["CreateMemberRequest.role"] = granted
+	b.FieldOverrides["CreatedMember.role"] = granted
+	b.FieldOverrides["Admitted.role"] = granted
 	b.Enums[reflect.TypeOf(guest.Role(""))] = enumStrings(guest.Roles)
 	b.Names[reflect.TypeOf(guest.InviteInput{})] = "GuestInviteInput"
 	b.FieldOverrides["GuestInviteInput.role"] = &openapi.Schema{Type: "string", Enum: enumStrings(guest.Invitable)}

@@ -5,11 +5,20 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
+import {
+  type ColourScheme,
+  expectAccessible,
+  expectNoAdminEntry,
+  openAdminPage,
+  scrollsSideways,
+  startInScheme,
+  toast,
+  dismissToasts,
+} from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 // web/src/config.ts WEBHOOKS_PATH and WEBHOOK_SIGNATURE_HEADER.
-const WEBHOOKS_PATH = "/settings/webhooks";
+const WEBHOOKS_PATH = "/admin/webhooks";
 const SIGNATURE_HEADER = "X-Stator-Signature-256";
 const SECRET_PREFIX = "stator_whs_";
 // The armature-stub keeps what each bin is sent; the api reaches it on the
@@ -66,8 +75,8 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     const bin = binFor(testInfo);
 
     await page.goto("/");
-    await openSettingsPage(page, "webhooks");
-    await expect(page).toHaveURL(/\/settings\/webhooks$/);
+    await openAdminPage(page, "webhooks");
+    await expect(page).toHaveURL(/\/admin\/webhooks$/);
     await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText("Webhooks");
 
     await page.getByLabel("Name", { exact: true }).fill(name);
@@ -93,7 +102,8 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
 
     await row.getByRole("button", { name: `Actions for ${name}` }).click();
     await page.getByRole("menuitem", { name: "Send a test ping" }).click();
-    await expect(page.locator("[data-webhooks-notice]")).toHaveText(`The ping reached ${name}. The receiver answered 204.`);
+    await expect(toast(page, `The ping reached ${name}. The receiver answered 204.`)).toBeVisible();
+    await dismissToasts(page);
     const received = await bin.read(request);
     expect(received).toHaveLength(1);
     expect(signedWith(secret, received[0]!)).toBe(true);
@@ -114,7 +124,7 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     await page.getByRole("menuitem", { name: "Turn off" }).click();
     await expect(row).toHaveAttribute("data-webhook-enabled", "false");
     await expect(row.locator("[data-webhook-state]")).toHaveText("Off");
-    await expect(page.locator("[data-webhooks-notice]")).toHaveText(`${name} is off. Nothing is sent until it is turned on again.`);
+    await expect(toast(page, `${name} is off. Nothing is sent until it is turned on again.`)).toBeVisible();
   });
 
   test("bob, a member, is refused it", async ({ apiAs, pageAs }) => {
@@ -124,10 +134,9 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     expect((refused.error as { error?: { message?: string } } | undefined)?.error?.message).toMatch(/^Only an administrator can do that\. Ask one of them/);
 
     const bob = await pageAs("bob");
-    await bob.goto(WEBHOOKS_PATH);
-    await expect(bob.locator("[data-webhooks-refused]")).toContainText("Only an administrator keeps the webhooks.");
+    await bob.goto("/");
+    await expectNoAdminEntry(bob, WEBHOOKS_PATH);
     await expect(bob.locator("[data-webhook-form]")).toHaveCount(0);
-    await expectNoSettingsEntry(bob, "webhooks");
   });
 
   test("it is added and pinged from the keyboard", { tag: ["@desktop"] }, async ({ page }, testInfo) => {
@@ -160,7 +169,8 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     await page.keyboard.press("ArrowDown");
     await expect(page.getByRole("menuitem", { name: "Send a test ping" })).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.locator("[data-webhooks-notice]")).toHaveText(`The ping reached ${name}. The receiver answered 204.`);
+    await expect(toast(page, `The ping reached ${name}. The receiver answered 204.`)).toBeVisible();
+    await dismissToasts(page);
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
@@ -172,7 +182,8 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
       await expectAccessible(page);
       await page.getByRole("button", { name: `Actions for ${name}` }).click();
       await page.getByRole("menuitem", { name: "Send a test ping" }).click();
-      await expect(page.locator("[data-webhooks-notice]")).not.toBeEmpty();
+      await expect(page.locator("[data-toast]").first()).toBeVisible();
+      await dismissToasts(page);
       await page.getByRole("button", { name: `Actions for ${name}` }).click();
       await page.getByRole("menuitem", { name: "Delivery log" }).click();
       await expect(page.locator('[data-delivery="ping"]')).toBeVisible();
