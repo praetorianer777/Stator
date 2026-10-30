@@ -3,6 +3,33 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-30: The shell and its feedback follow the suite's standard (#587)
+
+Dynamo's look-and-feel standard settles where Stator, Armature and Exciter
+drifted apart; Stator now follows it, with Armature's code where it has some.
+
+- **What happened is a toast.** Every page sits under a `ToastProvider` with
+  `MutationErrorToasts`, and mutations go through `api/mutation.ts`, which
+  tells whether the caller shows a failure itself; one nobody shows is said
+  in the server's words. "Saved." beside a control that saved as it was
+  watched may stay where it is.
+- **Asking before something goes is `useConfirm`.** It draws the kit's
+  `ConfirmDialog` with the verb and the thing in its title and what goes
+  with it in its body. ESLint refuses `window.confirm`, which ignores the
+  theme and cannot word a consequence.
+- **A dialog's buttons are pinned in its footer**, a form's submit naming its
+  form; `DialogFooter` draws them from a part of the body that holds their
+  state.
+- **The shell derives what pages passed.** Pages take their width from
+  `Page` and no longer pass crumbs: `features/shell/Crumbs.tsx` reads the
+  trail off the address and the page or space it names.
+- **The chrome matches the other tools.** A 48 px strip on a phone with the
+  installation's name, the installation's name beside the mark at the
+  sidebar's head, a round avatar whose menu opens past the rail, counts
+  drawn by the shared `Count`, a Notifications page with a count in the
+  sidebar, and a palette that finds spaces and actions in groups of their
+  own and says Cmd K on a Mac.
+
 ## 2026-10-26: PlantUML, C4, Graphviz and D2 through a Kroki inside the installation (#466)
 
 Authors ask for PlantUML, C4 and BPMN next to Mermaid. Kroki draws these

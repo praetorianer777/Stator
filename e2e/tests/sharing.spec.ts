@@ -21,7 +21,7 @@ const shareButton = (page: Page) => page.locator('[data-action="share-page"]');
 const dialog = (page: Page) => page.locator("[data-share-dialog]");
 const picker = (page: Page) => dialog(page).getByRole("combobox", { name: "Send to" });
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
-const badge = (page: Page) => page.locator("[data-unread-badge]");
+const badge = (page: Page) => page.locator('[data-count="bell"] [aria-hidden="true"]').first();
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });

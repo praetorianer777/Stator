@@ -42,6 +42,27 @@ describe("the account menu", () => {
     expect(head.querySelector("[data-account-role]")).toHaveTextContent("Member");
   });
 
+  it("is a round button that opens past the rail's edge, its avatar beside who is signed in", async () => {
+    await renderAt("/", { me: member });
+    const trigger = screen.getByRole("button", { name: "Your account" });
+    expect(trigger).toHaveClass("rounded-full");
+    // The menu is anchored on a wrapper as wide as the rail, so it opens beside the rail, not over it.
+    expect(trigger.parentElement).toHaveClass("w-full");
+    expect(document.querySelector("[data-rail-foot]")).toHaveClass("w-full");
+    await openMenu();
+    const head = document.querySelector<HTMLElement>("[data-account-header]")!;
+    expect(within(head).getByRole("img", { name: "Bob Builder" })).toHaveAttribute("src", "https://pictures.test/bob.png");
+  });
+
+  it("sets Settings and Sign out apart from the person's own pages", async () => {
+    await renderAt("/");
+    const menu = await openMenu();
+    const separators = within(menu).getAllByRole("separator");
+    expect(separators).toHaveLength(2);
+    expect(separators[0]!.nextElementSibling).toHaveTextContent("Settings");
+    expect(separators[1]!.nextElementSibling).toHaveTextContent("Sign out");
+  });
+
   it("draws initials for somebody without a picture", async () => {
     await renderAt("/");
     const trigger = screen.getByRole("button", { name: "Your account" });
@@ -111,6 +132,8 @@ describe("the tools to switch to", () => {
     expect(within(group).getByRole("menuitem", { name: "Armature" })).toHaveAttribute("href", "https://armature.example.test");
     expect(within(group).getByRole("menuitem", { name: "Exciter" })).toHaveAttribute("href", "https://exciter.example.test");
     expect(links.every((l) => l.tagName === "A" && !l.hasAttribute("target"))).toBe(true);
+    // Each tool's own mark, in the one format the suite's tools share.
+    expect(links.map((l) => l.querySelector("img")?.getAttribute("src"))).toEqual(["/tools/armature.webp", "/tools/exciter.webp"]);
   });
 
   it("lists only the one connected", async () => {

@@ -12,7 +12,7 @@ import { devEditorRoute } from "./dev-editor";
 import { exampleSpaceRoute } from "./example-space";
 import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
-import { notificationSettingsRoute, watchingRoute } from "./notifications";
+import { notificationSettingsRoute, notificationsRoute, watchingRoute } from "./notifications";
 import { homeRoute, personalHomeRoute } from "./pages";
 import { brandSettingsRoute } from "./brand";
 import { siteTransferRoute } from "./site-transfer";
@@ -78,6 +78,7 @@ const routeTree = rootRoute.addChildren([
     oauthAuthorizeRoute,
     settingsRoute,
     profileRoute,
+    notificationsRoute,
     notificationSettingsRoute,
     watchingRoute,
     ssoRoute,

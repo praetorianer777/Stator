@@ -10,6 +10,18 @@ export const notificationsDe: typeof notificationsEn = {
   unread: "Ungelesen",
   failed: "Ihre Benachrichtigungen konnten nicht geladen werden. Versuchen Sie es gleich noch einmal.",
   settings: "Benachrichtigungseinstellungen",
+  seeAll: "Alle Benachrichtigungen",
+  unreadSaid: (n: number) => `${n} ungelesen`,
+  page: {
+    show: "Anzeigen",
+    unread: "Ungelesen",
+    everything: "Alle",
+    nothingUnread: "Nichts ungelesen",
+    nothingYet: "Noch keine Benachrichtigungen",
+    emptyHint: "Hier erfahren Sie von den Seiten, die Sie beobachten, den Aufgaben, die Ihnen gegeben werden, und den Entwürfen, die Sie prüfen sollen.",
+    pager: "Seiten der Benachrichtigungen",
+    noun: { one: "Benachrichtigung", many: "Benachrichtigungen" },
+  },
   sentence: (kind: string, actor: string, title: string, version: number | null, inComment = false) => {
     const who = actor || "Jemand";
     switch (kind) {

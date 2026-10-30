@@ -58,9 +58,9 @@ describe("the reviews waiting for the caller", () => {
     stubShell(two);
     const router = await renderAt("/spaces");
     const sidebar = document.querySelector<HTMLElement>("[data-sidebar]")!;
-    const entry = await within(sidebar).findByRole("link", { name: "Reviews 2 reviews waiting for you" });
+    const entry = await within(sidebar).findByRole("link", { name: /^Reviews\W+2 reviews waiting for you$/ });
     expect(entry).toHaveAttribute("data-nav", "reviews");
-    expect(document.querySelector("[data-waiting-badge]")).toHaveTextContent("2");
+    expect(document.querySelector('[data-count="reviews"] [aria-hidden="true"]')).toHaveTextContent("2");
     await userEvent.click(entry);
     await waitFor(() => expect(router.state.location.pathname).toBe("/reviews"));
     await screen.findByRole("heading", { name: "Reviews waiting for you" });

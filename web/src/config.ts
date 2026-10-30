@@ -439,9 +439,12 @@ export const LABEL_PAGE_SIZE = 20;
 /** How often the notification badge asks for the unread count; it also asks when the window regains focus. */
 export const UNREAD_POLL_MS = 30_000;
 /** Above this many unread the badge shows the number with a plus. */
-export const UNREAD_BADGE_MAX = 99;
 /** How many notifications the panel lists, within the API's limit of 100. */
 export const NOTIFICATION_PANEL_SIZE = 20;
+/** How many notifications a page of the Notifications page lists, within the API's limit of 100. */
+export const NOTIFICATIONS_PAGE_SIZE = 50;
+/** The Notifications page, which the bell's panel leads to. */
+export const NOTIFICATIONS_PATH = "/notifications";
 /** How many watchers the watchers dialog lists, the most the API gives at once. */
 export const WATCHERS_LIMIT = 100;
 /** How many of the caller's watches one page of the watching list shows, within the API's limit of 100. */
@@ -870,7 +873,7 @@ export const EXAMPLE_SPACE_POLL_MS = 1000;
 export const EXAMPLE_SPACE_SLOW_MS = 60_000;
 /** After this long, past the API's limit on one making, the page stops asking and says what to do. */
 export const EXAMPLE_SPACE_GIVE_UP_MS = 15 * 60_000;
-/** The other tools the avatar menu links to: the name each goes by, which is never translated, and its own mark under web/public. */
+/** The other tools the avatar menu links to: the name each goes by, which is never translated, and its own 96 px mark under web/public, one format for all. */
 export const CONNECTED_TOOLS = {
   armature: { name: "Armature", mark: "/tools/armature.webp" },
   exciter: { name: "Exciter", mark: "/tools/exciter.webp" },

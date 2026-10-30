@@ -2,10 +2,10 @@ import { localDateFormat } from "@/lib/format";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMarkRead, useNotifications, useUnreadCount, type Notification } from "@/api/notifications";
-import { Button, ErrorBanner, IconButton, Skeleton, cx } from "@/components/ui";
+import { Button, Count, ErrorBanner, IconButton, Skeleton, cx } from "@/components/ui";
 import { useAnchored, useEscape, useFocusReturn, useOutsidePress, type AnchoredSide } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
-import { UNREAD_BADGE_MAX } from "@/config";
+import { NOTIFICATION_SETTINGS_PATH, NOTIFICATIONS_PATH } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
 import { taskAnchor } from "@/features/tasks/taskAnchor";
@@ -40,7 +40,6 @@ export function NotificationBell({ side = "bottom" }: { side?: AnchoredSide }) {
   useOutsidePress(open, outside.current, close);
   useFocusReturn(open, panelRef, false);
   const place = useAnchored(open, wrapRef, panelRef, { align: "end", side });
-  const badge = unread > UNREAD_BADGE_MAX ? `${UNREAD_BADGE_MAX}+` : String(unread);
 
   return (
     <div ref={wrapRef} className="relative inline-flex">
@@ -53,15 +52,10 @@ export function NotificationBell({ side = "bottom" }: { side?: AnchoredSide }) {
         aria-controls={open ? panelId : undefined}
         data-action="notifications"
       />
-      {unread > 0 && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent"
-          data-unread-badge={unread}
-        >
-          {badge}
-        </span>
-      )}
+      {/* The button's name already says how many; the count is for the eye. */}
+      <span aria-hidden="true" className="pointer-events-none absolute -top-1 -right-1.5">
+        <Count count={unread} name="bell" says={t.notifications.unreadSaid(unread)} />
+      </span>
       {open && (
         <div
           ref={panelRef}
@@ -82,20 +76,8 @@ export function NotificationBell({ side = "bottom" }: { side?: AnchoredSide }) {
 function NotificationPanel({ titleId, onClose }: { titleId: string; onClose: () => void }) {
   const { data, error, isLoading, refetch } = useNotifications(true);
   const markRead = useMarkRead();
-  const navigate = useNavigate();
   const items = data?.notifications ?? [];
   const anyUnread = items.some((n) => n.readAt === null);
-
-  function follow(n: Notification) {
-    if (n.readAt === null) markRead.mutate({ ids: [n.id] });
-    onClose();
-    void navigate({
-      to: "/s/$spaceKey/p/$pageId/$slug",
-      params: { spaceKey: n.page.spaceKey, pageId: n.page.id, slug: pageSlug(n.page.title) },
-      search: n.threadId ? { thread: n.threadId } : {},
-      hash: n.taskId ? taskAnchor(n.taskId) : undefined,
-    });
-  }
 
   return (
     <>
@@ -129,34 +111,59 @@ function NotificationPanel({ titleId, onClose }: { titleId: string; onClose: () 
           <ul aria-labelledby={titleId}>
             {items.map((n) => (
               <li key={n.id}>
-                <button
-                  type="button"
-                  onClick={() => follow(n)}
-                  className={cx(
-                    "flex w-full items-start gap-2 rounded-control px-2 py-2 text-left hover:bg-surface-raised focus-visible:-outline-offset-2",
-                    n.readAt === null ? "text-ink" : "text-ink-muted",
-                  )}
-                  data-notification={n.kind}
-                  data-unread={n.readAt === null || undefined}
-                >
-                  <span aria-hidden="true" className={cx("mt-1.5 size-2 shrink-0 rounded-full", n.readAt === null ? "bg-accent" : "bg-transparent")} />
-                  <span className="min-w-0 flex-1">
-                    {n.readAt === null && <span className="sr-only">{t.notifications.unread}: </span>}
-                    <span className={cx("block text-sm", n.readAt === null && "font-medium")}>{sentence(n)}</span>
-                    {n.excerpt && <span className="mt-0.5 block truncate text-xs text-ink-muted">{n.excerpt}</span>}
-                    <span className="mt-0.5 block text-xs text-ink-subtle">{when.format(new Date(n.createdAt))}</span>
-                  </span>
-                </button>
+                <NotificationRow notification={n} onFollow={onClose} />
               </li>
             ))}
           </ul>
         )}
       </div>
-      <div className="border-t border-border px-3 py-2 text-sm">
-        <Link to="/settings/notifications" onClick={onClose} className="text-accent hover:underline" data-action="notification-settings">
+      <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-sm">
+        <Link to={NOTIFICATIONS_PATH} onClick={onClose} className="text-accent hover:underline" data-action="see-all-notifications">
+          {t.notifications.seeAll}
+        </Link>
+        <Link to={NOTIFICATION_SETTINGS_PATH} onClick={onClose} className="text-ink-muted hover:text-ink hover:underline" data-action="notification-settings">
           {t.notifications.settings}
         </Link>
       </div>
     </>
+  );
+}
+
+/** One notification as a button that marks it read and opens the page it is about, where on the page it happened. */
+export function NotificationRow({ notification: n, onFollow, className }: { notification: Notification; onFollow?: () => void; className?: string }) {
+  const markRead = useMarkRead();
+  const navigate = useNavigate();
+
+  function follow() {
+    if (n.readAt === null) markRead.mutate({ ids: [n.id] });
+    onFollow?.();
+    void navigate({
+      to: "/s/$spaceKey/p/$pageId/$slug",
+      params: { spaceKey: n.page.spaceKey, pageId: n.page.id, slug: pageSlug(n.page.title) },
+      search: n.threadId ? { thread: n.threadId } : {},
+      hash: n.taskId ? taskAnchor(n.taskId) : undefined,
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={follow}
+      className={cx(
+        "flex w-full items-start gap-2 rounded-control px-2 py-2 text-left hover:bg-surface-raised focus-visible:-outline-offset-2",
+        n.readAt === null ? "text-ink" : "text-ink-muted",
+        className,
+      )}
+      data-notification={n.kind}
+      data-unread={n.readAt === null || undefined}
+    >
+      <span aria-hidden="true" className={cx("mt-1.5 size-2 shrink-0 rounded-full", n.readAt === null ? "bg-accent" : "bg-transparent")} />
+      <span className="min-w-0 flex-1">
+        {n.readAt === null && <span className="sr-only">{t.notifications.unread}: </span>}
+        <span className={cx("block text-sm", n.readAt === null && "font-medium")}>{sentence(n)}</span>
+        {n.excerpt && <span className="mt-0.5 block truncate text-xs text-ink-muted">{n.excerpt}</span>}
+        <span className="mt-0.5 block text-xs text-ink-subtle">{when.format(new Date(n.createdAt))}</span>
+      </span>
+    </button>
   );
 }

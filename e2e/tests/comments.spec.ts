@@ -14,7 +14,7 @@ const DELIVERY_MS = 30_000;
 const comments = (page: Page) => page.locator("[data-comments]");
 const threads = (page: Page) => comments(page).locator("[data-thread]");
 const bell = (page: Page) => page.locator('[data-action="notifications"]');
-const badge = (page: Page) => page.locator("[data-unread-badge]");
+const badge = (page: Page) => page.locator('[data-count="bell"] [aria-hidden="true"]').first();
 const panel = (page: Page) => page.locator("[data-notification-panel]");
 
 const doc = (text: string) => ({ type: "doc" as const, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });

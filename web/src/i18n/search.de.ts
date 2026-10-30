@@ -4,6 +4,7 @@ import type { searchEn } from "./search.en";
 export const searchDe: typeof searchEn = {
   placeholder: "Seiten durchsuchen",
   shortcut: "Strg K",
+  shortcutMac: "Cmd K",
   title: "Suche",
   quickTitle: "Schnellsuche",
   quickLabel: "Finden Sie eine Seite über ihren Titel, oder drücken Sie die Eingabetaste, um alles zu durchsuchen",
@@ -13,6 +14,10 @@ export const searchDe: typeof searchEn = {
   found: "Seiten",
   places: "Gehe zu",
   placesCount: (count: number) => (count === 1 ? "1 Ziel" : `${count} Ziele`),
+  spaces: "Bereiche",
+  spacesCount: (count: number) => (count === 1 ? "1 Bereich" : `${count} Bereiche`),
+  actions: "Aktionen",
+  actionsCount: (count: number) => (count === 1 ? "1 Aktion" : `${count} Aktionen`),
   noRecent: "Hier stehen die Seiten, die Sie öffnen, die neueste zuerst.",
   noMatch: "Kein Seitentitel beginnt so. Drücken Sie die Eingabetaste, um überall nach den Wörtern zu suchen.",
   searchEverything: (q: string) => (q ? `Eingabetaste durchsucht alles nach ${q}` : "Eingabetaste öffnet die volle Suche"),

@@ -2,6 +2,7 @@
 export const searchEn = {
   placeholder: "Search pages",
   shortcut: "Ctrl K",
+  shortcutMac: "Cmd K",
   title: "Search",
   quickTitle: "Quick search",
   quickLabel: "Find a page by its title, or press Enter to search everything",
@@ -11,6 +12,10 @@ export const searchEn = {
   found: "Pages",
   places: "Go to",
   placesCount: (count: number) => (count === 1 ? "1 place" : `${count} places`),
+  spaces: "Spaces",
+  spacesCount: (count: number) => (count === 1 ? "1 space" : `${count} spaces`),
+  actions: "Actions",
+  actionsCount: (count: number) => (count === 1 ? "1 action" : `${count} actions`),
   noRecent: "Pages you open are listed here, the latest first.",
   noMatch: "No page title starts with that. Press Enter to search the words everywhere.",
   searchEverything: (q: string) => (q ? `Enter searches everything for ${q}` : "Enter opens the full search"),

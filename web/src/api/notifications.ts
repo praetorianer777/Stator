@@ -1,6 +1,6 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMutation } from "./mutation";
-import { NOTIFICATION_PANEL_SIZE, UNREAD_POLL_MS } from "@/config";
+import { NOTIFICATION_PANEL_SIZE, NOTIFICATIONS_PAGE_SIZE, UNREAD_POLL_MS } from "@/config";
 import { api } from "./client";
 import type { components } from "./schema";
 
@@ -53,6 +53,17 @@ export function useNotifications(enabled: boolean) {
     queryKey: [...notificationsQueryKey, "list"],
     queryFn: async () => (await api.GET("/notifications", { params: { query: { limit: NOTIFICATION_PANEL_SIZE } } })).data!,
     enabled,
+    staleTime: 0,
+  });
+}
+
+/** One page of the Notifications page: everything, or only what is unread, from offset on. */
+export function useNotificationPage(unread: boolean, offset: number) {
+  return useQuery({
+    queryKey: [...notificationsQueryKey, "page", unread, offset],
+    queryFn: async () =>
+      (await api.GET("/notifications", { params: { query: { unread: unread || undefined, limit: NOTIFICATIONS_PAGE_SIZE, offset } } })).data!,
+    placeholderData: keepPreviousData,
     staleTime: 0,
   });
 }

@@ -1,7 +1,8 @@
-import { guestSpaceOf, useMe } from "@/api/auth";
+import { guestSpaceOf, useMe, type Me } from "@/api/auth";
 import { useHub } from "@/api/hub";
 import type { IconName } from "@/components/icons";
 import {
+  APP_NAME,
   ARMATURE_SECTION_ID,
   ARMATURE_SETTINGS_PATH,
   AUDIT_PATH,
@@ -11,6 +12,7 @@ import {
   EXCITER_SETTINGS_PATH,
   HUB_SETTINGS_PATH,
   NOTIFICATION_SETTINGS_PATH,
+  NOTIFICATIONS_PATH,
   PROFILE_PATH,
   SETTINGS_PATH,
   SITE_PERMISSIONS_PATH,
@@ -65,6 +67,7 @@ export function placesFor(rules: PlaceRules): Place[] {
     { id: "home", area: "wiki", to: rules.homePath, icon: "Home", label: t.nav.home, exact: true },
     ...(rules.hubPath && !guest ? [{ id: "hub", area: "wiki" as const, to: rules.hubPath, icon: "Flag" as const, label: t.nav.hub }] : []),
     { id: "search", area: "wiki", to: "/search", icon: "Search", label: t.nav.search },
+    { id: "notifications", area: "wiki", to: NOTIFICATIONS_PATH, icon: "Bell", label: t.nav.notifications },
     { id: "reviews", area: "wiki", to: "/reviews", icon: "Seal", label: t.nav.reviews },
     { id: "tasks", area: "wiki", to: "/tasks", icon: "Checklist", label: t.nav.tasks },
     // A guest's organization is their one space, so the directory is not theirs.
@@ -98,6 +101,11 @@ export function placesFor(rules: PlaceRules): Place[] {
       ]
     : [];
   return [...wiki, ...you, ...settings];
+}
+
+/** What the installation is called where the shell names it: the organization's name, else the product's. */
+export function installationName(me: Me | undefined): string {
+  return me?.organization?.name || APP_NAME;
 }
 
 /** Whether a path lies in the settings area, which draws its own sidebar. */

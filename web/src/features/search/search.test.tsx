@@ -283,3 +283,33 @@ describe("a page view", () => {
     expect(sent.filter((r) => r.method === "POST")).toHaveLength(1);
   });
 });
+
+describe("the palette's groups", () => {
+  it("finds the spaces and what can be done, each in a group of its own", async () => {
+    stubApi({
+      "GET /spaces": { status: 200, body: { spaces: [space] } },
+      "GET /search/quick": { status: 200, body: { pages: [] } },
+    });
+    const router = await renderAt("/");
+    const input = await openPalette();
+    await userEvent.type(input, "crea");
+    const actions = await screen.findByRole("listbox", { name: "Actions" });
+    expect(within(actions).getByRole("option", { name: /Create space/ })).toBeInTheDocument();
+    await userEvent.clear(input);
+    await userEvent.type(input, space.name.slice(0, 3));
+    const spaces = await screen.findByRole("listbox", { name: "Spaces" });
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(spaces).getByRole("option", { name: new RegExp(space.name) })).toHaveAttribute("aria-selected", "true");
+    expect(await axeViolations({ popupOpen: true })).toEqual([]);
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/${space.key}`));
+  });
+
+  it("says Cmd K on a Mac and Ctrl K elsewhere", async () => {
+    stubApi({});
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    await renderAt("/");
+    const search = within(document.querySelector<HTMLElement>('[data-sidebar-group="wiki"]')!).getByRole("link", { name: /Search/ });
+    expect(search).toHaveTextContent("Cmd K");
+  });
+});

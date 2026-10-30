@@ -13,7 +13,7 @@ import { IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { PlaceCrumbs } from "./Crumbs";
-import { inSettings } from "./places";
+import { inSettings, installationName } from "./places";
 import { useSearchShortcut } from "./searchShortcut";
 import { rememberOutsideSettings } from "./settingsReturn";
 import { Sidebar } from "./Sidebar";
@@ -67,8 +67,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar narrow={narrow} drawerOpen={drawerOpen} onCloseDrawer={closeDrawer} settings={settings} />
       <div className="flex min-w-0 flex-1 flex-col">
         {narrow && (
-          // All that is left above the page on a narrow screen: the way into the drawer, and the bell.
-          <div className="flex h-10 shrink-0 items-center border-b border-border bg-surface px-2" data-nav-strip data-print-hide>
+          // All that is left above the page on a narrow screen: the way into the drawer, the installation, and the bell.
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-2" data-nav-strip data-print-hide>
             <IconButton
               icon={<Icon.Menu />}
               label={t.nav.openDrawer}
@@ -79,12 +79,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-controls={drawerOpen ? DRAWER_ID : undefined}
               data-action="drawer"
             />
-            {me?.organization && (
-              <div className="ml-auto">
-                <NotificationBell />
-              </div>
-            )}
-          </div>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+              {installationName(me)}
+            </span>
+            {me?.organization && <NotificationBell />}
+          </header>
         )}
         {/* Focusable only from the skip link, and not ringed then: it is where reading starts, not a control. */}
         <ThemeLoader />

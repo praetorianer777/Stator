@@ -86,7 +86,7 @@ describe("the count of people waiting", () => {
   it("shows beside single sign-on in an administrator's settings sidebar", async () => {
     stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol, dave] } } });
     await renderAt("/settings");
-    const item = await within(await settingsSidebar()).findByRole("link", { name: "Single sign-on 2 waiting" });
+    const item = await within(await settingsSidebar()).findByRole("link", { name: /^Single sign-on\W+2 waiting$/ });
     expect(within(item).getByText("2")).toBeInTheDocument();
   });
 

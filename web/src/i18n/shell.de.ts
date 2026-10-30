@@ -10,6 +10,7 @@ export const navDe: typeof navEn = {
   search: "Suche",
   tasks: "Meine Aufgaben",
   reviews: "Prüfungen",
+  notifications: "Benachrichtigungen",
   groupWiki: "Wiki",
   collapseSidebar: "Seitenleiste einklappen",
   expandSidebar: "Seitenleiste ausklappen",

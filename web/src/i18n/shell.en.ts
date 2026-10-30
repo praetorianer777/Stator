@@ -8,6 +8,7 @@ export const navEn = {
   search: "Search",
   tasks: "My tasks",
   reviews: "Reviews",
+  notifications: "Notifications",
   groupWiki: "Wiki",
   collapseSidebar: "Collapse the sidebar",
   expandSidebar: "Expand the sidebar",

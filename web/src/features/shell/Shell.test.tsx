@@ -29,6 +29,19 @@ describe("the shell", () => {
     expect(await screen.findByText("Welcome to Stator")).toBeInTheDocument();
   });
 
+  it("names the installation beside its mark at the head of the sidebar", async () => {
+    await renderAt("/");
+    const head = document.querySelector<HTMLElement>('[data-sidebar="open"] [data-sidebar-head]')!;
+    expect(head).toHaveTextContent("Demo");
+    expect(head.querySelector("[data-logo-mark]")).not.toBeNull();
+  });
+
+  it("keeps the rail's toggle inside its navigation", async () => {
+    await renderAt("/");
+    const everywhere = within(document.querySelector<HTMLElement>("[data-rail]")!).getByRole("navigation", { name: "Everywhere" });
+    expect(within(everywhere).getByRole("button", { name: "Collapse the sidebar" })).toBeInTheDocument();
+  });
+
   it("lists the rail in its order, the bell after Search and the avatar at the bottom", async () => {
     await renderAt("/");
     const rail = document.querySelector<HTMLElement>("[data-rail]")!;
@@ -36,7 +49,7 @@ describe("the shell", () => {
     const names = Array.from(everywhere.querySelectorAll<HTMLElement>("[data-nav], [data-action]")).map(
       (el) => el.getAttribute("data-nav") ?? el.getAttribute("data-action"),
     );
-    expect(names).toEqual(["home", "search", "notifications", "spaces", "tasks"]);
+    expect(names).toEqual(["sidebar", "home", "search", "notifications", "spaces", "tasks"]);
     const bottom = rail.lastElementChild as HTMLElement;
     expect(within(bottom).getByRole("button", { name: "Auto" })).toBeInTheDocument();
     expect(within(bottom).getByRole("button", { name: "Your account" })).toBeInTheDocument();
@@ -46,7 +59,7 @@ describe("the shell", () => {
     await renderAt("/");
     const wiki = document.querySelector<HTMLElement>('[data-sidebar-group="wiki"]')!;
     const names = Array.from(wiki.querySelectorAll<HTMLElement>("[data-nav]")).map((el) => el.getAttribute("data-nav"));
-    expect(names).toEqual(["home", "search", "reviews", "tasks", "spaces"]);
+    expect(names).toEqual(["home", "search", "notifications", "reviews", "tasks", "spaces"]);
     expect(within(wiki).getByRole("link", { name: /Reviews/ })).toHaveAttribute("href", "/reviews");
   });
 

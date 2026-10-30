@@ -33,7 +33,7 @@ async function signInFresh(browser: Browser, username: string, password: string)
 /** The badge beside single sign-on in the settings sidebar, read on a settings page, with a phone's drawer closed again. */
 async function expectWaiting(page: Page, count: number) {
   const opened = await openNavigation(page);
-  const badge = settingsSidebar(page).locator('[data-nav="sso-settings"] [data-join-badge]');
+  const badge = settingsSidebar(page).locator('[data-nav="sso-settings"] [data-count="join-requests"]');
   if (count === 0) await expect(badge).toHaveCount(0);
   else await expect(badge).toContainText(`${count} waiting`);
   if (opened) await page.keyboard.press("Escape");

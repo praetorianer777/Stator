@@ -1,6 +1,5 @@
 import { useWaitingReviews, type WaitingReview } from "@/api/reviews";
-import { Page, PageHeader, ErrorBanner, Skeleton } from "@/components/ui";
-import { UNREAD_BADGE_MAX } from "@/config";
+import { Page, PageHeader, ErrorBanner, Skeleton, Count } from "@/components/ui";
 import { PageLink } from "@/features/pages/PageLink";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
@@ -52,15 +51,5 @@ export function WaitingReviewsScreen() {
 export function WaitingReviewsCount() {
   const { data } = useWaitingReviews();
   const count = data?.length ?? 0;
-  if (count === 0) return null;
-  return (
-    <span
-      className="min-w-4 rounded-full bg-accent px-1 text-center text-2xs leading-4 font-medium text-on-accent"
-      title={t.waitingReviews.button(count)}
-      data-waiting-badge={count}
-    >
-      <span aria-hidden="true">{count > UNREAD_BADGE_MAX ? `${UNREAD_BADGE_MAX}+` : count}</span>
-      <span className="sr-only">{t.waitingReviews.button(count)}</span>
-    </span>
-  );
+  return <Count count={count} name="reviews" says={t.waitingReviews.button(count)} />;
 }

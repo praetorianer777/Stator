@@ -3,19 +3,21 @@ import { createPortal } from "react-dom";
 import { useRouter } from "@tanstack/react-router";
 import { administers, useJoinRequests, useMe } from "@/api/auth";
 import { brandLogoHref, useBrand } from "@/api/brand";
-import { IconButton } from "@/components/ui";
+import { Count, IconButton } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
 import { LogoMark } from "@/components/Logo";
-import { APP_NAME, BRAND_LOGO_HEIGHT_PX, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
+import { BRAND_LOGO_HEIGHT_PX, SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH } from "@/config";
+import { UnreadCount } from "@/features/notifications/NotificationsPage";
 import { WaitingReviewsCount } from "@/features/reviews/WaitingReviews";
 import { SpaceNav } from "@/features/spaces/SpaceNav";
 import { t } from "@/i18n";
 import { AccountMenu } from "./AccountMenu";
 import { BuildStamp } from "./BuildStamp";
 import { NavItem } from "./nav";
-import { usePlaces, type Place } from "./places";
+import { installationName, usePlaces, type Place } from "./places";
 import { Rail } from "./Rail";
+import { searchShortcutHint } from "./searchShortcut";
 import { settingsReturn } from "./settingsReturn";
 import { SidebarGroup } from "./SidebarGroup";
 import { DRAWER_ID, SIDEBAR_ID, useSidebarGroups, useSidebarMode } from "./state";
@@ -39,6 +41,7 @@ export function Sidebar({
   settings: boolean;
 }) {
   const [mode, toggleMode] = useSidebarMode();
+  const { data: me } = useMe();
   const open = mode === "open";
   const groups = settings ? <SettingsGroups onNavigate={narrow ? onCloseDrawer : undefined} /> : <WikiGroups onNavigate={narrow ? onCloseDrawer : undefined} />;
 
@@ -59,9 +62,11 @@ export function Sidebar({
           data-print-hide
           aria-label={settings ? t.settings.navigation : t.nav.whereYouAre}
         >
-          <div className="flex h-12 items-center gap-2 border-b border-border px-3">
+          <div className="flex h-12 items-center gap-2 border-b border-border px-3" data-sidebar-head>
             <SiteMark />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{APP_NAME}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+              {installationName(me)}
+            </span>
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 py-3">{groups}</div>
@@ -99,8 +104,9 @@ function WikiGroups({ onNavigate }: { onNavigate?: () => void }) {
   const trailing: Record<string, ReactNode> = {
     // On the current item the hint takes the accent: subtle ink is too faint
     // on the accent tint in the dark palette.
-    search: <kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{t.search.shortcut}</kbd>,
+    search: <kbd className="font-mono text-2xs text-ink-subtle in-data-[status=active]:text-accent">{searchShortcutHint()}</kbd>,
     reviews: me?.organization ? <WaitingReviewsCount /> : null,
+    notifications: me?.organization ? <UnreadCount /> : null,
   };
   const places = usePlaces().filter((place) => place.area === "wiki");
   return (
@@ -126,7 +132,7 @@ function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
   const places = usePlaces();
   const you = places.filter((place) => place.area === "you");
   const settings = places.filter((place) => place.area === "settings");
-  const trailing: Record<string, ReactNode> = { "sso-settings": <JoinRequestsBadge /> };
+  const trailing: Record<string, ReactNode> = { "sso-settings": <JoinRequestsCount /> };
   const router = useRouter();
   const back = settingsReturn();
   return (
@@ -159,22 +165,17 @@ function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /** How many people wait to be let in, beside Single sign-on; asked only of those the list answers. */
-function JoinRequestsBadge() {
+function JoinRequestsCount() {
   const { data: me } = useMe();
   const waiting = useJoinRequests(administers(me?.organization?.role)).data?.length ?? 0;
-  if (waiting === 0) return null;
-  return (
-    <span className="rounded-full bg-accent px-1.5 text-2xs font-medium text-on-primary" data-join-badge>
-      <span aria-hidden="true">{waiting}</span>
-      <span className="sr-only">{t.sso.waitingCount(waiting)}</span>
-    </span>
-  );
+  return <Count count={waiting} name="join-requests" says={t.sso.waitingCount(waiting)} />;
 }
 
 // A modal panel from the left: the page stays in view behind the scrim but out
 // of reach, focus is held inside, and it hands focus back to the menu button.
 function SidebarDrawer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  const { data: me } = useMe();
   useEscape(true, onClose);
   useFocusReturn(true, ref, true);
   // The scrim closes on the click, not on the press: closing on the press
@@ -195,8 +196,11 @@ function SidebarDrawer({ onClose, children }: { onClose: () => void; children: R
         className="flex h-full flex-col border-r border-border bg-surface shadow-2 motion-safe:animate-drawer-in"
         data-sidebar="drawer"
       >
-        <div className="flex h-12 items-center gap-2 border-b border-border px-3">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{APP_NAME}</span>
+        <div className="flex h-12 items-center gap-2 border-b border-border px-3" data-sidebar-head>
+          <SiteMark />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink" data-installation-name>
+            {installationName(me)}
+          </span>
           <IconButton icon={<Icon.X />} label={t.nav.closeDrawer} size="sm" onClick={onClose} data-focus-last="" data-action="close-drawer" />
         </div>
         <nav aria-label={t.nav.whereYouAre} className="flex-1 overflow-y-auto px-2 py-3">

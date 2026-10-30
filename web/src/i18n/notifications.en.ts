@@ -8,6 +8,18 @@ export const notificationsEn = {
   unread: "Unread",
   failed: "Your notifications could not be loaded. Try again in a moment.",
   settings: "Notification settings",
+  seeAll: "See all notifications",
+  unreadSaid: (n: number) => (n === 1 ? "1 unread" : `${n} unread`),
+  page: {
+    show: "Show",
+    unread: "Unread",
+    everything: "Everything",
+    nothingUnread: "Nothing unread",
+    nothingYet: "No notifications yet",
+    emptyHint: "You are told here about the pages you watch, the tasks given to you and the drafts you are asked to review.",
+    pager: "Pages of notifications",
+    noun: { one: "notification", many: "notifications" },
+  },
   sentence: (kind: string, actor: string, title: string, version: number | null, inComment = false) => {
     const who = actor || "Somebody";
     switch (kind) {

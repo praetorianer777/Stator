@@ -56,7 +56,7 @@ test.describe("blog posts", { tag: ["@auth"] }, () => {
       await expect(page.locator("[data-draft-status]")).toHaveAttribute("data-draft-status", "saved");
       await publishFromEditor(page);
       await expect(page.locator("[data-post-date]")).toContainText("Posted on");
-      await expect(page.locator("[data-blog-crumb]")).toBeVisible();
+      await expect(page.locator('[data-crumb="blog"]')).toBeVisible();
 
       await page.goto(blogPath);
       await expect(page.locator("[data-post-title]")).toHaveAttribute("data-post-title", "Launch day");
