@@ -43,7 +43,7 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     test.slow();
     await page.goto("/spaces");
     await page.locator('[data-action="create-example-space"]').click();
-    await expect(page).toHaveURL(new RegExp(`/s/${KEY}$`), MAKING);
+    await expect(page).toHaveURL(new RegExp(`/spaces/${KEY}$`), MAKING);
     await expect(page.getByRole("heading", { level: 1, name: "Getting to know Stator" })).toBeVisible();
 
     const doc = page.locator("[data-doc]").first();
@@ -61,7 +61,7 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
 
     // Everybody reads it, and nobody but an administrator is offered to make it.
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${KEY}`, () => expect(bob.locator("[data-doc]").getByRole("link", { name: SHOWCASE }).first()).toBeVisible(ONE_LOOK));
+    await openUntil(bob, `/spaces/${KEY}`, () => expect(bob.locator("[data-doc]").getByRole("link", { name: SHOWCASE }).first()).toBeVisible(ONE_LOOK));
     await bob.goto("/spaces");
     await expect(bob.getByRole("link", { name: "Getting to know Stator" })).toBeVisible();
     await expect(bob.locator('[data-action="create-example-space"]')).toHaveCount(0);
@@ -71,7 +71,7 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     await page.locator('[data-action="create-example-space"]').click();
     await expect(page.locator("[data-example-exists]")).toContainText("The example space exists already");
     await page.locator("[data-example-exists]").getByRole("link", { name: "Getting to know Stator" }).click();
-    await expect(page).toHaveURL(new RegExp(`/s/${KEY}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${KEY}$`));
   });
 
   test("an administrator sees that a newer one is available, renews it, and reads the new guide", async ({ page, api }) => {
@@ -91,7 +91,7 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     await expect(page.getByRole("heading", { level: 1, name: "Moving pages in and out" })).toBeVisible();
     await expect(page.locator("[data-doc]").first()).toContainText("Import space");
 
-    await page.goto(`/s/${KEY}`);
+    await page.goto(`/spaces/${KEY}`);
     await expect(page.getByRole("heading", { level: 1, name: "Getting to know Stator" })).toBeVisible();
     await expect(page.locator("[data-example-renewal]")).toHaveCount(0);
   });

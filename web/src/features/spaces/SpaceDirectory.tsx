@@ -96,7 +96,7 @@ function SpaceTable({ spaces, third, cell }: { spaces: Space[]; third: string; c
         {spaces.map((space) => (
           <tr key={space.id} data-space-row={space.key} data-archived={space.archivedAt ? "" : undefined}>
             <Td>
-              <Link to="/s/$spaceKey" params={{ spaceKey: space.key }} className="font-medium text-ink hover:text-accent hover:underline">
+              <Link to="/spaces/$spaceKey" params={{ spaceKey: space.key }} className="font-medium text-ink hover:text-accent hover:underline">
                 {space.name}
               </Link>
               {space.archivedAt && <ArchivedMark className="ml-2 align-middle" />}

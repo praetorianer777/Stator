@@ -16,7 +16,7 @@ const viewsButton = (page: Page) => page.locator("[data-page-views]");
 const dialog = (page: Page) => page.locator("[data-page-views-dialog]");
 const reader = (page: Page, name: string) => dialog(page).locator(`[data-reader="${name}"]`);
 
-const pathOf = (spaceKey: string, target: WikiPage) => `/s/${spaceKey}/p/${target.id}/page`;
+const pathOf = (spaceKey: string, target: WikiPage) => `/spaces/${spaceKey}/p/${target.id}/page`;
 
 /** Opens the page until its line under the title counts the views wanted. */
 async function openCounted(page: Page, spaceKey: string, target: WikiPage, views: number, then?: () => Promise<unknown>) {

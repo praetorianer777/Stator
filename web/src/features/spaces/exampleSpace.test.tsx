@@ -76,7 +76,7 @@ describe("the example space on the spaces overview", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Create the example space" }));
     expect(await screen.findByRole("status")).toHaveTextContent("The example space is being made.");
     expect(screen.getByRole("button", { name: "Creating the example space" })).toBeDisabled();
-    await arrival(router, "/s/STATOR");
+    await arrival(router, "/spaces/STATOR");
     const asks = sent.filter((r) => r.method === "POST" && r.path === "/example-space");
     expect(asks.map((r) => r.body)).toEqual([{ language: "en" }]);
   });
@@ -93,7 +93,7 @@ describe("the example space on the spaces overview", () => {
     });
     const router = await renderAt("/spaces");
     expect(await screen.findByRole("button", { name: "Creating the example space" })).toBeDisabled();
-    await arrival(router, "/s/STATOR");
+    await arrival(router, "/spaces/STATOR");
     expect(sent.some((r) => r.method === "POST" && r.path === "/example-space")).toBe(false);
   });
 
@@ -131,7 +131,7 @@ describe("the example space on the spaces overview", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Create the example space" }));
     const said = await screen.findByRole("status");
     expect(said).toHaveTextContent("The example space exists already:");
-    expect(screen.getByRole("link", { name: "Getting to know Stator" })).toHaveAttribute("href", "/s/STATOR");
+    expect(screen.getByRole("link", { name: "Getting to know Stator" })).toHaveAttribute("href", "/spaces/STATOR");
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -203,8 +203,8 @@ describe("renewing the example space", () => {
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(screen.getByRole("button", { name: "Renew the example space" }));
     expect(await screen.findByText("The example space is renewed.")).toHaveAttribute("role", "status");
-    expect(screen.getByRole("link", { name: "Moving pages in and out" })).toHaveAttribute("href", "/s/STATOR/p/p-new/moving-pages-in-and-out");
-    expect(screen.getByRole("link", { name: "Our labels" })).toHaveAttribute("href", "/s/STATOR/p/p-kept/our-labels");
+    expect(screen.getByRole("link", { name: "Moving pages in and out" })).toHaveAttribute("href", "/spaces/STATOR/p/p-new/moving-pages-in-and-out");
+    expect(screen.getByRole("link", { name: "Our labels" })).toHaveAttribute("href", "/spaces/STATOR/p/p-kept/our-labels");
     expect(sent.filter((r) => r.path === "/example-space/renew").map((r) => r.body)).toEqual([{}]);
     expect(router.state.location.pathname).toBe("/spaces");
     expect(await axeViolations()).toEqual([]);
@@ -230,13 +230,13 @@ describe("renewing the example space", () => {
 
   it("is offered on the example's home page to administrators", async () => {
     stubApi({ ...opened, "GET /example-space": { status: 200, body: { space: example, job: made, edition: older } } });
-    await renderAt("/s/STATOR");
+    await renderAt("/spaces/STATOR");
     expect(await screen.findByRole("button", { name: "Renew the example space" })).toBeEnabled();
   });
 
   it("is never asked about on the example's home page by a member", async () => {
     const sent = stubApi(opened);
-    await renderAt("/s/STATOR", { me: member });
+    await renderAt("/spaces/STATOR", { me: member });
     await screen.findAllByRole("heading", { level: 1 });
     expect(screen.queryByRole("button", { name: "Renew the example space" })).toBeNull();
     expect(sent.some((r) => r.path === "/example-space")).toBe(false);

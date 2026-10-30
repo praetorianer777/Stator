@@ -116,13 +116,7 @@ function WikiGroups({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
         {wiki.map((place) => placeItem(place, onNavigate, trailing[place.id]))}
       </SidebarGroup>
-      <SpaceNav
-        open={isOpen("space", true)}
-        onToggle={() => toggleGroup("space", true)}
-        adminOpen={isOpen("space-admin", false)}
-        onToggleAdmin={() => toggleGroup("space-admin", false)}
-        onNavigate={onNavigate}
-      />
+      <SpaceNav open={isOpen("space", true)} onToggle={() => toggleGroup("space", true)} onNavigate={onNavigate} />
       {administers && <div className="mt-3">{placeItem(adminEntry(), onNavigate, <JoinRequestsCount />)}</div>}
     </>
   );

@@ -69,7 +69,7 @@ test.describe("the avatar menu and the settings area", { tag: ["@auth"] }, () =>
     const gina = await createPerson(`gina-${key}`, `Gina ${key}`, "guest", key);
     try {
       const guest = await pageAs(gina);
-      await openShell(guest, `/s/${key}`);
+      await openShell(guest, `/spaces/${key}`);
       expect(await accountEntries(guest)).toEqual(["profile", "notification-settings", "watching", "themes", "sign-out"]);
       await openNavigation(guest);
       for (const absent of ["hub", "spaces"]) await expect(guest.locator(`[data-nav="${absent}"]`)).toHaveCount(0);

@@ -88,7 +88,7 @@ describe("the Notifications page", () => {
     const router = await renderAt("/notifications");
     const list = await screen.findByRole("list", { name: "Notifications" });
     await userEvent.click(within(list).getByRole("button", { name: /Bob Builder published version 3 of Runbook/ }));
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${runbookId}/runbook`));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${runbookId}/runbook`));
     expect(sent.find((r) => r.method === "POST" && r.path === "/notifications/read")?.body).toEqual({ ids: [fresh.id] });
   });
 

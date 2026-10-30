@@ -23,7 +23,7 @@ function ExistingExample({ space }: { space: Space }) {
   return (
     <p className="text-sm text-ink" role="status" data-example-exists="">
       {t.exampleSpace.exists}{" "}
-      <Link to="/s/$spaceKey" params={{ spaceKey: space.key }} className="font-medium text-accent hover:underline">
+      <Link to="/spaces/$spaceKey" params={{ spaceKey: space.key }} className="font-medium text-accent hover:underline">
         {space.name}
       </Link>
       {space.archivedAt && <span className="text-ink-muted"> {t.exampleSpace.archived}</span>}
@@ -67,7 +67,7 @@ function useMakeExample(admin: boolean) {
   useEffect(() => {
     if (!madeKey) return;
     void exampleSpaceMade(queryClient);
-    void navigate({ to: "/s/$spaceKey", params: { spaceKey: madeKey } });
+    void navigate({ to: "/spaces/$spaceKey", params: { spaceKey: madeKey } });
   }, [madeKey, navigate, queryClient]);
 
   const run = () => make.mutate();

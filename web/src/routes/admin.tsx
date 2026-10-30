@@ -49,8 +49,8 @@ export function movedAddress(section: string, rest = "", search: Record<string, 
   if (!moved) return undefined;
   const after = hash ? `#${hash}` : "";
   const space = typeof search.space === "string" && search.space ? encodeURIComponent(search.space.toUpperCase()) : "";
-  if (space && section === "stale" && !rest) return `/s/${space}/settings/stale${after}`;
-  if (space && section === "templates" && rest === "new") return `/s/${space}/settings/templates/new${after}`;
+  if (space && section === "stale" && !rest) return `/spaces/${space}/settings/general/stale${after}`;
+  if (space && section === "templates" && rest === "new") return `/spaces/${space}/settings/templates/new${after}`;
   return `${ADMIN_PATH}/${moved}${rest ? `/${rest}` : ""}${searchStr}${after}`;
 }
 

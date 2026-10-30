@@ -140,8 +140,8 @@ describe("the addresses of before", () => {
   });
 
   it("send a space's stale pages and new template below the space's settings", () => {
-    expect(movedAddress("stale", "", { space: "docs" })).toBe("/s/DOCS/settings/stale");
-    expect(movedAddress("templates", "new", { space: "DOCS" })).toBe("/s/DOCS/settings/templates/new");
+    expect(movedAddress("stale", "", { space: "docs" })).toBe("/spaces/DOCS/settings/general/stale");
+    expect(movedAddress("templates", "new", { space: "DOCS" })).toBe("/spaces/DOCS/settings/templates/new");
   });
 
   it("leave the person's own pages where they are, and find nothing at an address that never was", async () => {

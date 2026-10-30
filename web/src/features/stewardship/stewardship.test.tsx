@@ -15,7 +15,7 @@ afterEach(() => {
 
 const home = aPage();
 const pageId = "0195f000-0000-7000-8000-0000000000c1";
-const PATH = `/s/DOCS/p/${pageId}/runbook`;
+const PATH = `/spaces/DOCS/p/${pageId}/runbook`;
 const ann: Owner = { id: "0195f000-0000-7000-8000-0000000000a1", name: "Ann Owner", canView: true };
 const verified: Verification = {
   status: "verified",

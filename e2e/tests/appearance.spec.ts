@@ -73,7 +73,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
   test("an editor gives a page an emoji, a full width and an uploaded cover, which stay", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Looks");
     const plans = await createPage(api, space.homePageId, "Plans", { type: "doc", content: [paragraph("What we will do.")] });
-    const path = `/s/${space.key}/p/${plans.id}/plans`;
+    const path = `/spaces/${space.key}/p/${plans.id}/plans`;
     await openShowing(page, path, "What we will do.");
     await chooseAppearance(page);
 
@@ -100,7 +100,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
     await page.setViewportSize({ width: WIDE_WINDOW_PX, height: 900 });
     const space = await freshSpace(api, testInfo, "Width");
     const notes = await createPage(api, space.homePageId, "Notes", wideDoc);
-    const path = `/s/${space.key}/p/${notes.id}/notes`;
+    const path = `/spaces/${space.key}/p/${notes.id}/notes`;
     await openShowing(page, path, "A line of notes");
     await expect(article(page)).toHaveAttribute("data-page-width", "fixed");
     const rootPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
@@ -140,7 +140,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
     await page.setViewportSize(PHONE);
     const space = await freshSpace(api, testInfo, "Phone");
     const notes = await createPage(api, space.homePageId, "Notes", wideDoc);
-    const path = `/s/${space.key}/p/${notes.id}/notes`;
+    const path = `/spaces/${space.key}/p/${notes.id}/notes`;
     const sideways = () => page.evaluate(() => [document.documentElement, document.querySelector("main")!].some((el) => el.scrollWidth > el.clientWidth));
     await openShowing(page, path, "A line of notes");
     await expect(page.locator("main [data-doc] > .doc-diagram")).toBeVisible();
@@ -156,7 +156,7 @@ test.describe("page appearance", { tag: ["@auth"] }, () => {
       const space = await freshSpace(api, testInfo, "Axe");
       const plans = await createPage(api, space.homePageId, "Plans", { type: "doc", content: [paragraph("Seen in a frame.")] });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${plans.id}/plans`, "Seen in a frame.");
+      await openShowing(page, `/spaces/${space.key}/p/${plans.id}/plans`, "Seen in a frame.");
       await chooseAppearance(page);
       await expect(article(page).locator("[data-page-cover] img")).toBeVisible();
       await expectAccessible(page);

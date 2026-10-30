@@ -22,7 +22,7 @@ async function sidebarShortcuts(page: Page, testInfo: TestInfo) {
 
 /** Opens a space until its sidebar lists the shortcuts named. */
 async function expectSidebar(page: Page, testInfo: TestInfo, key: string, names: string[]) {
-  await openUntil(page, `/s/${key}`, async () => {
+  await openUntil(page, `/spaces/${key}`, async () => {
     const list = await sidebarShortcuts(page, testInfo);
     await expect(list.getByRole("listitem")).toHaveText(names, ONE_LOOK);
   });
@@ -50,8 +50,8 @@ test.describe("space shortcuts", { tag: ["@auth"] }, () => {
   }, testInfo) => {
     const { key, runbook } = await freshSpace(api, testInfo, "Shortcuts");
 
-    await page.goto(`/s/${key}/settings?tab=shortcuts`);
-    await expect(page.getByRole("tab", { name: "Shortcuts" })).toHaveAttribute("aria-selected", "true");
+    await page.goto(`/spaces/${key}/settings/integrations`);
+    await expect(page.getByRole("tab", { name: "Integrations" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByText("No shortcuts yet. Add a page or a web address below.")).toBeVisible();
     const pagePicker = page.getByLabel("Page", { exact: true });
     await expect(pagePicker).toBeEnabled();
@@ -96,7 +96,7 @@ test.describe("space shortcuts", { tag: ["@auth"] }, () => {
 
     const bob = await pageAs("bob");
     await expectSidebar(bob, testInfo, key, ["Status(opens in a new tab)", runbook.title]);
-    await bob.goto(`/s/${key}/settings?tab=shortcuts`);
+    await bob.goto(`/spaces/${key}/settings/integrations`);
     await expect(bob.getByText("Only an administrator of this space can add, move or remove its shortcuts. Ask one of them.")).toBeVisible();
     await expect(panelRows(bob)).toHaveCount(2);
     await expect(bob.getByRole("button", { name: /^(Move|Remove) / })).toHaveCount(0);
@@ -132,7 +132,7 @@ test.describe("space shortcuts", { tag: ["@auth"] }, () => {
       must(await api.POST("/spaces/{spaceKey}/shortcuts", { params: { path: { spaceKey: key } }, body: { pageId: runbook.id } }));
       await startInScheme(page, scheme);
 
-      await page.goto(`/s/${key}/settings?tab=shortcuts`);
+      await page.goto(`/spaces/${key}/settings/integrations`);
       await expect(panelRows(page)).toHaveCount(1);
       await page.getByRole("button", { name: "A web address" }).focus();
       await page.keyboard.press("Enter");

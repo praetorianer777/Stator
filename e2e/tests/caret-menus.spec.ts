@@ -41,7 +41,7 @@ test.describe("menus at the caret", { tag: ["@auth", "@desktop"] }, () => {
 
   test("the slash menu stays inside the window with the caret on the last line", async ({ page, api }, testInfo) => {
     const { space, page: doc } = await longPage(api, testInfo);
-    await openUntil(page, `/s/${space.key}/p/${doc.id}/long/edit`, () => expect(editorBox(page)).toContainText(`Line ${LINES}`, ONE_LOOK));
+    await openUntil(page, `/spaces/${space.key}/p/${doc.id}/long/edit`, () => expect(editorBox(page)).toContainText(`Line ${LINES}`, ONE_LOOK));
     await caretTo(editorBox(page), "end");
     await page.keyboard.press("Enter");
     await page.keyboard.type("/");
@@ -57,7 +57,7 @@ test.describe("menus at the caret", { tag: ["@auth", "@desktop"] }, () => {
 
   test("it opens below the caret when the caret is near the top", async ({ page, api }, testInfo) => {
     const { space, page: doc } = await longPage(api, testInfo);
-    await openUntil(page, `/s/${space.key}/p/${doc.id}/long/edit`, () => expect(editorBox(page)).toContainText("Line 1 ", ONE_LOOK));
+    await openUntil(page, `/spaces/${space.key}/p/${doc.id}/long/edit`, () => expect(editorBox(page)).toContainText("Line 1 ", ONE_LOOK));
     await caretTo(editorBox(page), "start");
     await page.keyboard.type("/");
     const menu = page.locator("[data-slash-menu]");

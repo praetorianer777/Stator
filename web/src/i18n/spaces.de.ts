@@ -52,11 +52,7 @@ export const spaceDe: typeof spaceEn = {
   blog: "Blog",
   decisions: "Entscheidungen",
   home: "Startseite des Bereichs",
-  settings: "Bereichseinstellungen",
-  trash: "Papierkorb",
-  archive: "Archiv",
-  admin: "Bereichsverwaltung",
-  stale: "Veraltete Seiten",
+  settings: "Einstellungen",
   switcher: "Bereich wechseln",
   chooseSpace: "Bereich wählen",
   filterSpaces: "Bereiche filtern",
@@ -65,20 +61,29 @@ export const spaceDe: typeof spaceEn = {
 };
 
 export const spaceSettingsDe: typeof spaceSettingsEn = {
-  title: "Bereichseinstellungen",
+  title: "Einstellungen",
   tabs: "Bereichseinstellungen",
+  sections: {
+    general: "Allgemein",
+    workflow: "Workflow",
+    templates: "Vorlagen",
+    members: "Mitglieder und Berechtigungen",
+    integrations: "Integrationen",
+    export: "Import und Export",
+    trash: "Papierkorb und Archiv",
+  },
   details: "Angaben",
-  permissions: "Berechtigungen",
-  templates: "Vorlagen",
   trash: "Papierkorb",
   archive: "Archiv",
-  export: "Export",
-  reviews: "Prüfungen",
-  shortcuts: "Verknüpfungen",
   stale: "Veraltete Seiten",
+  staleIntro: "Die Seiten dieses Bereichs, die länger niemand geprüft hat, und wer sich um sie kümmert.",
+  staleOpen: "Veraltete Seiten öffnen",
   save: "Angaben speichern",
   saved: "Gespeichert.",
-  notAdmin: "Nur ein Administrator dieses Bereichs kann seine Angaben ändern. Fragen Sie einen von ihnen oder einen Administrator der Installation.",
+  readOnly: "Nur die Administratoren des Bereichs ändern seine Einstellungen. Fragen Sie einen von ihnen oder bitten Sie um die Rolle.",
+  notAdmin: "Nur die Administratoren des Bereichs ändern seine Einstellungen",
+  notAdminDetail: "Fragen Sie einen von ihnen oder bitten Sie um die Rolle.",
+  inPalette: (space: string) => `${space} / Einstellungen`,
   dangerTitle: "Diesen Bereich löschen",
   dangerBody: "Mit dem Bereich werden alle Seiten darin endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
   delete: "Bereich löschen",
@@ -107,7 +112,6 @@ export const spaceSettingsDe: typeof spaceSettingsEn = {
   notTrasher:
     "Nur wer in diesem Bereich Seiten löschen darf, sieht seinen Papierkorb. Fragen Sie einen Administrator des Bereichs, wenn Sie eine Seite zurück brauchen.",
   notPurger: "Nur ein Administrator dieses Bereichs kann Seiten endgültig löschen.",
-  guests: "Gäste",
 };
 
 export const archiveDe: typeof archiveEn = {
@@ -142,8 +146,8 @@ export const archiveDe: typeof archiveEn = {
       ? `${who} hat diesen Bereich am ${when} archiviert. Sie können seine Seiten lesen, aber niemand kann sie ändern.`
       : `Dieser Bereich wurde am ${when} archiviert. Sie können seine Seiten lesen, aber niemand kann sie ändern.`,
   spaceArchive: "Bereich archivieren",
+  undo: "Rückgängig",
   spaceUnarchive: "Bereich aus dem Archiv holen",
-  confirmArchiveSpace: "Seine Seiten bleiben lesbar, aber niemand kann sie ändern, bis ein Administrator des Bereichs ihn aus dem Archiv holt.",
   spaceUnarchived: "Der Bereich wurde aus dem Archiv geholt.",
   showArchived: "Archivierte Bereiche zeigen",
   searchFilter: "Archivierte Seiten einbeziehen",

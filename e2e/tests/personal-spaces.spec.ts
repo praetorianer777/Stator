@@ -27,7 +27,7 @@ test.describe("personal spaces", { tag: ["@auth"] }, () => {
     await expect(page.getByLabel("Name", { exact: true })).toHaveValue(/'s space$/);
     await page.getByLabel("Key", { exact: true }).fill(key);
     await page.locator('[data-action="create-space"]').click();
-    await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${key}$`));
     // The heading names the space once it has loaded, not while it does.
     await expect(heading(page)).toHaveText(/'s space$/);
     const name = await heading(page).textContent();
@@ -40,13 +40,13 @@ test.describe("personal spaces", { tag: ["@auth"] }, () => {
     await bob.goto("/spaces");
     await expect(bob.locator("[data-space-directory]")).toBeVisible();
     await expect(bob.locator(`[data-space-row="${key}"]`)).toHaveCount(0);
-    await bob.goto(`/s/${key}`);
+    await bob.goto(`/spaces/${key}`);
     await expect(bob.getByText(/not found/i).first()).toBeVisible();
 
     await setSpaceGrants(api, key, [{ subject: { type: "everyone" }, permissions: ["view"] }]);
     await openShowing(bob, "/spaces", personal(bob).locator(`[data-space-row="${key}"]`));
     await expect(personal(bob).locator(`[data-space-row="${key}"]`)).not.toContainText("You");
-    await bob.goto(`/s/${key}`);
+    await bob.goto(`/spaces/${key}`);
     await expect(heading(bob)).toHaveText(name ?? "");
   });
 
@@ -61,7 +61,7 @@ test.describe("personal spaces", { tag: ["@auth"] }, () => {
       const key = uniqueKey(testInfo);
       await bob.getByLabel("Key", { exact: true }).fill(key);
       await bob.locator('[data-action="create-space"]').click();
-      await expect(bob).toHaveURL(new RegExp(`/s/${key}$`));
+      await expect(bob).toHaveURL(new RegExp(`/spaces/${key}$`));
       made.push(key);
       await bob.goto("/spaces");
       await expect(personal(bob).locator(`[data-space-row="${key}"]`)).toBeVisible();

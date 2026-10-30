@@ -70,6 +70,19 @@ and the versioning [Semantic Versioning](https://semver.org/).
   Set up or Save and "Turn it off". Scopes, creating groups and the callback
   address leave the form and stay in the API for dynamo-connect (#584).
 - The pages say "installation", "people" and "administrator" (#584).
+- A space lives at `/spaces/{key}`, and its settings at
+  `/spaces/{key}/settings/{section}`, one address per section, as the suite's
+  standard lays them out: General (the details, a link to the stale pages,
+  archiving and deleting), Workflow, Templates, Members and permissions,
+  Integrations, Import and export, and Trash and archive. The tabs sit in the
+  page header, and one Settings entry in the space's sidebar and the palette
+  replaces the folded Space admin group. Every member sees the settings,
+  read-only where they may not change them; a section only administrators
+  use is hidden, and opened by its address says who to ask. Archiving a
+  space happens at once and offers Undo. Mails, notifications, webhooks,
+  issues filed in Armature and imported pages link to `/spaces/`, and every
+  `/s/{key}` and `/public/s/{key}` address people hold, an old
+  `/settings?tab=` among them, leads to where it now lives (#586).
 
 ## [0.2.1] - 2026-10-29
 

@@ -94,7 +94,7 @@ function NewPostDialog({ spaceKey, onClose }: { spaceKey: string; onClose: () =>
       },
       {
         onSuccess: (made) =>
-          void navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: made.spaceKey, pageId: made.id, slug: pageSlug(made.title) } }),
+          void navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: made.spaceKey, pageId: made.id, slug: pageSlug(made.title) } }),
       },
     );
   }
@@ -210,7 +210,7 @@ function DateNav({ spaceKey, months, filter }: { spaceKey: string; months: BlogM
         value={current}
         onChange={(event) => {
           const [year, month] = event.target.value.split("-").map(Number);
-          void navigate({ to: "/s/$spaceKey/blog", params: { spaceKey }, search: year ? (month ? { year, month } : { year }) : {} });
+          void navigate({ to: "/spaces/$spaceKey/blog", params: { spaceKey }, search: year ? (month ? { year, month } : { year }) : {} });
         }}
       >
         <option value="">{t.blog.allPosts}</option>
@@ -228,7 +228,7 @@ function DateNav({ spaceKey, months, filter }: { spaceKey: string; months: BlogM
       <ul className="hidden space-y-1 md:block">
         <li>
           <Link
-            to="/s/$spaceKey/blog"
+            to="/spaces/$spaceKey/blog"
             params={{ spaceKey }}
             search={{}}
             className={linkClass(current === "")}
@@ -240,7 +240,7 @@ function DateNav({ spaceKey, months, filter }: { spaceKey: string; months: BlogM
         {years.map((y) => (
           <li key={y.year} data-blog-year={y.year}>
             <Link
-              to="/s/$spaceKey/blog"
+              to="/spaces/$spaceKey/blog"
               params={{ spaceKey }}
               search={{ year: y.year }}
               className={linkClass(current === String(y.year))}
@@ -254,7 +254,7 @@ function DateNav({ spaceKey, months, filter }: { spaceKey: string; months: BlogM
                 return (
                   <li key={key} data-blog-month={key} data-count={m.count}>
                     <Link
-                      to="/s/$spaceKey/blog"
+                      to="/spaces/$spaceKey/blog"
                       params={{ spaceKey }}
                       search={{ year: m.year, month: m.month }}
                       className={linkClass(current === key)}

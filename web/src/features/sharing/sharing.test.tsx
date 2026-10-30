@@ -14,7 +14,7 @@ afterEach(() => {
 
 const home = aPage();
 const pageId = "0195f000-0000-7000-8000-0000000000d1";
-const PATH = `/s/DOCS/p/${pageId}/runbook`;
+const PATH = `/spaces/DOCS/p/${pageId}/runbook`;
 const ann = { id: "0195f000-0000-7000-8000-0000000000a1", name: "Ann Archer", email: "ann@stator.test", canView: true };
 const carl = { id: "0195f000-0000-7000-8000-0000000000a3", name: "Carl Closed", email: "carl@stator.test", canView: false };
 const team = { id: "0195f000-0000-7000-8000-0000000000b1", name: "Team", memberCount: 3, fromProvider: false, viewers: 2 };

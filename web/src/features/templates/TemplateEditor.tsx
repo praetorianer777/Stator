@@ -114,7 +114,7 @@ function TemplateForm({ template, spaceKey }: { template?: Template; spaceKey?: 
   const [rows, setRows] = useState<Row[]>(() => (template?.variables ?? []).map(rowOf));
   const editor = useRef<EditorHandle | null>(null);
   const fields = save.error instanceof ApiError ? save.error.fields : {};
-  const back = spaceKey ? { to: "/s/$spaceKey/settings" as const, params: { spaceKey }, search: { tab: "templates" as const } } : { to: TEMPLATES_PATH };
+  const back = spaceKey ? { to: "/spaces/$spaceKey/settings/templates" as const, params: { spaceKey } } : { to: TEMPLATES_PATH };
 
   function change(key: number, next: Partial<Row>) {
     setRows((current) =>

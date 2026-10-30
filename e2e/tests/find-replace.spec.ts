@@ -36,7 +36,7 @@ test.describe("find and replace in the editor", { tag: ["@auth"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Find"));
     const notes = await createPage(api, space.homePageId, "Notes", BODY);
-    await openUntil(page, `/s/${space.key}/p/${notes.id}/notes/edit`, () => expect(editorBox(page)).toContainText("The last draft", ONE_LOOK));
+    await openUntil(page, `/spaces/${space.key}/p/${notes.id}/notes/edit`, () => expect(editorBox(page)).toContainText("The last draft", ONE_LOOK));
     return space;
   }
 

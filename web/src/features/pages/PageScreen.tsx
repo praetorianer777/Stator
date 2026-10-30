@@ -153,12 +153,13 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
       : undefined;
   const folder = page.kind === "folder";
   const post = page.kind === "post";
-  const edit = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
-  const history = () => navigate({ to: "/s/$spaceKey/p/$pageId/$slug/history", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
+  const edit = () => navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
+  const history = () =>
+    navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug/history", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } });
   const open = (placed: Page, editing = false) => {
     setDialog(undefined);
     const params = { spaceKey: placed.spaceKey, pageId: placed.id, slug: pageSlug(placed.title) };
-    void navigate(editing ? { to: "/s/$spaceKey/p/$pageId/$slug/edit", params } : { to: "/s/$spaceKey/p/$pageId/$slug", params });
+    void navigate(editing ? { to: "/spaces/$spaceKey/p/$pageId/$slug/edit", params } : { to: "/spaces/$spaceKey/p/$pageId/$slug", params });
   };
 
   const actions: MenuItem[] = [];
@@ -230,10 +231,10 @@ export function PageScreen({ pageId, thread, reviewing = false }: { pageId: stri
         trash.mutate(page.id, {
           onSuccess: () =>
             void (post
-              ? navigate({ to: "/s/$spaceKey/blog", params: { spaceKey: space.key } })
+              ? navigate({ to: "/spaces/$spaceKey/blog", params: { spaceKey: space.key } })
               : above && !above.home
-                ? navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
-                : navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })),
+                ? navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: above.id, slug: pageSlug(above.title) } })
+                : navigate({ to: "/spaces/$spaceKey", params: { spaceKey: space.key } })),
         });
       },
       attrs: { "data-action": "trash-page" },

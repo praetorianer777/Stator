@@ -29,7 +29,7 @@ test.describe("copying space permissions", { tag: ["@auth"] }, () => {
     ]);
 
     const grid = page.getByRole("table", { name: "Roles granted in this space" });
-    await openShowing(page, `/s/${target}/settings?tab=permissions`, grid.locator('[data-grant="Everyone"]'));
+    await openShowing(page, `/spaces/${target}/settings/members`, grid.locator('[data-grant="Everyone"]'));
     await page.locator('[data-action="copy-permissions"]').click();
     const dialog = page.locator("[data-permission-copy-dialog]");
     await dialog.getByLabel("Copy from").selectOption(source);

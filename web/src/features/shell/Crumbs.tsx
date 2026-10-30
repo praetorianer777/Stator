@@ -23,20 +23,20 @@ export interface CrumbNames {
   page?: Pick<Page, "id" | "title" | "home" | "kind" | "ancestors">;
 }
 
-/** The space a path lies in, from its /s/<key> prefix. */
+/** The space a path lies in, from its /spaces/<key> prefix; a key is upper case, so /spaces/new is none. */
 export function spaceOfPath(pathname: string): string | undefined {
-  const match = /^\/s\/([^/]+)/.exec(pathname);
+  const match = /^\/spaces\/([A-Z][A-Z0-9]*)(?=\/|$)/.exec(pathname);
   return match ? decodeURIComponent(match[1]!) : undefined;
 }
 
-/** The page a path is about, from its /s/<key>/p/<id> prefix. */
+/** The page a path is about, from its /spaces/<key>/p/<id> prefix. */
 export function pageOfPath(pathname: string): string | undefined {
-  const match = /^\/s\/[^/]+\/p\/([^/]+)/.exec(pathname);
+  const match = /^\/spaces\/[^/]+\/p\/([^/]+)/.exec(pathname);
   return match ? decodeURIComponent(match[1]!) : undefined;
 }
 
 function pagePath(spaceKey: string, page: { id: string; title: string; home: boolean }): string {
-  return page.home ? `/s/${spaceKey}` : `/s/${spaceKey}/p/${page.id}/${pageSlug(page.title)}`;
+  return page.home ? `/spaces/${spaceKey}` : `/spaces/${spaceKey}/p/${page.id}/${pageSlug(page.title)}`;
 }
 
 // Every place is listed, whoever reads: the trail names where a page sits, and
@@ -62,23 +62,23 @@ export function crumbsFor(pathname: string, names: CrumbNames = {}): PlaceCrumb[
   const key = spaceOfPath(path);
   if (key) {
     const spaceName = names.spaceName ?? key;
-    const space: PlaceCrumb = { label: spaceName, to: `/s/${key}`, name: "space" };
+    const space: PlaceCrumb = { label: spaceName, to: `/spaces/${key}`, name: "space" };
     if (parts.length === 2) return [spaces];
-    // A space's template or its stale pages sit below its settings.
-    if (parts[2] === "settings" && parts.length > 3) {
-      const tab = parts[3] === "templates" ? { tab: "templates" } : undefined;
-      return [spaces, space, { label: t.spaceSettings.title, to: `/s/${key}/settings`, search: tab, name: "space-settings" }];
+    // General is the settings' own page; every other section, and what sits
+    // below one, lies under them.
+    if (parts[2] === "settings" && parts.length > 3 && !(parts[3] === "general" && parts.length === 4)) {
+      return [spaces, space, { label: t.spaceSettings.title, to: `/spaces/${key}/settings`, name: "space-settings" }];
     }
     if (parts[2] !== "p") return [spaces, space];
     const page = names.page;
     if (!page) return [spaces];
     const trail: PlaceCrumb[] = [spaces, ...page.ancestors.map((above) => ({ label: above.home ? spaceName : above.title, to: pagePath(key, above) }))];
     // A post hangs from no page; it sits in its space's blog.
-    if (page.kind === "post") trail.push(space, { label: t.blog.title, to: `/s/${key}/blog`, name: "blog" });
+    if (page.kind === "post") trail.push(space, { label: t.blog.title, to: `/spaces/${key}/blog`, name: "blog" });
     const below = parts.slice(5);
     if (below[0] === "history") {
       trail.push({ label: page.home ? spaceName : page.title, to: pagePath(key, page) });
-      if (below.length > 1) trail.push({ label: t.history.crumb, to: `/s/${key}/p/${page.id}/${pageSlug(page.title)}/history`, name: "history" });
+      if (below.length > 1) trail.push({ label: t.history.crumb, to: `/spaces/${key}/p/${page.id}/${pageSlug(page.title)}/history`, name: "history" });
     }
     return trail;
   }

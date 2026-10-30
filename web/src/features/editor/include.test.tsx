@@ -53,7 +53,7 @@ describe("an include in the read-only view", () => {
     expect(whole).toHaveTextContent("All of support");
     const part = await screen.findByRole("region", { name: "Included from Support: Hours" });
     expect(part).toHaveTextContent("Nine to five");
-    expect(screen.getByRole("link", { name: "Included from Support: Hours" })).toHaveAttribute("href", `/s/DOCS/p/${SUPPORT}/support`);
+    expect(screen.getByRole("link", { name: "Included from Support: Hours" })).toHaveAttribute("href", `/spaces/DOCS/p/${SUPPORT}/support`);
     // The page being read is the start of the chain each include is asked with.
     expect(sent.filter((r) => r.path.endsWith("/included"))).toHaveLength(2);
     expect(await axeViolations()).toEqual([]);

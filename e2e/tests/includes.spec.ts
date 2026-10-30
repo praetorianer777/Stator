@@ -42,7 +42,7 @@ test.describe("includes", { tag: ["@auth"] }, () => {
     const me = must(await api.GET("/auth/me")).user.id;
     must(await api.PUT("/pages/{pageID}/restrictions", { params: { path: { pageID: secret.id } }, body: { view: [{ type: "user", id: me }], edit: [] } }));
     const front = await createPage(api, space.homePageId, "Front", { type: "doc", content: [paragraph("Welcome."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${front.id}/front`;
+    const path = `/spaces/${space.key}/p/${front.id}/front`;
 
     await openShowing(page, `${path}/edit`, "Welcome.");
     await caretTo(editorBox(page), "end");
@@ -95,7 +95,7 @@ test.describe("includes", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [paragraph("Welcome."), { type: "include", attrs: { pageId: support.id, excerptId: HOURS } }, { type: "paragraph" }],
     });
-    const path = `/s/${space.key}/p/${front.id}/front`;
+    const path = `/spaces/${space.key}/p/${front.id}/front`;
 
     await openShowing(page, `${path}/edit`, "Nine to five.");
     await expect(page.locator("[data-page-editor]")).toHaveAttribute("data-collab", "together");
@@ -129,7 +129,7 @@ test.describe("includes", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${front.id}/front`, "Nine to five.");
+      await openShowing(page, `/spaces/${space.key}/p/${front.id}/front`, "Nine to five.");
       await expect(page.locator('main [data-include][data-state="unavailable"]')).toHaveCount(1);
       await expectAccessible(page);
     });

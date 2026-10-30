@@ -54,7 +54,7 @@ test.describe("team calendars", { tag: ["@auth"] }, () => {
   test("a lead puts the team's calendar on a page with Armature's due issues, and keeps its events from the page", async ({ page, api, pageAs }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Calendars");
     const notes = await createPage(api, space.homePageId, "Team", { type: "doc", content: [paragraph("Who is where."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${notes.id}/team`;
+    const path = `/spaces/${space.key}/p/${notes.id}/team`;
 
     await openShowing(page, `${path}/edit`, "Who is where.");
     await caretTo(editorBox(page), "end");
@@ -139,7 +139,7 @@ test.describe("team calendars", { tag: ["@auth"] }, () => {
         content: [paragraph("This month."), { type: "calendar", attrs: { calendarId: team.id, project: "CP" } }],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${notes.id}/calendar`, "This month.");
+      await openShowing(page, `/spaces/${space.key}/p/${notes.id}/calendar`, "This month.");
       const calendar = shown(page).getByRole("figure", { name: "Team" });
       await expect(calendar).toHaveAttribute("data-state", "month");
       await expect(calendar.locator('[data-calendar-issue="CP-1"]')).toBeVisible();

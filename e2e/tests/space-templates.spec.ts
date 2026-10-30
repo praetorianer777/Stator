@@ -34,7 +34,7 @@ test.describe("space templates", { tag: ["@auth"] }, () => {
     await page.getByLabel("Name", { exact: true }).fill(name);
     await page.getByLabel("Key", { exact: true }).fill(key);
     await page.locator('[data-action="create-space"]').click();
-    await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${key}$`));
     const doc = page.locator("[data-doc]");
     await expect(doc).toContainText("This knowledge base collects answers");
     await expect(doc.getByRole("heading", { name: "How-to articles" })).toBeVisible();
@@ -52,6 +52,6 @@ test.describe("space templates", { tag: ["@auth"] }, () => {
 
     // Everybody in the organization reads it.
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${key}`, () => expect(bob.locator("[data-doc]")).toContainText("This knowledge base collects answers", ONE_LOOK));
+    await openUntil(bob, `/spaces/${key}`, () => expect(bob.locator("[data-doc]")).toContainText("This knowledge base collects answers", ONE_LOOK));
   });
 });

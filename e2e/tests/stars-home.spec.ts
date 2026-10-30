@@ -67,7 +67,7 @@ test.describe("stars and the home page", { tag: ["@auth"] }, () => {
     await starPage(page).click();
     await expect(starPage(page)).toHaveAttribute("aria-pressed", "true");
 
-    await openShowing(page, `/s/${space.key}`, starSpace(page));
+    await openShowing(page, `/spaces/${space.key}`, starSpace(page));
     await starSpace(page).click();
     await expect(starSpace(page)).toHaveAttribute("aria-pressed", "true");
 

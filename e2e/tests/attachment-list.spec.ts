@@ -28,7 +28,7 @@ test.describe("files block", { tag: ["@auth"] }, () => {
   test("an author lists a page's files in its content, uploads from the block, and a second upload is the next version", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Finance");
     const plan = await createPage(api, space.homePageId, "Budget", { type: "doc", content: [paragraph("This year's numbers."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${plan.id}/budget`;
+    const path = `/spaces/${space.key}/p/${plan.id}/budget`;
 
     await openShowing(page, `${path}/edit`, "This year's numbers.");
     await caretTo(editorBox(page), "end");
@@ -71,7 +71,7 @@ test.describe("files block", { tag: ["@auth"] }, () => {
         must(await api.POST("/pages/{pageID}/attachments", { params: { path: { pageID: target.id } }, body }));
       }
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${target.id}/files`, "notes.txt");
+      await openShowing(page, `/spaces/${space.key}/p/${target.id}/files`, "notes.txt");
       await shown(page).getByText("1 earlier version").click();
       await page.screenshot({ path: testInfo.outputPath(`files-${scheme}.png`), fullPage: true });
       await expectAccessible(page);

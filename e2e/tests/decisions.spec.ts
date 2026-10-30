@@ -32,7 +32,7 @@ test.describe("decision items", { tag: ["@auth"] }, () => {
     // The empty paragraph at the end takes the block: an Enter after the caret
     // key would split wherever ProseMirror last saw the caret.
     const notes = await createPage(api, space.homePageId, "Release notes", { type: "doc", content: [paragraph("We met on Monday."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${notes.id}/release-notes`;
+    const path = `/spaces/${space.key}/p/${notes.id}/release-notes`;
 
     await openEditor(page, path, "We met on Monday.");
     await caretTo(editorBox(page), "end");
@@ -51,7 +51,7 @@ test.describe("decision items", { tag: ["@auth"] }, () => {
     await expect(shown(page).locator('[data-decision="decided"]')).toContainText("DecidedShip on Tuesdays.");
 
     await page.locator(`[data-space-nav="${space.key}"]`).getByRole("link", { name: "Decisions" }).click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/decisions$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/decisions$`));
     await expect(log(page).locator('[data-decision-row="decided"]')).toContainText("Ship on Tuesdays.");
     await log(page).getByRole("button", { name: "Undecided" }).click();
     await expect(page).toHaveURL(/state=undecided$/);
@@ -71,9 +71,9 @@ test.describe("decision items", { tag: ["@auth"] }, () => {
         content: [decision("decided", "Use Postgres."), decision("undecided", "Which region first.")],
       });
       await startInScheme(page, scheme);
-      await openUntil(page, `/s/${space.key}/p/${notes.id}/notes`, () => expect(shown(page)).toContainText("Which region first.", ONE_LOOK));
+      await openUntil(page, `/spaces/${space.key}/p/${notes.id}/notes`, () => expect(shown(page)).toContainText("Which region first.", ONE_LOOK));
       await expectAccessible(page);
-      await page.goto(`/s/${space.key}/decisions`);
+      await page.goto(`/spaces/${space.key}/decisions`);
       await expect(log(page).locator("[data-decision-row]")).toHaveCount(2);
       await expectAccessible(page);
     });

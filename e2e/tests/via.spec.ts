@@ -40,7 +40,7 @@ test.describe("what a token wrote", { tag: ["@auth", "@desktop"] }, () => {
       expect(changed.status).toBe(200);
     }).toPass({ timeout: REPLICA_CATCH_UP_MS });
 
-    await openShowing(page, `/s/${space.key}/p/${plan.id}/plan/history`, version(page, 2));
+    await openShowing(page, `/spaces/${space.key}/p/${plan.id}/plan/history`, version(page, 2));
     await expect(version(page, 2).locator('[data-via="token"]')).toContainText(`through ${TOKEN}`);
     await expect(version(page, 1).locator("[data-via]")).toHaveCount(0);
     await expectAccessible(page);

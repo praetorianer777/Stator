@@ -51,7 +51,7 @@ export function TemplateButton({ settings, inEditor = false }: { settings: Templ
       { ...target, title: buttonTitle(settings, found), values },
       {
         onSuccess: (made) =>
-          void navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: made.spaceKey, pageId: made.id, slug: pageSlug(made.title) } }),
+          void navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: made.spaceKey, pageId: made.id, slug: pageSlug(made.title) } }),
       },
     );
   }

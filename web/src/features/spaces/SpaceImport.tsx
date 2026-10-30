@@ -67,7 +67,12 @@ export function SpaceImportPage() {
           <>
             <p className="text-sm text-ink" role="status" data-import-done="">
               {t.spaceTransfer.imported}{" "}
-              <Link to="/s/$spaceKey" params={{ spaceKey: current.spaceKey }} className="font-medium text-accent hover:underline" data-action="open-imported">
+              <Link
+                to="/spaces/$spaceKey"
+                params={{ spaceKey: current.spaceKey }}
+                className="font-medium text-accent hover:underline"
+                data-action="open-imported"
+              >
                 {t.spaceTransfer.open(current.spaceKey)}
               </Link>
             </p>

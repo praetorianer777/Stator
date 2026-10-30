@@ -162,7 +162,7 @@ describe("a space's permissions", () => {
       },
       ...pickers,
     });
-    await renderAt("/s/DOCS/settings?tab=permissions");
+    await renderAt("/spaces/DOCS/settings/members");
     const list = await screen.findByRole("table", { name: "Roles granted in this space" });
     expect(within(list).getByText("Everyone").closest("tr")).toHaveAttribute("data-grant-role", "editor");
     expect(within(list).getByText("Ada Lovelace").closest("tr")).toHaveAttribute("data-grant-role", "space_administrator");
@@ -188,13 +188,15 @@ describe("a space's permissions", () => {
     await waitFor(() => expect(within(list).queryByText("Everyone")).toBeNull());
   });
 
-  it("are not shown to somebody who does not administer the space", async () => {
+  it("are hidden from somebody who does not administer the space, and opened by address say who to ask", async () => {
     const sent = stubApi({
       "GET /spaces/DOCS": { status: 200, body: { space: aSpace({ can: { ...space.can, administer: false, delete: false, purgeTrash: false } }) } },
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
     });
-    await renderAt("/s/DOCS/settings?tab=permissions", { me: member });
-    expect(await screen.findByText("Only an administrator of this space can see and change who may do what in it.")).toBeInTheDocument();
+    await renderAt("/spaces/DOCS/settings/members", { me: member });
+    expect(await screen.findByText("Only the space's administrators change its settings")).toBeInTheDocument();
+    expect(screen.getByText("Ask one of them, or ask for the role.")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Members and permissions" })).toBeNull();
     expect(sent.some((r) => r.path === "/role-assignments")).toBe(false);
   });
 });
@@ -250,7 +252,7 @@ describe("copying another space's permissions", () => {
         return { status: 200, body: { grants: copied, copy: preview("merge") } };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=permissions");
+    await renderAt("/spaces/DOCS/settings/members");
     await userEvent.click(await screen.findByRole("button", { name: "Copy from another space" }));
     const dialog = await screen.findByRole("dialog", { name: "Copy permissions into Handbook" });
     const source = within(dialog).getByRole("combobox", { name: "Copy from" });
@@ -305,7 +307,7 @@ describe("copying another space's permissions", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=permissions");
+    await renderAt("/spaces/DOCS/settings/members");
     await userEvent.click(await screen.findByRole("button", { name: "Copy from another space" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.selectOptions(within(dialog).getByRole("combobox", { name: "Copy from" }), "OPS");
@@ -364,7 +366,7 @@ describe("a page's restrictions", () => {
 
   it("mark a restricted page on the page and in the tree", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
     expect(await screen.findByRole("button", { name: /^Restricted/ })).toHaveAttribute("data-page-restricted", "view");
     const row = await screen.findByRole("treeitem", { name: "Secret" });
     expect(within(row).getByText("restricted")).toBeInTheDocument();
@@ -373,7 +375,7 @@ describe("a page's restrictions", () => {
 
   it("show what is inherited and from where, and save the page's own lists", async () => {
     const sent = stubPage(secret, { [`PUT /pages/${ids.secret}/restrictions`]: { status: 200, body: { restrictions: { ...inherited, view: [bob, ada] } } } });
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Restrictions" }));
     const dialog = await screen.findByRole("dialog", { name: "Restrictions on Secret" });
@@ -400,7 +402,7 @@ describe("a page's restrictions", () => {
 
   it("say what to do when a save would lock the caller out", async () => {
     stubPage(secret, { [`PUT /pages/${ids.secret}/restrictions`]: conflict });
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
     await userEvent.click(await screen.findByRole("button", { name: /^Restricted/ }));
     const dialog = await screen.findByRole("dialog", { name: "Restrictions on Secret" });
     const editList = within(dialog).getByRole("region", { name: "Who can edit" });
@@ -413,7 +415,7 @@ describe("a page's restrictions", () => {
 
   it("offer the home page an edit list but no view list", async () => {
     stubPage(home, { [`GET /pages/${home.id}/restrictions`]: { status: 200, body: { restrictions: { view: [], edit: [], editGrant: [], inherited: [] } } } });
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Restrictions" }));
     const dialog = await screen.findByRole("dialog");
@@ -434,7 +436,7 @@ describe("a page's restrictions", () => {
       },
       [`PUT /pages/${ids.secret}/restrictions`]: { status: 200, body: { restrictions: { ...inherited, edit: [bob], editGrant: [bob] } } },
     });
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
     await userEvent.click(await screen.findByRole("button", { name: /^Restricted/ }));
     const dialog = await screen.findByRole("dialog", { name: "Restrictions on Secret" });
     const editList = within(dialog).getByRole("region", { name: "Who can edit" });
@@ -461,7 +463,7 @@ describe("a page's restrictions", () => {
       },
       [`POST /pages/${ids.secret}/restrictions/check`]: { status: 200, body: { check: { cannotEdit: [{ subject: eng, members: 2 }] } } },
     });
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`, { me: member });
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`, { me: member });
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Restrictions" }));
     const dialog = await screen.findByRole("dialog", { name: "Restrictions on Secret" });
@@ -481,7 +483,7 @@ describe("a page's restrictions", () => {
   it("are shown but not changeable to a reader who cannot edit the page", async () => {
     const readOnly = aPage({ ...secret, can: { edit: false, delete: false, restrict: false, comment: true, archive: false, add: false, grantEdit: false } });
     stubPage(readOnly);
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`, { me: member });
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`, { me: member });
     await screen.findByRole("button", { name: /^Restricted/ });
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
     expect(screen.queryByRole("button", { name: "New page" })).toBeNull();
@@ -505,7 +507,7 @@ describe("what a page offers", () => {
 
   it("follows page.can rather than the space", async () => {
     stub({ edit: true, delete: false, restrict: true, comment: true, archive: false, add: true, grantEdit: false });
-    await renderAt(`/s/DOCS/p/${ids.plans}/plans`);
+    await renderAt(`/spaces/DOCS/p/${ids.plans}/plans`);
     expect(await screen.findByRole("button", { name: "Edit" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));
     expect(await screen.findByRole("menuitem", { name: "Move" })).toBeInTheDocument();
@@ -514,7 +516,7 @@ describe("what a page offers", () => {
 
   it("sends somebody who may not edit away from the editor with a sentence", async () => {
     stub({ edit: false, delete: false, restrict: false, comment: false, archive: false, add: false, grantEdit: false });
-    await renderAt(`/s/DOCS/p/${ids.plans}/plans/edit`);
+    await renderAt(`/spaces/DOCS/p/${ids.plans}/plans/edit`);
     expect(await screen.findByText(/You can read this page but not edit it\./, undefined, EDITOR_CHUNK_WAIT)).toBeInTheDocument();
   });
 });

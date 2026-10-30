@@ -3,6 +3,25 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-30: Spaces live at /spaces/, and the old /s/ addresses lead there (#586)
+
+The suite's standard puts a project's or space's settings at
+`/projects/<key>/settings/<section>` and `/spaces/<key>/settings/<section>`,
+since `/p/` means a project in Exciter and a page here. So a space and
+everything in it moved from `/s/<key>` to `/spaces/<key>`, and its settings
+became one route per section, as Armature's are.
+
+Nothing that was handed out stops working. `/s/<rest>` and `/public/s/<rest>`
+redirect to `/spaces/<rest>` with search and hash, before sign-in, and
+`/spaces/<key>/settings?tab=` opens the section the tab moved to. Stored
+pages are not rewritten: the links in them keep `/s/`, which the redirect
+serves, and the Markdown export, a space or site import and public reading
+read both forms. What the server writes from now on, in mails, webhooks,
+issues, tasks and imported pages, uses `/spaces/`.
+
+Keys are upper case, so `/spaces/new` and `/spaces/import` match only in
+lower case and a space called NEW or IMPORT keeps its address.
+
 ## 2026-10-30: A mapped group lets somebody new in once an administrator says so (#583)
 
 Armature lets people in by their groups only once an administrator turns it

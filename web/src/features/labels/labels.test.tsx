@@ -81,10 +81,10 @@ describe("normalizeLabel", () => {
 describe("labels on a page", () => {
   it("shows each label as a way to its pages in the space", async () => {
     stubPage({ edit: false, labels: ["howto", "release"] });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await screen.findByRole("list", { name: "Labels" });
     const link = within(list).getByRole("link", { name: "release" });
-    expect(link).toHaveAttribute("href", "/s/DOCS/labels/release");
+    expect(link).toHaveAttribute("href", "/spaces/DOCS/labels/release");
     expect(screen.queryByRole("combobox", { name: "Add a label" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Remove label release" })).not.toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
@@ -92,7 +92,7 @@ describe("labels on a page", () => {
 
   it("draws nothing for a reader when the page has no labels", async () => {
     stubPage({ edit: false, labels: [] });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     await screen.findByRole("heading", { name: "Notes", level: 1 });
     expect(document.querySelector("[data-page-labels]")).toBeNull();
   });
@@ -108,7 +108,7 @@ describe("labels on a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const input = await screen.findByRole("combobox", { name: "Add a label" });
     await userEvent.type(input, "rel");
     const options = await screen.findByRole("listbox", { name: "Labels to pick" });
@@ -140,7 +140,7 @@ describe("labels on a page", () => {
 
   it("says why a typed name cannot be a label, and does not send it", async () => {
     const sent = stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const input = await screen.findByRole("combobox", { name: "Add a label" });
     await userEvent.type(input, "a/b{Enter}");
     expect(await screen.findByText(/Use letters, digits, hyphens/)).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe("labels on a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     await userEvent.click(await screen.findByRole("button", { name: "Remove label release" }));
     await waitFor(() => expect(removed).toEqual(["release"]));
     await waitFor(() => expect(screen.queryByRole("link", { name: "release" })).not.toBeInTheDocument());
@@ -216,7 +216,7 @@ describe("the label page", () => {
         return { status: 200, body: { pages: [], total: 0, limit: 20, offset: 0 } };
       },
     });
-    await renderAt("/s/DOCS/labels/lonely");
+    await renderAt("/spaces/DOCS/labels/lonely");
     expect(await screen.findByText("No page carries this label")).toBeInTheDocument();
     expect(screen.getByText("Pages in Handbook with this label")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Show every space" })).toHaveAttribute("href", "/labels/lonely");

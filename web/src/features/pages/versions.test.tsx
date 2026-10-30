@@ -67,7 +67,7 @@ function heldAnswers() {
 
 const draftStatus = () => document.querySelector("[data-draft-status]");
 
-const EDIT_PATH = `/s/DOCS/p/${PAGE_ID}/plans/edit`;
+const EDIT_PATH = `/spaces/DOCS/p/${PAGE_ID}/plans/edit`;
 // Every page view notes a visit, which is not the change a test makes.
 const isVisit = (r: { path: string }) => r.path.endsWith("/visit");
 const isChange = (r: { method: string; path: string }) => r.method === "POST" && !isVisit(r);
@@ -132,7 +132,7 @@ describe("the editor", () => {
       await userEvent.type(within(dialog).getByLabelText("What changed"), "  Added the budget.  ");
       await userEvent.click(notify);
       await userEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans-for-next-year`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/plans-for-next-year`));
       expect(sent.find(isChange)?.body).toEqual({ comment: "Added the budget.", notifyWatchers: false });
       expect(puts(sent)).toHaveLength(0);
     },
@@ -174,7 +174,7 @@ describe("the editor", () => {
       await userEvent.click(screen.getByRole("button", { name: "Close" }));
       await waitFor(() => expect(saves.waiting).toHaveLength(1));
       expect(puts(sent)[0]!.body).toMatchObject({ title: "Plans later", baseVersion: 3 });
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/plans`));
       expect(document.querySelector("[data-page-editor]")).toBeNull();
       await waitFor(() => expect(queryClient.isFetching()).toBe(0));
 
@@ -322,7 +322,7 @@ describe("the editor", () => {
       expect(await axeViolations()).toEqual([]);
 
       await userEvent.click(within(panel).getByRole("button", { name: "Keep my draft and publish" }));
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans-for-next-year`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/plans-for-next-year`));
       expect(puts(sent).map((r) => (r.body as { baseVersion: number }).baseVersion)).toEqual([4]);
       expect(sent.filter(isChange)).toHaveLength(2);
     },
@@ -347,7 +347,7 @@ describe("the editor", () => {
       await userEvent.click(await screen.findByRole("button", { name: "Publish" }));
       await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Publish" }));
       await userEvent.click(await screen.findByRole("button", { name: "Compare with version 4" }));
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans/history`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/plans/history`));
       expect(router.state.location.search).toEqual({ from: 4, to: "draft" });
     },
     EDITOR_TEST_MS,
@@ -367,7 +367,7 @@ describe("the editor", () => {
       expect(sent.some((r) => r.method === "DELETE")).toBe(false);
       await userEvent.click(discard);
       await answerConfirm(true);
-      await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${PAGE_ID}/plans`));
+      await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${PAGE_ID}/plans`));
       expect(sent.filter((r) => r.method === "DELETE").map((r) => r.path)).toEqual([`/pages/${PAGE_ID}/draft`]);
     },
     EDITOR_TEST_MS,
@@ -389,7 +389,7 @@ describe("an unpublished page", () => {
       icon: null,
     };
     stubPage({ "GET /spaces/DOCS/pages": { status: 200, body: { pages: [node] } } }, { page: fresh });
-    await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);
+    await renderAt(`/spaces/DOCS/p/${PAGE_ID}/plans`);
     expect(await screen.findByText("Only you can see this page until you publish it.")).toBeInTheDocument();
     expect(screen.getByText("Unpublished")).toBeInTheDocument();
     const item = await screen.findByRole("treeitem", { name: "Plans, unpublished" });
@@ -399,7 +399,7 @@ describe("an unpublished page", () => {
 
   it("tells its author about their draft and takes them back to it", async () => {
     stubPage({}, { page: aPage({ ...plans, draft: { baseVersion: 3, updatedAt: "2026-09-29T10:00:00Z" } }), draft: aDraft() });
-    const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);
+    const router = await renderAt(`/spaces/DOCS/p/${PAGE_ID}/plans`);
     expect(await screen.findByText("You have a draft of this page that nobody else sees yet.")).toBeInTheDocument();
     expect(screen.queryByText("Unpublished")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Continue editing" }));
@@ -428,7 +428,7 @@ const versions = [
   entry(2, { comment: "Added the budget." }),
   entry(1, { title: "Plan" }),
 ];
-const HISTORY_PATH = `/s/DOCS/p/${PAGE_ID}/plans/history`;
+const HISTORY_PATH = `/spaces/DOCS/p/${PAGE_ID}/plans/history`;
 
 function stubHistory(more: Record<string, Answer | ((request: Request) => Answer)> = {}, options: { page?: typeof plans; draft?: Draft | null } = {}) {
   return stubPage({ [`GET /pages/${PAGE_ID}/versions`]: { status: 200, body: { versions, total: 3, limit: 20, offset: 0 } }, ...more }, options);
@@ -469,7 +469,7 @@ describe("a page's history", () => {
       "GET /spaces/DOCS": { status: 200, body: { space: reader } },
       [`GET /pages/${PAGE_ID}`]: { status: 200, body: { page: { ...plans, can: { ...plans.can, edit: false } }, space: reader } },
     });
-    const router = await renderAt(`/s/DOCS/p/${PAGE_ID}/plans`);
+    const router = await renderAt(`/spaces/DOCS/p/${PAGE_ID}/plans`);
     await userEvent.click(await screen.findByRole("button", { name: "History" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(HISTORY_PATH));
     await waitFor(() => expect(document.querySelector('[data-version-row="2"]')).not.toBeNull());

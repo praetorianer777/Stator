@@ -33,7 +33,7 @@ export function normalizeLabel(raw: string): { name: string; problem?: LabelProb
 
 /** Where a label's page lives in the address: the one route or the space's own. */
 export function labelPath(name: string, spaceKey?: string) {
-  return spaceKey ? ({ to: "/s/$spaceKey/labels/$name", params: { spaceKey, name } } as const) : ({ to: "/labels/$name", params: { name } } as const);
+  return spaceKey ? ({ to: "/spaces/$spaceKey/labels/$name", params: { spaceKey, name } } as const) : ({ to: "/labels/$name", params: { name } } as const);
 }
 
 /** Labels on pages the reader may view that start with what was typed, the most used first. */

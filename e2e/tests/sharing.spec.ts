@@ -102,14 +102,14 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`shared ${runbook.title} with you`);
     await expect(told).toContainText("Read the rollback part before Friday.");
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${runbook.id}/`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${runbook.id}/`));
 
     await expect.poll(async () => (await mailsTo(BOB_EMAIL, runbook.title)).length, { timeout: DELIVERY_MS }).toBe(1);
     const [mail] = await mailsTo(BOB_EMAIL, runbook.title);
     expect(mail!.Subject).toContain(`shared "${runbook.title}" with you`);
     const text = await mailText(mail!.ID);
     expect(text).toContain("Read the rollback part before Friday.");
-    expect(text).toContain(`/s/${space.key}/p/${runbook.id}`);
+    expect(text).toContain(`/spaces/${space.key}/p/${runbook.id}`);
     expect((await bobApi.POST("/notifications/read", { body: { all: true } })).response.status).toBe(204);
   });
 

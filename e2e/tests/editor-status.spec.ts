@@ -41,7 +41,7 @@ test.describe("the editor's save status", { tag: ["@auth"] }, () => {
       content: [{ type: "paragraph", content: [{ type: "text", text: "Agenda first." }] }],
     });
 
-    await openEditor(page, `/s/${space.key}/p/${notes.id}/standing-notes`, "Agenda first.");
+    await openEditor(page, `/spaces/${space.key}/p/${notes.id}/standing-notes`, "Agenda first.");
     await watchBodyTop(page);
     await caretTo(editorBox(page), "end");
     await page.keyboard.type(" Then the minutes.");

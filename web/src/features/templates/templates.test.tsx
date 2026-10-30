@@ -149,7 +149,7 @@ describe("a template's variables in the form", () => {
 describe("making a page from a template with variables", () => {
   it("asks for each variable and sends the values for the server to fill in", async () => {
     const sent = stubDialog();
-    const router = await renderAt("/s/DOCS");
+    const router = await renderAt("/spaces/DOCS");
     const dialog = await chooseKickoff();
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Kickoff with {customer}");
     const form = within(dialog).getByRole("group", { name: "Fill in the template" });
@@ -170,7 +170,7 @@ describe("making a page from a template with variables", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
-    await arrival(router, `/s/DOCS/p/${made.id}/kickoff-with-acme/edit`);
+    await arrival(router, `/spaces/DOCS/p/${made.id}/kickoff-with-acme/edit`);
     expect(sent.find((r) => r.method === "POST" && r.path === "/pages")?.body).toEqual({
       parentId: home.id,
       title: "Kickoff with {customer}",
@@ -192,7 +192,7 @@ describe("making a page from a template with variables", () => {
         },
       },
     });
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     const dialog = await chooseKickoff();
     await userEvent.type(within(dialog).getByLabelText("Customer (required)"), "Acme");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create page" }));
@@ -204,8 +204,8 @@ describe("making a page from a template with variables", () => {
 describe("keeping templates", () => {
   it("lists a space's templates in its settings and deletes one after asking", async () => {
     const sent = stubDialog({ [`DELETE /templates/${kickoff.key}`]: { status: 204 } });
-    const router = await renderAt("/s/DOCS/settings?tab=templates");
-    await arrival(router, "/s/DOCS/settings");
+    const router = await renderAt("/spaces/DOCS/settings/templates");
+    await arrival(router, "/spaces/DOCS/settings/templates");
     const list = await screen.findByRole("region", { name: "This space's templates" });
     const row = await within(list).findByText("Kickoff");
     expect(within(list).queryByText("Company kickoff")).toBeNull();
@@ -220,8 +220,8 @@ describe("keeping templates", () => {
 
   it("makes a template with variables, puts their blanks in the body, and goes back to the space", async () => {
     const sent = stubDialog({ "POST /templates": { status: 201, body: { template: kickoff } } });
-    const router = await renderAt("/s/DOCS/settings/templates/new");
-    await arrival(router, "/s/DOCS/settings/templates/new");
+    const router = await renderAt("/spaces/DOCS/settings/templates/new");
+    await arrival(router, "/spaces/DOCS/settings/templates/new");
     const editor = await screen.findByRole("textbox", { name: "Body" });
     await userEvent.type(screen.getByLabelText("Name"), "Kickoff");
     await userEvent.type(screen.getByLabelText("Page title"), "Kickoff with {{customer}");
@@ -242,7 +242,7 @@ describe("keeping templates", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(screen.getByRole("button", { name: "Save template" }));
-    await arrival(router, "/s/DOCS/settings");
+    await arrival(router, "/spaces/DOCS/settings/templates");
     const body = sent.find((r) => r.method === "POST" && r.path === "/templates")?.body as Record<string, unknown>;
     expect(body).toMatchObject({
       spaceKey: "DOCS",
@@ -258,8 +258,8 @@ describe("keeping templates", () => {
 
   it("moves focus into the body as a blank is inserted, before the next key is pressed", async () => {
     stubDialog();
-    const router = await renderAt("/s/DOCS/settings/templates/new");
-    await arrival(router, "/s/DOCS/settings/templates/new");
+    const router = await renderAt("/spaces/DOCS/settings/templates/new");
+    await arrival(router, "/spaces/DOCS/settings/templates/new");
     const editor = await screen.findByRole("textbox", { name: "Body" });
     await userEvent.click(screen.getByRole("button", { name: "Add variable" }));
     const variables = screen.getByRole("group", { name: "Variables" });

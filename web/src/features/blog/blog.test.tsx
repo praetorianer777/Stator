@@ -63,11 +63,11 @@ function shell(more: Parameters<typeof stubApi>[0] = {}) {
 describe("a space's blog", () => {
   it("lists the posts newest first, offers the months with their counts, and keeps one month when chosen", async () => {
     const sent = shell();
-    const router = await renderAt("/s/DOCS/blog");
+    const router = await renderAt("/spaces/DOCS/blog");
     await waitFor(() => expect(document.querySelectorAll("[data-post]")).toHaveLength(2));
     const titles = [...document.querySelectorAll("[data-post-title]")].map((el) => el.getAttribute("data-post-title"));
     expect(titles).toEqual(["Launch day", "Retrospective"]);
-    expect(screen.getByRole("link", { name: "Launch day" })).toHaveAttribute("href", `/s/DOCS/p/${launch.id}/launch-day`);
+    expect(screen.getByRole("link", { name: "Launch day" })).toHaveAttribute("href", `/spaces/DOCS/p/${launch.id}/launch-day`);
 
     const dates = screen.getByRole("navigation", { name: "Posts by date" });
     expect(within(dates).getByRole("link", { name: "2026 (2)" })).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe("a space's blog", () => {
 
     await userEvent.click(within(dates).getByRole("link", { name: "September (1)" }));
     await waitFor(() => expect(router.state.location.search).toEqual({ year: 2026, month: 9 }));
-    await arrival(router, "/s/DOCS/blog");
+    await arrival(router, "/spaces/DOCS/blog");
     await waitFor(() => expect(document.querySelectorAll("[data-post]")).toHaveLength(1));
     expect(sent.some((r) => r.path === "/posts" && r.method === "GET")).toBe(true);
     expect(within(dates).getByRole("link", { name: "September (1)" })).toHaveAttribute("aria-current", "page");
@@ -84,7 +84,7 @@ describe("a space's blog", () => {
 
   it("shows the reader's own unpublished posts, and watches the blog", async () => {
     const sent = shell({ "PUT /spaces/DOCS/blog/watch": { status: 204 } });
-    await renderAt("/s/DOCS/blog");
+    await renderAt("/spaces/DOCS/blog");
     const mine = await screen.findByRole("region", { name: "Your unpublished posts" });
     expect(within(mine).getByRole("link", { name: "Plans for 2027" })).toBeInTheDocument();
 
@@ -111,14 +111,14 @@ describe("a space's blog", () => {
       "GET /templates": { status: 200, body: { templates: [weekly] } },
       "POST /spaces/DOCS/posts": { status: 201, body: { page: made } },
     });
-    const router = await renderAt("/s/DOCS/blog");
+    const router = await renderAt("/spaces/DOCS/blog");
     await userEvent.click(await screen.findByRole("button", { name: "New post" }));
     const dialog = await screen.findByRole("dialog", { name: "Write a blog post" });
     await userEvent.click(await within(dialog).findByRole("radio", { name: /Weekly update/ }));
     expect(within(dialog).getByLabelText("Title")).toHaveValue("Week of {week}");
     await userEvent.type(within(dialog).getByLabelText("Week (required)"), "2026-10-05");
     await userEvent.click(within(dialog).getByRole("button", { name: "Start writing" }));
-    await arrival(router, `/s/DOCS/p/${made.id}/week-of-2026-10-05/edit`);
+    await arrival(router, `/spaces/DOCS/p/${made.id}/week-of-2026-10-05/edit`);
     expect(sent.find((r) => r.method === "GET" && r.path === "/templates")).toBeDefined();
     expect(sent.find((r) => r.method === "POST" && r.path === "/spaces/DOCS/posts")?.body).toEqual({
       title: "Week of {week}",
@@ -129,7 +129,7 @@ describe("a space's blog", () => {
 
   it("says when a month holds nothing the reader may read", async () => {
     shell({ "GET /posts": { status: 200, body: { posts: [], next: null } } });
-    await renderAt("/s/DOCS/blog?year=2024&month=2");
+    await renderAt("/spaces/DOCS/blog?year=2024&month=2");
     expect(await screen.findByText("No post you can read went out in this time.")).toBeInTheDocument();
   });
 
@@ -150,8 +150,8 @@ describe("a post's own page", () => {
       [`GET /pages/${id}/attachments`]: { status: 200, body: { attachments: [] } },
       [`POST /pages/${id}/visit`]: { status: 204 },
     });
-    await renderAt(`/s/DOCS/p/${id}/launch-day`);
-    await waitFor(() => expect(document.querySelector('[data-crumb="blog"]')).toHaveAttribute("href", "/s/DOCS/blog"));
+    await renderAt(`/spaces/DOCS/p/${id}/launch-day`);
+    await waitFor(() => expect(document.querySelector('[data-crumb="blog"]')).toHaveAttribute("href", "/spaces/DOCS/blog"));
     expect(document.querySelector("[data-post-date]")).toHaveTextContent("Posted on Oct 2, 2026");
     expect(document.querySelector('[data-action="new-page"]')).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Page actions" }));

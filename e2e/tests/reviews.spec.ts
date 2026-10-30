@@ -29,7 +29,7 @@ test.describe("page reviews", { tag: ["@auth", "@desktop"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Policies"));
     const policy = await createPage(api, space.homePageId, "Travel policy", doc("Book the train."));
-    const path = `/s/${space.key}/p/${policy.id}/travel-policy`;
+    const path = `/spaces/${space.key}/p/${policy.id}/travel-policy`;
     const aliceId = String(must(await api.GET("/auth/me")).user.id);
     await setSpaceGrants(api, space.key, [
       { subject: { type: "everyone" }, permissions: ["view", "addPages", "addComments"] },

@@ -11,47 +11,47 @@ describe("the trail above a page", () => {
 
   it("leads back to Spaces from a space's own pages", () => {
     expect(trail("/spaces/new")).toEqual([["Spaces", "/spaces"]]);
-    expect(trail("/s/DOCS")).toEqual([["Spaces", "/spaces"]]);
-    expect(trail("/s/DOCS/blog", { spaceName: "Docs" })).toEqual([
+    expect(trail("/spaces/DOCS")).toEqual([["Spaces", "/spaces"]]);
+    expect(trail("/spaces/DOCS/blog", { spaceName: "Docs" })).toEqual([
       ["Spaces", "/spaces"],
-      ["Docs", "/s/DOCS"],
+      ["Docs", "/spaces/DOCS"],
     ]);
   });
 
   it("names the space by its key until the space is known", () => {
-    expect(trail("/s/DOCS/settings")).toEqual([
+    expect(trail("/spaces/DOCS/settings/general")).toEqual([
       ["Spaces", "/spaces"],
-      ["DOCS", "/s/DOCS"],
+      ["DOCS", "/spaces/DOCS"],
     ]);
   });
 
   it("passes every page above a page, the home page by its space's name", () => {
     const names = { spaceName: "Docs", page };
-    expect(trail("/s/DOCS/p/p-2/runbook", names)).toEqual([
+    expect(trail("/spaces/DOCS/p/p-2/runbook", names)).toEqual([
       ["Spaces", "/spaces"],
-      ["Docs", "/s/DOCS"],
+      ["Docs", "/spaces/DOCS"],
     ]);
-    expect(trail("/s/DOCS/p/p-2/runbook/edit", names)).toEqual([
+    expect(trail("/spaces/DOCS/p/p-2/runbook/edit", names)).toEqual([
       ["Spaces", "/spaces"],
-      ["Docs", "/s/DOCS"],
+      ["Docs", "/spaces/DOCS"],
     ]);
   });
 
   it("puts the page itself, and its history below it, above a version", () => {
     const names = { spaceName: "Docs", page };
-    expect(trail("/s/DOCS/p/p-2/runbook/history", names)).toEqual([
+    expect(trail("/spaces/DOCS/p/p-2/runbook/history", names)).toEqual([
       ["Spaces", "/spaces"],
-      ["Docs", "/s/DOCS"],
-      ["Runbook", "/s/DOCS/p/p-2/runbook"],
+      ["Docs", "/spaces/DOCS"],
+      ["Runbook", "/spaces/DOCS/p/p-2/runbook"],
     ]);
   });
 
   it("puts a post in its space's blog", () => {
     const post = { ...page, kind: "post" as const, ancestors: [] };
-    expect(trail("/s/DOCS/p/p-2/runbook", { spaceName: "Docs", page: post })).toEqual([
+    expect(trail("/spaces/DOCS/p/p-2/runbook", { spaceName: "Docs", page: post })).toEqual([
       ["Spaces", "/spaces"],
-      ["Docs", "/s/DOCS"],
-      ["Blog", "/s/DOCS/blog"],
+      ["Docs", "/spaces/DOCS"],
+      ["Blog", "/spaces/DOCS/blog"],
     ]);
   });
 
@@ -72,22 +72,28 @@ describe("the trail above a page", () => {
     ]);
   });
 
-  it("leads a space's template and stale pages back to the space's settings", () => {
-    for (const path of ["/s/DOCS/settings/templates/new", "/s/DOCS/settings/stale"]) {
+  it("puts the space, then Settings, above every section but General and what sits below one", () => {
+    for (const path of ["/spaces/DOCS/settings/members", "/spaces/DOCS/settings/templates/new", "/spaces/DOCS/settings/general/stale"]) {
       expect(trail(path, { spaceName: "Docs" })).toEqual([
         ["Spaces", "/spaces"],
-        ["Docs", "/s/DOCS"],
-        ["Space settings", "/s/DOCS/settings"],
+        ["Docs", "/spaces/DOCS"],
+        ["Settings", "/spaces/DOCS/settings"],
       ]);
     }
+    expect(trail("/spaces/DOCS/settings/general", { spaceName: "Docs" })).toEqual([
+      ["Spaces", "/spaces"],
+      ["Docs", "/spaces/DOCS"],
+    ]);
   });
 });
 
 describe("the parts of an address", () => {
   it("are the space and the page it is about", () => {
-    expect(spaceOfPath("/s/DOCS/p/p-2/runbook")).toBe("DOCS");
-    expect(pageOfPath("/s/DOCS/p/p-2/runbook")).toBe("p-2");
+    expect(spaceOfPath("/spaces/DOCS/p/p-2/runbook")).toBe("DOCS");
+    expect(pageOfPath("/spaces/DOCS/p/p-2/runbook")).toBe("p-2");
     expect(spaceOfPath("/spaces")).toBeUndefined();
-    expect(pageOfPath("/s/DOCS")).toBeUndefined();
+    expect(spaceOfPath("/spaces/new/personal")).toBeUndefined();
+    expect(spaceOfPath("/spaces/import")).toBeUndefined();
+    expect(pageOfPath("/spaces/DOCS")).toBeUndefined();
   });
 });

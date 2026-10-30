@@ -15,10 +15,10 @@ export const staleRoute = createRoute({
   },
 });
 
-/** One space's stale pages, below its settings, for whoever administers it. */
+/** One space's stale pages, below General in its settings, for whoever administers it. */
 export const spaceStaleRoute = createRoute({
   getParentRoute: () => spaceRoute,
-  path: "/settings/stale",
+  path: "/settings/general/stale",
   component: function SpaceStaleRoute() {
     const { spaceKey } = spaceStaleRoute.useParams();
     return <StaleReport key={spaceKey} space={spaceKey} />;

@@ -3,17 +3,16 @@ import type { Space } from "@/api/spaces";
 import { Button, Card, ErrorBanner, SectionTitle, useToast } from "@/components/ui";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
-import { useConfirm } from "@/features/shell/ConfirmProvider";
 
 const archivedOn = localDateFormat({ dateStyle: "medium" });
 
-/** Archiving the whole space, or bringing it back, for its administrators. */
+/** Archiving the whole space, at once and with Undo since nothing is lost, or bringing it back, for its administrators. */
 export function SpaceArchive({ space }: { space: Space }) {
   const a = t.archive;
   const toggle = useArchiveSpace(space.key);
   const toast = useToast();
-  const confirm = useConfirm();
   const archived = Boolean(space.archivedAt);
+  const unarchive = () => toggle.mutate(false, { onSuccess: () => toast.success(a.spaceUnarchived) });
   return (
     <Card className="space-y-3 p-4" data-space-archive-card={archived ? "archived" : "live"}>
       <SectionTitle>{a.spaceTitle}</SectionTitle>
@@ -25,12 +24,12 @@ export function SpaceArchive({ space }: { space: Space }) {
         <Button
           variant="secondary"
           loading={toggle.isPending}
-          onClick={async () => {
+          onClick={() => {
             if (archived) {
-              toggle.mutate(false, { onSuccess: () => toast.success(a.spaceUnarchived) });
-            } else if (await confirm({ noun: t.kit.confirm.things.space(space.name), verb: t.kit.confirm.verbs.archive, body: a.confirmArchiveSpace })) {
-              toggle.mutate(true, { onSuccess: () => toast.success(a.archived(space.name)) });
+              unarchive();
+              return;
             }
+            toggle.mutate(true, { onSuccess: () => toast.success(a.archived(space.name), { action: { label: a.undo, onClick: unarchive } }) });
           }}
           data-action={archived ? "unarchive-space" : "archive-space"}
         >

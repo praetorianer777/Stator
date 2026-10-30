@@ -38,7 +38,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     const { key, plans, old } = await freshTree(api, testInfo, "Archive");
 
     // The page asks before it archives; a person accepts.
-    await page.goto(`/s/${key}/p/${plans.id}/page`);
+    await page.goto(`/spaces/${key}/p/${plans.id}/page`);
     await expect(heading(page)).toHaveText(plans.title);
     await page.locator('[data-action="page-menu"]').click();
     await page.locator('[role="menu"] [data-action="archive-page"]').click();
@@ -49,7 +49,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     expect(await scrollsSideways(page)).toBe(false);
 
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${key}/p/${old.id}/page`, async () => {
+    await openUntil(bob, `/spaces/${key}/p/${old.id}/page`, async () => {
       await expect(heading(bob)).toHaveText(old.title, ONE_LOOK);
       await expect(banner(bob)).toBeVisible(ONE_LOOK);
     });
@@ -73,7 +73,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     await expect(hit.locator("[data-archived-mark]")).toBeVisible();
     await expect(bob).toHaveURL(/archived=true/);
 
-    await page.goto(`/s/${key}/settings?tab=archive`);
+    await page.goto(`/spaces/${key}/settings/trash`);
     await expect(archiveRow(page, plans.title)).toContainText("2 pages");
     await expectAccessible(page);
     await archiveRow(page, plans.title)
@@ -82,7 +82,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     await expect(toast(page, `Unarchived ${plans.title}.`)).toBeVisible();
     await expect(page.getByText("Nothing is archived in this space.")).toBeVisible();
 
-    await page.goto(`/s/${key}/p/${old.id}/page`);
+    await page.goto(`/spaces/${key}/p/${old.id}/page`);
     await expect(heading(page)).toHaveText(old.title);
     await expect(banner(page)).toHaveCount(0);
     await expect(page.locator('[data-action="edit-page"]')).toBeVisible();
@@ -90,9 +90,13 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
 
   test("alice archives a whole space, which leaves the list of spaces until asked for and comes back whole", async ({ page, api }, testInfo) => {
     const { key, space, plans } = await freshTree(api, testInfo, "Shelved");
-    await page.goto(`/s/${key}/settings`);
+    await page.goto(`/spaces/${key}/settings/general`);
+    // Archiving loses nothing, so it asks nothing and offers Undo instead.
     await page.locator('[data-action="archive-space"]').click();
-    await confirm(page);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await toast(page, `Archived ${space.name}.`).getByRole("button", { name: "Undo" }).click();
+    await expect(page.locator("[data-space-archive-card]")).toHaveAttribute("data-space-archive-card", "live");
+    await page.locator('[data-action="archive-space"]').click();
     await expect(page.locator("[data-space-archive-card]")).toHaveAttribute("data-space-archive-card", "archived");
     await expect(page.locator("[data-space-archive-card]")).toContainText("archived this space");
 
@@ -105,15 +109,16 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
     await expect(row).toContainText(space.name);
     expect(await scrollsSideways(page)).toBe(false);
 
-    await page.goto(`/s/${key}/p/${plans.id}/page`);
+    await page.goto(`/spaces/${key}/p/${plans.id}/page`);
     await expect(banner(page)).toHaveAttribute("data-archived-banner", "space");
     await expect(banner(page)).toContainText("This whole space is archived.");
     await expect(page.locator('[data-action="edit-page"]')).toHaveCount(0);
     await banner(page).getByRole("link", { name: "Open the space settings" }).click();
+    await expect(page).toHaveURL(new RegExp(`/spaces/${key}/settings/general$`));
     await page.locator('[data-action="unarchive-space"]').click();
     await expect(page.locator("[data-space-archive-card]")).toHaveAttribute("data-space-archive-card", "live");
 
-    await page.goto(`/s/${key}/p/${plans.id}/page`);
+    await page.goto(`/spaces/${key}/p/${plans.id}/page`);
     await expect(heading(page)).toHaveText(plans.title);
     await expect(banner(page)).toHaveCount(0);
   });
@@ -123,7 +128,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
       const { key, plans } = await freshTree(api, testInfo, `Axe ${scheme}`);
       await startInScheme(page, scheme);
 
-      await page.goto(`/s/${key}/p/${plans.id}/page`);
+      await page.goto(`/spaces/${key}/p/${plans.id}/page`);
       await expect(heading(page)).toHaveText(plans.title);
       await page.locator('[data-action="page-menu"]').focus();
       await page.keyboard.press("Enter");
@@ -144,7 +149,7 @@ test.describe("archived pages and spaces", { tag: ["@auth"] }, () => {
       await expect(page.locator('[data-action="edit-page"]')).toBeVisible();
 
       must(await api.PUT("/pages/{pageID}/archive", { params: { path: { pageID: plans.id } } }));
-      await page.goto(`/s/${key}/settings?tab=archive`);
+      await page.goto(`/spaces/${key}/settings/trash`);
       await expect(archiveRow(page, plans.title)).toBeVisible();
       await expectAccessible(page);
       await archiveRow(page, plans.title)

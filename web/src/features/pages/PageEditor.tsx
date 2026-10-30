@@ -266,8 +266,8 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
 
   const view = (shown: Page) =>
     shown.home
-      ? navigate({ to: "/s/$spaceKey", params: { spaceKey: space.key } })
-      : navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: shown.id, slug: pageSlug(shown.title) } });
+      ? navigate({ to: "/spaces/$spaceKey", params: { spaceKey: space.key } })
+      : navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId: shown.id, slug: pageSlug(shown.title) } });
 
   // Together, somebody else's changes may be waiting to be published even
   // when this person changed nothing.
@@ -476,7 +476,7 @@ function PageForm({ page, space, draft, together }: { page: Page; space: Space; 
               size="sm"
               onClick={() =>
                 void navigate({
-                  to: "/s/$spaceKey/p/$pageId/$slug/history",
+                  to: "/spaces/$spaceKey/p/$pageId/$slug/history",
                   params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) },
                   search: { from: conflict.latest, to: "draft" },
                 })

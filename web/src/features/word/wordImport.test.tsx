@@ -71,7 +71,7 @@ describe("importing Word documents under a page", () => {
   it("imports one document at once and links the page it made, with its warnings", async () => {
     stubApi(routes(true));
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openDialog();
     expect(dialog.getByRole("button", { name: "Import" })).toBeDisabled();
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-word-files]")!, [docx("Plan.docx")]);
@@ -88,7 +88,7 @@ describe("importing Word documents under a page", () => {
         warnings: ["Plan.docx: The document's comments (2) were left out; they stay in the Word document."],
       }),
     );
-    expect(await dialog.findByRole("link", { name: "Release plan" })).toHaveAttribute("href", `/s/DOCS/p/${madeId}/release-plan`);
+    expect(await dialog.findByRole("link", { name: "Release plan" })).toHaveAttribute("href", `/spaces/DOCS/p/${madeId}/release-plan`);
     expect(dialog.getByText(/comments \(2\) were left out/)).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });
@@ -113,7 +113,7 @@ describe("importing Word documents under a page", () => {
       [`GET /word-imports/${importId}`]: () => ({ status: 200, body: { job: answers[Math.min(asked++, answers.length - 1)] } }),
     });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openDialog();
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-word-files]")!, [docx("a.docx"), docx("broken.docx"), new File(["z"], "team.zip")]);
     await userEvent.click(dialog.getByRole("button", { name: "Import" }));
@@ -123,7 +123,7 @@ describe("importing Word documents under a page", () => {
     act(() => sent.respond(202, { job: job() }));
     expect(await dialog.findByText("Waiting for the import to begin.")).toBeInTheDocument();
     expect(await dialog.findByText("Imported 2 pages.", undefined, { timeout: 5000 })).toBeInTheDocument();
-    expect(dialog.getByRole("link", { name: "A" })).toHaveAttribute("href", `/s/DOCS/p/${madeId}/a`);
+    expect(dialog.getByRole("link", { name: "A" })).toHaveAttribute("href", `/spaces/DOCS/p/${madeId}/a`);
     expect(dialog.getByText(/broken.docx cannot be a page/)).toBeInTheDocument();
     expect(dialog.getByText("Charts were left out.")).toBeInTheDocument();
     expect(dialog.getByText("team/logo.png")).toBeInTheDocument();
@@ -136,7 +136,7 @@ describe("importing Word documents under a page", () => {
       [`GET /word-imports/${importId}`]: { status: 200, body: { job: job({ state: "failed", failure: "forbidden", message: "x" }) } },
     });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openDialog();
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-word-files]")!, [docx("a.docx"), docx("b.docx")]);
     await userEvent.click(dialog.getByRole("button", { name: "Import" }));
@@ -147,7 +147,7 @@ describe("importing Word documents under a page", () => {
   it("shows the server's refusal, and is not offered to a reader", async () => {
     stubApi(routes(true));
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     const dialog = await openDialog();
     await userEvent.upload(document.querySelector<HTMLInputElement>("[data-word-files]")!, [docx("old.docx")]);
     await userEvent.click(dialog.getByRole("button", { name: "Import" }));
@@ -164,7 +164,7 @@ describe("importing Word documents under a page", () => {
 
   it("is not offered to a reader", async () => {
     stubApi(routes(false));
-    await renderAt(`/s/DOCS/p/${pageId}/guide`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/guide`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     expect(await screen.findByRole("menuitem", { name: "Export as Markdown" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Import Word documents" })).toBeNull();

@@ -92,7 +92,7 @@ const panel = async () => within(await screen.findByRole("region", { name: /Atta
 describe("the attachments of a page", () => {
   it("lists every file with its size and who attached it, and links to the bytes", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByRole("heading", { name: "Attachments (3)" })).toBeInTheDocument();
     const row = (await list.findByText("plan.pdf")).closest("li")!;
@@ -110,7 +110,7 @@ describe("the attachments of a page", () => {
 
   it("draws the document's pictures and files, and the deleted ones as missing", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const doc = await screen.findByText((_, el) => el?.hasAttribute("data-doc") ?? false);
     await waitFor(() => expect(within(doc).getByText("old.pdf (file deleted)")).toBeInTheDocument());
     const picture = within(doc).getByRole("img", { name: "The login screen" });
@@ -128,7 +128,7 @@ describe("the attachments of a page", () => {
   it("uploads picked files side by side, with progress, and lists them when stored", async () => {
     const { setList } = stubPage({ attachments: [] });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByText("Nothing attached yet. Drop files here, or choose them with Attach files.")).toBeInTheDocument();
     const input = document.querySelector<HTMLInputElement>("[data-attachment-input]")!;
@@ -154,7 +154,7 @@ describe("the attachments of a page", () => {
   it("takes files dropped on the panel", async () => {
     stubPage({ attachments: [] });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const region = await screen.findByRole("region", { name: /Attachments/ });
     const dropped = new File(["png"], "screen.png", { type: "image/png" });
     const dataTransfer = { types: ["Files"], files: [dropped], dropEffect: "none" };
@@ -169,7 +169,7 @@ describe("the attachments of a page", () => {
   it("says what is wrong with a file too large, and what to do about it", async () => {
     stubPage({ attachments: [] });
     const uploads = stubUploads();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     await panel();
     const input = document.querySelector<HTMLInputElement>("[data-attachment-input]")!;
     await userEvent.upload(input, new File(["x".repeat(3000)], "huge.iso", { type: "application/octet-stream" }));
@@ -188,7 +188,7 @@ describe("the attachments of a page", () => {
     const { sent, setList } = stubPage({
       more: { [`DELETE /attachments/${archive.id}`]: { status: 204 } },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     const remove = await list.findByRole("button", { name: "Delete logs.zip" });
     await userEvent.click(remove);
@@ -230,7 +230,7 @@ describe("the attachments of a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByRole("heading", { name: "Attachments (1)" })).toBeInTheDocument();
     const latest = () => list.getByText("budget.csv").closest("li")!;
@@ -261,7 +261,7 @@ describe("the attachments of a page", () => {
 
   it("offers its editors to annotate the pictures, and no other file", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByRole("button", { name: "Annotate screen.png" })).toBeInTheDocument();
     expect(list.queryByRole("button", { name: "Annotate plan.pdf" })).toBeNull();
@@ -270,7 +270,7 @@ describe("the attachments of a page", () => {
 
   it("shows a reader who may not edit the files, but no way to add or delete them", async () => {
     stubPage({ edit: false });
-    await renderAt(`/s/DOCS/p/${pageId}/notes`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/notes`);
     const list = await panel();
     expect(await list.findByText("plan.pdf")).toBeInTheDocument();
     expect(list.queryByRole("button", { name: "Attach files" })).toBeNull();

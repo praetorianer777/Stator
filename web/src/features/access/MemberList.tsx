@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useMe, useMembers, useRemoveMember, type Member } from "@/api/auth";
 import { Button, EmptyState, ErrorBanner, Skeleton, Table, Tag, Td, Th, countOf, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
+import { GUESTS_ANCHOR } from "@/features/spaces/settingsSections";
 import { t } from "@/i18n";
 
 /**
@@ -69,9 +70,9 @@ export function MemberList() {
                         {!member.active && <Tag className="text-danger">{t.accessAdmin.members.off}</Tag>}
                         {member.guestSpace && (
                           <Link
-                            to="/s/$spaceKey/settings"
+                            to="/spaces/$spaceKey/settings/members"
                             params={{ spaceKey: member.guestSpace.key }}
-                            search={{ tab: "guests" }}
+                            hash={GUESTS_ANCHOR}
                             data-guest-space={member.guestSpace.key}
                           >
                             <Tag>{t.guests.guestOf(member.guestSpace.name)}</Tag>

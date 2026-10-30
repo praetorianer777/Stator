@@ -39,7 +39,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     const word = `rollout-${testInfo.workerIndex}${Date.now().toString(36)}`;
     await addLabel(api, tagged.id, word);
 
-    await page.goto(`/s/${space.key}/p/${target.id}/rollout-retro`);
+    await page.goto(`/spaces/${space.key}/p/${target.id}/rollout-retro`);
     await expect(heading(page)).toHaveText("Rollout retro");
     const box = labelBox(page);
     await expect(async () => {
@@ -57,9 +57,9 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     await expect(box).toBeFocused();
 
     await chip(page, word).getByRole("link", { name: word }).click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/labels/${word}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/labels/${word}$`));
     await expect(page.locator("[data-label-heading]")).toHaveText(word);
-    await openShowing(page, `/s/${space.key}/labels/${word}`, page.locator('[data-labeled-page="Rollout retro"]'));
+    await openShowing(page, `/spaces/${space.key}/labels/${word}`, page.locator('[data-labeled-page="Rollout retro"]'));
     await expect(page.locator('[data-labeled-page="Rollout checklist"]')).toBeVisible();
 
     await page.locator('[data-action="label-everywhere"]').click();
@@ -73,7 +73,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     const space = await freshSpace(api, testInfo, "Typed");
     const target = await createPage(api, space.homePageId, "Budget");
 
-    await page.goto(`/s/${space.key}/p/${target.id}/budget`);
+    await page.goto(`/spaces/${space.key}/p/${target.id}/budget`);
     const box = labelBox(page);
     await box.fill("Finance Q4");
     await box.press("Enter");
@@ -126,7 +126,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
     expect((await bobApi.POST("/pages/{pageID}/labels", { params: { path: { pageID: target.id } }, body: { name: "mine" } })).response.status).toBe(403);
 
     const bob = await pageAs("bob");
-    await openWithLabel(bob, `/s/${space.key}/p/${target.id}/charter`, "governance");
+    await openWithLabel(bob, `/spaces/${space.key}/p/${target.id}/charter`, "governance");
     await expect(bob.locator("[data-page-labels]").getByRole("combobox")).toHaveCount(0);
     await expect(chip(bob, "governance").getByRole("button")).toHaveCount(0);
     await expect(bob.locator('[data-action="edit-page"]')).toHaveCount(0);
@@ -141,7 +141,7 @@ test.describe("labels", { tag: ["@auth"] }, () => {
       await addLabel(api, target.id, "seabirds");
       await startInScheme(page, scheme);
 
-      await openWithLabel(page, `/s/${space.key}/p/${target.id}/puffin-colony`, "seabirds");
+      await openWithLabel(page, `/spaces/${space.key}/p/${target.id}/puffin-colony`, "seabirds");
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
 

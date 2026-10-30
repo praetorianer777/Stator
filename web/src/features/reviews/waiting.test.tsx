@@ -67,7 +67,7 @@ describe("the reviews waiting for the caller", () => {
     const row = (await screen.findByRole("link", { name: "Policy" })).closest("[data-waiting-review]") as HTMLElement;
     expect(row.closest("[data-waiting-reviews]")).not.toBeNull();
     expect(row).toHaveAttribute("data-waiting-review", "0195f000-0000-7000-8000-0000000000e5");
-    expect(within(row).getByRole("link", { name: "Policy" })).toHaveAttribute("href", `/s/DOCS/p/${PAGE_ID}/policy`);
+    expect(within(row).getByRole("link", { name: "Policy" })).toHaveAttribute("href", `/spaces/DOCS/p/${PAGE_ID}/policy`);
     expect(row).toHaveTextContent(/Bob Author, submitted/);
     expect(within(row).getByText("1 of 2 approvals")).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);

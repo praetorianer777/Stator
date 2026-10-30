@@ -41,18 +41,18 @@ import { Highlight } from "@/features/search/Highlight";
 
 const updatedAt = localDateFormat({ dateStyle: "medium" });
 
-const PUBLIC_PAGE = new RegExp(`^${PUBLIC_PATH}/(?:s/[^/]+/)?p/([0-9a-f-]{36})`);
-const PUBLIC_SPACE = new RegExp(`^${PUBLIC_PATH}/s/([A-Za-z0-9]+)/?$`);
+const PUBLIC_PAGE = new RegExp(`^${PUBLIC_PATH}/(?:spaces/[^/]+/)?p/([0-9a-f-]{36})`);
+const PUBLIC_SPACE = new RegExp(`^${PUBLIC_PATH}/spaces/([A-Za-z0-9]+)/?$`);
 
 /** The address inside the app of what a public address shows, which signing in leads back to. */
 export function privateAddress(pathname: string, search: string, page?: PublicPage): string {
   const pageMatch = PUBLIC_PAGE.exec(pathname);
   if (pageMatch) {
     if (!page || page.id !== pageMatch[1]) return "/";
-    return page.home ? `/s/${page.space.key}` : `/s/${page.space.key}/p/${page.id}/${pageSlug(page.title)}`;
+    return page.home ? `/spaces/${page.space.key}` : `/spaces/${page.space.key}/p/${page.id}/${pageSlug(page.title)}`;
   }
   const spaceMatch = PUBLIC_SPACE.exec(pathname);
-  if (spaceMatch?.[1]) return `/s/${spaceMatch[1].toUpperCase()}`;
+  if (spaceMatch?.[1]) return `/spaces/${spaceMatch[1].toUpperCase()}`;
   if (pathname.endsWith("/search")) return `/search${search}`;
   return "/";
 }
@@ -259,7 +259,7 @@ export function PublicSiteScreen() {
         <ul className="space-y-2">
           {site.data.spaces.map((space) => (
             <li key={space.key} className="rounded-control border border-border bg-surface p-3" data-public-space={space.key}>
-              <Link to="/public/s/$spaceKey" params={{ spaceKey: space.key }} className="font-medium">
+              <Link to="/public/spaces/$spaceKey" params={{ spaceKey: space.key }} className="font-medium">
                 {space.name}
               </Link>
               {space.description && <p className="mt-1 text-sm text-ink-muted">{space.description}</p>}
@@ -274,7 +274,7 @@ export function PublicSiteScreen() {
 /** A public space: its home page beside its tree. */
 export function PublicSpaceScreen({ spaceKey }: { spaceKey: string }) {
   const space = usePublicSpace(spaceKey);
-  if (space.error) return <Failed error={space.error} next={`/s/${spaceKey.toUpperCase()}`} retry={() => void space.refetch()} />;
+  if (space.error) return <Failed error={space.error} next={`/spaces/${spaceKey.toUpperCase()}`} retry={() => void space.refetch()} />;
   if (!space.data) return <Skeleton />;
   return (
     <WithTree pages={space.data.pages} current={space.data.space.homePageId}>
@@ -397,8 +397,8 @@ export function PublicPageLookup({ pageId }: { pageId: string }) {
   useEffect(() => {
     if (!page.data) return;
     const { space, title, home } = page.data;
-    if (home) void navigate({ to: "/public/s/$spaceKey", params: { spaceKey: space.key }, replace: true });
-    else void navigate({ to: "/public/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId, slug: pageSlug(title) }, replace: true });
+    if (home) void navigate({ to: "/public/spaces/$spaceKey", params: { spaceKey: space.key }, replace: true });
+    else void navigate({ to: "/public/spaces/$spaceKey/p/$pageId/$slug", params: { spaceKey: space.key, pageId, slug: pageSlug(title) }, replace: true });
   }, [page.data, navigate, pageId]);
   if (page.error) return <Failed error={page.error} next="/" retry={() => void page.refetch()} />;
   return <Skeleton />;

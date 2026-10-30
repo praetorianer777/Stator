@@ -16,7 +16,7 @@ afterEach(() => {
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000a1";
 const REVIEW_ID = "0195f000-0000-7000-8000-0000000000e1";
-const PATH = `/s/DOCS/p/${PAGE_ID}/policy`;
+const PATH = `/spaces/DOCS/p/${PAGE_ID}/policy`;
 const ids = { ann: "0195f000-0000-7000-8000-0000000000f1", bob: "0195f000-0000-7000-8000-0000000000f2", leads: "0195f000-0000-7000-8000-0000000000f3" };
 const member = { edit: false, delete: false, restrict: false, comment: true, archive: false, add: false, grantEdit: false };
 const notAdmin = aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: false } });
@@ -336,7 +336,7 @@ describe("the space's review settings", () => {
 
   it("shows the space's rule and the branches with their own, and removes a branch's", async () => {
     const sent = stubSettings(aSpace(), { [`DELETE /pages/${PAGE_ID}/review-rule`]: { status: 204 } });
-    await renderAt("/s/DOCS/settings?tab=reviews");
+    await renderAt("/spaces/DOCS/settings/workflow");
     const whole = (await screen.findByText("The whole space")).closest("[data-space-review-rule]") as HTMLElement;
     expect(whole).toHaveAttribute("data-space-review-rule", "set");
     expect(within(whole).getByText("Ann Reviewer")).toBeInTheDocument();
@@ -352,17 +352,19 @@ describe("the space's review settings", () => {
 
   it("removes the space's rule after asking", async () => {
     const sent = stubSettings(aSpace(), { "DELETE /spaces/DOCS/review-rule": { status: 204 } });
-    await renderAt("/s/DOCS/settings?tab=reviews");
+    await renderAt("/spaces/DOCS/settings/workflow");
     const whole = (await screen.findByText("The whole space")).closest("[data-space-review-rule]") as HTMLElement;
     await userEvent.click(within(whole).getByRole("button", { name: "Remove rule" }));
     await answerConfirm(true);
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === "/spaces/DOCS/review-rule")).toBe(true));
   });
 
-  it("is no tab for a member who does not administer the space", async () => {
-    stubSettings(notAdmin);
-    await renderAt("/s/DOCS/settings?tab=reviews");
-    expect(await screen.findByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("tab", { name: "Reviews" })).toBeNull();
+  it("is no tab for a member who does not administer the space, and says who to ask at its address", async () => {
+    const sent = stubSettings(notAdmin);
+    await renderAt("/spaces/DOCS/settings/workflow");
+    expect(await screen.findByRole("tab", { name: "General" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.queryByRole("tab", { name: "Workflow" })).toBeNull();
+    expect(document.querySelector('[data-settings-refused="workflow"]')).toHaveTextContent("Only the space's administrators change its settings");
+    expect(sent.some((r) => r.path === "/spaces/DOCS/review-rules")).toBe(false);
   });
 });

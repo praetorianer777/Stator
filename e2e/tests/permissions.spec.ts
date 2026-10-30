@@ -59,7 +59,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     const bobApi = await apiAs("bob");
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(200);
 
-    await page.goto(`/s/${key}/settings?tab=permissions`);
+    await page.goto(`/spaces/${key}/settings/members`);
     const grants = page.getByRole("table", { name: "Roles granted in this space" });
     const everyone = grants.locator('[data-grant="Everyone"][data-grant-role="editor"]');
     await expect(everyone).toBeVisible();
@@ -79,7 +79,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await expect(page.getByText(`${BOB} holds Viewer here now.`, { exact: true })).toBeVisible();
     await expect(grants.locator(`[data-grant="${BOB}"][data-grant-role="viewer"]`)).toBeVisible();
     await expect.poll(() => statusOf(bobApi, space.homePageId)).toBe(200);
-    await openUntil(bob, `/s/${key}`, () => expect(bob.locator("[data-page-home]")).toBeAttached(ONE_LOOK));
+    await openUntil(bob, `/spaces/${key}`, () => expect(bob.locator("[data-page-home]")).toBeAttached(ONE_LOOK));
     // A viewer views and nothing more, so nothing on the page offers to change it.
     await expect(bob.locator('[data-action="edit-page"]')).toHaveCount(0);
   });
@@ -92,7 +92,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     const bobApi = await apiAs("bob");
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(200);
 
-    await page.goto(`/s/${key}/p/${secret.id}/salaries`);
+    await page.goto(`/spaces/${key}/p/${secret.id}/salaries`);
     let dialog = await openRestrictions(page);
     const view = dialog.locator('[data-restriction-list="view"]');
     await expect(view).toContainText("Everyone who can view the space.");
@@ -104,8 +104,8 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(404);
 
     const bob = await pageAs("bob");
-    await openWithout(bob, `/s/${key}/p/${secret.id}/salaries`, bob.locator("[data-page-title]"), bob.getByText(NOT_FOUND).first());
-    await openUntil(bob, `/s/${key}`, async () => {
+    await openWithout(bob, `/spaces/${key}/p/${secret.id}/salaries`, bob.locator("[data-page-title]"), bob.getByText(NOT_FOUND).first());
+    await openUntil(bob, `/spaces/${key}`, async () => {
       await expect(bob.locator("[data-page-home]")).toBeAttached(ONE_LOOK);
       await expect(bob.locator(`[data-tree-item="${secret.id}"]`)).toHaveCount(0, ONE_LOOK);
     });
@@ -115,7 +115,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     await dialog.locator('[data-action="save-restrictions"]').click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(() => statusOf(bobApi, secret.id)).toBe(200);
-    await openUntil(bob, `/s/${key}/p/${secret.id}/salaries`, () => expect(heading(bob)).toHaveText("Salaries", ONE_LOOK));
+    await openUntil(bob, `/spaces/${key}/p/${secret.id}/salaries`, () => expect(heading(bob)).toHaveText("Salaries", ONE_LOOK));
     await expect(bob.locator('[data-page-restricted="view"]')).toBeVisible();
   });
 
@@ -132,7 +132,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     });
     expect(saved.response.status).toBe(200);
 
-    await page.goto(`/s/${key}/p/${child.id}/next-year`);
+    await page.goto(`/spaces/${key}/p/${child.id}/next-year`);
     await expect(page.locator('[data-page-restricted="view"]')).toBeVisible();
     const dialog = await openRestrictions(page);
     const from = dialog.locator('[data-inherited-from="Plans"]');
@@ -152,7 +152,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Notes");
 
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${key}/p/${notes.id}/notes`, () => expect(heading(bob)).toHaveText("Notes", ONE_LOOK));
+    await openUntil(bob, `/spaces/${key}/p/${notes.id}/notes`, () => expect(heading(bob)).toHaveText("Notes", ONE_LOOK));
     const dialog = await openRestrictions(bob);
     await pick(dialog.locator('[data-restriction-list="edit"]'), ALICE, ALICE);
     await dialog.locator('[data-action="save-restrictions"]').click();
@@ -200,13 +200,13 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await expect(page.locator('[data-permission-cell="administrator:administerSite"]')).toBeDisabled();
       await expectAccessible(page);
 
-      await page.goto(`/s/${key}/settings?tab=permissions`);
+      await page.goto(`/spaces/${key}/settings/members`);
       await expect(page.getByRole("table", { name: "Roles granted in this space" })).toBeVisible();
       await page.locator("[data-space-permissions] [data-subject-picker] input").fill("b");
       await expect(page.locator("[data-space-permissions] [data-subject-options] [role=option]").first()).toBeVisible();
       await expectAccessible(page);
 
-      await page.goto(`/s/${key}/p/${page2.id}/locked`);
+      await page.goto(`/spaces/${key}/p/${page2.id}/locked`);
       await expect(page.locator('[data-page-restricted="view"]')).toBeVisible();
       await expectTreeLock(page, page2.id);
       await expectAccessible(page);

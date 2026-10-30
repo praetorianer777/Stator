@@ -51,7 +51,7 @@ async function screenPage(api: StatorApi, testInfo: TestInfo) {
       },
     }),
   );
-  return { key, target, shot, original, path: `/s/${key}/p/${target.id}/login-help` };
+  return { key, target, shot, original, path: `/spaces/${key}/p/${target.id}/login-help` };
 }
 
 async function filesOf(api: StatorApi, pageId: string) {

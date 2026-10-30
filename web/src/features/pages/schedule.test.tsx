@@ -13,7 +13,7 @@ const EDITOR_TEST_MS = 20_000;
 const space = aSpace();
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000d4";
-const PATH = `/s/DOCS/p/${PAGE_ID}/news`;
+const PATH = `/spaces/DOCS/p/${PAGE_ID}/news`;
 const news = aPage({
   id: PAGE_ID,
   title: "News",

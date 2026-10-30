@@ -15,7 +15,7 @@ afterEach(() => {
 
 const home = aPage();
 const pageId = "0195f000-0000-7000-8000-0000000000c1";
-const PATH = `/s/DOCS/p/${pageId}/runbook`;
+const PATH = `/spaces/DOCS/p/${pageId}/runbook`;
 const none: Watching = { page: false, subtree: false, inherited: null };
 
 function stubPage({
@@ -172,9 +172,9 @@ describe("the watching list", () => {
     });
     await renderAt("/settings/watching");
     const table = await screen.findByRole("table");
-    expect(within(table).getByRole("link", { name: "Runbook" })).toHaveAttribute("href", `/s/DOCS/p/${pageId}/runbook`);
+    expect(within(table).getByRole("link", { name: "Runbook" })).toHaveAttribute("href", `/spaces/DOCS/p/${pageId}/runbook`);
     expect(within(table).getByText("This page and the pages below")).toBeInTheDocument();
-    expect(within(table).getByRole("link", { name: "Operations" })).toHaveAttribute("href", "/s/OPS");
+    expect(within(table).getByRole("link", { name: "Operations" })).toHaveAttribute("href", "/spaces/OPS");
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(screen.getByRole("button", { name: "Stop watching Space Operations" }));
     expect(await screen.findByRole("status")).toHaveTextContent("You no longer watch Space Operations.");
@@ -191,7 +191,7 @@ describe("the watching list", () => {
     });
     await renderAt("/settings/watching");
     const table = await screen.findByRole("table");
-    expect(within(table).getByRole("link", { name: "Blog of Operations" })).toHaveAttribute("href", "/s/OPS/blog");
+    expect(within(table).getByRole("link", { name: "Blog of Operations" })).toHaveAttribute("href", "/spaces/OPS/blog");
     expect(within(table).getByText("New posts in the blog")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Stop watching Blog of Operations" }));
     await waitFor(() => expect(sent.some((each) => each.method === "DELETE" && each.path === "/spaces/OPS/blog/watch")).toBe(true));

@@ -35,7 +35,7 @@ test.describe("folders", { tag: ["@auth"] }, () => {
   test("a folder is made, filled, renamed, moved and deleted from the tree's pages", { tag: "@desktop" }, async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Folders");
     const archive = await createPage(api, space.homePageId, "Archive");
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
 
     await menu(page, "new-folder");
     const made = page.getByRole("dialog");
@@ -83,7 +83,7 @@ test.describe("folders", { tag: ["@auth"] }, () => {
       await createFolder(api, box.id, "Inner");
       await createPage(api, box.id, "Note");
       await startInScheme(page, scheme);
-      await page.goto(`/s/${space.key}/p/${box.id}/box`);
+      await page.goto(`/spaces/${space.key}/p/${box.id}/box`);
       await expect(children(page).getByRole("link", { name: "Note" })).toBeVisible();
       await expectAccessible(page);
     });

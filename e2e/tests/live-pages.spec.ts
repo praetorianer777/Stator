@@ -34,7 +34,7 @@ test.describe("live pages", { tag: ["@auth", "@desktop"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Live"));
     const notes = await createPage(api, space.homePageId, "Notes", doc("First words."));
-    const path = `/s/${space.key}/p/${notes.id}/notes`;
+    const path = `/spaces/${space.key}/p/${notes.id}/notes`;
 
     // A draft nobody published is named before going live throws it away.
     await page.goto(`${path}/edit`);

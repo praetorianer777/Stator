@@ -107,7 +107,7 @@ test.describe("reactions", { tag: ["@auth"] }, () => {
     expect((await bobApi.DELETE("/pages/{pageID}/reactions", { params: { path: { pageID: secret.id }, query: { emoji: "🚀" } } })).response.status).toBe(404);
 
     const bob = await pageAs("bob");
-    await openWithout(bob, `/s/${space.key}/p/${secret.id}/secret`, pageBar(bob), bob.getByText(/not found/i).first());
+    await openWithout(bob, `/spaces/${space.key}/p/${secret.id}/secret`, pageBar(bob), bob.getByText(/not found/i).first());
     await expect(bob.getByText("🚀")).toHaveCount(0);
   });
 

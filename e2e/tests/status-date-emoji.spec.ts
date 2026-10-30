@@ -48,7 +48,7 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "Release" }] }],
     });
-    const path = `/s/${space.key}/p/${release.id}/release`;
+    const path = `/spaces/${space.key}/p/${release.id}/release`;
     await openEditor(page, path, "Release");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type(" ");
@@ -157,7 +157,7 @@ test.describe("status labels, dates and emoji", { tag: ["@auth", "@desktop"] }, 
       ],
     });
     await startInScheme(page, scheme);
-    return `/s/${space.key}/p/${made.id}/board`;
+    return `/spaces/${space.key}/p/${made.id}/board`;
   }
 
   async function openBoardEditor(page: Page, path: string, scheme: ColourScheme): Promise<void> {

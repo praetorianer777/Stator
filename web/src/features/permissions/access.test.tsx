@@ -66,7 +66,7 @@ function stubPage(space = aSpace(), more: Parameters<typeof stubApi>[0] = {}) {
 }
 
 async function openInspector() {
-  await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+  await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
   await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
   await userEvent.click(await screen.findByRole("menuitem", { name: "Check access" }));
   return screen.findByRole("dialog", { name: "Who may do what on Secret" });
@@ -141,7 +141,7 @@ describe("checking somebody's access", () => {
 
   it("is not offered to somebody who does not administer the space", async () => {
     stubPage(aSpace({ can: { editPages: true, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: true } }));
-    await renderAt(`/s/DOCS/p/${ids.secret}/secret`);
+    await renderAt(`/spaces/DOCS/p/${ids.secret}/secret`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await screen.findByRole("menuitem", { name: "Copy" });
     expect(screen.queryByRole("menuitem", { name: "Check access" })).toBeNull();

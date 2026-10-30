@@ -108,7 +108,7 @@ test.describe("Armature's issues on a page, from a real Armature", { tag: ["@aut
     const bobApi = await apiAs("bob");
     await connectAccount(bobApi, seed.people.outsider);
     const bob = await pageAs("bob");
-    await openShowing(bob, `/s/${space.key}/p/${target.id}/page`, "Sign-in is tracked in");
+    await openShowing(bob, `/spaces/${space.key}/p/${target.id}/page`, "Sign-in is tracked in");
     for (const hidden of [shown(bob).locator(`[data-armature-issue="${signIn.key}"]`), shown(bob).locator(`[data-armature-issue-block="${guide.key}"]`)]) {
       await expect(hidden).toHaveAttribute("data-state", "hidden");
       await expect(hidden).toContainText("Not visible to you");

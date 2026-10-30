@@ -41,7 +41,7 @@ export function NewSpaceForm({ personal = false }: { personal?: boolean }) {
         personal: personal || undefined,
         template: personal || template === BLANK_SPACE_TEMPLATE ? undefined : template,
       },
-      { onSuccess: (made) => void navigate({ to: "/s/$spaceKey", params: { spaceKey: made.key } }) },
+      { onSuccess: (made) => void navigate({ to: "/spaces/$spaceKey", params: { spaceKey: made.key } }) },
     );
   }
 

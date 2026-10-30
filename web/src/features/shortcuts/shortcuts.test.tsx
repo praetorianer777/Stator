@@ -62,11 +62,11 @@ function stub(shortcuts: () => Shortcut[], { asMember = false, more = {} }: { as
 describe("shortcuts in the sidebar", () => {
   it("lists them above the page tree, a page in the app and an address in a new tab", async () => {
     stub(() => [runbook, status, sneaky]);
-    await renderAt("/s/DOCS/settings");
+    await renderAt("/spaces/DOCS/settings/general");
     const list = await screen.findByRole("list", { name: "Shortcuts" });
     const links = within(list).getAllByRole("link");
     expect(links.map((each) => each.textContent)).toEqual(["Runbook", "Status(opens in a new tab)"]);
-    expect(links[0]).toHaveAttribute("href", `/s/DOCS/p/${runbookId}/runbook`);
+    expect(links[0]).toHaveAttribute("href", `/spaces/DOCS/p/${runbookId}/runbook`);
     expect(links[0]).not.toHaveAttribute("target");
     expect(links[1]).toHaveAttribute("href", "https://status.example.com/now");
     expect(links[1]).toHaveAttribute("target", "_blank");
@@ -79,8 +79,8 @@ describe("shortcuts in the sidebar", () => {
 
   it("shows nothing while the space has none", async () => {
     stub(() => []);
-    await renderAt("/s/DOCS/settings");
-    await screen.findByRole("tab", { name: "Shortcuts" });
+    await renderAt("/spaces/DOCS/settings/general");
+    await screen.findByRole("tab", { name: "Integrations" });
     await waitFor(() => expect(document.querySelector("[data-sidebar-shortcuts]")).toBeNull());
   });
 
@@ -114,8 +114,8 @@ describe("the shortcuts tab", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=shortcuts");
-    expect(await screen.findByRole("tab", { name: "Shortcuts" })).toHaveAttribute("aria-selected", "true");
+    await renderAt("/spaces/DOCS/settings/integrations");
+    expect(await screen.findByRole("tab", { name: "Integrations" })).toHaveAttribute("aria-selected", "true");
     await screen.findByRole("list", { name: "Shortcuts of this space" });
     expect(await axeViolations()).toEqual([]);
 
@@ -136,7 +136,7 @@ describe("the shortcuts tab", () => {
 
   it("adds a page of the space, by its title when no label is given", async () => {
     const sent = stub(() => [], { more: { "POST /spaces/DOCS/shortcuts": { status: 201, body: { shortcut: runbook } } } });
-    await renderAt("/s/DOCS/settings?tab=shortcuts");
+    await renderAt("/spaces/DOCS/settings/integrations");
     const page = await screen.findByLabelText("Page");
     await waitFor(() => expect(page).not.toBeDisabled());
     await userEvent.selectOptions(page, runbookId);
@@ -155,7 +155,7 @@ describe("the shortcuts tab", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=shortcuts");
+    await renderAt("/spaces/DOCS/settings/integrations");
     const up = await screen.findByRole("button", { name: "Move Status up" });
     expect(screen.getByRole("button", { name: "Move Runbook up" })).toBeDisabled();
     up.focus();
@@ -177,7 +177,7 @@ describe("the shortcuts tab", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=shortcuts");
+    await renderAt("/spaces/DOCS/settings/integrations");
     await userEvent.click(await screen.findByRole("button", { name: "Remove Runbook" }));
     expect(await screen.findByText("Removed Runbook.")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("button", { name: "Remove Runbook" })).toBeNull());
@@ -185,7 +185,7 @@ describe("the shortcuts tab", () => {
 
   it("shows a member the shortcuts and nothing to change them with", async () => {
     stub(() => [runbook, { ...status, label: "Status" }], { asMember: true });
-    await renderAt("/s/DOCS/settings?tab=shortcuts");
+    await renderAt("/spaces/DOCS/settings/integrations");
     await screen.findByRole("list", { name: "Shortcuts of this space" });
     expect(screen.getByText("Only an administrator of this space can add, move or remove its shortcuts. Ask one of them.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Move|Remove/ })).toBeNull();
@@ -200,7 +200,7 @@ describe("the shortcuts tab", () => {
       label: `Link ${i}`,
     }));
     stub(() => many);
-    await renderAt("/s/DOCS/settings?tab=shortcuts");
+    await renderAt("/spaces/DOCS/settings/integrations");
     expect(await screen.findByText("This space has 30 shortcuts, as many as it may hold. Remove one to add another.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add shortcut" })).toBeNull();
   });

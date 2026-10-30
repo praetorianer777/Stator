@@ -35,7 +35,7 @@ function shown(children: ReactNode) {
     ),
   });
   const page = createRoute({ getParentRoute: () => root, path: "/", component: () => children });
-  const editing = createRoute({ getParentRoute: () => root, path: "/s/$spaceKey/p/$pageId/$slug/edit", component: () => <p>Editing the new page</p> });
+  const editing = createRoute({ getParentRoute: () => root, path: "/spaces/$spaceKey/p/$pageId/$slug/edit", component: () => <p>Editing the new page</p> });
   const router = createRouter({ routeTree: root.addChildren([page, editing]), history: createMemoryHistory({ initialEntries: ["/"] }) });
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -111,7 +111,7 @@ describe("the template button", () => {
     await user.click(button);
     expect(await screen.findByText("Editing the new page")).toBeInTheDocument();
     expect(sent.find((each) => each.method === "POST")?.body).toEqual({ parentId: plans, spaceKey: "TEAM", title: "Weekly" });
-    expect(router.state.location.pathname).toBe(`/s/TEAM/p/${made}/weekly/edit`);
+    expect(router.state.location.pathname).toBe(`/spaces/TEAM/p/${made}/weekly/edit`);
   });
 
   it("asks for its template's variables first, and sends them with the page", async () => {

@@ -292,7 +292,7 @@ function StaleRow({
       </Td>
       <Td className="text-sm">
         <Link
-          to="/s/$spaceKey/p/$pageId/$slug"
+          to="/spaces/$spaceKey/p/$pageId/$slug"
           params={{ spaceKey: row.spaceKey, pageId: row.id, slug: pageSlug(row.title) }}
           search={{ from: STALE_REVIEW_FROM }}
           className="font-medium text-ink underline-offset-2 hover:underline"

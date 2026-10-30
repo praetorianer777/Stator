@@ -48,7 +48,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
     await createPage(api, inner.homePageId, `Plans ${word}`);
     let carol: { context: BrowserContext; page: Page } | undefined;
     try {
-      await page.goto(`/s/${key}/settings?tab=guests`);
+      await page.goto(`/spaces/${key}/settings/members`);
       const card = guestsCard(page, key);
       await card.getByLabel("Email address", { exact: true }).fill(CAROL.email);
       await card.getByLabel("May", { exact: true }).selectOption("commenter");
@@ -62,8 +62,8 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
 
       carol = await signInAsCarol(browser);
       const guest = carol.page;
-      await expect(guest).toHaveURL(new RegExp(`/s/${key}$`));
-      await openShowing(guest, `/s/${key}`, guest.locator("main").getByRole("heading", { level: 1, name: "Contractor work", exact: true }));
+      await expect(guest).toHaveURL(new RegExp(`/spaces/${key}$`));
+      await openShowing(guest, `/spaces/${key}`, guest.locator("main").getByRole("heading", { level: 1, name: "Contractor work", exact: true }));
       const me = (await (await guest.request.get(ME_PATH)).json()) as { organization: { role: string; guestSpace: { key: string } } };
       expect(me.organization.role).toBe("guest");
       expect(me.organization.guestSpace.key).toBe(key);
@@ -73,9 +73,9 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       }
       await expectAccessible(guest);
 
-      await guest.goto(`/s/${key}/p/${brief.id}`);
+      await guest.goto(`/spaces/${key}/p/${brief.id}`);
       await expect(guest.locator("main").getByRole("heading", { level: 1 })).toHaveText(`Brief ${word}`);
-      await guest.goto(`/s/${otherKey}`);
+      await guest.goto(`/spaces/${otherKey}`);
       await expect(guest.getByText(/not found/i).first()).toBeVisible();
 
       expect(await searchTitles(guest, word)).toEqual([`Brief ${word}`]);
@@ -84,7 +84,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       expect(people.people.map((each) => each.email)).not.toContain(BOB_EMAIL);
       expect((await guest.request.get("/api/v1/users")).status()).toBe(403);
 
-      await page.goto(`/s/${key}/settings?tab=guests`);
+      await page.goto(`/spaces/${key}/settings/members`);
       await card.locator(`[data-guest="${CAROL.email}"] [data-action="remove-guest"]`).click();
       await card.locator('[data-action="confirm-remove-guest"]').click();
       await expect(toast(page, "was removed.")).toBeVisible();

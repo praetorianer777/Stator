@@ -74,7 +74,7 @@ test.describe("comments below a page", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`replied in a thread on ${plan.title}`);
     await expect(told).toContainText("Monday is safer.");
     await told.click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/p/${plan.id}/[^?]+\\?thread=${threadId}`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/p/${plan.id}/[^?]+\\?thread=${threadId}`));
     const target = comments(page).locator(`[data-thread="${threadId}"]`);
     await expect(target).toBeFocused();
     await expect(target).toBeInViewport();

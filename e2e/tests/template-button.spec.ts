@@ -53,7 +53,7 @@ test.describe("template button and contributors", { tag: ["@auth"] }, () => {
       type: "doc",
       content: [{ type: "paragraph", content: [{ type: "text", text: "Our weekly meetings." }] }],
     });
-    const path = `/s/${space.key}/p/${meetings.id}/team-meetings`;
+    const path = `/spaces/${space.key}/p/${meetings.id}/team-meetings`;
 
     await openShowing(page, `${path}/edit`, "Our weekly meetings.");
     await insertBlock(page, "/template");

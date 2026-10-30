@@ -11,6 +11,7 @@ import {
   PublicSiteScreen,
   PublicSpaceScreen,
 } from "@/features/public/PublicScreens";
+import { movedSpaceAddress } from "@/features/spaces/settingsSections";
 import { rootRoute } from "./root";
 
 /** What the organization lets anybody read, without signing in: outside the app's shell and its sign-in guard. */
@@ -34,7 +35,7 @@ export const publicSiteRoute = createRoute({
 
 export const publicSpaceRoute = createRoute({
   getParentRoute: () => publicRoute,
-  path: "/s/$spaceKey",
+  path: "/spaces/$spaceKey",
   component: function PublicSpace() {
     const { spaceKey } = publicSpaceRoute.useParams();
     return <PublicSpaceScreen spaceKey={spaceKey} />;
@@ -44,7 +45,7 @@ export const publicSpaceRoute = createRoute({
 /** A page by its space, id and slug; only the id finds it. */
 export const publicPageRoute = createRoute({
   getParentRoute: () => publicRoute,
-  path: "/s/$spaceKey/p/$pageId/$slug",
+  path: "/spaces/$spaceKey/p/$pageId/$slug",
   component: function PublicPage() {
     const { pageId } = publicPageRoute.useParams();
     return <PublicPageScreen pageId={pageId} />;
@@ -58,6 +59,15 @@ export const publicPageBareRoute = createRoute({
   component: function PublicPageBare() {
     const { pageId } = publicPageBareRoute.useParams();
     return <PublicPageLookup pageId={pageId} />;
+  },
+});
+
+/** A public address from before spaces moved to /spaces/, as people shared it: sent on with its search and hash. */
+export const publicMovedRoute = createRoute({
+  getParentRoute: () => publicRoute,
+  path: "/s/$",
+  beforeLoad: ({ params, location }) => {
+    throw redirect({ href: `${PUBLIC_PATH}${movedSpaceAddress(params._splat ?? "", location.searchStr, location.hash)}`, replace: true });
   },
 });
 
@@ -114,4 +124,11 @@ export const oldPublicRoute = createRoute({
   },
 });
 
-export const publicRoutes = publicRoute.addChildren([publicSiteRoute, publicSpaceRoute, publicPageRoute, publicPageBareRoute, publicSearchRoute]);
+export const publicRoutes = publicRoute.addChildren([
+  publicSiteRoute,
+  publicSpaceRoute,
+  publicPageRoute,
+  publicPageBareRoute,
+  publicMovedRoute,
+  publicSearchRoute,
+]);

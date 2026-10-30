@@ -287,8 +287,10 @@ export const TEMPLATES_PATH = "/admin/templates";
 export const TEMPLATE_NEW_PATH = "/admin/templates/new";
 export const TEMPLATE_EDIT_PATH = "/admin/templates/$templateKey";
 /** Where a space's administrators make or change one of its templates, below the space's settings. */
-export const SPACE_TEMPLATE_NEW_PATH = "/s/$spaceKey/settings/templates/new";
-export const SPACE_TEMPLATE_EDIT_PATH = "/s/$spaceKey/settings/templates/$templateKey";
+export const SPACE_TEMPLATE_NEW_PATH = "/spaces/$spaceKey/settings/templates/new";
+export const SPACE_TEMPLATE_EDIT_PATH = "/spaces/$spaceKey/settings/templates/$templateKey";
+/** A space's stale pages, below General in its settings. */
+export const SPACE_STALE_PATH = "/spaces/$spaceKey/settings/general/stale";
 /** The picker's value for a space that starts blank; the API takes no template then. */
 export const BLANK_SPACE_TEMPLATE = "";
 /** What everyone may do in a blank space, matching the database's space_default_grants. */

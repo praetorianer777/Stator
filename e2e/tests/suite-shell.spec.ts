@@ -53,7 +53,7 @@ test.describe("the suite's shell", { tag: ["@auth"] }, () => {
       await expectAccessible(page);
       await input.press("ArrowDown");
       await input.press("Enter");
-      await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
+      await expect(page).toHaveURL(new RegExp(`/spaces/${key}$`));
 
       await page.keyboard.press("Control+k");
       await page.locator("[data-quick-search-input]").fill("Create");

@@ -30,7 +30,7 @@ async function screensPage(api: StatorApi, testInfo: TestInfo, made: string[]) {
   const login = await upload(api, target.id, "login.png", "image/png", png(PICTURE_WIDTH, PICTURE_HEIGHT, [30, 90, 160]));
   const settings = await upload(api, target.id, "settings.png", "image/png", png(PICTURE_HEIGHT, PICTURE_WIDTH, [200, 60, 40]));
   await upload(api, target.id, "notes.txt", "text/plain", Buffer.from("Shot on the staging site."));
-  return { key, space, target, login, settings, path: `/s/${key}/p/${target.id}/release-screens` };
+  return { key, space, target, login, settings, path: `/spaces/${key}/p/${target.id}/release-screens` };
 }
 
 async function writeBody(api: StatorApi, pageId: string, content: unknown[]) {
@@ -136,7 +136,7 @@ test.describe("image galleries", { tag: ["@auth"] }, () => {
       const reader = await context.newPage();
       const gallery = shown(reader).getByRole("list", { name: "Gallery of 2 pictures" });
       // The reader is not alice, so a replica may not have her page or her switches yet.
-      await openUntil(reader, `/public/s/${key}/p/${target.id}/release-screens`, () => expect(gallery).toBeVisible(ONE_LOOK));
+      await openUntil(reader, `/public/spaces/${key}/p/${target.id}/release-screens`, () => expect(gallery).toBeVisible(ONE_LOOK));
       await expect(gallery).not.toContainText("Not yet");
       const through = new RegExp(`/api/v1/public/attachments/${login}\\?inline=1$`);
       await expect(gallery.locator("img").first()).toHaveAttribute("src", through);

@@ -160,6 +160,6 @@ export function usePlaces(): Place[] {
     guest: Boolean(guestSpaceOf(me)),
     siteAdmin,
     homePath: hub?.landing && hub.page ? "/home" : "/",
-    hubPath: hub?.page ? `/s/${hub.page.spaceKey}/p/${hub.page.id}/${pageSlug(hub.page.title)}` : null,
+    hubPath: hub?.page ? `/spaces/${hub.page.spaceKey}/p/${hub.page.id}/${pageSlug(hub.page.title)}` : null,
   });
 }

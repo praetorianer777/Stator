@@ -38,7 +38,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
             { type: "text", text: `Cross at the ${word} with ` },
             { type: "mention", attrs: { id: bob!.id, label: BOB } },
             { type: "text", text: ", or read " },
-            { type: "text", text: "the secret", marks: [{ type: "link", attrs: { href: `/s/${key}/p/${secret.id}/secret` } }] },
+            { type: "text", text: "the secret", marks: [{ type: "link", attrs: { href: `/spaces/${key}/p/${secret.id}/secret` } }] },
           ],
         },
       ],
@@ -51,18 +51,18 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       await expect(toast(page, "Saved.")).toBeVisible();
       await expect(org.locator("[data-public-address]")).toContainText(`${WEB_URL}/public`);
 
-      await page.goto(`/s/${key}/settings?tab=permissions`);
+      await page.goto(`/spaces/${key}/settings/members`);
       const open = page.locator("[data-space-anonymous-access]");
       await open.locator('[data-action="space-anonymous-access"]').click();
-      await expect(open.locator("[data-space-public-address]")).toContainText(`/public/s/${key}`);
+      await expect(open.locator("[data-space-public-address]")).toContainText(`/public/spaces/${key}`);
       await expectAccessible(page);
 
       // The reader is not alice, so a replica may not have her switches yet.
       const reader = await context.newPage();
       const tree = reader.locator("[data-public-tree]");
       // An address shared while the public pages named the organization still leads there.
-      await openShowing(reader, `/public/${team.site.slug}/s/${key}`, tree.getByRole("link", { name: guide.title }));
-      await expect(reader).toHaveURL(`${WEB_URL}/public/s/${key}`);
+      await openShowing(reader, `/public/${team.site.slug}/spaces/${key}`, tree.getByRole("link", { name: guide.title }));
+      await expect(reader).toHaveURL(`${WEB_URL}/public/spaces/${key}`);
       await expect(reader.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, nofollow");
       await expect(tree.getByRole("link", { name: secret.title })).toHaveCount(0);
       await expect(reader.locator("[data-rail], [data-sidebar]")).toHaveCount(0);
@@ -80,7 +80,7 @@ test.describe("anonymous access", { tag: ["@auth"] }, () => {
       await expect(signIn).toHaveAttribute("href", new RegExp(`^/login\\?next=[^&]*$`));
 
       const hits = reader.locator("[data-public-hit]");
-      await openUntil(reader, `/public/s/${key}`, async () => {
+      await openUntil(reader, `/public/spaces/${key}`, async () => {
         await reader.getByRole("searchbox", { name: "Search the public pages" }).fill(word);
         await reader.getByRole("button", { name: "Search" }).click();
         await expect(hits).toHaveCount(1, ONE_LOOK);

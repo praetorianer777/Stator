@@ -43,7 +43,7 @@ test.describe("pages linked in a real Armature", { tag: ["@auth"] }, () => {
         },
       ],
     } as Body);
-    const url = `${WEB_URL}/s/${space.key}/p/${target.id}`;
+    const url = `${WEB_URL}/spaces/${space.key}/p/${target.id}`;
 
     await openPage(page, space.key, target);
     const row = page.locator(`[data-armature-links] [data-armature-link="${runbooks.key}"]`);

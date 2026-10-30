@@ -100,7 +100,7 @@ test.describe("search", { tag: ["@auth"] }, () => {
       // The page notes the visit after it shows; loading the next one before
       // the answer came cancels the note, and the page is never recent.
       const visited = page.waitForResponse((res) => res.url().endsWith(`/pages/${each.id}/visit`) && res.request().method() === "POST");
-      await page.goto(`/s/${space.key}/p/${each.id}/${each.title.toLowerCase().replace(" ", "-")}`);
+      await page.goto(`/spaces/${space.key}/p/${each.id}/${each.title.toLowerCase().replace(" ", "-")}`);
       await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText(each.title);
       expect((await visited).ok()).toBe(true);
     }

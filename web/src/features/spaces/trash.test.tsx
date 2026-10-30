@@ -40,12 +40,12 @@ describe("the trash", () => {
         return { status: 200, body: { page: aPage({ id: gone.id, title: gone.title, home: false }) } };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=trash");
+    await renderAt("/spaces/DOCS/settings/trash");
     const row = (await screen.findByText("Old plans")).closest("tr")!;
     expect(row).toHaveTextContent("3 pages");
     expect(row).toHaveTextContent("Under Handbook");
     expect(screen.getByText("Notes").closest("tr")).toHaveTextContent("Under the home page, where it was is gone");
-    expect(screen.getByRole("tab", { name: "Trash" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Trash and archive" })).toHaveAttribute("aria-selected", "true");
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(within(row).getByRole("button", { name: "Restore Old plans" }));
@@ -62,7 +62,7 @@ describe("the trash", () => {
       [`DELETE /spaces/DOCS/trash/${gone.id}`]: { status: 204 },
       "DELETE /spaces/DOCS/trash": { status: 204 },
     });
-    await renderAt("/s/DOCS/settings?tab=trash");
+    await renderAt("/spaces/DOCS/settings/trash");
     const purge = await screen.findByRole("button", { name: "Delete Old plans for good" });
     await userEvent.click(purge);
     expect(await confirmDialog()).toHaveAccessibleName("Delete page Old plans?");
@@ -86,7 +86,7 @@ describe("the trash", () => {
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       "GET /spaces/DOCS/trash": { status: 200, body: { items: [gone] } },
     });
-    await renderAt("/s/DOCS/settings?tab=trash", { me: member });
+    await renderAt("/spaces/DOCS/settings/trash", { me: member });
     expect(await screen.findByRole("button", { name: "Restore Old plans" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete Old plans for good" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Empty trash" })).toBeNull();
@@ -111,12 +111,12 @@ describe("moving a page to the trash", () => {
       [`GET /pages/${parent.id}`]: { status: 200, body: { page: aPage({ ...parent, parentId: home.id }), space } },
       [`DELETE /pages/${page.id}`]: { status: 204 },
     });
-    const router = await renderAt(`/s/DOCS/p/${page.id}/old-plans`);
+    const router = await renderAt(`/spaces/DOCS/p/${page.id}/old-plans`);
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Move to trash" }));
     expect(await confirmDialog()).toHaveTextContent("It and every page below it go to the trash");
     await answerConfirm(true);
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/s/DOCS/p/${parent.id}/plans`));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/spaces/DOCS/p/${parent.id}/plans`));
     expect(sent.some((r) => r.method === "DELETE" && r.path === `/pages/${page.id}`)).toBe(true);
   });
 
@@ -126,7 +126,7 @@ describe("moving a page to the trash", () => {
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       [`GET /pages/${home.id}`]: { status: 200, body: { page: home, space } },
     });
-    await renderAt("/s/DOCS");
+    await renderAt("/spaces/DOCS");
     await userEvent.click(await screen.findByRole("button", { name: "Page actions" }));
     expect(await screen.findByRole("menuitem", { name: "Copy" })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Move to trash" })).toBeNull();

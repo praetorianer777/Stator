@@ -192,10 +192,14 @@ process, which is only right for a single api process. `/readyz` and
   offline. What is published is still the person's own draft, saved from the
   shared one, or for a live page the page itself, saved as it is typed and
   followed by its readers every few seconds; see `docs/decisions.md`.
-- Addresses: a space is `/s/{spaceKey}`, a page `/s/{spaceKey}/p/{pageId}/{slug}`.
-  Only the id finds a page; the slug is for people and is put right when stale.
-  A blog post is a page and has a page's address; the space's blog is
-  `/s/{spaceKey}/blog`, a month of it `?year=2026&month=10`.
+- Addresses: a space is `/spaces/{spaceKey}`, a page
+  `/spaces/{spaceKey}/p/{pageId}/{slug}`, its settings
+  `/spaces/{spaceKey}/settings/{section}`. Only the id finds a page; the slug
+  is for people and is put right when stale. A blog post is a page and has a
+  page's address; the space's blog is `/spaces/{spaceKey}/blog`, a month of it
+  `?year=2026&month=10`. Spaces lived at `/s/{spaceKey}` before, and pages
+  written then still link there: every `/s/` address, and `/public/s/`,
+  leads on to `/spaces/`, and an export or a space import reads both.
 - The pages anybody may read are at `/public`, outside the app's shell and
   its sign-in guard, read through `/api/v1/public`; the document view draws
   them with every link and file through those reads. The addresses before

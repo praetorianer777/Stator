@@ -32,11 +32,11 @@ describe("the decision log", () => {
         return { status: 200, body: { decisions: state ? all.filter((d) => d.state === state) : all, truncated: false } };
       },
     });
-    const router = await renderAt("/s/DOCS/decisions");
+    const router = await renderAt("/spaces/DOCS/decisions");
     await screen.findByText("Ship on Tuesdays", { exact: false });
     const rows = within(document.querySelector("[data-decision-log]") as HTMLElement).getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([expect.stringContaining("Ship on Tuesdays"), expect.stringContaining("Which region first")]);
-    expect(within(rows[0]!).getByRole("link", { name: /on Release/ })).toHaveAttribute("href", `/s/DOCS/p/${decided.pageId}/release`);
+    expect(within(rows[0]!).getByRole("link", { name: /on Release/ })).toHaveAttribute("href", `/spaces/DOCS/p/${decided.pageId}/release`);
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(screen.getByRole("button", { name: "Undecided" }));

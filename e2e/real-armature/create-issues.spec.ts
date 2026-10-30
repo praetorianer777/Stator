@@ -70,7 +70,7 @@ test.describe("creating issues in a real Armature from a selection", { tag: ["@a
       expect(issue.summary).toBe(summary);
       expect(issue.reporter.name).toBe(seed.people.member.name);
       expect(issue.type.name).toBe("Task");
-      expect(JSON.stringify(issue.description)).toContain(`/s/${space.key}/p/`);
+      expect(JSON.stringify(issue.description)).toContain(`/spaces/${space.key}/p/`);
     } finally {
       await mia.dispose();
     }

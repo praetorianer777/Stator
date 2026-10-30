@@ -84,7 +84,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
     await expect(told).toContainText(`published version 2 of ${runbook.title}`);
     await expect(told).toHaveAttribute("data-unread", "true");
     await told.click();
-    await expect(bob).toHaveURL(new RegExp(`/s/${space.key}/p/${runbook.id}/`));
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${space.key}/p/${runbook.id}/`));
     await expect(panel(bob)).toHaveCount(0);
     await expect(badge(bob)).toHaveCount(0);
     await bell(bob).click();
@@ -93,7 +93,7 @@ test.describe("watching and notifications", { tag: ["@auth"] }, () => {
     await expect.poll(async () => (await mailsTo(BOB_EMAIL, runbook.title)).length, { timeout: DELIVERY_MS }).toBe(1);
     const [mail] = await mailsTo(BOB_EMAIL, runbook.title);
     expect(mail!.Subject).toContain(`published a new version of "${runbook.title}"`);
-    expect(await mailText(mail!.ID)).toContain(`/s/${space.key}/p/${runbook.id}`);
+    expect(await mailText(mail!.ID)).toContain(`/spaces/${space.key}/p/${runbook.id}`);
   });
 
   test("a kind switched off by email is still shown in the app, and mailed to nobody", async ({ api, apiAs, pageAs }, testInfo) => {

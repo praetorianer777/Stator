@@ -89,7 +89,7 @@ test.describe("attachment previews", { tag: ["@auth"] }, () => {
   test("a PDF and an office document are shown in place, and anything else is refused a preview", async ({ page, api }, testInfo) => {
     test.setTimeout(SPEC_MS);
     const { key, page: wiki } = await aPage(api, testInfo);
-    await page.goto(`/s/${key}/p/${wiki.id}/reports`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/reports`);
     const input = panel(page).locator("[data-attachment-input]");
     await input.setInputFiles([
       { name: "report.pdf", mimeType: "application/pdf", buffer: PDF },

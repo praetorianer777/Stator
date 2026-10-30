@@ -47,7 +47,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
   test("an edit autosaves to a draft nobody else sees, and publishes with a comment", async ({ page, api, apiAs }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Draft");
     const plans = await createPage(api, space.homePageId, "Plans", doc("First words."));
-    await page.goto(`/s/${space.key}/p/${plans.id}/plans/edit`);
+    await page.goto(`/spaces/${space.key}/p/${plans.id}/plans/edit`);
     await typeIntoDraft(page, " More words.");
 
     const params = { params: { path: { pageID: plans.id } } };
@@ -73,7 +73,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
 
   test("a new page is its creator's alone until it is published", { tag: "@desktop" }, async ({ page, api, apiAs }, testInfo) => {
     const space = await freshSpace(api, testInfo, "New");
-    await page.goto(`/s/${space.key}`);
+    await page.goto(`/spaces/${space.key}`);
     await page.locator('[data-action="new-page"]').click();
     await page.getByRole("dialog").getByLabel("Title", { exact: true }).fill("Onboarding");
     await page.locator('[data-action="confirm-new-page"]').click();
@@ -101,7 +101,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const space = await freshSpace(api, testInfo, "Tools");
     const notes = await createPage(api, space.homePageId, "Notes", doc("First words."));
-    await page.goto(`/s/${space.key}/p/${notes.id}/notes/edit`);
+    await page.goto(`/spaces/${space.key}/p/${notes.id}/notes/edit`);
     const box = page.locator("#page-body");
     const editorAction = (name: string) => page.locator(`[data-editor-action="${name}"]`);
     const publishDialog = page.locator("[data-publish-dialog]");
@@ -134,7 +134,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     test.slow();
     const space = await freshSpace(api, testInfo, "Conflict");
     const plans = await createPage(api, space.homePageId, "Plans", doc("Shared words."));
-    const editPath = `/s/${space.key}/p/${plans.id}/plans/edit`;
+    const editPath = `/spaces/${space.key}/p/${plans.id}/plans/edit`;
     await page.goto(editPath);
     await typeIntoDraft(page, " Alice was here.");
 
@@ -172,7 +172,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
   test("discarding a draft leaves the page as published", async ({ page, api }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Discard");
     const plans = await createPage(api, space.homePageId, "Plans", doc("Kept words."));
-    await page.goto(`/s/${space.key}/p/${plans.id}/plans/edit`);
+    await page.goto(`/spaces/${space.key}/p/${plans.id}/plans/edit`);
     await typeIntoDraft(page, " Thrown away.");
     await page.locator('[data-action="discard-draft"]').click();
     await confirm(page);
@@ -188,7 +188,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await publishVersion(api, plans.id, "The plan is two.", "Second go.");
     await publishVersion(api, plans.id, "The plan is three.", "Third go.");
 
-    await page.goto(`/s/${space.key}/p/${plans.id}/plans/history`);
+    await page.goto(`/spaces/${space.key}/p/${plans.id}/plans/history`);
     await expect(versionRow(page, 3)).toContainText("Third go.");
     await versionRow(page, 1).getByRole("checkbox").check();
     await versionRow(page, 3).getByRole("checkbox").check();
@@ -197,7 +197,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-diff-view] del[data-diff]").filter({ hasText: "one" }).first()).toBeVisible();
     await expect(page.locator("[data-diff-view] ins[data-diff]").filter({ hasText: "three" }).first()).toBeVisible();
 
-    await page.goto(`/s/${space.key}/p/${plans.id}/plans/history?version=1`);
+    await page.goto(`/spaces/${space.key}/p/${plans.id}/plans/history?version=1`);
     await expect(heading(page)).toHaveText("Plans, version 1");
     await expect(page.locator("[data-doc]")).toContainText("The plan is one.");
     await expect(page.locator("[contenteditable]")).toHaveCount(0);
@@ -205,10 +205,10 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
     await confirm(page);
     await expect(toast(page, "Restored version 1 as version 4.")).toBeVisible();
 
-    await page.goto(`/s/${space.key}/p/${plans.id}/plans/history`);
+    await page.goto(`/spaces/${space.key}/p/${plans.id}/plans/history`);
     await expect(versionRow(page, 4)).toContainText("Restored from version 1");
     await expect(versionRow(page, 4)).toContainText("Latest");
-    await page.goto(`/s/${space.key}/p/${plans.id}/plans`);
+    await page.goto(`/spaces/${space.key}/p/${plans.id}/plans`);
     await expect(page.locator("[data-doc]")).toContainText("The plan is one.");
   });
 
@@ -223,7 +223,7 @@ test.describe("drafts, publishing and history", { tag: ["@auth"] }, () => {
         await api.PUT("/pages/{pageID}/draft", { params, body: { title: "Plans, drafted", body: doc("The plan is a draft.", "New line."), baseVersion: 2 } }),
       );
       await startInScheme(page, scheme);
-      const base = `/s/${space.key}/p/${plans.id}/plans`;
+      const base = `/spaces/${space.key}/p/${plans.id}/plans`;
 
       await page.goto(base);
       await expect(page.locator("[data-draft-note]")).toBeVisible();

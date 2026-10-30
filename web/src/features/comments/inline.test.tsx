@@ -217,7 +217,7 @@ async function selectWords(words: string) {
 describe("comments on passages in the reader", () => {
   it("highlights open passages, lists detached ones with their quote, and hides resolved ones until asked", async () => {
     stubInline();
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const section = await screen.findByRole("region", { name: /Comments on passages/ });
     await waitFor(() => expect(document.querySelector(`mark[data-passage="${open}"]`)).toHaveTextContent("on Friday"));
     expect(document.querySelector(`mark[data-passage="${settled}"]`)).toBeNull();
@@ -243,7 +243,7 @@ describe("comments on passages in the reader", () => {
     const sent = stubInline({
       more: { [`POST /comments/${open}/resolve`]: { status: 200, body: { thread: anInlineThread(open, "on Friday", "x", { resolved: true }) } } },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const passage = await waitFor(() => {
       const found = document.querySelector<HTMLElement>(`mark[data-passage="${open}"]`);
       if (!found) throw new Error("no highlight yet");
@@ -271,7 +271,7 @@ describe("comments on passages in the reader", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await selectWords("We ship");
     const button = await screen.findByRole("button", { name: "Comment" });
     expect(button).toHaveAttribute("aria-keyshortcuts", "Control+Alt+M");
@@ -327,7 +327,7 @@ describe("comments on passages in the reader", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await selectWords("after");
     await userEvent.click(await screen.findByRole("button", { name: "Comment" }));
     const box = await waitFor(() => {

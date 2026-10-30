@@ -40,7 +40,7 @@ describe("a space's guests", () => {
         return { status: 201, body: { guest: hal } };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=guests");
+    await renderAt("/spaces/DOCS/settings/members");
     const card = await guestsCard();
     const row = (await within(card).findByText("Gwen Guest")).closest("tr")!;
     expect(row).toHaveTextContent("gwen@contractor.test");
@@ -71,7 +71,7 @@ describe("a space's guests", () => {
         },
       },
     });
-    await renderAt("/s/DOCS/settings?tab=guests");
+    await renderAt("/spaces/DOCS/settings/members");
     const card = await guestsCard();
     expect(await within(card).findByText("This space has no guests.")).toBeInTheDocument();
     await userEvent.type(within(card).getByLabelText("Email address"), "bob@stator.test");
@@ -90,7 +90,7 @@ describe("a space's guests", () => {
         return { status: 204 };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=guests");
+    await renderAt("/spaces/DOCS/settings/members");
     const card = await guestsCard();
     await userEvent.click(await within(card).findByRole("button", { name: "Remove Gwen Guest" }));
     await userEvent.click(within(card).getByRole("button", { name: /^Remove$/ }));
@@ -99,11 +99,11 @@ describe("a space's guests", () => {
     expect(await within(card).findByText("This space has no guests.")).toBeInTheDocument();
   });
 
-  it("are no tab for a member", async () => {
+  it("are not shown to somebody who does not administer the installation", async () => {
     stubApi({ "GET /spaces/DOCS": { status: 200, body: { space } } });
-    await renderAt("/s/DOCS/settings?tab=guests", { me: member });
-    expect(await screen.findByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("tab", { name: "Guests" })).toBeNull();
+    await renderAt("/spaces/DOCS/settings/members", { me: member });
+    expect(await screen.findByRole("tab", { name: "Members and permissions" })).toHaveAttribute("aria-selected", "true");
+    expect(document.querySelector("[data-space-guests]")).toBeNull();
   });
 });
 
@@ -114,8 +114,8 @@ describe("a guest", () => {
       [`GET /pages/${space.homePageId}`]: { status: 200, body: { page: aPage(), space } },
     });
     const router = await renderAt("/", { me: guest });
-    await arrival(router, "/s/DOCS");
-    expect(router.state.location.pathname).toBe("/s/DOCS");
+    await arrival(router, "/spaces/DOCS");
+    expect(router.state.location.pathname).toBe("/spaces/DOCS");
   });
 
   it("is shown no space directory, hub or tokens", async () => {
@@ -160,6 +160,6 @@ describe("the installation's members", () => {
     const row = (await screen.findByText("Gwen Guest")).closest("tr")!;
     expect(row).toHaveAttribute("data-member", gwen.email);
     expect(within(row).getByText("Guest", { selector: "[data-member-role]" })).toBeInTheDocument();
-    expect(within(row).getByRole("link", { name: "Guest of Handbook" })).toHaveAttribute("href", "/s/DOCS/settings?tab=guests");
+    expect(within(row).getByRole("link", { name: "Guest of Handbook" })).toHaveAttribute("href", "/spaces/DOCS/settings/members#guests");
   });
 });

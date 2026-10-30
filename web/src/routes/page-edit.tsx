@@ -14,7 +14,7 @@ export const pageEditRoute = createRoute({
   loader: async ({ context, params }) => {
     const { page } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
     // A folder has nothing to edit; its own view renames it.
-    if (page.kind === "folder") throw redirect({ to: "/s/$spaceKey/p/$pageId/$slug", params });
+    if (page.kind === "folder") throw redirect({ to: "/spaces/$spaceKey/p/$pageId/$slug", params });
     if (page.can.edit) await context.queryClient.fetchQuery({ ...draftQuery(params.pageId), staleTime: 0 });
   },
 }).lazy(() => import("./page-edit.lazy").then((module) => module.Route));

@@ -46,7 +46,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     await createPage(api, guide.id, `Below ${word}`);
     const context = await browser.newContext({ baseURL: WEB_URL, storageState: ANONYMOUS });
     try {
-      await openTitled(page, `/s/${key}/p/${guide.id}/guide`, guide.title);
+      await openTitled(page, `/spaces/${key}/p/${guide.id}/guide`, guide.title);
       await page.locator('[data-action="share-page"]').click();
       await links(page).getByRole("textbox", { name: "Label (optional)" }).fill("For the auditors");
       await links(page).getByRole("combobox", { name: "Runs out" }).selectOption("7");
@@ -100,7 +100,7 @@ test.describe("public links", { tag: ["@auth"] }, () => {
       await expect(toast(page, "Saved.")).toBeVisible();
       await openShowing(reader, made.path, reader.locator("[data-link-gone]"));
 
-      await openTitled(page, `/s/${key}/p/${plan.id}/plan`, plan.title);
+      await openTitled(page, `/spaces/${key}/p/${plan.id}/plan`, plan.title);
       await page.locator('[data-action="share-page"]').click();
       await expect(links(page).locator('[data-public-links-refusal="off"]')).toContainText("This installation does not allow public links.");
       await expect(links(page).locator('[data-action="create-public-link"]')).toHaveCount(0);

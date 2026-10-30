@@ -20,8 +20,8 @@ const home = aPage();
 const space = aSpace();
 const plansId = "0195f000-0000-7000-8000-0000000000c1";
 const oldId = "0195f000-0000-7000-8000-0000000000c2";
-const PLANS = `/s/DOCS/p/${plansId}/plans`;
-const OLD = `/s/DOCS/p/${oldId}/old-roadmap`;
+const PLANS = `/spaces/DOCS/p/${plansId}/plans`;
+const OLD = `/spaces/DOCS/p/${oldId}/old-roadmap`;
 const reader = { edit: false, delete: false, restrict: false, comment: false, archive: false, add: false, grantEdit: false };
 const ofPlans: Archive = {
   page: { id: plansId, title: "Plans", home: false },
@@ -112,7 +112,7 @@ describe("an archived page", () => {
     await renderAt(OLD);
     const banner = (await screen.findByText(/This whole space is archived/)).closest("[data-archived-banner]")!;
     expect(banner).toHaveTextContent("Archived on");
-    expect(within(banner as HTMLElement).getByRole("link", { name: "Open the space settings" })).toHaveAttribute("href", "/s/DOCS/settings");
+    expect(within(banner as HTMLElement).getByRole("link", { name: "Open the space settings" })).toHaveAttribute("href", "/spaces/DOCS/settings/general");
   });
 
   it("is archived from the page menu after asking", async () => {
@@ -160,17 +160,18 @@ describe("the space's archive", () => {
       "GET /spaces/DOCS": { status: 200, body: { space } },
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       "GET /spaces/DOCS/archived-pages": () => ({ status: 200, body: { items } }),
+      "GET /spaces/DOCS/trash": { status: 200, body: { items: [] } },
       [`DELETE /pages/${plansId}/archive`]: () => {
         items = [];
         return { status: 200, body: { page: aPage({ id: plansId, title: "Plans", home: false }) } };
       },
     });
-    await renderAt("/s/DOCS/settings?tab=archive");
+    await renderAt("/spaces/DOCS/settings/trash");
     const row = (await screen.findByRole("link", { name: "Plans" })).closest("tr")!;
     expect(row).toHaveTextContent("3 pages");
     expect(row).toHaveTextContent("by Ada Lovelace");
     expect(row).toHaveTextContent("Handbook");
-    expect(screen.getByRole("tab", { name: "Archive" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Trash and archive" })).toHaveAttribute("aria-selected", "true");
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(within(row).getByRole("button", { name: "Unarchive Plans" }));
     expect(await screen.findByText("Unarchived Plans.")).toBeInTheDocument();
@@ -186,13 +187,14 @@ describe("the space's archive", () => {
       },
       "GET /spaces/DOCS/pages": { status: 200, body: { pages: [] } },
       "GET /spaces/DOCS/archived-pages": { status: 200, body: { items: [item] } },
+      "GET /spaces/DOCS/trash": { status: 200, body: { items: [] } },
     });
-    await renderAt("/s/DOCS/settings?tab=archive");
+    await renderAt("/spaces/DOCS/settings/trash");
     expect(await screen.findByRole("link", { name: "Plans" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Unarchive Plans" })).toBeNull();
   });
 
-  it("archives the whole space from its details, after asking, and brings it back", async () => {
+  it("archives the whole space from General at once, with Undo, and brings it back", async () => {
     let current = space;
     const sent = stubApi({
       "GET /spaces/DOCS": () => ({ status: 200, body: { space: current } }),
@@ -206,13 +208,17 @@ describe("the space's archive", () => {
         return { status: 200, body: { space: current } };
       },
     });
-    await renderAt("/s/DOCS/settings");
+    await renderAt("/spaces/DOCS/settings/general");
     await userEvent.click(await screen.findByRole("button", { name: "Archive space" }));
-    await answerConfirm(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await screen.findByText("Archived Handbook.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(await screen.findByText("The space is unarchived.")).toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Archive space" }));
     expect(await screen.findByText(/Ada Lovelace archived this space on/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Unarchive space" }));
-    expect(await screen.findByText("The space is unarchived.")).toBeInTheDocument();
-    expect(sent.filter((r) => r.path === "/spaces/DOCS/archive").map((r) => r.method)).toEqual(["PUT", "DELETE"]);
+    await waitFor(() => expect(sent.filter((r) => r.path === "/spaces/DOCS/archive").map((r) => r.method)).toEqual(["PUT", "DELETE", "PUT", "DELETE"]));
   });
 });
 

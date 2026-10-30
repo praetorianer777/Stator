@@ -92,7 +92,7 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await expect(page.locator("[data-stale-row]")).toHaveCount(1);
 
     await quiet.getByRole("link", { name: guide.title }).click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/p/${guide.id}/[^?]*\\?from=stale`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/p/${guide.id}/[^?]*\\?from=stale`));
     await expect(heading(page)).toHaveText(guide.title);
     await expect(page.getByText("Written long ago.")).toBeVisible();
 
@@ -100,9 +100,9 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     await openReport(page, space.key, guide.title);
     await expect(row(page, guide.title).locator("[data-stale-viewed]")).toHaveText("Never");
 
-    await page.goto(`/s/${space.key}/settings`);
+    await page.goto(`/spaces/${space.key}/settings/general`);
     await page.locator('[data-action="space-stale"]').click();
-    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/settings/stale$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${space.key}/settings/general/stale$`));
     await expect(page.locator("#stale-space")).toHaveValue(space.key);
     await expect(row(page, guide.title)).toBeVisible();
   });
@@ -148,7 +148,7 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     expect(refused.response.status).toBe(403);
 
     const member = await pageAs("bob");
-    await member.goto(`/s/${space.key}/settings/stale`);
+    await member.goto(`/spaces/${space.key}/settings/general/stale`);
     await expect(member.locator("[data-stale-refused]")).toContainText("Only administrators of a space, or of the installation, read which pages went stale.");
     await expect(member.locator("[data-stale-table]")).toHaveCount(0);
     expect(await scrollsSideways(member)).toBe(false);

@@ -106,7 +106,7 @@ function Starred({ onNotice }: { onNotice: (notice: string) => void }) {
             {star.page ? (
               <PageLink spaceKey={star.spaceKey} id={star.page.id} title={star.page.title} className={linkClass} />
             ) : (
-              <Link to="/s/$spaceKey" params={{ spaceKey: star.spaceKey }} className={linkClass}>
+              <Link to="/spaces/$spaceKey" params={{ spaceKey: star.spaceKey }} className={linkClass}>
                 {star.spaceName}
               </Link>
             )}

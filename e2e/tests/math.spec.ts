@@ -40,7 +40,7 @@ test.describe("math formulas", { tag: ["@auth"] }, () => {
     // The empty paragraph at the end takes the block: an Enter after the caret
     // key would split wherever ProseMirror last saw the caret.
     const notes = await createPage(api, space.homePageId, "Geometry", { type: "doc", content: [paragraph("A circle's area."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${notes.id}/geometry`;
+    const path = `/spaces/${space.key}/p/${notes.id}/geometry`;
 
     await openEditor(page, path, "A circle's area.");
     await caretTo(editorBox(page), "end");
@@ -91,7 +91,7 @@ test.describe("math formulas", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${notes.id}/notes`, shown(page).locator(".katex-display"));
+      await openShowing(page, `/spaces/${space.key}/p/${notes.id}/notes`, shown(page).locator(".katex-display"));
       await expect(shown(page).locator("[data-math-error]")).toContainText("\\frac{a");
       await expectAccessible(page);
     });

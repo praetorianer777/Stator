@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useLogout, useMe } from "@/api/auth";
 import { useMarkRead } from "@/api/notifications";
 import { useQuickSearch, useRecentPages, type PageHit } from "@/api/search";
-import { useSpaces } from "@/api/spaces";
+import { useSpace, useSpaces } from "@/api/spaces";
 import { cx } from "@/components/ui";
 import { useEscape, useFocusReturn } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
@@ -93,7 +93,7 @@ export function QuickSearch({ onClose }: { onClose: () => void }) {
           icon: <Icon.Space />,
           label: space.name,
           detail: space.key,
-          run: () => go(`/s/${space.key}`),
+          run: () => go(`/spaces/${space.key}`),
           attrs: { "data-quick-search-space": space.key },
         }),
       ),
@@ -109,7 +109,7 @@ export function QuickSearch({ onClose }: { onClose: () => void }) {
         detail: [page.spaceName, ...page.path.slice(1)].join(" / "),
         run: () => {
           onClose();
-          void navigate({ to: "/s/$spaceKey/p/$pageId/$slug", params: { spaceKey: page.spaceKey, pageId: page.id, slug: pageSlug(page.title) } });
+          void navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug", params: { spaceKey: page.spaceKey, pageId: page.id, slug: pageSlug(page.title) } });
         },
         attrs: { "data-quick-search-option": page.title },
       })),
@@ -287,11 +287,17 @@ function useActions(onClose: () => void): Option[] {
 }
 
 /** Every place the reader may go, the settings hub, and for an administrator Admin with each of its pages as "Admin / <page>". */
+/** The places of the sidebar, the settings area and the Admin area, and the settings of the space the reader is in. */
 function useReachablePlaces(): Place[] {
   const places = usePlaces();
+  const { spaceKey } = useParams({ strict: false });
+  const { data: space } = useSpace(spaceKey ?? "");
   const settings: Place = { id: "settings", area: "you", to: SETTINGS_PATH, icon: "Settings", label: t.settings.title, exact: true };
   const named = places.map((place) => (place.area === "admin" ? { ...place, label: t.admin.inPalette(place.label) } : place));
-  return places.some((place) => place.area === "admin") ? [...named, settings, adminEntry()] : [...named, settings];
+  const here: Place[] = space
+    ? [{ id: "space-settings", area: "wiki", to: `/spaces/${space.key}/settings`, icon: "Settings", label: t.spaceSettings.inPalette(space.name) }]
+    : [];
+  return places.some((place) => place.area === "admin") ? [...named, ...here, settings, adminEntry()] : [...named, ...here, settings];
 }
 
 function sectionOf(place: Place): string {

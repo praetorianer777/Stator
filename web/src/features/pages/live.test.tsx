@@ -13,7 +13,7 @@ const EDITOR_TEST_MS = 20_000;
 const space = aSpace();
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000c3";
-const PATH = `/s/DOCS/p/${PAGE_ID}/notes`;
+const PATH = `/spaces/DOCS/p/${PAGE_ID}/notes`;
 const notes = aPage({
   id: PAGE_ID,
   title: "Notes",

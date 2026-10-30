@@ -25,7 +25,7 @@ async function restrictedPage(api: StatorApi, key: string, name: string): Promis
 }
 
 async function openSalaries(page: Page, key: string, id: string): Promise<void> {
-  await openUntil(page, `/s/${key}/p/${id}/salaries`, () => expect(page.locator("[data-page-title]")).toHaveText("Salaries", ONE_LOOK));
+  await openUntil(page, `/spaces/${key}/p/${id}/salaries`, () => expect(page.locator("[data-page-title]")).toHaveText("Salaries", ONE_LOOK));
 }
 
 /** Asks about bob and waits for the answer. */
@@ -107,7 +107,7 @@ test.describe("checking access", { tag: ["@auth"] }, () => {
     }).toPass();
 
     const bob = await pageAs("bob");
-    await openUntil(bob, `/s/${key}/p/${notes.id}/notes`, () => expect(bob.locator("[data-page-title]")).toHaveText("Notes", ONE_LOOK));
+    await openUntil(bob, `/spaces/${key}/p/${notes.id}/notes`, () => expect(bob.locator("[data-page-title]")).toHaveText("Notes", ONE_LOOK));
     await bob.locator('[data-action="page-menu"]').click();
     await expect(bob.locator('[role="menu"] [data-action="copy-page"]')).toBeVisible();
     await expect(bob.locator('[role="menu"] [data-action="inspect-access"]')).toHaveCount(0);

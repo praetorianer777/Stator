@@ -31,7 +31,7 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
     // The empty paragraph at the end takes the block: an Enter after the caret
     // key would split wherever ProseMirror last saw the caret.
     const notes = await createPage(api, space.homePageId, "Architecture", { type: "doc", content: [paragraph("How requests flow."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${notes.id}/architecture`;
+    const path = `/spaces/${space.key}/p/${notes.id}/architecture`;
 
     await openEditor(page, path, "How requests flow.");
     await caretTo(editorBox(page), "end");
@@ -80,7 +80,7 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
       alerted = true;
       await dialog.dismiss();
     });
-    await openUntil(page, `/s/${space.key}/p/${notes.id}/hostile`, () =>
+    await openUntil(page, `/spaces/${space.key}/p/${notes.id}/hostile`, () =>
       expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Plain", ONE_LOOK),
     );
     // A click on a node does nothing in strict mode, so its anchor has no address.
@@ -95,7 +95,7 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Sequence", { type: "doc", content: [paragraph("How a page is saved."), { type: "paragraph" }] });
     const word = `Picked${Date.now().toString(36)}`;
 
-    await openEditor(page, `/s/${space.key}/p/${notes.id}/sequence`, "How a page is saved.");
+    await openEditor(page, `/spaces/${space.key}/p/${notes.id}/sequence`, "How a page is saved.");
     await caretTo(editorBox(page), "end");
     await page.keyboard.type("/diagram");
     await expect(page.getByRole("listbox", { name: "Insert a block" })).toBeVisible();
@@ -148,7 +148,7 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
     const notes = await createPage(api, space.homePageId, "Sequence", { type: "doc", content: [{ type: "diagram", attrs: { language: "plantuml", source } }] });
     const drawing = (scope: Page) => scope.locator('[data-diagram-language="plantuml"] img[data-diagram-image]');
     const loaded = (scope: Page) => drawing(scope).evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0);
-    await openUntil(page, `/s/${space.key}/p/${notes.id}/sequence`, () => expect(drawing(page)).toBeVisible(ONE_LOOK));
+    await openUntil(page, `/spaces/${space.key}/p/${notes.id}/sequence`, () => expect(drawing(page)).toBeVisible(ONE_LOOK));
     await expect.poll(() => loaded(page)).toBe(true);
     await expect(shown(page).locator("[data-diagram-error]")).toHaveCount(0);
 
@@ -170,7 +170,7 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openUntil(page, `/s/${space.key}/p/${notes.id}/notes`, () =>
+      await openUntil(page, `/spaces/${space.key}/p/${notes.id}/notes`, () =>
         expect(shown(page).locator("[data-diagram-svg] > svg")).toContainText("Save the page", ONE_LOOK),
       );
       await expect(shown(page).locator("[data-diagram-error]")).toContainText("This diagram cannot be drawn");
@@ -188,7 +188,7 @@ test.describe("diagrams", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openEditor(page, `/s/${space.key}/p/${notes.id}/block`, "Two diagrams.");
+      await openEditor(page, `/spaces/${space.key}/p/${notes.id}/block`, "Two diagrams.");
       const blocks = editorBox(page).locator("[data-diagram-edit]");
       await expect(blocks.first().locator("[data-diagram-preview] img[data-diagram-image]")).toBeVisible();
       await expect(blocks.nth(1).locator("[data-diagram-preview] [data-diagram-error]")).toContainText("This diagram cannot be drawn:");

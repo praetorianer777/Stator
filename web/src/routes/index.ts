@@ -21,7 +21,8 @@ import { pageHistoryRoute } from "./page-history";
 import { printLinkRoute, printPageRoute, printPublicPageRoute } from "./print";
 import { profileRoute } from "./profile";
 import { oldPublicRoute, publicLinkRoute, publicRoutes } from "./public";
-import { pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute, spaceSettingsRoute } from "./space";
+import { movedSpaceRoute, pageBareRoute, pageRoute, spaceHomeRoute, spaceRoute } from "./space";
+import { spaceSettingsRoutes } from "./space-settings";
 import { spaceDecisionsRoute } from "./decisions";
 import { spaceBlogRoute } from "./blog";
 import { personalSpaceNewRoute, spaceImportRoute, spaceNewRoute, spacesRoute } from "./spaces";
@@ -48,6 +49,7 @@ const routeTree = rootRoute.addChildren([
   publicRoutes,
   publicLinkRoute,
   oldPublicRoute,
+  movedSpaceRoute,
   printPageRoute,
   printPublicPageRoute,
   printLinkRoute,
@@ -64,7 +66,7 @@ const routeTree = rootRoute.addChildren([
       pageBareRoute,
       pageEditRoute,
       pageHistoryRoute,
-      spaceSettingsRoute,
+      spaceSettingsRoutes,
       spaceLabelRoute,
       spaceDecisionsRoute,
       spaceBlogRoute,

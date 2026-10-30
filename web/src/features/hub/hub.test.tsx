@@ -36,9 +36,9 @@ describe("the organization's hub", () => {
   it("is where everybody lands when it says so, with the reader's own home a link away", async () => {
     stubHub({ status: 200, body: { hub: { page: hubPage, landing: true } } });
     const router = await renderAt("/", { me: member });
-    await arrival(router, `/s/NEWS/p/${front.id}/front-page`);
+    await arrival(router, `/spaces/NEWS/p/${front.id}/front-page`);
     const nav = screen.getAllByRole("navigation", { name: "Everywhere" })[0]!;
-    expect(within(nav).getByRole("link", { name: "Hub" })).toHaveAttribute("href", `/s/NEWS/p/${front.id}/front-page`);
+    expect(within(nav).getByRole("link", { name: "Hub" })).toHaveAttribute("href", `/spaces/NEWS/p/${front.id}/front-page`);
     expect(within(nav).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/home");
   });
 

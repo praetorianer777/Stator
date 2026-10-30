@@ -65,7 +65,7 @@ test.describe("importing another wiki's export", { tag: ["@auth"] }, () => {
       await importExport(page, testInfo, key);
       await expectAccessible(page);
       await page.locator('[data-action="open-imported"]').click();
-      await expect(page).toHaveURL(new RegExp(`/s/${key}`));
+      await expect(page).toHaveURL(new RegExp(`/spaces/${key}`));
 
       const { pages } = must(await api.GET("/spaces/{spaceKey}/outline", { params: { path: { spaceKey: key } } }));
       expect(pages.map((p) => `${"  ".repeat(p.depth)}${p.title}`)).toEqual(["Home", "  Guide", "    Setup"]);

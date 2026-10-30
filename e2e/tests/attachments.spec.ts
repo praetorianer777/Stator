@@ -82,7 +82,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
 
   test("files are attached by the picker and by dropping, downloaded and deleted", async ({ page, api }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
-    await page.goto(`/s/${key}/p/${wiki.id}/runbook`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/runbook`);
     await expect(panel(page)).toContainText("Nothing attached yet.");
 
     const chooser = page.waitForEvent("filechooser");
@@ -122,7 +122,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
 
   test("a picture pasted into the editor is uploaded, shown and kept with the page", async ({ page, api }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
-    await page.goto(`/s/${key}/p/${wiki.id}/runbook/edit`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/runbook/edit`);
     await editorBox(page).click();
     await page.keyboard.type("Before the picture.");
     await dispatchFiles(editorBox(page), "paste", [picture("pasted.png")]);
@@ -159,7 +159,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
 
   test("a deleted file shows as missing where the page used it", async ({ page, api }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
-    await page.goto(`/s/${key}/p/${wiki.id}/runbook/edit`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/runbook/edit`);
     await editorBox(page).click();
     await dispatchFiles(editorBox(page), "paste", [picture("gone.png")]);
     await expect(editorBox(page).locator("figure[data-image] img")).toBeVisible();
@@ -173,7 +173,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
 
   test("a file over the limit is refused with a sentence that says what to do", async ({ page, api }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
-    await page.goto(`/s/${key}/p/${wiki.id}/runbook`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/runbook`);
     await panel(page)
       .locator("[data-attachment-input]")
       .setInputFiles(await oversizeFile(testInfo, "backup.tar"));
@@ -185,7 +185,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
 
   test("a member who may not edit the page sees its files but cannot change them", async ({ page, api, pageAs, apiAs }, testInfo) => {
     const { key, page: wiki } = await aPage(api, testInfo);
-    await page.goto(`/s/${key}/p/${wiki.id}/runbook`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/runbook`);
     await panel(page).locator("[data-attachment-input]").setInputFiles(textFile("handover.txt", "Keys are in the drawer."));
     await expect(row(page, "handover.txt")).toBeVisible();
 
@@ -205,7 +205,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     expect(refused.response.status).toBe(403);
 
     const bob = await pageAs("bob");
-    await openWithout(bob, `/s/${key}/p/${wiki.id}/runbook`, panel(bob).locator('[data-action="attach-files"]'), row(bob, "handover.txt"));
+    await openWithout(bob, `/spaces/${key}/p/${wiki.id}/runbook`, panel(bob).locator('[data-action="attach-files"]'), row(bob, "handover.txt"));
     await expect(panel(bob).locator('[data-action="delete-attachment"]')).toHaveCount(0);
   });
 
@@ -213,7 +213,7 @@ test.describe("attachments", { tag: ["@auth"] }, () => {
     test(`the panel, the pictures and the image tools pass axe in ${scheme}`, async ({ page, api }, testInfo) => {
       await startInScheme(page, scheme);
       const { key, page: wiki } = await aPage(api, testInfo);
-      await page.goto(`/s/${key}/p/${wiki.id}/runbook/edit`);
+      await page.goto(`/spaces/${key}/p/${wiki.id}/runbook/edit`);
       await editorBox(page).click();
       await dispatchFiles(editorBox(page), "paste", [picture("chart.png")]);
       await dispatchFiles(editorBox(page), "paste", [textFile("data.txt", "1,2,3")]);

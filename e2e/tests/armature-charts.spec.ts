@@ -40,7 +40,7 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
   test("a lead charts a project's issues, and each reader sees the chart their own token counts", async ({ page, api, pageAs }, testInfo) => {
     const space = await freshSpace(api, testInfo, "Charts");
     const report = await createPage(api, space.homePageId, "Status report", { type: "doc", content: [paragraph("Where we are."), { type: "paragraph" }] });
-    const path = `/s/${space.key}/p/${report.id}/status-report`;
+    const path = `/spaces/${space.key}/p/${report.id}/status-report`;
 
     await openShowing(page, `${path}/edit`, "Where we are.");
     await caretTo(editorBox(page), "end");
@@ -85,7 +85,7 @@ test.describe("Armature charts", { tag: ["@auth"] }, () => {
         ],
       });
       await startInScheme(page, scheme);
-      await openShowing(page, `/s/${space.key}/p/${report.id}/charts`, "Charts");
+      await openShowing(page, `/spaces/${space.key}/p/${report.id}/charts`, "Charts");
       await expect(shown(page).locator('[data-armature-chart="pie"]')).toHaveAttribute("data-state", "chart");
       const flow = shown(page).locator('[data-armature-chart="createdResolved"]');
       await expect(flow).toHaveAttribute("data-state", "chart");

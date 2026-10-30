@@ -156,7 +156,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                     <Td>
                       {entry ? (
                         <Link
-                          to="/s/$spaceKey/p/$pageId/$slug/history"
+                          to="/spaces/$spaceKey/p/$pageId/$slug/history"
                           params={{ spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) }}
                           search={{ version: entry.number }}
                           className="font-medium text-ink underline-offset-2 hover:underline"
@@ -211,7 +211,7 @@ function HistoryList({ page, space, offset, onSearch }: ScreenProps & { offset: 
                             variant="ghost"
                             onClick={() =>
                               void navigate({
-                                to: "/s/$spaceKey/p/$pageId/$slug/edit",
+                                to: "/spaces/$spaceKey/p/$pageId/$slug/edit",
                                 params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) },
                               })
                             }
@@ -339,7 +339,7 @@ function CompareScreen({ page, space, from, to }: ScreenProps & { from?: Compare
             <Button
               variant="secondary"
               onClick={() =>
-                void navigate({ to: "/s/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } })
+                void navigate({ to: "/spaces/$spaceKey/p/$pageId/$slug/edit", params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) } })
               }
               data-action="continue-draft"
             >

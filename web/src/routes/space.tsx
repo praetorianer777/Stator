@@ -1,20 +1,21 @@
-import { Outlet, createRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { Outlet, createRoute, redirect } from "@tanstack/react-router";
 import { pageQuery } from "@/api/pages";
 import { spaceQuery } from "@/api/spaces";
 import { STALE_REVIEW_FROM } from "@/config";
 import { PageScreen } from "@/features/pages/PageScreen";
-import { SpaceSettings, type SettingsTab } from "@/features/spaces/SpaceSettings";
+import { movedSpaceAddress } from "@/features/spaces/settingsSections";
 import { pageSlug } from "@/lib/slug";
 import { appRoute } from "./app";
+import { rootRoute } from "./root";
 
 /** Everything in a space hangs off its key, which is loaded first so a wrong key fails once, in a sentence. */
 export const spaceRoute = createRoute({
   getParentRoute: () => appRoute,
-  path: "/s/$spaceKey",
+  path: "/spaces/$spaceKey",
   beforeLoad: ({ params, location }) => {
     const key = params.spaceKey.toUpperCase();
     if (key !== params.spaceKey) {
-      throw redirect({ href: location.href.replace(`/s/${params.spaceKey}`, `/s/${key}`), replace: true });
+      throw redirect({ href: location.href.replace(`/spaces/${params.spaceKey}`, `/spaces/${key}`), replace: true });
     }
   },
   loader: ({ context, params }) => context.queryClient.ensureQueryData(spaceQuery(params.spaceKey)),
@@ -59,11 +60,11 @@ export const pageRoute = createRoute({
   loaderDeps: ({ search }) => search,
   loader: async ({ context, params, deps, location }) => {
     const { page, space } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
-    if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
+    if (page.home) throw redirect({ to: "/spaces/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
     const slug = pageSlug(page.title);
     if (params.slug !== slug || params.spaceKey !== space.key) {
       throw redirect({
-        to: "/s/$spaceKey/p/$pageId/$slug",
+        to: "/spaces/$spaceKey/p/$pageId/$slug",
         params: { spaceKey: space.key, pageId: page.id, slug },
         search: deps,
         hash: location.hash,
@@ -86,9 +87,9 @@ export const pageBareRoute = createRoute({
   loaderDeps: ({ search }) => search,
   loader: async ({ context, params, deps, location }) => {
     const { page, space } = await context.queryClient.ensureQueryData(pageQuery(params.pageId));
-    if (page.home) throw redirect({ to: "/s/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
+    if (page.home) throw redirect({ to: "/spaces/$spaceKey", params: { spaceKey: space.key }, search: deps, replace: true });
     throw redirect({
-      to: "/s/$spaceKey/p/$pageId/$slug",
+      to: "/spaces/$spaceKey/p/$pageId/$slug",
       params: { spaceKey: space.key, pageId: page.id, slug: pageSlug(page.title) },
       search: deps,
       hash: location.hash,
@@ -97,17 +98,14 @@ export const pageBareRoute = createRoute({
   },
 });
 
-const SETTINGS_TABS: SettingsTab[] = ["details", "shortcuts", "permissions", "reviews", "templates", "guests", "trash", "archive", "export"];
-
-export const spaceSettingsRoute = createRoute({
-  getParentRoute: () => spaceRoute,
-  path: "/settings",
-  validateSearch: (search: Record<string, unknown>): { tab?: SettingsTab } =>
-    SETTINGS_TABS.includes(search.tab as SettingsTab) && search.tab !== "details" ? { tab: search.tab as SettingsTab } : {},
-  component: function SpaceSettingsRoute() {
-    const { spaceKey } = spaceSettingsRoute.useParams();
-    const { tab = "details" } = spaceSettingsRoute.useSearch();
-    const navigate = useNavigate({ from: spaceSettingsRoute.fullPath });
-    return <SpaceSettings spaceKey={spaceKey} tab={tab} onTab={(next) => navigate({ search: next === "details" ? {} : { tab: next }, replace: true })} />;
+/**
+ * A space's address from before spaces moved to /spaces/, which mails, issues
+ * and pages people keep still hold: sent on with its search and hash.
+ */
+export const movedSpaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/s/$",
+  beforeLoad: ({ params, location }) => {
+    throw redirect({ href: movedSpaceAddress(params._splat ?? "", location.searchStr, location.hash), replace: true });
   },
 });

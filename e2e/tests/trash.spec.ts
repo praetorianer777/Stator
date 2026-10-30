@@ -23,7 +23,7 @@ test.describe("the trash", { tag: ["@auth"] }, () => {
     await createPage(api, old.id, "Older plans");
 
     // The page asks before it goes; a person accepts.
-    await page.goto(`/s/${key}/p/${old.id}/old-plans`);
+    await page.goto(`/spaces/${key}/p/${old.id}/old-plans`);
     await page.locator('[data-action="page-menu"]').click();
     await page.locator('[role="menu"] [data-action="trash-page"]').click();
     await confirm(page);
@@ -31,7 +31,7 @@ test.describe("the trash", { tag: ["@auth"] }, () => {
     await expect(heading(page)).toHaveText("Plans");
     expect(await childTitles(api, key, plans.id)).toEqual([]);
 
-    await page.goto(`/s/${key}/settings?tab=trash`);
+    await page.goto(`/spaces/${key}/settings/trash`);
     await expect(trashRow(page, "Old plans")).toContainText("2 pages");
     await expect(trashRow(page, "Old plans")).toContainText("Under Plans");
     await expectAccessible(page);
@@ -48,7 +48,7 @@ test.describe("the trash", { tag: ["@auth"] }, () => {
     const space = await createSpace(api, key, uniqueName(testInfo, "Purge"));
     const doomed = await createPage(api, space.homePageId, "Doomed");
     await api.DELETE("/pages/{pageID}", { params: { path: { pageID: doomed.id } } });
-    await page.goto(`/s/${key}/settings?tab=trash`);
+    await page.goto(`/spaces/${key}/settings/trash`);
     await trashRow(page, "Doomed").locator('[data-action="purge-page"]').click();
     await confirm(page);
     await expect(toast(page, "Deleted Doomed for good.")).toBeVisible();

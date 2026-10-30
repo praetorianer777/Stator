@@ -72,7 +72,7 @@ test.describe("Armature capabilities", { tag: ["@auth"] }, () => {
         { type: "paragraph", content: [{ type: "armatureIssue", attrs: { key: "CP-1" } }] },
       ],
     });
-    await openShowing(page, `/s/${space.key}/p/${report.id}/status-report`, "Where we are.");
+    await openShowing(page, `/spaces/${space.key}/p/${report.id}/status-report`, "Where we are.");
     const chart = shown(page).locator('[data-armature-chart="pie"]');
     await expect(chart).toHaveAttribute("data-state", "outdated");
     await expect(chart).toContainText(
@@ -109,7 +109,7 @@ test.describe("Armature capabilities", { tag: ["@auth"] }, () => {
         },
       ],
     });
-    await openShowing(page, `/s/${space.key}/p/${notes.id}/notes`, "See");
+    await openShowing(page, `/spaces/${space.key}/p/${notes.id}/notes`, "See");
     const chip = shown(page).locator('[data-armature-issue="CP-1"]');
     await expect(chip).toHaveAttribute("data-state", "outdated");
     await expect(chip).toContainText("Needs a newer Armature");

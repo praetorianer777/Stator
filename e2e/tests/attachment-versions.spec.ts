@@ -37,7 +37,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
   test("an author uploads a file again, restores the first version as the latest, and deletes a version and then the file", async ({ page, api }, testInfo) => {
     test.slow();
     const { key, page: wiki } = await aPage(api, testInfo);
-    const path = `/s/${key}/p/${wiki.id}/budget`;
+    const path = `/spaces/${key}/p/${wiki.id}/budget`;
     await page.goto(path);
     await expect(panel(page)).toContainText("Nothing attached yet.");
 
@@ -103,7 +103,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
         await route.fulfill({ response: answeredBefore });
       })();
     });
-    await page.goto(`/s/${key}/p/${wiki.id}/budget`);
+    await page.goto(`/spaces/${key}/p/${wiki.id}/budget`);
     await expect(row(page, "budget.csv")).toHaveCount(0);
     await panel(page).locator("[data-attachment-input]").setInputFiles(csv("one\n"));
     await expect(toast(page, "Attached budget.csv.")).toBeVisible();
@@ -118,7 +118,7 @@ test.describe("file versions", { tag: ["@auth"] }, () => {
   test("a member who may only read the page sees the versions but restores none", async ({ page, api, pageAs }, testInfo) => {
     test.slow();
     const { key, page: wiki } = await aPage(api, testInfo);
-    const path = `/s/${key}/p/${wiki.id}/budget`;
+    const path = `/spaces/${key}/p/${wiki.id}/budget`;
     await page.goto(path);
     const input = panel(page).locator("[data-attachment-input]");
     await input.setInputFiles(csv("one\n"));

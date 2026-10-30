@@ -14,7 +14,7 @@ afterEach(() => {
 
 const home = aPage();
 const PAGE_ID = "0195f000-0000-7000-8000-0000000000a2";
-const PATH = `/s/DOCS/p/${PAGE_ID}/policy`;
+const PATH = `/spaces/DOCS/p/${PAGE_ID}/policy`;
 const reader = { edit: false, delete: false, restrict: false, comment: true, archive: false, add: false, grantEdit: false };
 const readerSpace = aSpace({ can: { editPages: false, administer: false, delete: false, purgeTrash: false, addComments: true, deletePages: false } });
 

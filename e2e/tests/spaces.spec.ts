@@ -28,7 +28,7 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
     await page.getByLabel("Description", { exact: true }).fill("How we work.");
     await page.locator('[data-action="create-space"]').click();
 
-    await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${key}$`));
     await expect(heading(page)).toHaveText(name);
     await expect(page.locator("[data-page-home]")).toBeAttached();
 
@@ -41,15 +41,15 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
     made.push(key);
     await createSpace(api, key, uniqueName(testInfo, "Edited"));
 
-    await page.goto(`/s/${key}`);
+    await page.goto(`/spaces/${key}`);
     await page.locator('[data-action="edit-page"]').click();
-    await expect(page).toHaveURL(new RegExp(`/s/${key}/p/[0-9a-f-]+/[^/]+/edit$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${key}/p/[0-9a-f-]+/[^/]+/edit$`));
     await page.getByLabel("Title", { exact: true }).fill("Welcome");
     await page.locator("#page-body").click();
     await page.keyboard.type("Everything starts here.");
     await publishFromEditor(page);
 
-    await expect(page).toHaveURL(new RegExp(`/s/${key}$`));
+    await expect(page).toHaveURL(new RegExp(`/spaces/${key}$`));
     await expect(heading(page)).toHaveText("Welcome");
     await expect(page.locator("[data-doc]")).toContainText("Everything starts here.");
   });
@@ -62,10 +62,12 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
 
     await openShowing(bob, "/spaces", bob.locator(`[data-space-row="${key}"]`));
     await expect(bob.locator('[data-action="new-space"]')).toHaveCount(0);
-    await bob.goto(`/s/${key}/settings`);
-    await expect(
-      bob.getByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the installation."),
-    ).toBeVisible();
+    await bob.goto(`/spaces/${key}/settings`);
+    await expect(bob).toHaveURL(new RegExp(`/spaces/${key}/settings/general$`));
+    await expect(bob.locator("[data-settings-read-only]")).toHaveText(
+      "Only the space's administrators change its settings. Ask one of them, or ask for the role.",
+    );
+    await expect(bob.getByLabel("Name")).toHaveAttribute("readonly", "");
     await expect(bob.locator('[data-action="delete-space"]')).toHaveCount(0);
   });
 
@@ -75,7 +77,7 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
       made.push(key);
       await createSpace(api, key, uniqueName(testInfo, "Accessible"));
       await startInScheme(page, scheme);
-      await page.goto(`/s/${key}`);
+      await page.goto(`/spaces/${key}`);
       await expect(page.locator("[data-page-home]")).toBeAttached();
       await expectAccessible(page);
     });

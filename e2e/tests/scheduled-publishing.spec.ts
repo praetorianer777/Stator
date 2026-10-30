@@ -37,7 +37,7 @@ test.describe("scheduled publishing", { tag: ["@auth"] }, () => {
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, label));
     const target = await createPage(api, space.homePageId, "Announcement", doc("Coming soon."));
-    return { space, target, path: `/s/${space.key}/p/${target.id}/announcement` };
+    return { space, target, path: `/spaces/${space.key}/p/${target.id}/announcement` };
   }
 
   test(

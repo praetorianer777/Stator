@@ -128,7 +128,7 @@ async function write(id: string, text: string) {
 describe("the comments below a page", () => {
   it("lists threads with their replies, a placeholder for what was deleted, and offers what each comment allows", async () => {
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const section = await screen.findByRole("region", { name: /Comments/ });
     const threads = await within(section).findAllByRole("article");
     expect(threads).toHaveLength(2);
@@ -150,7 +150,7 @@ describe("the comments below a page", () => {
 
   it("says which comment a connected app wrote, and through which", async () => {
     stubPage({ threads: [aThread({ comments: [aComment({ via: { kind: "oauth", name: "Desk assistant" }, body: say("Summarised.") })] })], count: 1 });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const section = await screen.findByRole("region", { name: /Comments/ });
     const mark = await within(section).findByText(/through Desk assistant/);
     expect(mark).toHaveAttribute("data-via", "oauth");
@@ -163,14 +163,14 @@ describe("the comments below a page", () => {
       threads: [aThread({ comments: [aComment({ authorName: "Ada Lovelace", originalAuthor: "Bob Example", body: say("Bring socks.") })] })],
       count: 1,
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const section = await screen.findByRole("region", { name: /Comments/ });
     expect(await within(section).findByText("· imported; written by Bob Example")).toBeInTheDocument();
   });
 
   it("starts a thread with the comment editor, which holds a comment to its allowlist", async () => {
     const sent = stubPage({ threads: [], count: 0, more: { [`POST /pages/${pageId}/comments`]: { status: 201, body: { thread: aThread() } } } });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     expect(await screen.findByText("Nobody has commented yet.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /comments, go to/ })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Add a comment" }));
@@ -197,7 +197,7 @@ describe("the comments below a page", () => {
         [`DELETE /comments/${replyId}`]: { status: 204 },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const first = (await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article"))[0]!;
     await userEvent.click(within(first).getByRole("button", { name: "Reply" }));
     const box = await write(`reply-${threadId}`, "Agreed");
@@ -234,7 +234,7 @@ describe("the comments below a page", () => {
       ],
       more: { [`DELETE /comments/${otherThreadId}`]: { status: 204 } },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const [member, moderated] = await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article");
     expect(within(member!).queryByRole("button", { name: "Delete" })).toBeNull();
     expect(within(moderated!).queryByRole("button", { name: "Edit" })).toBeNull();
@@ -256,7 +256,7 @@ describe("the comments below a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const first = (await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article"))[0]!;
     await userEvent.click(within(first).getByRole("button", { name: "Reply" }));
     await write(`reply-${threadId}`, "Me too");
@@ -269,7 +269,7 @@ describe("the comments below a page", () => {
 
   it("offers nothing to write to somebody without the right, and says why", async () => {
     stubPage({ comment: false, threads: [aThread({ can: { reply: false, resolve: false } })] });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     expect(await screen.findByText(/You may read the comments but not add to them/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add a comment" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reply" })).toBeNull();
@@ -278,7 +278,7 @@ describe("the comments below a page", () => {
 
   it("asks for a publish on a page nobody else can read yet", async () => {
     const sent = stubPage({ unpublished: true, threads: [], count: 0 });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     expect(await screen.findByText("Publish the page to let people comment on it.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add a comment" })).toBeNull();
     expect(sent.some((each) => each.path.endsWith("/comments"))).toBe(false);
@@ -302,7 +302,7 @@ describe("the comments below a page", () => {
         },
       },
     });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     await userEvent.click(await screen.findByRole("button", { name: "Add a comment" }));
     await write("new-comment", "Looks good");
     await userEvent.click(screen.getByRole("button", { name: "Comment" }));
@@ -315,7 +315,7 @@ describe("the comments below a page", () => {
       return 0;
     });
     stubPage({ more: { [`POST /comments/${threadId}/replies`]: { status: 201, body: { comment: aComment(), thread: aThread() } } } });
-    await renderAt(`/s/DOCS/p/${pageId}/plan`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan`);
     const first = (await within(await screen.findByRole("region", { name: /Comments/ })).findAllByRole("article"))[0]!;
     await userEvent.click(within(first).getByRole("button", { name: "Reply" }));
     await write(`reply-${threadId}`, "Agreed");
@@ -328,7 +328,7 @@ describe("the comments below a page", () => {
     const scrolled = vi.fn();
     Element.prototype.scrollIntoView = scrolled;
     stubPage();
-    await renderAt(`/s/DOCS/p/${pageId}/plan?thread=${otherThreadId}`);
+    await renderAt(`/spaces/DOCS/p/${pageId}/plan?thread=${otherThreadId}`);
     const target = await waitFor(() => {
       const found = document.querySelector(`[data-thread="${otherThreadId}"]`);
       expect(found).toHaveFocus();

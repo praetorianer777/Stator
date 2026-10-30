@@ -117,7 +117,7 @@ describe("the stale content report", () => {
 
   it("starts in the space whose settings it lies below", async () => {
     const { queries } = report({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace() } } });
-    await renderAt("/s/DOCS/settings/stale");
+    await renderAt("/spaces/DOCS/settings/general/stale");
     await screen.findByRole("table");
     expect(queries[0]?.get("space")).toBe("DOCS");
     expect(screen.getByLabelText("Space")).toHaveValue("DOCS");
@@ -153,7 +153,9 @@ describe("the stale content report", () => {
         body: { error: { code: "forbidden", message: "Only administrators of a space, or of the organization, can read which of its pages went stale." } },
       },
     });
-    await renderAt("/s/DOCS/settings/stale", { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } } });
+    await renderAt("/spaces/DOCS/settings/general/stale", {
+      me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } },
+    });
     expect(await screen.findByText(/Only administrators of a space, or of the installation, read which pages went stale/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
@@ -243,9 +245,9 @@ describe("the stale content report", () => {
     });
     const router = await renderAt(STALE_PATH);
     const link = await screen.findByRole("link", { name: "Runbook" });
-    expect(link.getAttribute("href")).toBe(`/s/DOCS/p/${runbookId}/runbook?from=stale`);
+    expect(link.getAttribute("href")).toBe(`/spaces/DOCS/p/${runbookId}/runbook?from=stale`);
     await userEvent.click(link);
-    await arrival(router, `/s/DOCS/p/${runbookId}/runbook`);
+    await arrival(router, `/spaces/DOCS/p/${runbookId}/runbook`);
     expect(await screen.findByRole("heading", { name: "Runbook", level: 1 })).toBeInTheDocument();
     expect(sent.some((each) => each.method === "POST" && each.path.endsWith("/visit"))).toBe(false);
   });

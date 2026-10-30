@@ -21,7 +21,7 @@ async function bytesOf(download: Download): Promise<Buffer> {
 }
 
 async function exportHtml(page: Page, key: string): Promise<Download> {
-  await openUntil(page, `/s/${key}/settings?tab=export`, () => expect(page.locator("[data-space-export]")).toBeVisible(ONE_LOOK));
+  await openUntil(page, `/spaces/${key}/settings/export`, () => expect(page.locator("[data-space-export]")).toBeVisible(ONE_LOOK));
   await page.locator('[data-export-format="html"]').click();
   await page.locator('[data-action="export-space"]').click();
   const link = page.locator('[data-export-row="done"] [data-action="download-export"]').first();

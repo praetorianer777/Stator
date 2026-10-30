@@ -138,7 +138,7 @@ export function NotificationRow({ notification: n, onFollow, className }: { noti
     if (n.readAt === null) markRead.mutate({ ids: [n.id] });
     onFollow?.();
     void navigate({
-      to: "/s/$spaceKey/p/$pageId/$slug",
+      to: "/spaces/$spaceKey/p/$pageId/$slug",
       params: { spaceKey: n.page.spaceKey, pageId: n.page.id, slug: pageSlug(n.page.title) },
       search: n.threadId ? { thread: n.threadId } : {},
       hash: n.taskId ? taskAnchor(n.taskId) : undefined,

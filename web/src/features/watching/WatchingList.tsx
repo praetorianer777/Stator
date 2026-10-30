@@ -56,11 +56,11 @@ export function WatchingList() {
                         {watch.page.title}
                       </PageLink>
                     ) : watch.kind === "blog" ? (
-                      <Link to="/s/$spaceKey/blog" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
+                      <Link to="/spaces/$spaceKey/blog" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
                         {t.watch.blogNamed(watch.spaceName)}
                       </Link>
                     ) : (
-                      <Link to="/s/$spaceKey" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
+                      <Link to="/spaces/$spaceKey" params={{ spaceKey: watch.spaceKey }} className="font-medium text-accent hover:underline">
                         {watch.spaceName}
                       </Link>
                     )}

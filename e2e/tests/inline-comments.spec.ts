@@ -105,20 +105,20 @@ test.describe("comments on passages", { tag: ["@auth"] }, () => {
     await expect(listed(bob).locator('[data-action="toggle-resolved"]')).toHaveText("Show 1 resolved thread");
 
     // A draft carries the mark the editor loaded; a comparison does not show it.
-    await page.goto(`/s/${space.key}/p/${plan.id}/plan/edit`);
+    await page.goto(`/spaces/${space.key}/p/${plan.id}/plan/edit`);
     await expect(page.locator("#page-body")).toContainText("Ship on Friday.");
     await caretTo(page.locator("#page-body"), "end");
     await page.keyboard.type(" Soon.");
     await expect(draftStatus(page)).toHaveAttribute("data-draft-status", /^(saving|saved)$/);
     await expect(draftStatus(page)).toHaveAttribute("data-draft-status", "saved");
-    await page.goto(`/s/${space.key}/p/${plan.id}/plan/history?from=1&to=draft`);
+    await page.goto(`/spaces/${space.key}/p/${plan.id}/plan/history?from=1&to=draft`);
     const diff = page.locator("[data-diff-view]");
     await expect(diff.locator("ins[data-diff]").filter({ hasText: "Soon" }).first()).toBeVisible();
     await expect(diff).toContainText("Ship on Friday.");
     await expect(diff.locator("mark, [data-inline-comment], ins, del").filter({ hasText: "Friday" })).toHaveCount(0);
 
     // Rewriting the passage leaves its thread nothing to point at.
-    await page.goto(`/s/${space.key}/p/${plan.id}/plan/edit`);
+    await page.goto(`/spaces/${space.key}/p/${plan.id}/plan/edit`);
     await caretTo(page.locator("#page-body"), "start");
     await page.keyboard.press("Shift+End");
     await page.keyboard.type("Ship on Monday.");
