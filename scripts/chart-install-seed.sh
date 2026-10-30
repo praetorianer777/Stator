@@ -34,6 +34,14 @@ call() {
   cat "$JAR.out"
 }
 
+# grant <body>: one grant, which the installation may already hold, as a new
+# space's creator holds its administration.
+grant() {
+  local code
+  code="$(curl -s -o "$JAR.out" -w '%{http_code}' -X POST -b "$JAR" -c "$JAR" -H 'Content-Type: application/json' -d "$1" "$API/role-assignments")"
+  [[ "$code" == 2* || "$code" == 409 ]] || fail "POST /role-assignments answered $code: $(head -c 400 "$JAR.out")"
+}
+
 sign_in() {
   call POST /auth/login "$(jq -nc --arg e "$EMAIL" --arg p "$PASSWORD" '{email: $e, password: $p}')" >/dev/null
 }
@@ -63,11 +71,22 @@ seed_access() {
   ids="$(call GET /users)"
   id_of() { jq -r --arg e "$1" '.members[] | select(.email == ($e | ascii_downcase)) | .userId' <<<"$ids"; }
   admin="$(id_of "$EMAIL")" commenter="$(id_of seeded-commenter@upgrade.test)" creator="$(id_of seeded-creator@upgrade.test)"
-  call PUT "/spaces/$SPACE/permissions" "$(jq -nc --arg a "$admin" --arg c "$commenter" '{grants: [
-    {subject: {type: "everyone"}, permissions: ["view"]},
-    {subject: {type: "user", id: $c}, permissions: ["view", "addComments"]},
-    {subject: {type: "user", id: $a}, permissions: ["administer"]}]}')" >/dev/null
-  call PUT /site/permissions/createSpace "$(jq -nc --arg c "$creator" '{subjects: [{type: "user", id: $c}]}')" >/dev/null
+  # The base is the branch a pull request targets, so it grants either through
+  # the grids of before #585 or through roles; the same access either way.
+  if [[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$API/role-assignments?limit=1")" == 200 ]]; then
+    local everyone
+    everyone="$(call GET '/groups?limit=50' | jq -r '.groups[] | select(.builtin == "everyone") | .id')"
+    grant "$(jq -nc --arg s "$SPACE" --arg g "$everyone" '{role: "viewer", spaceKey: $s, groupId: $g, userId: null}')"
+    grant "$(jq -nc --arg s "$SPACE" --arg u "$commenter" '{role: "commenter", spaceKey: $s, userId: $u, groupId: null}')"
+    grant "$(jq -nc --arg s "$SPACE" --arg u "$admin" '{role: "space_administrator", spaceKey: $s, userId: $u, groupId: null}')"
+    grant "$(jq -nc --arg u "$creator" '{role: "space_creator", spaceKey: null, userId: $u, groupId: null}')"
+  else
+    call PUT "/spaces/$SPACE/permissions" "$(jq -nc --arg a "$admin" --arg c "$commenter" '{grants: [
+      {subject: {type: "everyone"}, permissions: ["view"]},
+      {subject: {type: "user", id: $c}, permissions: ["view", "addComments"]},
+      {subject: {type: "user", id: $a}, permissions: ["administer"]}]}')" >/dev/null
+    call PUT /site/permissions/createSpace "$(jq -nc --arg c "$creator" '{subjects: [{type: "user", id: $c}]}')" >/dev/null
+  fi
   local all=()
   for p in commenter creator chief; do
     all+=("$(access "seeded-$p@upgrade.test")")
