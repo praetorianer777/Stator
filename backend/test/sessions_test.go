@@ -259,7 +259,7 @@ func TestSignInUpsertsBySubjectAndSyncsOnlyProviderGroups(t *testing.T) {
 	var gotEmail, gotName string
 	var memberships int
 	if err := h.super.QueryRow(ctx, `
-		SELECT u.email, u.name, (SELECT count(*) FROM group_member m WHERE m.user_id = u.id)
+		SELECT u.email, u.name, (SELECT count(*) FROM group_member m JOIN groups g ON g.id = m.group_id WHERE m.user_id = u.id AND g.builtin IS NULL)
 		FROM app_user u WHERE u.id = $1`, first.UserID).Scan(&gotEmail, &gotName, &memberships); err != nil {
 		t.Fatal(err)
 	}

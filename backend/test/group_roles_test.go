@@ -229,8 +229,12 @@ func TestAProviderGroupsGrantsReachItsPeopleAndGoWithTheGroup(t *testing.T) {
 			t.Fatalf("grant former-team = %d %v", resp.StatusCode, body)
 		}
 		h.settle(t)
+		// Alice administers through stator-administrators as well, which creates spaces too,
+		// so what is asked is whether former-team's grant still reaches her.
 		var before bool
-		if err := h.super.QueryRow(context.Background(), `SELECT 'createSpace' = ANY (perm_global_grants($1))`, aliceID).Scan(&before); err != nil || !before {
+		if err := h.super.QueryRow(context.Background(), `
+			SELECT EXISTS (SELECT 1 FROM role_assignment ra JOIN group_member gm ON gm.group_id = ra.group_id
+			               WHERE ra.group_id = $1 AND gm.user_id = $2 AND ra.role = 'space_creator')`, former, aliceID).Scan(&before); err != nil || !before {
 			t.Fatalf("alice does not create spaces through former-team before her sign-in (%v)", err)
 		}
 		signedIn(t, a, "alice", alicePassword)
@@ -238,7 +242,9 @@ func TestAProviderGroupsGrantsReachItsPeopleAndGoWithTheGroup(t *testing.T) {
 			t.Fatalf("alice is still in former-team: %q", got)
 		}
 		var after bool
-		if err := h.super.QueryRow(context.Background(), `SELECT 'createSpace' = ANY (perm_global_grants($1))`, aliceID).Scan(&after); err != nil || after {
+		if err := h.super.QueryRow(context.Background(), `
+			SELECT EXISTS (SELECT 1 FROM role_assignment ra JOIN group_member gm ON gm.group_id = ra.group_id
+			               WHERE ra.group_id = $1 AND gm.user_id = $2 AND ra.role = 'space_creator')`, former, aliceID).Scan(&after); err != nil || after {
 			t.Fatalf("alice still creates spaces through a group the provider took her out of (%v)", err)
 		}
 	})

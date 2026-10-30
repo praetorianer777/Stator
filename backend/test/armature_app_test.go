@@ -341,7 +341,7 @@ func TestAnAdministratorPastesTheAppWhereArmatureRegistersNone(t *testing.T) {
 	outcome(t, startConnect(t, bob, "/s/ENG"), "refused", "/s/ENG")
 	h.settle(t)
 	account := obj(t, want(t, bob.get(t, "/api/v1/armature/account"), http.StatusOK, "bob after the refusal"), "account", "app")
-	if account["offered"] != false || !strings.Contains(account["refusal"].(string), "Settings, Connected apps") {
+	if account["offered"] != false || !strings.Contains(account["refusal"].(string), "Admin, Connected apps") {
 		t.Errorf("after Armature refused to register Stator, bob reads %v", account)
 	}
 	app := obj(t, want(t, owner.get(t, "/api/v1/armature/connection"), http.StatusOK, "the connection"), "connection", "app")

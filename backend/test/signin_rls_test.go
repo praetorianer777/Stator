@@ -86,8 +86,13 @@ func TestRawSQLCannotReachTheSignInTables(t *testing.T) {
 
 	t.Run("acting for the owner only the organization's rows show", func(t *testing.T) {
 		for _, table := range orgTables {
-			if got := countOf(t, `SELECT count(*) FROM `+table); got != 1 {
-				t.Errorf("the owner sees %d rows in %s, want the 1 there is", got, table)
+			// The built-in Everyone group and its membership are there besides the rows signInRows wrote.
+			var there int
+			if err := h.super.QueryRow(ctx, `SELECT count(*) FROM `+table).Scan(&there); err != nil {
+				t.Fatal(err)
+			}
+			if got := countOf(t, `SELECT count(*) FROM `+table); got != there || got == 0 {
+				t.Errorf("the owner sees %d rows in %s, want the %d there are", got, table, there)
 			}
 		}
 		for _, table := range globalTables {
