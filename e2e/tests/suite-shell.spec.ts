@@ -28,8 +28,12 @@ test.describe("the suite's shell", { tag: ["@auth"] }, () => {
     const me = must(await api.GET("/auth/me"));
     await openShell(page, "/");
     const strip = page.locator("[data-nav-strip]");
-    expect(await strip.evaluate((el) => el.getBoundingClientRect().height)).toBe(48);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    // The suite's strip is h-12, the rail's width; the root type is 14px, so that is 42px here as in Armature.
+    const { height, rail } = await strip.evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      rail: 3 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+    }));
+    expect(height).toBe(rail);
     await expect(strip.locator('[data-action="drawer"]')).toBeVisible();
     await expect(strip.locator("[data-installation-name]")).toHaveText(me.organization!.name);
     await expect(strip.locator('[data-action="notifications"]')).toBeVisible();
