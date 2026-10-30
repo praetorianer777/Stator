@@ -26,6 +26,7 @@ async function withProvider(api: StatorApi, change: { issuer?: string; enabled?:
     groupsClaim: provider.groupsClaim,
     scopes: provider.scopes,
     createGroups: provider.createGroups,
+    admitByGroup: provider.admitByGroup,
     enabled: provider.enabled,
   };
   must(await api.PUT("/oidc-provider", { body: { ...kept, ...change } }));

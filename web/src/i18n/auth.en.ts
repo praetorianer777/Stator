@@ -35,6 +35,9 @@ export const ssoEn = {
   groupsClaimHint: "The claim listing somebody's groups; a dotted path reaches a nested one.",
   scopes: "Scopes",
   createGroups: "Create groups the provider names",
+  admitByGroup: "Let people in by their groups",
+  admitByGroupDetail:
+    "Somebody new signing in here, or through Armature or Exciter, whose group from the provider is mapped to a role is let in with that role. Anybody else still waits to be let in.",
   enabled: "Members sign in through this provider",
   callback: "Register this redirect address with the provider:",
   signInAt: "Members sign in at",

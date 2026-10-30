@@ -164,8 +164,8 @@ func (s *siteSnapshot) readPermissions(ctx context.Context, tx db.DBTX) error {
 func (s *siteSnapshot) readSignIn(ctx context.Context, tx db.DBTX) error {
 	var p SiteSignIn
 	err := tx.QueryRow(ctx, `
-		SELECT issuer, client_id, groups_claim, scopes, create_groups, enabled FROM oidc_provider`).
-		Scan(&p.Issuer, &p.ClientID, &p.GroupsClaim, &p.Scopes, &p.CreateGroups, &p.Enabled)
+		SELECT issuer, client_id, groups_claim, scopes, create_groups, admit_by_group, enabled FROM oidc_provider`).
+		Scan(&p.Issuer, &p.ClientID, &p.GroupsClaim, &p.Scopes, &p.CreateGroups, &p.AdmitByGroup, &p.Enabled)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		p = SiteSignIn{}

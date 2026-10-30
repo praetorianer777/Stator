@@ -630,10 +630,14 @@ func (oi *siteImporter) writeSignIn(ctx context.Context, tx db.DBTX) error {
 		return nil
 	}
 	if s.Issuer != "" {
+		admit := len(s.GroupRoles) > 0
+		if s.AdmitByGroup != nil {
+			admit = *s.AdmitByGroup
+		}
 		tag, err := tx.Exec(ctx, `
-			INSERT INTO oidc_provider (issuer, client_id, groups_claim, scopes, create_groups, enabled)
-			VALUES ($1, $2, $3, $4, $5, false) ON CONFLICT (singleton) DO NOTHING`,
-			s.Issuer, s.ClientID, s.GroupsClaim, s.Scopes, s.CreateGroups)
+			INSERT INTO oidc_provider (issuer, client_id, groups_claim, scopes, create_groups, admit_by_group, enabled)
+			VALUES ($1, $2, $3, $4, $5, $6, false) ON CONFLICT (singleton) DO NOTHING`,
+			s.Issuer, s.ClientID, s.GroupsClaim, s.Scopes, s.CreateGroups, admit)
 		if err != nil {
 			return part("the sign-in provider", err)
 		}

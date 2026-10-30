@@ -622,8 +622,9 @@ for one answers the other.
 - **The person** is found by the token's subject or its verified address, as
   a sign-in finds them, and their groups are kept as the token says. A
   member is answered; somebody who is not a member yet is let in only by the
-  group mapping under Settings, Single sign-on, as at sign-in, which lets a
-  mapped group's people in already. Anybody else, a guest or somebody
+  group mapping under Settings, Single sign-on, as at sign-in, and only while
+  "Let people in by their groups" (`admitByGroup`) is on there. Anybody
+  else, a guest or somebody
   switched off is `invalid_grant`: "Ada Lovelace has no Stator account yet.
   Sign in to Stator once, or ask an administrator to let them in.", and
   nothing about them is kept.

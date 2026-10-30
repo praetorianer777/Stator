@@ -7,7 +7,6 @@ import (
 
 	coreoidc "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/db"
@@ -70,19 +69,15 @@ func (s *Service) Admit(ctx context.Context, identity *Identity) (uuid.UUID, aut
 		if !active {
 			return auth.ErrUserInactive
 		}
-		var create bool
-		err = tx.QueryRow(ctx, `SELECT create_groups FROM oidc_provider WHERE enabled`).Scan(&create)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotConfigured
-		}
+		rules, err := admissionIn(ctx, tx)
 		if err != nil {
 			return err
 		}
-		if role, err = followMapping(ctx, tx, userID, identity.Groups); err != nil {
+		if role, err = followMapping(ctx, tx, userID, identity.Groups, rules.admit, viaTokenExchange); err != nil {
 			return err
 		}
 		if role != auth.RoleGuest {
-			_, _, err = syncGroups(ctx, tx, userID, identity.Groups, create)
+			_, _, err = syncGroups(ctx, tx, userID, identity.Groups, rules.createGroups)
 		}
 		return err
 	})

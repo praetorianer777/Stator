@@ -17,6 +17,13 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- "Let people in by their groups" under Settings, Single sign-on, as in
+  Armature: `admitByGroup` on `GET` and `PUT /oidc-provider`, off by
+  default. Only while it is on does somebody new in a mapped group get in,
+  at sign-in or at a partner's token exchange, and the audit log names the
+  group that let them in. Off, a mapped group still sets the role of
+  somebody already in. An installation that maps a group keeps letting
+  people in by it: the upgrade turns the setting on there (#583).
 - The time zone is chosen on the profile beside the language, saved with one
   Save, and every date and time is written in it; until somebody chooses, the
   browser's zone is used. `GET` and `PATCH /auth/me` carry `timezone` (#588).

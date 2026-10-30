@@ -6339,6 +6339,7 @@ export interface components {
             text: string;
         };
         Provider: {
+            admitByGroup: boolean;
             clientId: string;
             createGroups: boolean;
             enabled: boolean;
@@ -6708,6 +6709,7 @@ export interface components {
             result?: unknown;
         };
         SaveOIDCProviderRequest: {
+            admitByGroup: boolean;
             clientId: string;
             clientSecret?: string;
             createGroups: boolean;

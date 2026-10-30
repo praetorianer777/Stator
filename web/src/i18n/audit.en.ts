@@ -29,6 +29,7 @@ export const auditEn = {
   columnDetails: "Details",
   system: "System",
   formerMember: "Former member",
+  admittedByGroup: (group: string) => `admitted by group ${group}`,
   fromAddress: (ip: string) => `from ${ip}`,
   empty: "Nothing recorded",
   emptyFiltered: "Nothing matches. Widen the dates or clear a filter.",

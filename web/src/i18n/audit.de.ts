@@ -29,6 +29,7 @@ export const auditDe: typeof auditEn = {
   columnDetails: "Details",
   system: "System",
   formerMember: "Ehemaliges Mitglied",
+  admittedByGroup: (group: string) => `über die Gruppe ${group} eingelassen`,
   fromAddress: (ip: string) => `von ${ip}`,
   empty: "Nichts aufgezeichnet",
   emptyFiltered: "Nichts passt. Erweitern Sie den Zeitraum oder setzen Sie einen Filter zurück.",

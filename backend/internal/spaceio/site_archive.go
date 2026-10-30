@@ -108,11 +108,14 @@ type SiteGroup struct {
 // SiteSignIn is the sign-in provider without its client secret, and the
 // organization roles its groups give.
 type SiteSignIn struct {
-	Issuer       string          `json:"issuer"`
-	ClientID     string          `json:"clientId"`
-	GroupsClaim  string          `json:"groupsClaim"`
-	Scopes       string          `json:"scopes"`
-	CreateGroups bool            `json:"createGroups"`
+	Issuer       string `json:"issuer"`
+	ClientID     string `json:"clientId"`
+	GroupsClaim  string `json:"groupsClaim"`
+	Scopes       string `json:"scopes"`
+	CreateGroups bool   `json:"createGroups"`
+	// AdmitByGroup is nil in an archive made before the setting, whose mapped
+	// groups let people in as soon as they were mapped.
+	AdmitByGroup *bool           `json:"admitByGroup,omitempty"`
 	Enabled      bool            `json:"enabled"`
 	GroupRoles   []SiteGroupRole `json:"groupRoles"`
 }

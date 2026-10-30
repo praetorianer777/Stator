@@ -78,8 +78,9 @@ worker checks again that whoever asked is still one before it begins.
   organization's name and settings (anonymous reading, public links, the
   hub page and whether everybody lands on it, the default theme); its people
   with their roles, a guest with the space they were invited to; its groups
-  with their members; its global permissions; the sign-in provider and the
-  roles its groups give, without the client secret; the Armature and Exciter connections,
+  with their members; its global permissions; the sign-in provider, whether
+  its groups let people in, and the roles its groups give, without the
+  client secret; the Armature and Exciter connections,
   without their webhook secrets; the brand's footer lines; its themes; the
   templates every space offers; its webhooks, without their secrets; each
   person's notification settings and chosen theme; the list of its spaces;

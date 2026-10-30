@@ -40,6 +40,9 @@ export const ssoDe: typeof ssoEn = {
   groupsClaimHint: "Der Claim mit den Gruppen einer Person; ein Pfad mit Punkten erreicht einen verschachtelten.",
   scopes: "Scopes",
   createGroups: "Gruppen anlegen, die der Anbieter nennt",
+  admitByGroup: "Personen über ihre Gruppen einlassen",
+  admitByGroupDetail:
+    "Wer sich neu hier oder über Armature oder Exciter anmeldet und dessen Gruppe beim Anbieter einer Rolle zugeordnet ist, wird mit dieser Rolle eingelassen. Alle anderen warten weiterhin darauf, eingelassen zu werden.",
   enabled: "Mitglieder melden sich über diesen Anbieter an",
   callback: "Tragen Sie diese Weiterleitungsadresse beim Anbieter ein:",
   signInAt: "Mitglieder melden sich an unter",
