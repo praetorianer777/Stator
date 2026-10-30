@@ -3,7 +3,7 @@ import type { Download } from "@playwright/test";
 import { must } from "../fixtures/api";
 import { authTest as test, expect } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible, startInScheme, type ColourScheme } from "../fixtures/shell";
+import { expectAccessible, openAdminPage, startInScheme, type ColourScheme } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 import { unzip } from "../fixtures/zip";
 
@@ -45,7 +45,7 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
         }),
       );
 
-      await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-site-transfer]")).toBeVisible(ONE_LOOK));
+      await openUntil(page, "/admin/transfer", () => expect(page.locator("[data-site-transfer]")).toBeVisible(ONE_LOOK));
       await expect(page.locator('[data-not-carried="passwords"]')).toBeVisible();
       // The organization keeps the exports of earlier runs; this one is the one not among them.
       const earlier = new Set(must(await api.GET("/site/exports")).exports.map((each) => each.id));
@@ -74,8 +74,8 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       await expectAccessible(page);
 
       const bob = await pageAs("bob");
-      await bob.goto("/settings/transfer");
-      await expect(bob.getByText("Only an administrator of the organization exports or imports all of it", { exact: false })).toBeVisible();
+      await bob.goto("/admin/transfer");
+      await expect(bob.getByText("Only administrators can open this page")).toBeVisible();
       await expect(bob.locator('[data-action="export-site"]')).toHaveCount(0);
 
       // The one organization has spaces, this spec's among them, so it takes
@@ -83,7 +83,8 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
       // integration suite (TestAnOrganizationTravelsToAFreshOneWhole).
       const saved = testInfo.outputPath("organization.zip");
       writeFileSync(saved, archive);
-      await page.goto("/settings/transfer");
+      await page.goto("/");
+      await openAdminPage(page, "site-transfer");
       await page.locator("[data-site-import-file]").setInputFiles(saved);
       await page.locator('[data-action="confirm-import-site"]').click();
       await expect(page.getByText("This organization has spaces already", { exact: false })).toBeVisible();
@@ -95,7 +96,7 @@ test.describe("organization export and import", { tag: ["@auth"] }, () => {
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the export and import settings are accessible in the ${scheme} scheme`, async ({ page }) => {
       await startInScheme(page, scheme);
-      await openUntil(page, "/settings/transfer", () => expect(page.locator("[data-site-transfer]")).toBeVisible(ONE_LOOK));
+      await openUntil(page, "/admin/transfer", () => expect(page.locator("[data-site-transfer]")).toBeVisible(ONE_LOOK));
       await expect(page.locator('[data-action="choose-site-archive"]')).toBeVisible();
       await expectAccessible(page);
     });

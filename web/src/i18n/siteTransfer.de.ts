@@ -3,33 +3,32 @@ import type { siteTransferEn, spaceTransferEn } from "./siteTransfer.en";
 /** The German strings of exporting and importing a site or a space, held to the English shape. */
 export const siteTransferDe: typeof siteTransferEn = {
   title: "Export und Import",
-  notAdmin: "Nur Administratoren der Organisation exportieren oder importieren sie ganz. Bitten Sie eine von ihnen darum.",
-  exportTitle: "Die Organisation exportieren",
+  exportTitle: "Die Installation exportieren",
   exportIntro:
-    "Ein Archiv der ganzen Organisation, das im Hintergrund entsteht: jeder Bereich mit seinen Seiten, dem Verlauf, den Dateien, Kommentaren und Entwürfen, dazu die Personen, Gruppen, Berechtigungen, Einstellungen, die Marke, Designs, Vorlagen, Webhooks und das Audit-Log. Importieren Sie es in ein frisches Stator, um die Organisation dorthin umzuziehen. Die Datei liegt einen Tag lang zum Herunterladen bereit.",
-  export: "Organisation exportieren",
-  exporting: "Die Organisation wird exportiert",
-  archive: "Archiv der Organisation",
-  noExports: "Die Organisation wurde noch nicht exportiert.",
-  importTitle: "Eine Organisation importieren",
+    "Ein Archiv der ganzen Installation, das im Hintergrund entsteht: jeder Bereich mit seinen Seiten, dem Verlauf, den Dateien, Kommentaren und Entwürfen, dazu die Personen, Gruppen, Berechtigungen, Einstellungen, die Marke, Designs, Vorlagen, Webhooks und das Audit-Log. Importieren Sie es in ein frisches Stator, um die Installation dorthin umzuziehen. Die Datei liegt einen Tag lang zum Herunterladen bereit.",
+  export: "Installation exportieren",
+  exporting: "Die Installation wird exportiert",
+  archive: "Archiv der Installation",
+  noExports: "Die Installation wurde noch nicht exportiert.",
+  importTitle: "Eine Installation importieren",
   importIntro:
-    "Füllen Sie diese Organisation aus dem Archiv einer ganzen Organisation, das ein anderes Stator erzeugt hat. Ihre Bereiche, Personen, Gruppen und Einstellungen kommen herein; Personen werden an ihrer E-Mail-Adresse erkannt, und alle melden sich hier neu an. Das geht nur, solange diese Organisation keine Bereiche hat.",
-  importSite: "Organisation importieren",
-  imported: "Die Organisation ist importiert. Alle melden sich hier neu an.",
+    "Füllen Sie diese Installation aus dem Archiv einer ganzen Installation, das ein anderes Stator erzeugt hat. Ihre Bereiche, Personen, Gruppen und Einstellungen kommen herein; Personen werden an ihrer E-Mail-Adresse erkannt, und alle melden sich hier neu an. Das geht nur, solange diese Installation keine Bereiche hat.",
+  importSite: "Installation importieren",
+  imported: "Die Installation ist importiert. Alle melden sich hier neu an.",
   importedBy: (name: string, when: string) => `Importiert von ${name} am ${when}`,
   notCarriedTitle: "Was nicht mitkommt",
-  notCarriedHint: "Das Archiv führt dies ebenfalls auf. Vergeben Sie es dort neu, wo die Organisation ankommt.",
+  notCarriedHint: "Das Archiv führt dies ebenfalls auf. Vergeben Sie es dort neu, wo die Installation ankommt.",
   notCarried: {
     passwords: {
       what: "Passwörter",
-      why: "Nur eine Bootstrap-Administratorin hat eines, aus den Einstellungen des Stator, in dem die Organisation ankommt.",
+      why: "Nur eine Bootstrap-Administratorin hat eines, aus den Einstellungen des Stator, in dem die Installation ankommt.",
     },
-    sessions: { what: "Sitzungen", why: "Alle melden sich dort neu an, wo die Organisation ankommt; Konten werden an ihrer Adresse erkannt." },
+    sessions: { what: "Sitzungen", why: "Alle melden sich dort neu an, wo die Installation ankommt; Konten werden an ihrer Adresse erkannt." },
     tokens: { what: "Persönliche Zugriffstokens", why: "Ihre Geheimnisse werden nicht lesbar aufbewahrt. Ihre Inhaber erstellen neue." },
     armatureAccounts: { what: "Verbundene Armature-Konten", why: "Alle verbinden ihr Armature-Konto in ihrem Profil neu." },
     signInSecret: {
       what: "Das Client-Geheimnis des Anmeldeanbieters",
-      why: "Der Anbieter kommt ausgeschaltet an, sofern die Organisation, in der er ankommt, keinen eigenen hat; tragen Sie das Geheimnis ein und schalten Sie ihn ein.",
+      why: "Der Anbieter kommt ausgeschaltet an, sofern die Installation, in der er ankommt, keinen eigenen hat; tragen Sie das Geheimnis ein und schalten Sie ihn ein.",
     },
     webhookSecrets: {
       what: "Signaturgeheimnisse der Webhooks",
@@ -47,7 +46,7 @@ export const siteTransferDe: typeof siteTransferEn = {
     joinRequests: { what: "Beitrittsanfragen", why: "Wer weiterhin hinein möchte, meldet sich neu an und fragt erneut." },
     links: {
       what: "Freigaben, öffentliche Links und anonymes Lesen über Links",
-      why: "Ein Link öffnet die Organisation für Personen; vergeben Sie ihn dort neu, wo sie ankommt.",
+      why: "Ein Link öffnet die Installation für Personen; vergeben Sie ihn dort neu, wo sie ankommt.",
     },
     personal: { what: "Benachrichtigungen, Sterne, Beobachtungen, Seitenaufrufe und Besuche", why: "Sie sind das eigene Lesen jeder Person am alten Ort." },
     arrangements: {
@@ -67,7 +66,7 @@ export const siteTransferDe: typeof siteTransferEn = {
       what: "Aus Armature gespiegelte Designs",
       why: "Sie kommen aus Armature zurück, wenn ihre Inhaber wieder dem Design von Armature folgen.",
     },
-    address: { what: "Die Adresse der Organisation", why: "Die Organisation behält die Adresse des Stator, in dem sie ankommt." },
+    address: { what: "Die Adresse der Installation", why: "Die Installation behält die Adresse des Stator, in dem sie ankommt." },
   } as Record<string, { what: string; why: string }>,
   report: {
     title: "Was übernommen wurde",
@@ -85,9 +84,9 @@ export const siteTransferDe: typeof siteTransferEn = {
     webhooks: "Webhooks",
     auditEntries: "Einträge des Audit-Logs",
     kept: {
-      signIn: "Diese Organisation hat ihren eigenen Anmeldeanbieter behalten.",
-      armature: "Diese Organisation hat ihre eigene Armature-Verbindung behalten.",
-      exciter: "Diese Organisation hat ihre eigene Exciter-Verbindung behalten.",
+      signIn: "Diese Installation hat ihren eigenen Anmeldeanbieter behalten.",
+      armature: "Diese Installation hat ihre eigene Armature-Verbindung behalten.",
+      exciter: "Diese Installation hat ihre eigene Exciter-Verbindung behalten.",
     } as Record<string, string>,
     webhooksOff: "Webhooks kamen ausgeschaltet an. Erneuern Sie das Geheimnis jedes Webhooks, geben Sie es dem Empfänger und schalten Sie ihn ein.",
   },
@@ -96,14 +95,14 @@ export const siteTransferDe: typeof siteTransferEn = {
 export const spaceTransferDe: typeof spaceTransferEn = {
   notAdmin: "Nur Administratoren dieses Bereichs können ihn exportieren. Fragen Sie eine von ihnen.",
   notCreator:
-    "Nur wer Bereiche anlegen darf, kann einen importieren. Bitten Sie eine Administratorin der Organisation, es Ihnen zu erlauben oder den Bereich für Sie zu importieren.",
+    "Nur wer Bereiche anlegen darf, kann einen importieren. Bitten Sie eine Administratorin der Installation, es Ihnen zu erlauben oder den Bereich für Sie zu importieren.",
   exportIntro:
     "Ein Export ist eine Datei des ganzen Bereichs, die im Hintergrund entsteht. Jede Seite, die Leser lesen, ist mit Verlauf, Dateien, Stichwörtern, Kommentaren und Berechtigungen darin; Entwürfe nicht. Die Datei liegt einen Tag lang zum Herunterladen bereit.",
   format: "Format",
   formats: {
     archive: {
       title: "Archiv",
-      description: "Alles im Bereich, mit jeder Version und Datei, um es hier oder in einer anderen Organisation wieder zu importieren.",
+      description: "Alles im Bereich, mit jeder Version und Datei, um es hier oder in einer anderen Installation wieder zu importieren.",
     },
     html: {
       title: "HTML-Seiten",
@@ -125,7 +124,7 @@ export const spaceTransferDe: typeof spaceTransferEn = {
   importSpace: "Bereich importieren",
   importTitle: "Einen Bereich importieren",
   importIntro:
-    "Wählen Sie ein Archiv, das ein Bereichsexport von Stator erzeugt hat, hier oder in einer anderen Organisation, oder den HTML- oder XML-Bereichsexport eines anderen Wikis als Zip. Es wird ein neuer Bereich mit seinen Seiten, dem Verlauf, den Dateien und Kommentaren; Personen werden an ihrer E-Mail-Adresse erkannt und Gruppen an ihrem Namen.",
+    "Wählen Sie ein Archiv, das ein Bereichsexport von Stator erzeugt hat, hier oder in einer anderen Installation, oder den HTML- oder XML-Bereichsexport eines anderen Wikis als Zip. Es wird ein neuer Bereich mit seinen Seiten, dem Verlauf, den Dateien und Kommentaren; Personen werden an ihrer E-Mail-Adresse erkannt und Gruppen an ihrem Namen.",
   chooseArchive: "Datei wählen",
   noArchive: "Noch keine Datei gewählt.",
   keyHint:

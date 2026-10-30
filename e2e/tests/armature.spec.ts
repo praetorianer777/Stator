@@ -2,10 +2,10 @@ import type { Page } from "@playwright/test";
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
-import { type ColourScheme, expectAccessible, openAccountMenu, openSettingsPage, startInScheme, confirm, toast } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, openAccountMenu, openAdminPage, startInScheme, confirm, toast } from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
-const SETTINGS_PATH = "/settings/armature";
+const SETTINGS_PATH = "/admin/armature";
 const PROFILE_PATH = "/settings/profile";
 // The stub makes a person of any name on first use, in the Armature
 // organization its token names; each spec's organization is its own tenant.
@@ -54,7 +54,7 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
       const tenant = team.label;
 
       await page.goto("/");
-      await openSettingsPage(page, "armature-settings");
+      await openAdminPage(page, "armature-settings");
       await expect(page).toHaveURL(new RegExp(`${SETTINGS_PATH}$`));
       await expect(page.locator("main").getByRole("heading", { level: 1, name: "Armature" })).toBeVisible();
 
@@ -114,11 +114,11 @@ test.describe("connecting Armature", { tag: ["@auth"] }, () => {
     const bob = await pageAs("bob");
     // The beforeEach took away a connection an earlier test may have left.
     await openShowing(bob, PROFILE_PATH, bob.locator('[data-armature-status="not_configured"]'));
-    await expect(bob.locator('[data-armature-status="not_configured"]')).toContainText("Ask an administrator to connect it under Settings, Armature.");
+    await expect(bob.locator('[data-armature-status="not_configured"]')).toContainText("Ask an administrator to connect it under Admin, Armature.");
 
     expect((await api.PUT("/armature/connection", { body: { baseUrl: armatureURL() } })).response.status).toBe(200);
     await openShowing(bob, PROFILE_PATH, bob.getByLabel("Armature token", { exact: true }));
     await bob.goto(SETTINGS_PATH);
-    await expect(bob.getByText("Only an administrator can connect Armature.")).toBeVisible();
+    await expect(bob.getByText("Only administrators can open this page")).toBeVisible();
   });
 });

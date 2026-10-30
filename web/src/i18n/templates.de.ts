@@ -6,9 +6,9 @@ export const templatesDe: typeof templatesEn = {
   siteList: "Vorlagen für alle Bereiche",
   spaceList: "Vorlagen dieses Bereichs",
   siteIntro: "Jeder Bereich bietet diese an, wenn jemand eine Seite anlegt, nach seinen eigenen Vorlagen und vor den mitgelieferten.",
-  spaceIntro: "Seiten in diesem Bereich können mit diesen beginnen, neben den Vorlagen der Organisation und den mitgelieferten.",
+  spaceIntro: "Seiten in diesem Bereich können mit diesen beginnen, neben den Vorlagen der Installation und den mitgelieferten.",
   siteNotAdmin:
-    "Nur Administratoren der Organisation ändern diese Vorlagen. Bitten Sie eine von ihnen, oder legen Sie die Vorlage in einem Bereich an, den Sie verwalten.",
+    "Nur Administratoren der Installation ändern diese Vorlagen. Bitten Sie eine von ihnen, oder legen Sie die Vorlage in einem Bereich an, den Sie verwalten.",
   spaceNotAdmin: "Nur Administratoren dieses Bereichs ändern seine Vorlagen. Bitten Sie eine von ihnen.",
   empty: "Noch keine Vorlagen",
   emptyBody: "Legen Sie eine an, mit Variablen für das, was sich von Seite zu Seite ändert.",

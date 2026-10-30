@@ -54,12 +54,12 @@ describe("the account menu", () => {
     expect(within(head).getByRole("img", { name: "Bob Builder" })).toHaveAttribute("src", "https://pictures.test/bob.png");
   });
 
-  it("sets Settings and Sign out apart from the person's own pages", async () => {
+  it("sets Admin and Sign out apart from the person's own pages", async () => {
     await renderAt("/");
     const menu = await openMenu();
     const separators = within(menu).getAllByRole("separator");
     expect(separators).toHaveLength(2);
-    expect(separators[0]!.nextElementSibling).toHaveTextContent("Settings");
+    expect(separators[0]!.nextElementSibling).toHaveTextContent("Admin");
     expect(separators[1]!.nextElementSibling).toHaveTextContent("Sign out");
   });
 
@@ -69,27 +69,27 @@ describe("the account menu", () => {
     expect(within(trigger).getByText("AL")).toBeInTheDocument();
   });
 
-  it("holds an administrator's own pages, Settings and Sign out, and no page of the organization's", async () => {
+  it("holds an administrator's own pages, one Admin entry and Sign out, and no page of the installation's", async () => {
     await renderAt("/");
     const menu = await openMenu();
     expect(
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Settings", "Sign out"]);
+    ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Admin", "Sign out"]);
   });
 
-  it("opens the settings area from Settings", async () => {
+  it("opens the Admin page from Admin", async () => {
     const router = await renderAt("/");
-    await userEvent.click(within(await openMenu()).getByRole("menuitem", { name: "Settings" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+    await userEvent.click(within(await openMenu()).getByRole("menuitem", { name: "Admin" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin"));
   });
 
-  it("gives a member their own pages without Settings", async () => {
+  it("gives a member their own pages without Admin", async () => {
     stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/", { me: member });
     const menu = await openMenu();
-    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Settings" })).toBeNull());
+    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Admin" })).toBeNull());
     expect(
       within(menu)
         .getAllByRole("menuitem")
@@ -97,11 +97,11 @@ describe("the account menu", () => {
     ).toEqual(["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Sign out"]);
   });
 
-  it("gives a guest no Access tokens and no Settings", async () => {
+  it("gives a guest no Access tokens and no Admin", async () => {
     stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
     await renderAt("/", { me: guest });
     const menu = await openMenu();
-    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Settings" })).toBeNull());
+    await waitFor(() => expect(within(menu).queryByRole("menuitem", { name: "Admin" })).toBeNull());
     expect(
       within(menu)
         .getAllByRole("menuitem")
@@ -167,8 +167,8 @@ describe("the tools to switch to", () => {
 describe("a session that ends while the page is open", () => {
   it("sends the reader to sign in, and back to the page afterwards", async () => {
     stubApi({ "GET /oidc-provider": unauthorized, "GET /auth/me": unauthorized });
-    const router = await renderAt("/settings/access/sso");
+    const router = await renderAt("/admin/access/sso");
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
-    expect(router.state.location.search).toEqual({ next: "/settings/access/sso" });
+    expect(router.state.location.search).toEqual({ next: "/admin/access/sso" });
   });
 });

@@ -14,7 +14,6 @@ import { labelRoute, spaceLabelRoute } from "./labels";
 import { loginRoute } from "./login";
 import { notificationSettingsRoute, notificationsRoute, watchingRoute } from "./notifications";
 import { homeRoute, personalHomeRoute } from "./pages";
-import { brandSettingsRoute } from "./brand";
 import { siteTransferRoute } from "./site-transfer";
 import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
@@ -28,17 +27,21 @@ import { spaceBlogRoute } from "./blog";
 import { personalSpaceNewRoute, spaceImportRoute, spaceNewRoute, spacesRoute } from "./spaces";
 import { RouteError, rootRoute } from "./root";
 import { searchRoute } from "./search";
-import { staleRoute } from "./stale";
+import { spaceStaleRoute, staleRoute } from "./stale";
 import { reviewsRoute } from "./reviews";
 import { tasksRoute } from "./tasks";
 import { settingsRoute } from "./settings";
-import { accessRoute, accessTabRoute, sitePermissionsRoute, ssoRoute } from "./access";
+import { accessRoute, accessTabRoute } from "./access";
+import { adminIndexRoute, adminRoute, settingsMovedDeepRoute, settingsMovedRoute } from "./admin";
+import { connectedAppsRoute } from "./connected-apps";
+import { installationRoute } from "./installation";
+import { usersRoute } from "./users";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
 import { tokensRoute } from "./tokens";
 import { oauthAuthorizeRoute } from "./oauth-authorize";
 import { webhooksRoute } from "./webhooks";
-import { templateEditRoute, templateNewRoute, templatesRoute } from "./templates";
+import { spaceTemplateEditRoute, spaceTemplateNewRoute, templateEditRoute, templateNewRoute, templatesRoute } from "./templates";
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -65,6 +68,9 @@ const routeTree = rootRoute.addChildren([
       spaceLabelRoute,
       spaceDecisionsRoute,
       spaceBlogRoute,
+      spaceStaleRoute,
+      spaceTemplateNewRoute,
+      spaceTemplateEditRoute,
     ]),
     searchRoute,
     tasksRoute,
@@ -80,22 +86,27 @@ const routeTree = rootRoute.addChildren([
     notificationsRoute,
     notificationSettingsRoute,
     watchingRoute,
-    accessRoute,
-    accessTabRoute,
-    ssoRoute,
-    sitePermissionsRoute,
-    hubSettingsRoute,
-    brandSettingsRoute,
-    siteTransferRoute,
-    exampleSpaceRoute,
-    armatureSettingsRoute,
-    exciterSettingsRoute,
-    auditRoute,
-    webhooksRoute,
-    templatesRoute,
-    templateNewRoute,
-    templateEditRoute,
-    staleRoute,
+    adminRoute.addChildren([
+      adminIndexRoute,
+      installationRoute,
+      accessRoute,
+      accessTabRoute,
+      usersRoute,
+      hubSettingsRoute,
+      templatesRoute,
+      templateNewRoute,
+      templateEditRoute,
+      staleRoute,
+      exampleSpaceRoute,
+      armatureSettingsRoute,
+      exciterSettingsRoute,
+      connectedAppsRoute,
+      webhooksRoute,
+      auditRoute,
+      siteTransferRoute,
+    ]),
+    settingsMovedRoute,
+    settingsMovedDeepRoute,
     devEditorRoute,
   ]),
 ]);

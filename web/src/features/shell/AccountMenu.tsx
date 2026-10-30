@@ -4,14 +4,14 @@ import { useConnectedTools } from "@/api/tools";
 import { Avatar, IconButton, Menu, type MenuEntry, type MenuItem } from "@/components/ui";
 import type { AnchoredSide } from "@/components/ui/overlay";
 import { Icon } from "@/components/icons";
-import { CONNECTED_TOOLS, SETTINGS_PATH } from "@/config";
+import { CONNECTED_TOOLS } from "@/config";
 import { useCanAdministerSite } from "@/features/permissions/access";
 import { t } from "@/i18n";
-import { usePlaces } from "./places";
+import { adminEntry, usePlaces } from "./places";
 
 /**
  * The round avatar and its menu, "Your account": who is signed in, their own
- * pages, the other tools, Settings for site administrators, and Sign out.
+ * pages, the other tools, Admin for administrators, and Sign out.
  */
 export function AccountMenu({ side = "right" }: { side?: AnchoredSide }) {
   const navigate = useNavigate();
@@ -46,12 +46,13 @@ export function AccountMenu({ side = "right" }: { side?: AnchoredSide }) {
     });
   }
   if (siteAdmin) {
+    const admin = adminEntry();
     items.push({
-      label: t.account.settings,
+      label: admin.label,
       icon: <Icon.Settings />,
       separated: true,
-      onSelect: () => void navigate({ to: SETTINGS_PATH }),
-      attrs: { "data-action": "settings" },
+      onSelect: () => void navigate({ to: admin.to }),
+      attrs: { "data-action": "admin" },
     });
   }
   items.push({

@@ -5,11 +5,11 @@ import { caretTo } from "../fixtures/editor";
 import { teamTest as test } from "../fixtures/team";
 import { openPage, openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { expectAccessible, openSettingsPage } from "../fixtures/shell";
+import { expectAccessible, openAdminPage } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, publishFromEditor, uniqueKey } from "../fixtures/spaces";
 import { apiFromStubURL, exciterURL } from "../fixtures/stack";
 
-const SETTINGS_PATH = "/settings/exciter";
+const SETTINGS_PATH = "/admin/exciter";
 const PROFILE_PATH = "/settings/profile";
 // The stub makes a person of any name on first use; each spec's tenant is its
 // own. alice may still find a trashed requirement, as an administrator does.
@@ -64,7 +64,7 @@ test.describe("Exciter requirements on pages", { tag: ["@auth"] }, () => {
 
   test("an administrator connects Exciter, and alice connects her account from a chip", async ({ page, api, team }, testInfo) => {
     await page.goto("/");
-    await openSettingsPage(page, "exciter-settings");
+    await openAdminPage(page, "exciter-settings");
     await expect(page).toHaveURL(new RegExp(`${SETTINGS_PATH}$`));
     await expect(page.locator("main").getByRole("heading", { level: 1, name: "Exciter" })).toBeVisible();
 

@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ExampleSpaceJob } from "@/api/exampleSpace";
 import type * as config from "@/config";
-import { arrival, renderAt, signedIn, stubApi, viaSettings } from "@/test/app";
+import { arrival, renderAt, signedIn, stubApi, viaAdmin } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 
@@ -148,32 +148,32 @@ describe("the example space on the spaces overview", () => {
 
     const sent = stubApi({ "GET /spaces": { status: 200, body: { spaces: [] } } });
     await renderAt("/spaces", { me: member });
-    await screen.findByText(/Ask an administrator of your organization to create one/);
+    await screen.findByText(/Ask an administrator of your installation to create one/);
     expect(screen.queryByRole("button", { name: "Create the example space" })).toBeNull();
     expect(sent.some((r) => r.path === "/example-space")).toBe(false);
   });
 });
 
-describe("the example space in the organization's settings", () => {
+describe("the example space under Admin", () => {
   it("names the one there is and still offers to make it", async () => {
     stubApi({ "GET /example-space": { status: 200, body: { space: { ...example, archivedAt: "2026-10-01T00:00:00Z" }, job: null } } });
-    await renderAt("/settings/example-space");
+    await renderAt("/admin/example-space");
     expect(await screen.findByRole("status")).toHaveTextContent("It is archived.");
     expect(screen.getByRole("button", { name: "Create the example space" })).toBeEnabled();
     expect(await axeViolations()).toEqual([]);
   });
 
   it("tells a member whom to ask", async () => {
-    await renderAt("/settings/example-space", { me: member });
-    expect(await screen.findByText(/Only administrators of the organization create the example space/)).toBeInTheDocument();
+    await renderAt("/admin/example-space", { me: member });
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create the example space" })).toBeNull();
   });
 
-  it("is in the account menu of an administrator", async () => {
+  it("is reached through Admin in the account menu of an administrator", async () => {
     stubApi({ "GET /example-space": { status: 200, body: { space: null, job: null } } });
-    const router = await renderAt("/settings/example-space");
-    await viaSettings("Example space");
-    await arrival(router, "/settings/example-space");
+    const router = await renderAt("/admin/hub");
+    await viaAdmin("Example space");
+    await arrival(router, "/admin/example-space");
   });
 });
 
@@ -212,7 +212,7 @@ describe("renewing the example space", () => {
 
   it("takes another language in the settings", async () => {
     const sent = stubApi(renewing());
-    await renderAt("/settings/example-space");
+    await renderAt("/admin/example-space");
     await userEvent.click(await screen.findByRole("button", { name: "Deutsch" }));
     expect(screen.getByRole("button", { name: "Deutsch" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(screen.getByRole("button", { name: "Renew the example space" }));

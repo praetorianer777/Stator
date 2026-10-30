@@ -72,7 +72,7 @@ test.describe("sharing a page", { tag: ["@auth"] }, () => {
     // Every spec shares the one organization, and a guest another spec has let in
     // cannot view this space, so the open page may read as everyone or as a count.
     await expect(dialog(page).locator("[data-viewers-everyone], [data-viewers-total]")).toHaveText(
-      /^(Everyone in the organization can view this page\.|\d+ (person|people) can view this page:)$/,
+      /^(Everyone in the installation can view this page\.|\d+ (person|people) can view this page:)$/,
     );
     await pick(page, BOB, BOB);
     await expect(async () => {

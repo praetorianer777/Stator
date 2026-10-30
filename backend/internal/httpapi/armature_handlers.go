@@ -426,7 +426,7 @@ func (s *Server) handleListArmatureLinks(w http.ResponseWriter, r *http.Request)
 // get one answer, so the address never tells which exist.
 
 var errBadSignature = &APIError{Status: http.StatusUnauthorized, Code: "bad_signature",
-	Message: "The signature does not match. Check that the webhook secret in Armature is the one saved in Stator under Settings, Armature."}
+	Message: "The signature does not match. Check that the webhook secret in Armature is the one saved in Stator under Admin, Armature."}
 
 var errWebhookStale = &APIError{Status: http.StatusUnauthorized, Code: "stale_delivery",
 	Message: fmt.Sprintf("The delivery was signed more than %d minutes away from Stator's clock. Check that both servers keep the right time; Armature sends it again by itself.", int(armature.WebhookTimestampTolerance.Minutes()))}

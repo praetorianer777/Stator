@@ -1,15 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useMe, useMembers, useRemoveMember, type Member } from "@/api/auth";
-import { Button, Card, EmptyState, ErrorBanner, Skeleton, Table, Tag, Td, Th, countOf, useToast } from "@/components/ui";
-import { AddMember } from "@/features/auth/AddMember";
-import { JoinRequests } from "@/features/auth/JoinRequests";
+import { Button, EmptyState, ErrorBanner, Skeleton, Table, Tag, Td, Th, countOf, useToast } from "@/components/ui";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 import { t } from "@/i18n";
 
 /**
- * Who is in the installation: who waits to be let in, adding somebody with a
- * password, and everybody with their standing and the roles they hold across
- * the installation, by name or through a group.
+ * Who is in the installation, with their standing and the roles they hold
+ * across it, by name or through a group. Letting people in is under Users.
  */
 export function MemberList() {
   const { data: me } = useMe();
@@ -28,11 +25,7 @@ export function MemberList() {
 
   return (
     <div className="space-y-4" data-members="">
-      <JoinRequests />
-      <Card className="space-y-3 p-4">
-        <p className="text-sm text-ink-muted">{t.accessAdmin.members.intro}</p>
-        <AddMember />
-      </Card>
+      <p className="text-sm text-ink-muted">{t.accessAdmin.members.intro}</p>
       {error && <ErrorBanner>{error.message}</ErrorBanner>}
       {remove.error && <ErrorBanner>{remove.error.message}</ErrorBanner>}
       {isLoading ? (

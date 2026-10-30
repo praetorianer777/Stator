@@ -26,9 +26,9 @@ const settings = (extra: Parameters<typeof stubApi>[0] = {}) =>
     ...extra,
   });
 
-async function membersCard() {
+async function usersPage() {
   await screen.findByText("Olive Owner");
-  return document.querySelector("[data-members]") as HTMLElement;
+  return document.querySelector("[data-users-page]") as HTMLElement;
 }
 
 describe("adding a person with a password", () => {
@@ -48,8 +48,8 @@ describe("adding a person with a password", () => {
         },
       },
     });
-    await renderAt("/settings/access/members");
-    const card = await membersCard();
+    await renderAt("/admin/users");
+    const card = await usersPage();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     await userEvent.type(within(card).getByLabelText("Email address"), " ada@stator.test ");
     await userEvent.type(within(card).getByLabelText("Name"), "Ada");
@@ -72,8 +72,8 @@ describe("adding a person with a password", () => {
         body: { member: { userId: "0195f000-0000-7000-8000-000000000003", email: "bob@stator.test", name: "Bob", role: "admin", newAccount: false } },
       },
     });
-    await renderAt("/settings/access/members");
-    const card = await membersCard();
+    await renderAt("/admin/users");
+    const card = await usersPage();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     await userEvent.type(within(card).getByLabelText("Email address"), "bob@stator.test");
     await userEvent.selectOptions(within(card).getByLabelText("Role"), "admin");
@@ -96,8 +96,8 @@ describe("adding a person with a password", () => {
         },
       },
     });
-    await renderAt("/settings/access/members");
-    const card = await membersCard();
+    await renderAt("/admin/users");
+    const card = await usersPage();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     await userEvent.type(within(card).getByLabelText("Email address"), "cy@stator.test");
     await userEvent.type(within(card).getByLabelText("Password"), "short");
@@ -108,8 +108,8 @@ describe("adding a person with a password", () => {
 
   it("passes axe with the form open", async () => {
     settings();
-    await renderAt("/settings/access/members");
-    const card = await membersCard();
+    await renderAt("/admin/users");
+    const card = await usersPage();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     expect(await axeViolations()).toEqual([]);
   });

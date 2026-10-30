@@ -3,7 +3,7 @@ export const spacesEn = {
   title: "Spaces",
   emptyTitle: "No spaces yet",
   emptyBody: "A space holds a tree of pages for one team or topic, starting from its home page.",
-  emptyBodyMember: "A space holds a tree of pages for one team or topic. Ask an administrator of your organization to create one.",
+  emptyBodyMember: "A space holds a tree of pages for one team or topic. Ask an administrator of your installation to create one.",
   create: "Create space",
   createTitle: "Create a space",
   columnName: "Space",
@@ -17,7 +17,7 @@ export const spacesEn = {
   descriptionHint: "A sentence on what belongs here, shown in the directory.",
   submit: "Create space",
   cancel: "Cancel",
-  notAdmin: "You may not create spaces here. Ask an administrator of your organization to make one for you, or to let you create spaces.",
+  notAdmin: "You may not create spaces here. Ask an administrator of your installation to make one for you, or to let you create spaces.",
   personalTitle: "Personal spaces",
   createPersonal: "Create your personal space",
   createPersonalTitle: "Your personal space",
@@ -39,7 +39,7 @@ export const spacesEn = {
   everyoneMay: (names: string[]) => {
     const words = names.map((name) => name.toLowerCase());
     const list = words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : (words[0] ?? "");
-    return `Everyone in the organization may ${list}.`;
+    return `Everyone in the installation may ${list}.`;
   },
   everyoneNothing: "Nobody but the space's administrators sees it until they grant more.",
   youAdminister: "You administer the space and can change this under its permissions.",
@@ -75,7 +75,7 @@ export const spaceSettingsEn = {
   stale: "Stale pages",
   save: "Save details",
   saved: "Saved.",
-  notAdmin: "Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization.",
+  notAdmin: "Only an administrator of this space can change its details. Ask one of them, or an administrator of the installation.",
   dangerTitle: "Delete this space",
   dangerBody: "Deleting the space deletes every page in it for good. This cannot be undone.",
   delete: "Delete space",

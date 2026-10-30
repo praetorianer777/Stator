@@ -2,10 +2,10 @@
 export const brandEn = {
   title: "Export brand",
   intro:
-    "The logo and the footer line that PDF, Word and offline copies of your pages carry, and that the sidebar shows. The colours come from the organization's default theme.",
+    "The logo and the footer line that PDF, Word and offline copies of your pages carry, and that the sidebar shows. The colours come from the installation's default theme.",
   logo: "Logo",
-  logoAlt: "The organization's logo",
-  noLogo: "There is no logo yet. Exports carry the organization's name alone.",
+  logoAlt: "The installation's logo",
+  noLogo: "There is no logo yet. Exports carry the installation's name alone.",
   uploadLogo: "Upload logo",
   replaceLogo: "Replace logo",
   removeLogo: "Remove logo",
@@ -18,5 +18,4 @@ export const brandEn = {
   footerHint: "One line, such as a classification or a contact. Exports in a language without a line take the English one.",
   saveFooter: "Save footer",
   footerSaved: "The footer line is saved.",
-  notAdmin: "Only an administrator of the organization changes the brand of its exports. Ask one of them to change it.",
 };

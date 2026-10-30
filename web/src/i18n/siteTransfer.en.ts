@@ -1,30 +1,29 @@
 /** The English strings of exporting and importing a site or a space. */
 export const siteTransferEn = {
   title: "Export and import",
-  notAdmin: "Only an administrator of the organization exports or imports all of it. Ask one of them to do it.",
-  exportTitle: "Export the organization",
+  exportTitle: "Export the installation",
   exportIntro:
-    "One archive of the whole organization, made in the background: every space with its pages, history, files, comments and drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log. Import it into a fresh Stator to move the organization there. The file is kept for a day for you to download.",
-  export: "Export organization",
-  exporting: "Exporting the organization",
-  archive: "Organization archive",
-  noExports: "The organization has not been exported yet.",
-  importTitle: "Import an organization",
+    "One archive of the whole installation, made in the background: every space with its pages, history, files, comments and drafts, and the people, groups, permissions, settings, brand, themes, templates, webhooks and audit log. Import it into a fresh Stator to move the installation there. The file is kept for a day for you to download.",
+  export: "Export installation",
+  exporting: "Exporting the installation",
+  archive: "Installation archive",
+  noExports: "The installation has not been exported yet.",
+  importTitle: "Import an installation",
   importIntro:
-    "Fill this organization from the archive of a whole organization, made by another Stator. Its spaces, people, groups and settings come in; people are found by their email address, and everybody signs in again here. It works only while this organization has no spaces.",
-  importSite: "Import organization",
-  imported: "The organization is imported. Everybody signs in again here.",
+    "Fill this installation from the archive of a whole installation, made by another Stator. Its spaces, people, groups and settings come in; people are found by their email address, and everybody signs in again here. It works only while this installation has no spaces.",
+  importSite: "Import installation",
+  imported: "The installation is imported. Everybody signs in again here.",
   importedBy: (name: string, when: string) => `Imported by ${name} on ${when}`,
   notCarriedTitle: "What does not come across",
-  notCarriedHint: "The archive lists these too. Give them again where the organization lands.",
+  notCarriedHint: "The archive lists these too. Give them again where the installation lands.",
   notCarried: {
-    passwords: { what: "Passwords", why: "Only a bootstrap administrator has one, from the settings of the Stator the organization lands in." },
-    sessions: { what: "Sessions", why: "Everybody signs in again where the organization lands; accounts are found by their address." },
+    passwords: { what: "Passwords", why: "Only a bootstrap administrator has one, from the settings of the Stator the installation lands in." },
+    sessions: { what: "Sessions", why: "Everybody signs in again where the installation lands; accounts are found by their address." },
     tokens: { what: "Personal access tokens", why: "Their secrets are not kept in a readable form. Their owners make new ones." },
     armatureAccounts: { what: "Linked Armature accounts", why: "Everybody connects their Armature account again under their profile." },
     signInSecret: {
       what: "The sign-in provider's client secret",
-      why: "The provider comes across switched off unless the organization it lands in has one; enter the secret and switch it on.",
+      why: "The provider comes across switched off unless the installation it lands in has one; enter the secret and switch it on.",
     },
     webhookSecrets: {
       what: "Webhook signing secrets",
@@ -34,7 +33,7 @@ export const siteTransferEn = {
     exciterAccounts: { what: "Linked Exciter accounts", why: "Everybody pastes an Exciter token again under their profile." },
     exciterWebhookSecret: { what: "Exciter's webhook secret", why: "Save the Exciter connection again and enter the new secret in Exciter." },
     joinRequests: { what: "Requests to join", why: "Whoever still wants in signs in again and asks anew." },
-    links: { what: "Shares, public links and anonymous reads by link", why: "A link opens the organization to people; give them again where it lands." },
+    links: { what: "Shares, public links and anonymous reads by link", why: "A link opens the installation to people; give them again where it lands." },
     personal: { what: "Notifications, stars, watches, page views and visits", why: "They are each person's own reading of the old place." },
     arrangements: {
       what: "Owners, verifications, scheduled publishes, shortcuts, reviews and read confirmations of pages",
@@ -44,7 +43,7 @@ export const siteTransferEn = {
     trash: { what: "The trash", why: "What was deleted stays deleted." },
     jobs: { what: "Jobs and their files", why: "Exports, imports, Word imports and the example space's jobs belong to the old place's worker." },
     armatureThemes: { what: "Themes mirrored from Armature", why: "They come back from Armature when their owner follows Armature's theme again." },
-    address: { what: "The organization's address", why: "The organization keeps the address of the Stator it lands in." },
+    address: { what: "The installation's address", why: "The installation keeps the address of the Stator it lands in." },
   } as Record<string, { what: string; why: string }>,
   report: {
     title: "What came across",
@@ -62,9 +61,9 @@ export const siteTransferEn = {
     webhooks: "Webhooks",
     auditEntries: "Entries of the audit log",
     kept: {
-      signIn: "This organization kept its own sign-in provider.",
-      armature: "This organization kept its own Armature connection.",
-      exciter: "This organization kept its own Exciter connection.",
+      signIn: "This installation kept its own sign-in provider.",
+      armature: "This installation kept its own Armature connection.",
+      exciter: "This installation kept its own Exciter connection.",
     } as Record<string, string>,
     webhooksOff: "Webhooks came across switched off. Rotate each one's secret, give the receiver the new one and switch it on.",
   },
@@ -72,14 +71,14 @@ export const siteTransferEn = {
 
 export const spaceTransferEn = {
   notAdmin: "Only an administrator of this space can export it. Ask one of them.",
-  notCreator: "Only people who may create spaces can import one. Ask an administrator of the organization to let you, or to import it for you.",
+  notCreator: "Only people who may create spaces can import one. Ask an administrator of the installation to let you, or to import it for you.",
   exportIntro:
     "An export is a file of the whole space, made in the background. Every page readers read is in it with its history, files, labels, comments and permissions; drafts are not. The file is kept for a day for you to download.",
   format: "Format",
   formats: {
     archive: {
       title: "Archive",
-      description: "Everything in the space, with every version and file, to import again here or in another organization.",
+      description: "Everything in the space, with every version and file, to import again here or in another installation.",
     },
     html: {
       title: "HTML pages",
@@ -101,7 +100,7 @@ export const spaceTransferEn = {
   importSpace: "Import space",
   importTitle: "Import a space",
   importIntro:
-    "Choose an archive a space export of Stator made, here or in another organization, or the HTML or XML space export of another wiki as a zip. It becomes a new space with its pages, history, files and comments; people are found by their email address and groups by their name.",
+    "Choose an archive a space export of Stator made, here or in another installation, or the HTML or XML space export of another wiki as a zip. It becomes a new space with its pages, history, files and comments; people are found by their email address and groups by their name.",
   chooseArchive: "Choose file",
   noArchive: "No file chosen yet.",
   keyHint: "Leave it empty to keep the archive's own key; an export of another wiki needs one. It is refused when another space has it.",

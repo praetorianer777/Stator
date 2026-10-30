@@ -206,10 +206,10 @@ describe("the webhooks page", () => {
     expect(sent.some((s) => s.method === "DELETE")).toBe(true);
   });
 
-  it("tells a member that only administrators keep webhooks, and asks the API nothing", async () => {
+  it("is refused to a member, with the rest of Admin, and asks the API nothing", async () => {
     const sent = webhooks([hook()]);
     await renderAt(WEBHOOKS_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } } });
-    expect(await screen.findByText(en.webhooks.notAdmin)).toBeInTheDocument();
+    expect(await screen.findByText(en.admin.refusedTitle)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
     expect(sent.some((s) => s.path === "/webhooks")).toBe(false);
   });

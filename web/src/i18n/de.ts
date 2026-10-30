@@ -37,6 +37,7 @@ import { reviewDe, waitingReviewsDe } from "./reviews.de";
 import { editorDe, inlineValuesDe, devEditorDe } from "./editor.de";
 import { permissionsDe, permissionCopyDe, restrictionsDe, accessDe, guestsDe } from "./permissions.de";
 import { accessAdminDe } from "./access.de";
+import { adminDe } from "./admin.de";
 import { starDe } from "./stars.de";
 import { watchDe } from "./watching.de";
 import { stewardshipDe } from "./stewardship.de";
@@ -129,6 +130,7 @@ export const de: Messages = {
   star: starDe,
   access: accessDe,
   accessAdmin: accessAdminDe,
+  admin: adminDe,
   watch: watchDe,
   stewardship: stewardshipDe,
   notifications: notificationsDe,

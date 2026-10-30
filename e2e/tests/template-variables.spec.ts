@@ -70,7 +70,7 @@ test.describe("templates with variables", { tag: ["@auth", "@desktop"] }, () => 
     const alice = must(await api.GET("/auth/me")).user;
     await page.goto(`/s/${space.key}/settings?tab=templates`);
     await page.locator('[data-action="new-template"]').click();
-    await expect(page).toHaveURL(/\/settings\/templates\/new\?space=/);
+    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/settings/templates/new$`));
     await page.getByLabel("Name", { exact: true }).fill("Kickoff");
     await page.getByLabel("Page title", { exact: true }).fill("Kickoff with {customer}");
     const variables = page.locator("[data-template-variables]");
@@ -175,7 +175,7 @@ test.describe("templates with variables", { tag: ["@auth", "@desktop"] }, () => 
       const space = await freshSpace(api, testInfo, "Axe");
       const template = await kickoffIn(api, space, "Kickoff");
       await startInScheme(page, scheme);
-      await openShowing(page, `/settings/templates/${template.key}`, page.locator("#template-body [data-template-variable=customer]"));
+      await openShowing(page, `/admin/templates/${template.key}`, page.locator("#template-body [data-template-variable=customer]"));
       await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
       await expectAccessible(page);
       await openNewPage(page, space, "Kickoff");
@@ -198,7 +198,7 @@ test.describe("templates with variables on a phone", { tag: ["@auth", "@mobile"]
     made.push(key);
     const space = await createSpace(api, key, uniqueName(testInfo, "Phone"));
     const template = await kickoffIn(api, space, "Kickoff");
-    await openShowing(page, `/settings/templates/${template.key}`, page.locator("[data-template-variables]"));
+    await openShowing(page, `/admin/templates/${template.key}`, page.locator("[data-template-variables]"));
     await expect(page.locator('[data-action="save-template"]')).toBeVisible();
     expect(await scrollsSideways(page)).toBe(false);
     await openNewPage(page, space, "Kickoff");

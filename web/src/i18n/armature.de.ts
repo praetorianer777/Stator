@@ -4,7 +4,7 @@ import type { armatureEn } from "./armature.en";
 export const armatureDe: typeof armatureEn = {
   title: "Armature",
   intro:
-    "Verbinden Sie die Armature-Instanz, in der Ihre Organisation ihre Arbeit verfolgt. Seiten zeigen dann ihre Vorgänge, und jede Person sieht, was Armature ihr zeigt.",
+    "Verbinden Sie die Armature-Instanz, in der Ihre Installation ihre Arbeit verfolgt. Seiten zeigen dann ihre Vorgänge, und jede Person sieht, was Armature ihr zeigt.",
   notAdmin: "Nur ein Administrator kann Armature verbinden.",
   baseUrl: "Armature-Adresse",
   baseUrlHint: "Wo Armature geöffnet wird, etwa https://armature.example.com.",
@@ -17,7 +17,7 @@ export const armatureDe: typeof armatureEn = {
   webhookTitle: "Webhook",
   webhookIntro: "Armature meldet Stator, wenn sich Vorgänge ändern, damit Seiten eine Änderung sofort zeigen statt innerhalb einer Minute.",
   webhookSteps: [
-    "Öffnen Sie in Armature Settings, dann Webhooks.",
+    "Öffnen Sie in Armature Admin, dann Webhooks.",
     "Legen Sie einen Endpunkt mit der Adresse unten an und abonnieren Sie die aufgeführten Themen.",
     "Fügen Sie das Geheimnis, das Armature einmal anzeigt, in das Feld unten ein und speichern Sie.",
   ],
@@ -59,7 +59,7 @@ export const armatureDe: typeof armatureEn = {
   webhookPending: {
     title: "Armature hat Stator noch nichts zugestellt",
     intro: "Bis dahin zeigen Seiten eine Änderung an einem Vorgang erst innerhalb einer Minute. Richten Sie den Webhook in dieser Reihenfolge ein:",
-    add: (url: string) => `Öffnen Sie in Armature Settings, dann Webhooks, und legen Sie einen Endpunkt mit der Adresse ${url} an.`,
+    add: (url: string) => `Öffnen Sie in Armature Admin, dann Webhooks, und legen Sie einen Endpunkt mit der Adresse ${url} an.`,
     topics: (topics: string) => `Abonnieren Sie ${topics}.`,
     secret: (prefix: string) =>
       `Speichern Sie ihn zuerst in Armature. Armature zeigt dann einmal das Geheimnis des Endpunkts; es beginnt mit ${prefix}. Kopieren Sie es.`,
@@ -97,7 +97,7 @@ export const armatureDe: typeof armatureEn = {
       webhook_admin:
         "Armature hat dieser Verbindung nicht erlaubt, den Webhook von Stator zu verwalten. Ein Armature-Administrator muss erneut verbinden: Melden Sie sich in Armature als einer an und wählen Sie dann Verbinden.",
       scope_refused:
-        "Die App für Stator in Armature darf nicht darum bitten, Ereignisse zu senden. Erlauben Sie in Armature unter Einstellungen, Connected apps den Scope webhooks.partner für Stator und verbinden Sie dann erneut.",
+        "Die App für Stator in Armature darf nicht darum bitten, Ereignisse zu senden. Erlauben Sie in Armature unter Admin, Connected apps den Scope webhooks.partner für Stator und verbinden Sie dann erneut.",
       unavailable:
         "Dieses Armature lässt Stator keinen eigenen Webhook anlegen. Fügen Sie stattdessen das Geheimnis eines in Armature angelegten Webhooks ein.",
     },
@@ -129,7 +129,7 @@ export const armatureDe: typeof armatureEn = {
   account: {
     thing: "Ihr Armature-Konto",
     intro: "Verbinden Sie Ihr Armature-Konto, damit Seiten Ihnen die Vorgänge zeigen, die Sie in Armature sehen dürfen.",
-    notConfigured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",
+    notConfigured: "Stator ist noch nicht mit Armature verbunden. Bitten Sie einen Administrator, es unter Admin, Armature zu verbinden.",
     steps:
       "Öffnen Sie in Armature Tokens und erstellen Sie ein Token ohne die Markierung read-only, damit Seiten auch Vorgänge anlegen und verknüpfen können. Fügen Sie es dann hier ein.",
     openTokens: "Tokens in Armature öffnen",
@@ -168,9 +168,9 @@ export const armatureDe: typeof armatureEn = {
       unreachable: "Armature hat nicht geantwortet. Versuchen Sie es gleich noch einmal.",
       other_installation:
         "Dieses Armature-Konto gehört zu einer anderen Armature-Installation als der verbundenen. Melden Sie sich bei der richtigen an und verbinden Sie erneut.",
-      not_configured: "Ihre Organisation hat Armature noch nicht verbunden. Bitten Sie einen Administrator, es unter Einstellungen, Armature zu verbinden.",
+      not_configured: "Stator ist noch nicht mit Armature verbunden. Bitten Sie einen Administrator, es unter Admin, Armature zu verbinden.",
       failed: "Armature hat Ihr Konto nicht verbunden. Versuchen Sie es erneut, oder fügen Sie stattdessen ein Token ein.",
-      webhook_refused: "Ihr Armature-Konto ist verbunden, aber Armature hat den Webhook für Stator nicht angelegt. Unter Einstellungen, Armature steht, warum.",
+      webhook_refused: "Ihr Armature-Konto ist verbunden, aber Armature hat den Webhook für Stator nicht angelegt. Unter Admin, Armature steht, warum.",
       webhook_admin: "Armature hat dieser Verbindung nicht erlaubt, den Webhook von Stator zu verwalten. Ein Armature-Administrator muss erneut verbinden.",
       scope_refused:
         "Die App für Stator in Armature darf nicht darum bitten, Ereignisse zu senden. Erlauben Sie webhooks.partner für Stator in Armature und verbinden Sie dann erneut.",
@@ -192,7 +192,7 @@ export const armatureDe: typeof armatureEn = {
     clientIdShown: (id: string) => `Client-ID ${id}.`,
     pasteTitle: "Stator von Hand registrieren",
     pasteIntro:
-      "Fügen Sie Stator in Armature unter Einstellungen, Verbundene Apps mit der Rücksprungadresse unten und den Bereichen read und issue.write hinzu, und fügen Sie dann die Client-ID und das Geheimnis ein, die Armature zeigt.",
+      "Fügen Sie Stator in Armature unter Admin, Verbundene Apps mit der Rücksprungadresse unten und den Bereichen read und issue.write hinzu, und fügen Sie dann die Client-ID und das Geheimnis ein, die Armature zeigt.",
     redirectUri: "Rücksprungadresse",
     clientId: "Client-ID",
     clientSecret: "Client-Geheimnis",
@@ -280,7 +280,7 @@ export const armatureDe: typeof armatureEn = {
       due: "Fällig",
     } as Record<string, string>,
     loading: "Die Vorgänge werden aus Armature geladen.",
-    notConfigured: "Ihre Organisation hat Armature nicht verbunden, daher zeigt diese Liste keine Vorgänge.",
+    notConfigured: "Ihre Installation hat Armature nicht verbunden, daher zeigt diese Liste keine Vorgänge.",
     connect: "Verbinden Sie Ihr Armature-Konto, um die Vorgänge zu sehen, die diese Liste findet.",
     connectLink: "Konto verbinden",
     unreachable: "Armature hat nicht geantwortet. Laden Sie die Seite gleich neu, um es noch einmal zu versuchen.",

@@ -168,7 +168,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
   test("a member no role lets use Stator is told why", async ({ page, api, pageAs }) => {
     const everyone = await everyoneGroup(api);
     try {
-      await page.goto("/settings/access/roles");
+      await page.goto("/admin/access/roles");
       const use = page.locator(`[data-grant="Everyone"][data-grant-role="member"]`);
       await expect(use).toBeVisible();
       await expectAccessible(page);
@@ -196,7 +196,7 @@ test.describe("permissions", { tag: ["@auth"] }, () => {
       await api.PUT("/pages/{pageID}/restrictions", { params: { path: { pageID: page2.id } }, body: { view: [{ type: "user", id: alice.id }], edit: [] } });
       await startInScheme(page, scheme);
 
-      await page.goto("/settings/access/matrix");
+      await page.goto("/admin/access/matrix");
       await expect(page.locator('[data-permission-cell="administrator:administerSite"]')).toBeDisabled();
       await expectAccessible(page);
 

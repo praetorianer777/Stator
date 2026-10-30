@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { crumbsFor, pageOfPath, spaceOfPath } from "./Crumbs";
 
 const page = { id: "p-2", title: "Runbook", home: false, kind: "page" as const, ancestors: [{ id: "p-home", title: "Handbook", home: true }] };
-const trail = (pathname: string, search: Record<string, unknown> = {}, names = {}) => crumbsFor(pathname, search, names).map(({ label, to }) => [label, to]);
+const trail = (pathname: string, names = {}) => crumbsFor(pathname, names).map(({ label, to }) => [label, to]);
 
 describe("the trail above a page", () => {
-  it("is empty on the places of the wiki and the settings hub", () => {
-    for (const path of ["/", "/home", "/search", "/reviews", "/tasks", "/spaces", "/notifications", "/settings"]) expect(trail(path)).toEqual([]);
+  it("is empty on the places of the wiki, the settings hub and the Admin page", () => {
+    for (const path of ["/", "/home", "/search", "/reviews", "/tasks", "/spaces", "/notifications", "/settings", "/admin"]) expect(trail(path)).toEqual([]);
   });
 
   it("leads back to Spaces from a space's own pages", () => {
     expect(trail("/spaces/new")).toEqual([["Spaces", "/spaces"]]);
     expect(trail("/s/DOCS")).toEqual([["Spaces", "/spaces"]]);
-    expect(trail("/s/DOCS/blog", {}, { spaceName: "Docs" })).toEqual([
+    expect(trail("/s/DOCS/blog", { spaceName: "Docs" })).toEqual([
       ["Spaces", "/spaces"],
       ["Docs", "/s/DOCS"],
     ]);
@@ -27,11 +27,11 @@ describe("the trail above a page", () => {
 
   it("passes every page above a page, the home page by its space's name", () => {
     const names = { spaceName: "Docs", page };
-    expect(trail("/s/DOCS/p/p-2/runbook", {}, names)).toEqual([
+    expect(trail("/s/DOCS/p/p-2/runbook", names)).toEqual([
       ["Spaces", "/spaces"],
       ["Docs", "/s/DOCS"],
     ]);
-    expect(trail("/s/DOCS/p/p-2/runbook/edit", {}, names)).toEqual([
+    expect(trail("/s/DOCS/p/p-2/runbook/edit", names)).toEqual([
       ["Spaces", "/spaces"],
       ["Docs", "/s/DOCS"],
     ]);
@@ -39,7 +39,7 @@ describe("the trail above a page", () => {
 
   it("puts the page itself, and its history below it, above a version", () => {
     const names = { spaceName: "Docs", page };
-    expect(trail("/s/DOCS/p/p-2/runbook/history", {}, names)).toEqual([
+    expect(trail("/s/DOCS/p/p-2/runbook/history", names)).toEqual([
       ["Spaces", "/spaces"],
       ["Docs", "/s/DOCS"],
       ["Runbook", "/s/DOCS/p/p-2/runbook"],
@@ -48,7 +48,7 @@ describe("the trail above a page", () => {
 
   it("puts a post in its space's blog", () => {
     const post = { ...page, kind: "post" as const, ancestors: [] };
-    expect(trail("/s/DOCS/p/p-2/runbook", {}, { spaceName: "Docs", page: post })).toEqual([
+    expect(trail("/s/DOCS/p/p-2/runbook", { spaceName: "Docs", page: post })).toEqual([
       ["Spaces", "/spaces"],
       ["Docs", "/s/DOCS"],
       ["Blog", "/s/DOCS/blog"],
@@ -63,12 +63,23 @@ describe("the trail above a page", () => {
     ]);
   });
 
-  it("leads a space's template back to the space's settings", () => {
-    expect(trail("/settings/templates/new", { space: "DOCS" }, { spaceName: "Docs" })).toEqual([
-      ["Spaces", "/spaces"],
-      ["Docs", "/s/DOCS"],
-      ["Space settings", "/s/DOCS/settings"],
+  it("leads back to Admin, and to the Admin page a deeper one belongs to", () => {
+    expect(trail("/admin/webhooks")).toEqual([["Admin", "/admin"]]);
+    expect(trail("/admin/access/groups")).toEqual([["Admin", "/admin"]]);
+    expect(trail("/admin/templates/new")).toEqual([
+      ["Admin", "/admin"],
+      ["Templates", "/admin/templates"],
     ]);
+  });
+
+  it("leads a space's template and stale pages back to the space's settings", () => {
+    for (const path of ["/s/DOCS/settings/templates/new", "/s/DOCS/settings/stale"]) {
+      expect(trail(path, { spaceName: "Docs" })).toEqual([
+        ["Spaces", "/spaces"],
+        ["Docs", "/s/DOCS"],
+        ["Space settings", "/s/DOCS/settings"],
+      ]);
+    }
   });
 });
 

@@ -188,7 +188,7 @@ describe("the space in the sidebar", () => {
     expect(within(group).getByRole("link", { name: "Space settings" })).toHaveAttribute("href", "/s/DOCS/settings");
     expect(within(group).getByRole("link", { name: "Trash" })).toHaveAttribute("href", "/s/DOCS/settings?tab=trash");
     expect(within(group).getByRole("link", { name: "Archive" })).toHaveAttribute("href", "/s/DOCS/settings?tab=archive");
-    expect(within(group).getByRole("link", { name: "Stale pages" })).toHaveAttribute("href", "/settings/stale?space=DOCS");
+    expect(within(group).getByRole("link", { name: "Stale pages" })).toHaveAttribute("href", "/s/DOCS/settings/stale");
 
     await userEvent.click(within(group).getByRole("button", { name: "Switch space: Handbook" }));
     const menu = screen.getByRole("menu", { name: "Switch space" });

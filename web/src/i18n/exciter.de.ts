@@ -92,7 +92,7 @@ export const exciterDe: typeof exciterEn = {
     thing: "Ihr Exciter-Konto",
     intro: "Verbinden Sie Ihr Exciter-Konto, damit Seiten Ihnen die Anforderungen zeigen, die Sie in Exciter sehen dürfen.",
     notConfigured:
-      "Stator ist noch nicht mit Exciter verbunden. Bitten Sie eine Administratorin oder einen Administrator, es unter Einstellungen, Exciter zu verbinden.",
+      "Stator ist noch nicht mit Exciter verbunden. Bitten Sie eine Administratorin oder einen Administrator, es unter Admin, Exciter zu verbinden.",
     steps: "Öffnen Sie in Exciter Ihr Konto, dann Zugriffstokens, und erstellen Sie ein Token; ein nur lesendes genügt. Fügen Sie es dann hier ein.",
     openTokens: "Zugriffstokens in Exciter öffnen",
     returns: "Sobald Exciter das Token annimmt, kehren Sie zur Seite zurück, von der Sie kamen.",
@@ -160,7 +160,7 @@ export const exciterDe: typeof exciterEn = {
     caption: (project: string, query: string) => (query ? `Exciter-Anforderungen in ${project}, die ${query} finden` : `Exciter-Anforderungen in ${project}`),
     columns: { key: "Schlüssel", title: "Titel", status: "Status", revision: "Revision" },
     loading: "Die Anforderungen werden aus Exciter geladen.",
-    notConfigured: "Ihre Organisation hat Exciter nicht verbunden, daher zeigt diese Liste keine Anforderungen.",
+    notConfigured: "Ihre Installation hat Exciter nicht verbunden, daher zeigt diese Liste keine Anforderungen.",
     connect: "Verbinden Sie Ihr Exciter-Konto, um die Anforderungen dieser Liste zu sehen.",
     connectLink: "Konto verbinden",
     noProject: "Diese Liste nennt kein Exciter-Projekt. Bearbeiten Sie sie und wählen Sie eines.",

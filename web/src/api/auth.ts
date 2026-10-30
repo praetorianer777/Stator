@@ -152,6 +152,17 @@ export function useCreateMember() {
   });
 }
 
+/** Switches somebody's account off, so they cannot sign in, or back on. */
+export function useSetMemberActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => {
+      await api.PATCH("/users/{userID}", { params: { path: { userID: userId } }, body: { active } });
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: membersQueryKey }),
+  });
+}
+
 export function useRemoveMember() {
   const queryClient = useQueryClient();
   return useMutation({

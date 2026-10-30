@@ -20,7 +20,7 @@ export const publicReadingDe: typeof publicReadingEn = {
   more: "Weitere Ergebnisse",
   earlier: "Vorige Ergebnisse",
   notPublicTitle: "Nur mit Anmeldung lesbar",
-  notPublicBody: "Das ist nicht öffentlich, oder die Adresse stimmt nicht. Wenn Sie zur Organisation gehören, melden Sie sich an, um es zu lesen.",
+  notPublicBody: "Das ist nicht öffentlich, oder die Adresse stimmt nicht. Wenn Sie zur Installation gehören, melden Sie sich an, um es zu lesen.",
   signInToRead: "Anmelden und lesen",
   failed: "Das ließ sich nicht laden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
 };
@@ -37,7 +37,7 @@ export const anonymousAccessDe: typeof anonymousAccessEn = {
   spaceIntro:
     "Alle dürfen die veröffentlichten Seiten dieses Bereichs ohne Anmeldung lesen. Eingeschränkte Seiten, Entwürfe, Kommentare und die Namen von Personen bleiben privat.",
   spaceToggle: "Alle diesen Bereich ohne Anmeldung lesen lassen",
-  siteOff: "Das gilt erst, wenn ein Administrator der Organisation das Lesen ohne Anmeldung erlaubt.",
+  siteOff: "Das gilt erst, wenn ein Administrator der Installation das Lesen ohne Anmeldung erlaubt.",
   personal: "Ein persönlicher Bereich ist nie öffentlich. Verschieben Sie die Seiten in einen Teambereich, um sie zu veröffentlichen.",
   spaceAddress: (url: string) => `Öffentliche Adresse: ${url}`,
 };
@@ -70,7 +70,7 @@ export const publicLinksDe: typeof publicLinksEn = {
   full: (n: number) => `Diese Seite hat ${n} öffentliche Links, so viele, wie eine Seite haben darf. Widerrufe einen, um einen neuen zu erstellen.`,
   refusals: {
     cannotManage: "Nur wer diese Seite bearbeiten darf, erstellt öffentliche Links für sie. Frag jemanden, der sie bearbeitet.",
-    off: "Deine Organisation erlaubt keine öffentlichen Links. Ein Administrator der Organisation kann sie unter Einstellungen, Berechtigungen erlauben.",
+    off: "Diese Installation erlaubt keine öffentlichen Links. Ein Administrator kann sie unter Admin, Zugriff erlauben.",
     personal: "Eine Seite eines persönlichen Bereichs wird nie für alle geöffnet. Verschiebe sie in einen Teambereich, um einen Link zu erstellen.",
     folder: "Ein Ordner listet nur seine Seiten auf. Erstelle stattdessen einen Link für eine Seite darin.",
     trashed: "Diese Seite liegt im Papierkorb. Stelle sie wieder her, um einen Link zu erstellen.",
@@ -109,7 +109,7 @@ export const shareDe: typeof shareEn = {
   messageLabel: "Notiz (optional)",
   messageHint: (max: number) => `Bis zu ${max} Zeichen, gesendet mit dem Link zur Seite.`,
   viewersTitle: "Wer diese Seite ansehen darf",
-  viewersEveryone: "Alle in der Organisation dürfen diese Seite ansehen.",
+  viewersEveryone: "Alle in der Installation dürfen diese Seite ansehen.",
   viewersCount: (n: number) => (n === 1 ? "1 Person darf diese Seite ansehen:" : `${n} Personen dürfen diese Seite ansehen:`),
   viewersRestricted: (n: number) =>
     n === 1 ? "Diese Seite ist eingeschränkt. 1 Person darf sie ansehen:" : `Diese Seite ist eingeschränkt. ${n} Personen dürfen sie ansehen:`,

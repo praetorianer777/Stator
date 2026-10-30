@@ -4,10 +4,10 @@ import type { brandEn } from "./brand.en";
 export const brandDe: typeof brandEn = {
   title: "Marke der Exporte",
   intro:
-    "Das Logo und die Fußzeile, die PDF-, Word- und Offline-Kopien Ihrer Seiten tragen und die die Seitenleiste zeigt. Die Farben kommen vom Standard-Theme der Organisation.",
+    "Das Logo und die Fußzeile, die PDF-, Word- und Offline-Kopien Ihrer Seiten tragen und die die Seitenleiste zeigt. Die Farben kommen vom Standard-Theme der Installation.",
   logo: "Logo",
-  logoAlt: "Das Logo der Organisation",
-  noLogo: "Es gibt noch kein Logo. Exporte tragen nur den Namen der Organisation.",
+  logoAlt: "Das Logo der Installation",
+  noLogo: "Es gibt noch kein Logo. Exporte tragen nur den Namen der Installation.",
   uploadLogo: "Logo hochladen",
   replaceLogo: "Logo ersetzen",
   removeLogo: "Logo entfernen",
@@ -20,5 +20,4 @@ export const brandDe: typeof brandEn = {
   footerHint: "Eine Zeile, etwa eine Einstufung oder ein Kontakt. Exporte in einer Sprache ohne Zeile nehmen die englische.",
   saveFooter: "Fußzeile speichern",
   footerSaved: "Die Fußzeile ist gespeichert.",
-  notAdmin: "Nur Administratoren der Organisation ändern die Marke der Exporte. Bitten Sie eine von ihnen darum.",
 };

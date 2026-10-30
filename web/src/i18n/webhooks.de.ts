@@ -4,7 +4,6 @@ import type { webhooksEn } from "./webhooks.en";
 export const webhooksDe: typeof webhooksEn = {
   title: "Webhooks",
   intro: "Wohin Stator meldet, was mit Seiten und Kommentaren geschieht, signiert, damit der Empfänger erkennt, dass es von hier kommt.",
-  notAdmin: "Nur Administratoren verwalten die Webhooks. Bitten Sie eine von ihnen, die benötigte Adresse hinzuzufügen.",
   newTitle: "Webhook hinzufügen",
   name: "Name",
   namePlaceholder: "Team-Chat",

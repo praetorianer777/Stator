@@ -1,14 +1,14 @@
 import { createRoute } from "@tanstack/react-router";
 import { Page, PageHeader } from "@/components/ui";
 import { ConnectionSettings } from "@/features/armature/ConnectionSettings";
-import { ARMATURE_OUTCOME_PARAM, ARMATURE_OUTCOMES, ARMATURE_SETTINGS_PATH, type ArmatureOutcome } from "@/config";
+import { ARMATURE_OUTCOME_PARAM, ARMATURE_OUTCOMES, type ArmatureOutcome } from "@/config";
 import { t } from "@/i18n";
-import { appRoute } from "./app";
+import { adminRoute } from "./admin";
 
-/** Where an administrator connects the organization's Armature and its webhook. */
+/** Where an administrator connects the installation's Armature and its webhook. */
 export const armatureSettingsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: ARMATURE_SETTINGS_PATH,
+  getParentRoute: () => adminRoute,
+  path: "/armature",
   validateSearch: (search: Record<string, unknown>): { [ARMATURE_OUTCOME_PARAM]?: ArmatureOutcome } => {
     const outcome = ARMATURE_OUTCOMES.find((known) => known === search[ARMATURE_OUTCOME_PARAM]);
     return outcome ? { [ARMATURE_OUTCOME_PARAM]: outcome } : {};

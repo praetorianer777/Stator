@@ -34,7 +34,7 @@ export const permissionsEn = {
   noAccessBody: "You are signed in, but no role lets you use Stator here yet. Ask an administrator to grant you one under Access, then try again.",
   noAccessRetry: "Try again",
   noAccessSignOut: "Sign out",
-  thisOrganization: "the organization",
+  thisOrganization: "the installation",
 };
 
 export const permissionCopyEn = {
@@ -165,7 +165,7 @@ export const accessEn = {
 export const guestsEn = {
   title: "Guests",
   intro:
-    "People from outside the organization who work in this space and nowhere else. They sign in through your identity provider with the address you invite, and see this space and the people in it, never the other spaces or the organization's people.",
+    "People from outside the installation who work in this space and nowhere else. They sign in through your identity provider with the address you invite, and see this space and the people in it, never the other spaces or the installation's people.",
   inviteTitle: "Invite a guest",
   email: "Email address",
   emailHint: "The address the guest signs in with at your identity provider.",

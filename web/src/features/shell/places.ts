@@ -3,15 +3,17 @@ import { useHub } from "@/api/hub";
 import type { IconName } from "@/components/icons";
 import {
   ACCESS_PATH,
+  ADMIN_PATH,
   APP_NAME,
   ARMATURE_SECTION_ID,
   ARMATURE_SETTINGS_PATH,
   AUDIT_PATH,
-  BRAND_PATH,
+  CONNECTED_APPS_PATH,
   EXAMPLE_SPACE_PATH,
   EXCITER_SECTION_ID,
   EXCITER_SETTINGS_PATH,
   HUB_SETTINGS_PATH,
+  INSTALLATION_PATH,
   NOTIFICATION_SETTINGS_PATH,
   NOTIFICATIONS_PATH,
   PROFILE_PATH,
@@ -21,6 +23,7 @@ import {
   TEMPLATES_PATH,
   THEMES_PATH,
   TOKENS_PATH,
+  USERS_PATH,
   WATCHING_PATH,
   WEBHOOKS_PATH,
 } from "@/config";
@@ -30,11 +33,15 @@ import { pageSlug } from "@/lib/slug";
 
 /**
  * Where a place is listed: the wiki's sidebar group, the settings area's You
- * group, which the avatar menu also lists, or its Settings group.
+ * group, which the avatar menu also lists, or the Admin area.
  */
-export type PlaceArea = "wiki" | "you" | "settings";
+export type PlaceArea = "wiki" | "you" | "admin";
 
-/** A page the reader can go to: the sidebar, the settings area, the avatar menu and the palette all read these. */
+/** The Admin area's sections, in the order its page and its navigation list them. */
+export const ADMIN_SECTIONS = ["people", "work", "integrations", "records"] as const;
+export type AdminSection = (typeof ADMIN_SECTIONS)[number];
+
+/** A page the reader can go to: the sidebar, the settings area, the Admin area, the avatar menu and the palette all read these. */
 export interface Place {
   /** Names the place in data-nav, and the attribute the avatar menu's entry carries in data-action. */
   id: string;
@@ -43,6 +50,10 @@ export interface Place {
   hash?: string;
   icon: IconName;
   label: string;
+  /** What the page is for, in a sentence, as the settings hub and the Admin page say it. */
+  detail?: string;
+  /** The Admin section the page sits in. */
+  section?: AdminSection;
   /** Marked as where the reader is only on this very path, not below it. */
   exact?: boolean;
   /** Listed in the avatar menu as well as in the settings area. */
@@ -59,6 +70,40 @@ export interface PlaceRules {
   hubPath: string | null;
 }
 
+/** The one entry that leads an administrator to the Admin area, from the sidebar, the avatar menu and the palette. */
+export function adminEntry(): Place {
+  return { id: "admin", area: "admin", to: ADMIN_PATH, icon: "Settings", label: t.admin.title };
+}
+
+/** The installation's pages, by section, whoever reads; the Admin area itself decides who may open them. */
+export function adminPlaces(): Place[] {
+  const p = t.admin.pages;
+  const place = (id: string, section: AdminSection, to: string, icon: IconName, page: { label: string; detail: string }): Place => ({
+    id,
+    area: "admin",
+    section,
+    to,
+    icon,
+    label: page.label,
+    detail: page.detail,
+  });
+  return [
+    place("installation", "people", INSTALLATION_PATH, "Gallery", p.installation),
+    place("access", "people", ACCESS_PATH, "Lock", p.access),
+    place("users", "people", USERS_PATH, "Users", p.users),
+    place("site-hub", "work", HUB_SETTINGS_PATH, "Flag", p.hub),
+    place("templates", "work", TEMPLATES_PATH, "Page", p.templates),
+    place("stale-pages", "work", STALE_PATH, "Calendar", p.stale),
+    place("example-space-settings", "work", EXAMPLE_SPACE_PATH, "Seal", p.exampleSpace),
+    place("armature-settings", "integrations", ARMATURE_SETTINGS_PATH, "Link", p.armature),
+    place("exciter-settings", "integrations", EXCITER_SETTINGS_PATH, "Link", p.exciter),
+    place("connected-apps", "integrations", CONNECTED_APPS_PATH, "Key", p.connectedApps),
+    place("webhooks", "integrations", WEBHOOKS_PATH, "Share", p.webhooks),
+    place("audit-log", "records", AUDIT_PATH, "Shield", p.audit),
+    place("site-transfer", "records", SITE_TRANSFER_PATH, "Download", p.transfer),
+  ];
+}
+
 // A function rather than a list, so the labels are read in the language shown now.
 export function placesFor(rules: PlaceRules): Place[] {
   const { guest, siteAdmin } = rules;
@@ -72,33 +117,28 @@ export function placesFor(rules: PlaceRules): Place[] {
     // A guest's organization is their one space, so the directory is not theirs.
     ...(guest ? [] : [{ id: "spaces", area: "wiki" as const, to: "/spaces", icon: "Space" as const, label: t.nav.spaces }]),
   ];
+  const own = t.settings.places;
   const you: Place[] = [
-    { id: "profile", area: "you", to: PROFILE_PATH, icon: "User", label: t.account.profile, inAccountMenu: true },
-    { id: "notification-settings", area: "you", to: NOTIFICATION_SETTINGS_PATH, icon: "Bell", label: t.account.notifications, inAccountMenu: true },
-    { id: "watching", area: "you", to: WATCHING_PATH, icon: "Eye", label: t.account.watching, inAccountMenu: true },
-    { id: "themes", area: "you", to: THEMES_PATH, icon: "Palette", label: t.account.themes, inAccountMenu: true },
-    // A token reaches the organization as a whole, which a guest does not.
-    ...(guest ? [] : [{ id: "tokens", area: "you" as const, to: TOKENS_PATH, icon: "Key" as const, label: t.account.tokens, inAccountMenu: true }]),
-    { id: "armature-account", area: "you", to: PROFILE_PATH, hash: ARMATURE_SECTION_ID, icon: "Link", label: t.account.armatureAccount },
-    { id: "exciter-account", area: "you", to: PROFILE_PATH, hash: EXCITER_SECTION_ID, icon: "Link", label: t.account.exciterAccount },
+    { id: "profile", area: "you", to: PROFILE_PATH, icon: "User", label: t.account.profile, detail: own.profile, inAccountMenu: true },
+    {
+      id: "notification-settings",
+      area: "you",
+      to: NOTIFICATION_SETTINGS_PATH,
+      icon: "Bell",
+      label: t.account.notifications,
+      detail: own.notifications,
+      inAccountMenu: true,
+    },
+    { id: "watching", area: "you", to: WATCHING_PATH, icon: "Eye", label: t.account.watching, detail: own.watching, inAccountMenu: true },
+    { id: "themes", area: "you", to: THEMES_PATH, icon: "Palette", label: t.account.themes, detail: own.themes, inAccountMenu: true },
+    // A token reaches the installation as a whole, which a guest does not.
+    ...(guest
+      ? []
+      : [{ id: "tokens", area: "you" as const, to: TOKENS_PATH, icon: "Key" as const, label: t.account.tokens, detail: own.tokens, inAccountMenu: true }]),
+    { id: "armature-account", area: "you", to: PROFILE_PATH, hash: ARMATURE_SECTION_ID, icon: "Link", label: t.account.armatureAccount, detail: own.armature },
+    { id: "exciter-account", area: "you", to: PROFILE_PATH, hash: EXCITER_SECTION_ID, icon: "Link", label: t.account.exciterAccount, detail: own.exciter },
   ];
-  // One check for the whole group; every page checks again for itself.
-  const settings: Place[] = siteAdmin
-    ? [
-        { id: "access", area: "settings", to: ACCESS_PATH, icon: "Lock", label: t.account.access },
-        { id: "site-hub", area: "settings", to: HUB_SETTINGS_PATH, icon: "Flag", label: t.account.hub },
-        { id: "templates", area: "settings", to: TEMPLATES_PATH, icon: "Page", label: t.account.templates },
-        { id: "stale-pages", area: "settings", to: STALE_PATH, icon: "Calendar", label: t.account.stale },
-        { id: "example-space-settings", area: "settings", to: EXAMPLE_SPACE_PATH, icon: "Seal", label: t.account.exampleSpace },
-        { id: "site-brand", area: "settings", to: BRAND_PATH, icon: "Gallery", label: t.account.brand },
-        { id: "site-transfer", area: "settings", to: SITE_TRANSFER_PATH, icon: "Download", label: t.account.siteTransfer },
-        { id: "armature-settings", area: "settings", to: ARMATURE_SETTINGS_PATH, icon: "Link", label: t.account.armature },
-        { id: "exciter-settings", area: "settings", to: EXCITER_SETTINGS_PATH, icon: "Link", label: t.account.exciter },
-        { id: "webhooks", area: "settings", to: WEBHOOKS_PATH, icon: "Share", label: t.account.webhooks },
-        { id: "audit-log", area: "settings", to: AUDIT_PATH, icon: "Shield", label: t.account.audit },
-      ]
-    : [];
-  return [...wiki, ...you, ...settings];
+  return [...wiki, ...you, ...(siteAdmin ? adminPlaces() : [])];
 }
 
 /** What the installation is called where the shell names it: the organization's name, else the product's. */

@@ -98,7 +98,7 @@ describe("the account menu", () => {
       "Watching",
       "Themes",
       "Access tokens",
-      "Settings",
+      "Admin",
       "Sign out",
     ]);
     expect(items[0]).toHaveFocus();
@@ -244,7 +244,8 @@ describe("on a narrow screen", () => {
     await userEvent.click(menuButton());
     const panel = drawer() as HTMLElement;
     expect(within(panel).getByRole("link", { name: "Back to Stator" })).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Access" })).toHaveAttribute("href", "/settings/access");
+    expect(within(panel).getByRole("link", { name: "Themes" })).toHaveAttribute("href", "/settings/themes");
+    expect(within(panel).queryByRole("link", { name: "Access" })).toBeNull();
     expect(within(panel).queryByRole("button", { name: "Wiki" })).toBeNull();
   });
 

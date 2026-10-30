@@ -5,7 +5,7 @@ export const spacesDe: typeof spacesEn = {
   title: "Bereiche",
   emptyTitle: "Noch keine Bereiche",
   emptyBody: "Ein Bereich enthält einen Baum von Seiten für ein Team oder ein Thema, ausgehend von seiner Startseite.",
-  emptyBodyMember: "Ein Bereich enthält einen Baum von Seiten für ein Team oder ein Thema. Bitten Sie einen Administrator Ihrer Organisation, einen anzulegen.",
+  emptyBodyMember: "Ein Bereich enthält einen Baum von Seiten für ein Team oder ein Thema. Bitten Sie einen Administrator Ihrer Installation, einen anzulegen.",
   create: "Bereich anlegen",
   createTitle: "Einen Bereich anlegen",
   columnName: "Bereich",
@@ -20,7 +20,7 @@ export const spacesDe: typeof spacesEn = {
   submit: "Bereich anlegen",
   cancel: "Abbrechen",
   notAdmin:
-    "Sie dürfen hier keine Bereiche anlegen. Bitten Sie einen Administrator Ihrer Organisation, einen für Sie anzulegen oder Ihnen das Anlegen von Bereichen zu erlauben.",
+    "Sie dürfen hier keine Bereiche anlegen. Bitten Sie einen Administrator Ihrer Installation, einen für Sie anzulegen oder Ihnen das Anlegen von Bereichen zu erlauben.",
   personalTitle: "Persönliche Bereiche",
   createPersonal: "Eigenen Bereich anlegen",
   createPersonalTitle: "Ihr persönlicher Bereich",
@@ -42,7 +42,7 @@ export const spacesDe: typeof spacesEn = {
   templateWho: "Wer was darf",
   everyoneMay: (names: string[]) => {
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} und ${names.at(-1)}` : (names[0] ?? "");
-    return `Alle in der Organisation dürfen: ${list}.`;
+    return `Alle in der Installation dürfen: ${list}.`;
   },
   everyoneNothing: "Nur die Verwalter des Bereichs sehen ihn, bis sie mehr freigeben.",
   youAdminister: "Sie verwalten den Bereich und können das unter seinen Berechtigungen ändern.",
@@ -78,7 +78,7 @@ export const spaceSettingsDe: typeof spaceSettingsEn = {
   stale: "Veraltete Seiten",
   save: "Angaben speichern",
   saved: "Gespeichert.",
-  notAdmin: "Nur ein Administrator dieses Bereichs kann seine Angaben ändern. Fragen Sie einen von ihnen oder einen Administrator der Organisation.",
+  notAdmin: "Nur ein Administrator dieses Bereichs kann seine Angaben ändern. Fragen Sie einen von ihnen oder einen Administrator der Installation.",
   dangerTitle: "Diesen Bereich löschen",
   dangerBody: "Mit dem Bereich werden alle Seiten darin endgültig gelöscht. Das lässt sich nicht rückgängig machen.",
   delete: "Bereich löschen",

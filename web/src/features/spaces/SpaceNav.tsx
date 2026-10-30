@@ -6,7 +6,7 @@ import { useSpace, useSpaces, type Space } from "@/api/spaces";
 import type { TreeNode } from "@/api/tree";
 import { Button, Input, Menu, type MenuItem } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { LAST_SPACE_KEY, STALE_PATH } from "@/config";
+import { LAST_SPACE_KEY } from "@/config";
 import { PageTree } from "@/features/pages/PageTree";
 import { PlaceDialog } from "@/features/pages/PlaceDialog";
 import { NavItem } from "@/features/shell/nav";
@@ -104,7 +104,7 @@ export function SpaceNav({
               {t.space.archive}
             </NavItem>
             {space.can.administer && (
-              <NavItem id="space-stale" to={STALE_PATH} search={{ space: space.key }} icon="Calendar" rail={false} onNavigate={onNavigate}>
+              <NavItem id="space-stale" to={`/s/${space.key}/settings/stale`} icon="Calendar" rail={false} onNavigate={onNavigate}>
                 {t.space.stale}
               </NavItem>
             )}

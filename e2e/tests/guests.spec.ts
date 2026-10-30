@@ -57,7 +57,7 @@ test.describe("guests", { tag: ["@auth", "@desktop"] }, () => {
       await expect(card.locator(`[data-guest="${CAROL.email}"]`)).toContainText("Read and comment");
       await expectAccessible(page);
 
-      await page.goto("/settings/access/members");
+      await page.goto("/admin/access/members");
       await expect(page.locator(`[data-member="${CAROL.email}"] [data-guest-space="${key}"]`)).toContainText("Contractor work");
 
       carol = await signInAsCarol(browser);

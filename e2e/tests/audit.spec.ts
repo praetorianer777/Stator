@@ -5,10 +5,10 @@ import { withDatabase } from "../fixtures/db";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme } from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoAdminEntry, openAdminPage, scrollsSideways, startInScheme } from "../fixtures/shell";
 import { createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
-const AUDIT_PATH = "/settings/audit";
+const AUDIT_PATH = "/admin/audit";
 // web/src/config.ts AUDIT_PAGE_SIZE: the page holds this many, so more spill onto a second.
 const PAGE_SIZE = 50;
 const SPILL = 7;
@@ -76,8 +76,8 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     const space = await busySpace(api, key, uniqueName(testInfo, "Busy"));
 
     await openUntil(page, "/", async () => {
-      await openSettingsPage(page, "audit-log");
-      await expect(page).toHaveURL(/\/settings\/audit$/);
+      await openAdminPage(page, "audit-log");
+      await expect(page).toHaveURL(/\/admin\/audit$/);
       await expect(plantedRow(page, space.name)).toBeVisible(ONE_LOOK);
       await expect(page.locator(FACET_PLANTED)).toBeAttached(ONE_LOOK);
     });
@@ -126,10 +126,9 @@ test.describe("the audit log", { tag: ["@auth"] }, () => {
     expect((refused.error as { error?: { message?: string } } | undefined)?.error?.message).toMatch(/^Only an administrator can do that\. Ask one of them/);
 
     const bob = await pageAs("bob");
-    await bob.goto(AUDIT_PATH);
-    await expect(bob.locator("[data-audit-refused]")).toContainText("Only an administrator reads the audit log.");
+    await bob.goto("/");
+    await expectNoAdminEntry(bob, AUDIT_PATH);
     await expect(bob.locator("[data-audit-row]")).toHaveCount(0);
-    await expectNoSettingsEntry(bob, "audit-log");
   });
 
   test("it is narrowed and paged from the keyboard", { tag: ["@desktop"] }, async ({ page, api }, testInfo) => {

@@ -2,7 +2,6 @@
 export const accessAdminEn = {
   title: "Access",
   intro: "Who may do what: roles and what they hold, who holds them where, groups, and how people sign in.",
-  notAdmin: "Only administrators can open this page. Ask one of them.",
   tabs: { roles: "Roles", matrix: "Matrix", members: "Members", groups: "Groups", sso: "Single sign-on" },
   permissionWords: {
     view: "View the space and its pages",

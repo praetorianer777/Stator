@@ -54,7 +54,7 @@ test.describe("Armature capabilities", { tag: ["@auth"] }, () => {
     await answerMetaAs(request, { capabilities: WITHOUT_REPORTS });
     await connect(api, team.label);
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     const offered = page.locator("[data-armature-capabilities]");
     await expect(offered).toHaveAttribute("data-armature-capabilities", "missing");
     await expect(offered.locator('[data-missing="charts"]')).toHaveText(
@@ -83,7 +83,7 @@ test.describe("Armature capabilities", { tag: ["@auth"] }, () => {
 
     // Updating Armature shows on the settings page at once.
     await answerMetaAs(request, null);
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await expect(page.locator("[data-armature-capabilities]")).toHaveAttribute("data-armature-capabilities", "all");
     await expect(page.getByText("Armature offers everything Stator uses.")).toBeVisible();
   });
@@ -92,7 +92,7 @@ test.describe("Armature capabilities", { tag: ["@auth"] }, () => {
     await answerMetaAs(request, { absent: true });
     await connect(api, team.label);
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await expect(page.getByText(/This Armature is too old to say what it offers, because it does not answer \/api\/v1\/meta\./)).toBeVisible();
     await expect(page.locator('[data-missing="issues"]')).toContainText("issue-embed@1");
 

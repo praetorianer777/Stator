@@ -7,7 +7,6 @@ type WebhookEventTopic = Exclude<WebhookTopic, "*">;
 export const webhooksEn = {
   title: "Webhooks",
   intro: "Where Stator posts what happens to pages and comments, signed so the receiver can tell it came from here.",
-  notAdmin: "Only an administrator keeps the webhooks. Ask one of them to add the address you need.",
   newTitle: "Add a webhook",
   name: "Name",
   namePlaceholder: "Team chat",

@@ -18,7 +18,7 @@ export const publicReadingEn = {
   more: "More results",
   earlier: "Earlier results",
   notPublicTitle: "Not open to read without signing in",
-  notPublicBody: "This is not public, or the address is wrong. If you belong to the organization, sign in to read it.",
+  notPublicBody: "This is not public, or the address is wrong. If you belong to the installation, sign in to read it.",
   signInToRead: "Sign in to read it",
   failed: "This could not be loaded. Check your connection and try again.",
 };
@@ -34,7 +34,7 @@ export const anonymousAccessEn = {
   spaceTitle: "Reading without signing in",
   spaceIntro: "Anybody may read this space's published pages without signing in. Restricted pages, drafts, comments and the names of people stay private.",
   spaceToggle: "Let anybody read this space without signing in",
-  siteOff: "This takes effect once an administrator of the organization lets people read without signing in.",
+  siteOff: "This takes effect once an administrator of the installation lets people read without signing in.",
   personal: "A personal space is never public. Move the pages to a team space to publish them.",
   spaceAddress: (url: string) => `Public address: ${url}`,
 };
@@ -67,7 +67,7 @@ export const publicLinksEn = {
   full: (n: number) => `This page has ${n} public links, as many as a page may have. Revoke one to make another.`,
   refusals: {
     cannotManage: "Only people who may edit this page make public links for it. Ask one of its editors.",
-    off: "Your organization does not allow public links. An administrator of the organization can allow them under Settings, Permissions.",
+    off: "This installation does not allow public links. An administrator can allow them under Admin, Access.",
     personal: "A page of a personal space is never opened to anybody. Move it to a team space to make a link.",
     folder: "A folder only lists its pages. Make a link for a page inside it instead.",
     trashed: "This page is in the trash. Restore it to make a link.",
@@ -106,7 +106,7 @@ export const shareEn = {
   messageLabel: "Note (optional)",
   messageHint: (max: number) => `Up to ${max} characters, sent with the link to the page.`,
   viewersTitle: "Who can view this page",
-  viewersEveryone: "Everyone in the organization can view this page.",
+  viewersEveryone: "Everyone in the installation can view this page.",
   viewersCount: (n: number) => (n === 1 ? "1 person can view this page:" : `${n} people can view this page:`),
   viewersRestricted: (n: number) => (n === 1 ? "This page is restricted. 1 person can view it:" : `This page is restricted. ${n} people can view it:`),
   viewersMore: (n: number) => `and ${n} more`,

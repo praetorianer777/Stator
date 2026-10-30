@@ -95,17 +95,17 @@ test.describe("public links", { tag: ["@auth"] }, () => {
     const reader = await context.newPage();
     const settings = page.locator("[data-public-links-settings]");
     try {
-      await page.goto("/settings/access/roles");
+      await page.goto("/admin/access/roles");
       await settings.locator('[data-action="public-links"]').click();
       await expect(toast(page, "Saved.")).toBeVisible();
       await openShowing(reader, made.path, reader.locator("[data-link-gone]"));
 
       await openTitled(page, `/s/${key}/p/${plan.id}/plan`, plan.title);
       await page.locator('[data-action="share-page"]').click();
-      await expect(links(page).locator('[data-public-links-refusal="off"]')).toContainText("Your organization does not allow public links.");
+      await expect(links(page).locator('[data-public-links-refusal="off"]')).toContainText("This installation does not allow public links.");
       await expect(links(page).locator('[data-action="create-public-link"]')).toHaveCount(0);
 
-      await page.goto("/settings/access/roles");
+      await page.goto("/admin/access/roles");
       await settings.locator('[data-action="public-links"]').click();
       await expect(toast(page, "Saved.")).toBeVisible();
       await openTitled(reader, made.path, plan.title);

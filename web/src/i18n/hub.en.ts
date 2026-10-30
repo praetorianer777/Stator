@@ -2,7 +2,7 @@
 export const hubEn = {
   title: "Hub page",
   intro:
-    "One page of the organization that everybody finds under Hub in the navigation, for shared news and resources. It is written, published and restricted like any other page.",
+    "One page of the installation that everybody finds under Hub in the navigation, for shared news and resources. It is written, published and restricted like any other page.",
   current: "The hub is",
   everybodyLands: "and everybody lands on it.",
   none: "There is no hub page yet.",
@@ -10,5 +10,4 @@ export const hubEn = {
   landing: "Everybody lands on the hub when they open Stator",
   save: "Save hub",
   clear: "No hub",
-  notAdmin: "Only an administrator of the organization chooses its hub page. Ask one of them to change it.",
 };

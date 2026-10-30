@@ -21,7 +21,7 @@ export const calendarEn = {
   truncated: "This month holds more events than one view shows, so its last ones are left out. Move some to another calendar to see them all.",
   issues: {
     connect: "Connect your Armature account to see the issues due this month.",
-    notConfigured: "Your organization has not connected Armature, so no issues are shown.",
+    notConfigured: "Your installation has not connected Armature, so no issues are shown.",
     unreachable: "Armature did not answer, so its due issues are missing. Reload the page to try again.",
     failed: "The issues due this month could not be read. Reload the page to try again.",
     truncated: "Armature left some issues of this month out.",

@@ -33,10 +33,6 @@ export const themeEn = {
 };
 
 export const accountEn = {
-  hub: "Hub page",
-  brand: "Export brand",
-  siteTransfer: "Export and import",
-  exampleSpace: "Example space",
   menu: "Your account",
   guest: "Guest",
   profile: "Your profile",
@@ -44,16 +40,8 @@ export const accountEn = {
   tokens: "Access tokens",
   notifications: "Notification settings",
   watching: "Watching",
-  access: "Access",
-  armature: "Armature",
-  exciter: "Exciter",
-  audit: "Audit log",
-  webhooks: "Webhooks",
-  templates: "Templates",
-  stale: "Stale pages",
   signOut: "Sign out",
   switchTo: "Switch to",
-  settings: "Settings",
   armatureAccount: "Armature account",
   exciterAccount: "Exciter account",
 };

@@ -90,7 +90,7 @@ test.describe("a real Armature's webhooks", { tag: ["@auth"] }, () => {
         version: ENVELOPE_VERSION,
         timestamped: true,
       });
-      await page.goto("/settings/armature");
+      await page.goto("/admin/armature");
       await expect(page.locator("[data-last-delivery]")).toContainText(`in envelope version ${ENVELOPE_VERSION}, signed with the time it was sent.`);
     } finally {
       await ada.dispose();

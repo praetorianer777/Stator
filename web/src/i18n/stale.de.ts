@@ -5,7 +5,7 @@ export const staleDe: typeof staleEn = {
   title: "Veraltete Seiten",
   intro: (days: number) =>
     `Veröffentlichte Seiten, die seit mindestens ${days} Tagen niemand neu veröffentlicht oder geöffnet hat, die am längsten unberührten zuerst. Prüfen Sie jede, und bringen Sie sie dann auf den neuesten Stand, verifizieren Sie sie oder verschieben Sie sie in den Papierkorb.`,
-  notAdmin: "Nur Administratoren eines Bereichs oder der Organisation sehen, welche Seiten veraltet sind. Bitten Sie einen von ihnen, Ihren Bereich zu prüfen.",
+  notAdmin: "Nur Administratoren eines Bereichs oder der Installation sehen, welche Seiten veraltet sind. Bitten Sie einen von ihnen, Ihren Bereich zu prüfen.",
   filters: "Veraltete Seiten filtern",
   space: "Bereich",
   everySpace: "Alle Bereiche, die Sie verwalten",

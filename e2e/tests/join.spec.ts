@@ -2,13 +2,14 @@ import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { must, type StatorApi } from "../fixtures/api";
 import { ME_PATH, authTest as test, expect, startSSO, submitKeycloak } from "../fixtures/auth";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible, openNavigation, settingsSidebar, toast } from "../fixtures/shell";
+import { expectAccessible, openNavigation, toast } from "../fixtures/shell";
 import { uniqueName } from "../fixtures/seed";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
-const MEMBERS_PATH = "/settings/access/members";
-const GROUPS_PATH = "/settings/access/groups";
+const USERS_PATH = "/admin/users";
+const MEMBERS_PATH = "/admin/access/members";
+const GROUPS_PATH = "/admin/access/groups";
 
 // A realm user the seed has not let into the demo organisation, from deploy/keycloak/realm.json.
 const CAROL = { username: "carol", password: "carol password", email: "carol@suite.test", name: "Carol Checker" };
@@ -38,12 +39,15 @@ async function signInFresh(browser: Browser, username: string, password: string)
   return { context, page };
 }
 
-/** The badge beside access in the settings sidebar, read on a settings page, with a phone's drawer closed again. */
+/** The badges beside Admin in the sidebar and beside Users in the Admin area's navigation, read on the Users page, with a phone's drawer closed again. */
 async function expectWaiting(page: Page, count: number) {
   const opened = await openNavigation(page);
-  const badge = settingsSidebar(page).locator('[data-nav="access"] [data-count="join-requests"]');
-  if (count === 0) await expect(badge).toHaveCount(0);
-  else await expect(badge).toContainText(`${count} waiting`);
+  const badges = page.locator('[data-nav="admin"] [data-count="join-requests"], [data-admin-nav] [data-nav="users"] [data-count="join-requests"]');
+  if (count === 0) await expect(badges).toHaveCount(0);
+  else {
+    await expect(badges).toHaveCount(2);
+    for (const badge of await badges.all()) await expect(badge).toContainText(`${count} waiting`);
+  }
   if (opened) await page.keyboard.press("Escape");
 }
 
@@ -73,7 +77,7 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     await expectAccessible(carol.page);
     await carol.context.close();
 
-    await page.goto(MEMBERS_PATH);
+    await page.goto(USERS_PATH);
     const request = page.locator(`[data-join-request="${CAROL.email}"]`);
     await expect(request).toBeVisible();
     await expectWaiting(page, 1);
@@ -89,7 +93,7 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     await expect(first.page).toHaveURL(/\/login\?sso=not_a_member/);
     await first.context.close();
 
-    await page.goto(MEMBERS_PATH);
+    await page.goto(USERS_PATH);
     await expectWaiting(page, 1);
     await page.locator(`[data-join-request="${CAROL.email}"]`).getByRole("button", { name: "Let in as member" }).click();
     await expect(page.getByText(`${CAROL.name} may sign in now.`)).toBeVisible();
@@ -126,7 +130,7 @@ test.describe("letting people in", { tag: ["@auth", "@desktop"] }, () => {
     await expect(toast(page, `${BOB_GROUP} was made.`)).toBeVisible();
     await expect(groupCard(page, BOB_GROUP)).toContainText("From the identity provider");
 
-    await page.goto("/settings/access/roles");
+    await page.goto("/admin/access/roles");
     const form = page.locator("[data-grant-form]");
     await form.getByRole("combobox").first().fill(BOB_GROUP);
     await form.locator(`[data-subject-option="${BOB_GROUP}"]`).click();

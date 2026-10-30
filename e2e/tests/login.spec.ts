@@ -2,15 +2,7 @@ import { request } from "@playwright/test";
 import { LOGIN_PATH, ME_PATH, authTest as test, expect, signIn, signInWithPassword, startSSO, stateFile, submitKeycloak } from "../fixtures/auth";
 import { must, type StatorApi } from "../fixtures/api";
 import { DEAD_ISSUER } from "../fixtures/db";
-import {
-  type ColourScheme,
-  expectAccessible,
-  expectNoSettingsEntry,
-  openAccountMenu,
-  openNavigation,
-  openSettingsPage,
-  startInScheme,
-} from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoAdminEntry, openAccountMenu, openNavigation, openAdminPage, startInScheme } from "../fixtures/shell";
 import { WEB_URL } from "../fixtures/stack";
 
 const ANONYMOUS = { cookies: [], origins: [] };
@@ -51,22 +43,28 @@ test.describe("sign-in", { tag: "@auth" }, () => {
     expect(response.status).toBe(200);
   });
 
-  test("an admin finds access, single sign-on among it, in the settings area, and a member does not", async ({ page, pageAs }) => {
+  test("an administrator finds access, single sign-on among it, under Admin, and a member does not", async ({ page, pageAs }) => {
     await page.goto("/");
-    await openSettingsPage(page, "access");
-    await expect(page).toHaveURL(/\/settings\/access\/roles$/);
+    await openAdminPage(page, "access");
+    await expect(page).toHaveURL(/\/admin\/access\/roles$/);
     await page.getByRole("tab", { name: "Single sign-on" }).click();
-    await expect(page).toHaveURL(/\/settings\/access\/sso$/);
+    await expect(page).toHaveURL(/\/admin\/access\/sso$/);
 
     const bob = await pageAs("bob");
     await bob.goto("/");
-    await expectNoSettingsEntry(bob, "access");
+    await expectNoAdminEntry(bob, "/admin/access/sso");
   });
 
-  test("the SSO settings show the callback address, and a save with a blank secret keeps the stored one", async ({ page, browser }) => {
-    await page.goto("/settings/access/sso");
-    await expect(page.getByText("Register this redirect address with the provider:")).toBeVisible();
-    await expect(page.locator("form code").first()).toContainText("/api/v1/auth/oidc/callback");
+  test("the SSO settings hold the standard's fields and say where people sign in, and a save with a blank secret keeps the stored one", async ({
+    page,
+    browser,
+  }) => {
+    await page.goto("/admin/access/sso");
+    await expect(page.locator("[data-sso-start]")).toContainText("/api/v1/auth/oidc/start");
+    await expect(page.getByText("People can sign in at")).toBeVisible();
+    await expect(page.getByLabel("Scopes")).toHaveCount(0);
+    await expect(page.getByText("Register this redirect address with the provider:")).toHaveCount(0);
+    await expect(page.locator('[data-action="turn-off-sso"]')).toHaveText("Turn it off");
     const secret = page.getByLabel("Client secret", { exact: true });
     await expect(secret).toHaveValue("");
     await expect(secret).toHaveAttribute("placeholder", "Stored. Leave blank to keep it.");
@@ -83,9 +81,9 @@ test.describe("sign-in", { tag: "@auth" }, () => {
   });
 
   for (const scheme of SCHEMES) {
-    test(`/settings/access/sso passes axe in ${scheme}`, async ({ page }) => {
+    test(`/admin/access/sso passes axe in ${scheme}`, async ({ page }) => {
       await startInScheme(page, scheme);
-      await page.goto("/settings/access/sso");
+      await page.goto("/admin/access/sso");
       await expect(page.locator('[data-action="save-sso"]')).toBeVisible();
       await expectAccessible(page);
     });

@@ -11,8 +11,8 @@ import { Icon } from "@/components/icons";
 import { QUICK_SEARCH_DEBOUNCE_MS, SEARCH_QUERY_MAX_LENGTH } from "@/config";
 import { t } from "@/i18n";
 import { useFollowActive } from "@/features/editor/useFollowActive";
-import { useCanAdministerSite, useCanCreateSpace } from "@/features/permissions/access";
-import { usePlaces, type Place } from "@/features/shell/places";
+import { useCanCreateSpace } from "@/features/permissions/access";
+import { adminEntry, usePlaces, type Place } from "@/features/shell/places";
 import { SETTINGS_PATH } from "@/config";
 import { useDebounced } from "@/lib/debounce";
 import { pageSlug } from "@/lib/slug";
@@ -286,15 +286,16 @@ function useActions(onClose: () => void): Option[] {
   ];
 }
 
-/** Every place the reader may go, and the settings area itself for those who see it in the avatar menu. */
+/** Every place the reader may go, the settings hub, and for an administrator Admin with each of its pages as "Admin / <page>". */
 function useReachablePlaces(): Place[] {
   const places = usePlaces();
-  const siteAdmin = useCanAdministerSite();
-  return siteAdmin ? [...places, { id: "settings", area: "settings", to: SETTINGS_PATH, icon: "Settings", label: t.account.settings, exact: true }] : places;
+  const settings: Place = { id: "settings", area: "you", to: SETTINGS_PATH, icon: "Settings", label: t.settings.title, exact: true };
+  const named = places.map((place) => (place.area === "admin" ? { ...place, label: t.admin.inPalette(place.label) } : place));
+  return places.some((place) => place.area === "admin") ? [...named, settings, adminEntry()] : [...named, settings];
 }
 
 function sectionOf(place: Place): string {
-  return { wiki: t.nav.groupWiki, you: t.settings.you, settings: t.settings.site }[place.area];
+  return { wiki: t.nav.groupWiki, you: t.settings.you, admin: t.admin.title }[place.area];
 }
 
 // The start of the label or of one of its words, as the page titles are found by their start.

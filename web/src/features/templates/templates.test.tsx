@@ -220,8 +220,8 @@ describe("keeping templates", () => {
 
   it("makes a template with variables, puts their blanks in the body, and goes back to the space", async () => {
     const sent = stubDialog({ "POST /templates": { status: 201, body: { template: kickoff } } });
-    const router = await renderAt("/settings/templates/new?space=DOCS");
-    await arrival(router, "/settings/templates/new");
+    const router = await renderAt("/s/DOCS/settings/templates/new");
+    await arrival(router, "/s/DOCS/settings/templates/new");
     const editor = await screen.findByRole("textbox", { name: "Body" });
     await userEvent.type(screen.getByLabelText("Name"), "Kickoff");
     await userEvent.type(screen.getByLabelText("Page title"), "Kickoff with {{customer}");
@@ -258,8 +258,8 @@ describe("keeping templates", () => {
 
   it("moves focus into the body as a blank is inserted, before the next key is pressed", async () => {
     stubDialog();
-    const router = await renderAt("/settings/templates/new?space=DOCS");
-    await arrival(router, "/settings/templates/new");
+    const router = await renderAt("/s/DOCS/settings/templates/new");
+    await arrival(router, "/s/DOCS/settings/templates/new");
     const editor = await screen.findByRole("textbox", { name: "Body" });
     await userEvent.click(screen.getByRole("button", { name: "Add variable" }));
     const variables = screen.getByRole("group", { name: "Variables" });
@@ -278,8 +278,8 @@ describe("keeping templates", () => {
         body: { template: { ...company, key: "meeting-notes", builtIn: true, scope: "builtIn", canEdit: false } },
       },
     });
-    const router = await renderAt("/settings/templates/meeting-notes");
-    await arrival(router, "/settings/templates/meeting-notes");
+    const router = await renderAt("/admin/templates/meeting-notes");
+    await arrival(router, "/admin/templates/meeting-notes");
     expect(await screen.findByText(/Built-in templates come with Stator and cannot be changed/)).toBeInTheDocument();
   });
 });

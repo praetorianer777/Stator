@@ -4,7 +4,6 @@ import type { accessAdminEn } from "./access.en";
 export const accessAdminDe: typeof accessAdminEn = {
   title: "Zugriff",
   intro: "Wer was darf: Rollen und was sie umfassen, wer sie wo hat, Gruppen und wie man sich anmeldet.",
-  notAdmin: "Nur Administratoren können diese Seite öffnen. Fragen Sie einen von ihnen.",
   tabs: { roles: "Rollen", matrix: "Matrix", members: "Mitglieder", groups: "Gruppen", sso: "Single Sign-on" },
   permissionWords: {
     view: "Den Bereich und seine Seiten lesen",

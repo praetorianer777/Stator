@@ -17,7 +17,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- "Let people in by their groups" under Settings, Single sign-on, as in
+- Admin at `/admin`, the installation's pages for its administrators, laid out
+  as Armature's: an index of every page with what it is for, in the sections
+  People and access, Work, Integrations and Records, with its sections beside
+  it or behind one menu on a phone. Anybody else is refused once, for the
+  whole of it. One Admin entry leads there from the sidebar and the avatar
+  menu, and the palette names each page "Admin / <page>". New pages: Users,
+  with the join requests, adding somebody with a password and switching an
+  account off or back on (`PATCH /users/{userID}`, audited as
+  `member.switched_off` and `member.switched_on`), and Connected apps, with
+  the partner apps and every token of the installation (#584).
+- "Let people in by their groups" under Admin, Access, Single sign-on, as in
   Armature: `admitByGroup` on `GET` and `PUT /oidc-provider`, off by
   default. Only while it is on does somebody new in a mapped group get in,
   at sign-in or at a partner's token exchange, and the audit log names the
@@ -49,6 +59,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
   (#588).
 - The strings live in one catalogue per feature, in English and German,
   instead of one file per language (#588).
+- Settings at `/settings` holds only the person's own pages, each with a
+  sentence on what it is for. The installation's pages moved to `/admin`:
+  Installation (with the brand), Access, Hub, Templates, Stale pages,
+  Example space, Armature, Exciter, Webhooks, Audit log and Export and
+  import, and every old `/settings/<page>` address leads there. A space's
+  stale pages and its new templates sit below the space's settings (#584).
+- Single sign-on, a tab of Access, holds the standard's form: issuer, client
+  ID, client secret, groups claim and "Let people in by their groups", with
+  Set up or Save and "Turn it off". Scopes, creating groups and the callback
+  address leave the form and stay in the API for dynamo-connect (#584).
+- The pages say "installation", "people" and "administrator" (#584).
 
 ## [0.2.1] - 2026-10-29
 

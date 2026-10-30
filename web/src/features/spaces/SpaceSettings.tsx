@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ApiError } from "@/api/client";
 import { useDeleteSpace, useSpace, useUpdateSpace, type Space } from "@/api/spaces";
 import { TabPanel, Tabs, Page, PageHeader, Button, Card, Field, ErrorBanner, SectionTitle, Skeleton, useToast } from "@/components/ui";
-import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH, STALE_PATH } from "@/config";
+import { SPACE_DESCRIPTION_MAX_LENGTH, SPACE_NAME_MAX_LENGTH } from "@/config";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { SpacePermissions } from "@/features/permissions/SpacePermissions";
@@ -39,8 +39,8 @@ export function SpaceSettings({ spaceKey, tab, onTab }: { spaceKey: string; tab:
         actions={
           space.can.administer && (
             <Link
-              to={STALE_PATH}
-              search={{ space: space.key }}
+              to="/s/$spaceKey/settings/stale"
+              params={{ spaceKey: space.key }}
               className="inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3 text-sm font-medium text-ink no-underline hover:bg-surface-raised"
               data-action="space-stale"
             >

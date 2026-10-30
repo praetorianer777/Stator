@@ -8,8 +8,8 @@ import { uniqueName } from "../fixtures/seed";
 import {
   type ColourScheme,
   expectAccessible,
-  expectNoSettingsEntry,
-  openSettingsPage,
+  expectNoAdminEntry,
+  openAdminPage,
   scrollsSideways,
   startInScheme,
   toast,
@@ -18,7 +18,7 @@ import {
 import { armatureURL } from "../fixtures/stack";
 
 // web/src/config.ts WEBHOOKS_PATH and WEBHOOK_SIGNATURE_HEADER.
-const WEBHOOKS_PATH = "/settings/webhooks";
+const WEBHOOKS_PATH = "/admin/webhooks";
 const SIGNATURE_HEADER = "X-Stator-Signature-256";
 const SECRET_PREFIX = "stator_whs_";
 // The armature-stub keeps what each bin is sent; the api reaches it on the
@@ -75,8 +75,8 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     const bin = binFor(testInfo);
 
     await page.goto("/");
-    await openSettingsPage(page, "webhooks");
-    await expect(page).toHaveURL(/\/settings\/webhooks$/);
+    await openAdminPage(page, "webhooks");
+    await expect(page).toHaveURL(/\/admin\/webhooks$/);
     await expect(page.locator("main").getByRole("heading", { level: 1 })).toHaveText("Webhooks");
 
     await page.getByLabel("Name", { exact: true }).fill(name);
@@ -134,10 +134,9 @@ test.describe("outbound webhooks", { tag: ["@auth"] }, () => {
     expect((refused.error as { error?: { message?: string } } | undefined)?.error?.message).toMatch(/^Only an administrator can do that\. Ask one of them/);
 
     const bob = await pageAs("bob");
-    await bob.goto(WEBHOOKS_PATH);
-    await expect(bob.locator("[data-webhooks-refused]")).toContainText("Only an administrator keeps the webhooks.");
+    await bob.goto("/");
+    await expectNoAdminEntry(bob, WEBHOOKS_PATH);
     await expect(bob.locator("[data-webhook-form]")).toHaveCount(0);
-    await expectNoSettingsEntry(bob, "webhooks");
   });
 
   test("it is added and pinged from the keyboard", { tag: ["@desktop"] }, async ({ page }, testInfo) => {

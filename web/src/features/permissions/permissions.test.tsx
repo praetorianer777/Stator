@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { Assignment, RoleDescription } from "@/api/access";
 import type { Restrictions } from "@/api/permissions";
 import type { TreeNode } from "@/api/tree";
-import { answerConfirm, renderAt, settingsSidebar, signedIn, stubApi, type Answer } from "@/test/app";
+import { answerConfirm, renderAt, signedIn, stubApi, type Answer } from "@/test/app";
 import { axeViolations } from "@/test/axe";
 import { aPage, aSpace } from "@/test/spaces";
 // The edit route's chunk carries the editor and its shared draft. Loaded inside
@@ -63,12 +63,14 @@ async function pick(label: string, typed: string, option: string) {
 describe("the installation's access", () => {
   it("is not offered to a member, and the address of before leads to the Access page", async () => {
     stubApi({ "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } });
-    await renderAt("/settings/permissions", { me: member });
-    expect(await screen.findByText("Only administrators can open this page. Ask one of them.")).toBeInTheDocument();
-    expect(within(await settingsSidebar()).queryByRole("link", { name: "Access" })).toBeNull();
+    const router = await renderAt("/settings/permissions", { me: member });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin/access/roles"));
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Admin sections" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Your account" }));
     expect(screen.queryByRole("menuitem", { name: "Access" })).toBeNull();
-    expect(screen.queryByRole("menuitem", { name: "Settings" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Admin" })).toBeNull();
   });
 
   it("let a member who may create spaces see the way to", async () => {

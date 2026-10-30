@@ -91,28 +91,37 @@ export function settingsSidebar(page: Page) {
   return page.locator('[data-settings-sidebar], [role="dialog"][data-sidebar="drawer"]');
 }
 
-/** Goes to a page of the settings area as a site administrator does: Settings in the avatar menu, then the page by its data-nav. */
-export async function openSettingsPage(page: Page, id: string): Promise<void> {
+/** Goes to a page of the Admin area as an administrator does: Admin in the avatar menu, then the page by its data-nav in the Admin area's navigation, or its menu on a phone. */
+export async function openAdminPage(page: Page, id: string): Promise<void> {
   const menu = await openAccountMenu(page);
-  await menu.locator('[data-action="settings"]').click();
-  await expect(page.locator("[data-settings-home]")).toBeVisible();
-  await openNavigation(page);
-  await settingsSidebar(page).locator(`[data-nav="${id}"]`).click();
+  await menu.locator('[data-action="admin"]').click();
+  await expect(page.locator("[data-admin-index]")).toBeVisible();
+  await adminNavigation(page, id);
 }
 
-/** Checks a person who is no site administrator is offered neither Settings in the avatar menu nor the page in the settings sidebar. */
-export async function expectNoSettingsEntry(page: Page, id: string): Promise<void> {
+/** Follows the Admin area's navigation to the page by its data-nav, from any page of the area. */
+export async function adminNavigation(page: Page, id: string): Promise<void> {
+  if (narrow(page)) {
+    await page.locator('[data-action="admin-sections"]').click();
+    await page.getByRole("menu").locator(`[data-nav="${id}"]`).click();
+  } else {
+    await page.locator(`[data-admin-nav] [data-nav="${id}"]`).click();
+  }
+  await expect(page.locator("[data-admin-index]")).toHaveCount(0);
+}
+
+/** Checks somebody who does not administer the installation finds no Admin entry, and that the Admin page refuses them. */
+export async function expectNoAdminEntry(page: Page, path: string): Promise<void> {
   const menu = await openAccountMenu(page);
   await expect(menu.locator('[data-action="profile"]')).toBeVisible();
-  await expect(menu.locator('[data-action="settings"]')).toHaveCount(0);
-  await expect(menu.locator(`[data-action="${id}"]`)).toHaveCount(0);
+  await expect(menu.locator('[data-action="admin"]')).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
-  await page.goto("/settings/profile");
   await openNavigation(page);
-  const sidebar = settingsSidebar(page);
-  await expect(sidebar.locator('[data-nav="profile"]')).toBeVisible();
-  await expect(sidebar.locator(`[data-nav="${id}"]`)).toHaveCount(0);
+  await expect(page.locator('[data-nav="admin"]')).toHaveCount(0);
+  await page.goto(path);
+  await expect(page.locator("[data-admin-refused]")).toContainText("Only administrators can open this page");
+  await expect(page.locator("[data-admin-nav], [data-admin-menu]")).toHaveCount(0);
 }
 
 /** Presses the danger button of the dialog that asks before something goes, and waits for it to close. */

@@ -5,19 +5,10 @@ import { ageQuietly, lapseVerification } from "../fixtures/db";
 import { teamTest as test } from "../fixtures/team";
 import { ONE_LOOK, openShowing, openUntil } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import {
-  type ColourScheme,
-  expectAccessible,
-  expectNoSettingsEntry,
-  openSettingsPage,
-  scrollsSideways,
-  startInScheme,
-  confirm,
-  toast,
-} from "../fixtures/shell";
+import { type ColourScheme, expectAccessible, expectNoAdminEntry, openAdminPage, scrollsSideways, startInScheme, confirm, toast } from "../fixtures/shell";
 import { createPage, createSpace, deleteSpace, uniqueKey } from "../fixtures/spaces";
 
-const STALE_PATH = "/settings/stale";
+const STALE_PATH = "/admin/stale";
 // web/src/config.ts STALE_DEFAULT_DAYS and one of STALE_AGE_DAYS below it.
 const DEFAULT_DAYS = 180;
 const SHORTER_DAYS = 90;
@@ -73,8 +64,8 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     const { space, guide, notes, fresh } = await quietSpace(api, testInfo, bob.id);
 
     await openUntil(page, "/", async () => {
-      await openSettingsPage(page, "stale-pages");
-      await expect(page).toHaveURL(/\/settings\/stale$/);
+      await openAdminPage(page, "stale-pages");
+      await expect(page).toHaveURL(/\/admin\/stale$/);
       await page.locator("#stale-space").selectOption(space.key, ONE_LOOK);
       await expect(row(page, guide.title)).toBeVisible(ONE_LOOK);
     });
@@ -111,7 +102,7 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
 
     await page.goto(`/s/${space.key}/settings`);
     await page.locator('[data-action="space-stale"]').click();
-    await expect(page).toHaveURL(new RegExp(`/settings/stale\\?space=${space.key}$`));
+    await expect(page).toHaveURL(new RegExp(`/s/${space.key}/settings/stale$`));
     await expect(page.locator("#stale-space")).toHaveValue(space.key);
     await expect(row(page, guide.title)).toBeVisible();
   });
@@ -157,11 +148,11 @@ test.describe("the stale content report", { tag: ["@auth"] }, () => {
     expect(refused.response.status).toBe(403);
 
     const member = await pageAs("bob");
-    await member.goto(STALE_PATH);
-    await expect(member.locator("[data-stale-refused]")).toContainText("Only administrators of a space, or of the organization, read which pages went stale.");
+    await member.goto(`/s/${space.key}/settings/stale`);
+    await expect(member.locator("[data-stale-refused]")).toContainText("Only administrators of a space, or of the installation, read which pages went stale.");
     await expect(member.locator("[data-stale-table]")).toHaveCount(0);
     expect(await scrollsSideways(member)).toBe(false);
-    await expectNoSettingsEntry(member, "stale-pages");
+    await expectNoAdminEntry(member, STALE_PATH);
   });
 
   for (const scheme of ["light", "dark"] as ColourScheme[]) {

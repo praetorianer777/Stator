@@ -87,7 +87,7 @@ describe("connecting Armature as an administrator", () => {
       "GET /armature/account": { status: 200, body: { account: account() } },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByRole("heading", { level: 1, name: "Armature" })).toBeInTheDocument();
     expect(document.querySelector("[data-copy-status]")).toBeNull();
 
@@ -106,7 +106,7 @@ describe("connecting Armature as an administrator", () => {
     expect(screen.getByText(/Each member now connects their own Armature account/)).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: "Connect your own account" })).toHaveAttribute(
       "href",
-      "/settings/profile?return=%2Fsettings%2Farmature#armature",
+      "/settings/profile?return=%2Fadmin%2Farmature#armature",
     );
     expect(await axeViolations()).toEqual([]);
   });
@@ -120,7 +120,7 @@ describe("connecting Armature as an administrator", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await user.type(await screen.findByLabelText("Armature address"), BASE);
     expect(await screen.findByText("Armature 1.4.0 answers at this address.", undefined, { timeout: CHECK_WAIT_MS })).toBeInTheDocument();
     expect(sent.filter((r) => r.method === "POST" && r.path === "/armature/connection/check").map((r) => r.body)).toEqual([{ baseUrl: BASE }]);
@@ -138,7 +138,7 @@ describe("connecting Armature as an administrator", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await user.type(await screen.findByLabelText("Armature address"), "armature.corp.example");
     await user.click(screen.getByRole("button", { name: "Check" }));
     expect(await screen.findByText(refused)).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe("connecting Armature as an administrator", () => {
 
   it("does not ask the saved address again while it is unchanged", async () => {
     const sent = stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection() } } });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await screen.findByLabelText("Armature address");
     await new Promise((resolve) => setTimeout(resolve, ARMATURE_ADDRESS_CHECK_DEBOUNCE_MS * 2));
     expect(sent.some((r) => r.path === "/armature/connection/check")).toBe(false);
@@ -165,7 +165,7 @@ describe("connecting Armature as an administrator", () => {
       "GET /armature/account": { status: 200, body: { account: account() } },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await screen.findByLabelText("Armature address");
     expect(document.querySelector("[data-armature-webhook-pending]")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -174,7 +174,7 @@ describe("connecting Armature as an administrator", () => {
       .getAllByRole("listitem")
       .map((li) => li.textContent);
     expect(steps).toEqual([
-      "In Armature, open Settings, then Webhooks, and add an endpoint with the address http://stator.test/api/v1/armature/webhook/demo.",
+      "In Armature, open Admin, then Webhooks, and add an endpoint with the address http://stator.test/api/v1/armature/webhook/demo.",
       "Subscribe it to issue.created, issue.updated, issue.transitioned, comment.added.",
       "Save it in Armature first. Armature then shows the endpoint's secret once; it starts with armature_whs_. Copy it.",
       "Paste the secret into Webhook secret above, then save here.",
@@ -190,7 +190,7 @@ describe("connecting Armature as an administrator", () => {
       "GET /armature/account": { status: 200, body: { account: account() } },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await user.click(await screen.findByRole("button", { name: "Save" }));
     expect(await screen.findByText("Saved.")).toBeInTheDocument();
     expect(document.querySelector("[data-armature-webhook-pending]")).toBeNull();
@@ -200,13 +200,13 @@ describe("connecting Armature as an administrator", () => {
     stubApi({
       "GET /armature/connection": { status: 200, body: { connection: connection({ installationId: "0195f000-0000-7000-8000-0000000000a1", connected: 1 }) } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/confirmed its installation through a member's token/)).toBeInTheDocument();
   });
 
   it("says when the webhook has not reached Stator yet", async () => {
     stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection() } } });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText("Stator has not taken a delivery from Armature yet.")).toBeInTheDocument();
     expect(screen.queryByText(/confirmed its installation/)).toBeNull();
   });
@@ -214,7 +214,7 @@ describe("connecting Armature as an administrator", () => {
   it("says in which envelope version the last delivery came, and that its time was signed", async () => {
     const lastDelivery = { receivedAt: "2026-10-15T09:30:00Z", topic: "issue.updated", version: 1, timestamped: true };
     stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection({ lastDelivery }) } } });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     const said = await screen.findByText(/Stator last took a delivery, issue\.updated/);
     expect(said).toHaveTextContent(/in envelope version 1, signed with the time it was sent\.$/);
   });
@@ -222,7 +222,7 @@ describe("connecting Armature as an administrator", () => {
   it("asks for an Armature that signs the time when the last delivery came without one", async () => {
     const lastDelivery = { receivedAt: "2026-10-15T09:30:00Z", topic: "ping", version: null, timestamped: false };
     stubApi({ "GET /armature/connection": { status: 200, body: { connection: connection({ lastDelivery }) } } });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/without an envelope version, so from an older Armature, without a signed time\. Update Armature/)).toBeInTheDocument();
   });
 
@@ -241,7 +241,7 @@ describe("connecting Armature as an administrator", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/3 members have connected their accounts/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText(/Armature did not answer at this address/)).toBeInTheDocument();
@@ -265,7 +265,7 @@ describe("connecting Armature as an administrator", () => {
       "GET /armature/account": { status: 200, body: { account: account({ configured: false, baseUrl: null, status: "not_configured" }) } },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await user.click(await screen.findByRole("button", { name: "Disconnect Armature" }));
     expect(await confirmDialog()).toHaveAccessibleName("Disconnect Armature?");
     await answerConfirm(true);
@@ -290,7 +290,7 @@ describe("connecting Armature as an administrator", () => {
         },
       },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText("Armature 1.2.0 answers at this address.")).toBeInTheDocument();
     expect(document.querySelector("[data-armature-capabilities]")).toHaveAttribute("data-armature-capabilities", "missing");
     expect(document.querySelector('[data-missing="charts"]')).toHaveTextContent(
@@ -310,14 +310,14 @@ describe("connecting Armature as an administrator", () => {
         },
       },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/This Armature is too old to say what it offers/)).toBeInTheDocument();
     expect(document.querySelector('[data-missing="issues"]')).toHaveTextContent(/issue chips, blocks and lists/);
   });
 
   it("tells a member the page is for administrators", async () => {
     stubApi({ "GET /armature/connection": { status: 403, body: { error: { code: "forbidden", message: "Only an administrator." } } } });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText("Only an administrator can connect Armature.")).toBeInTheDocument();
   });
 });
@@ -326,7 +326,7 @@ describe("connecting one's own Armature account", () => {
   it("says to ask an administrator while the organization has no connection", async () => {
     stubApi({ "GET /armature/account": { status: 200, body: { account: account({ configured: false, baseUrl: null, status: "not_configured" }) } } });
     await renderAt("/settings/profile");
-    expect(await screen.findByText(/Ask an administrator to connect it under Settings, Armature/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ask an administrator to connect it under Admin, Armature/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Armature token")).toBeNull();
   });
 

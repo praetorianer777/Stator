@@ -34,10 +34,9 @@ export const exampleSpaceDe: typeof exampleSpaceEn = {
   create: "Beispielbereich anlegen",
   creating: "Beispielbereich wird angelegt",
   intro:
-    "Ein Bereich, dessen Seiten Ihrem Team Stator erklären, mit einem Beispiel für jeden Block, den eine Seite enthalten kann. Er ist in der Sprache geschrieben, in der Sie Stator gerade lesen. Alle in der Organisation dürfen ihn lesen und kommentieren.",
+    "Ein Bereich, dessen Seiten Ihrem Team Stator erklären, mit einem Beispiel für jeden Block, den eine Seite enthalten kann. Er ist in der Sprache geschrieben, in der Sie Stator gerade lesen. Alle in der Installation dürfen ihn lesen und kommentieren.",
   exists: "Den Beispielbereich gibt es schon:",
   archived: "Er ist archiviert. Holen Sie ihn in seinen Bereichseinstellungen aus dem Archiv, um ihn wieder zu ändern.",
-  notAdmin: "Nur Administratoren der Organisation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
   underWay: "Der Beispielbereich wird angelegt. Diese Seite öffnet ihn, sobald er fertig ist.",
   slow: "Mit dem Beispielbereich wurde noch nicht begonnen. Der Worker, der ihn anlegt, läuft vielleicht nicht; diese Seite prüft weiter, und wenn sich nichts ändert, bitten Sie die Person, die Stator betreibt, ihn zu starten.",
   gaveUp:
@@ -45,7 +44,7 @@ export const exampleSpaceDe: typeof exampleSpaceEn = {
   failures: {
     keys_taken:
       "Die Schlüssel STATOR bis STATOR9 gehören alle anderen Bereichen. Löschen Sie einen davon oder benennen Sie ihn um, und legen Sie den Beispielbereich dann noch einmal an.",
-    forbidden: "Nur Administratoren der Organisation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
+    forbidden: "Nur Administratoren der Installation legen den Beispielbereich an. Bitten Sie eine dieser Personen, ihn anzulegen.",
     failed:
       "Der Beispielbereich konnte nicht angelegt werden, und was davon schon da war, wurde gelöscht. Legen Sie ihn noch einmal an; scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
     gone: "Der Beispielbereich wurde gelöscht, während er angelegt wurde. Legen Sie ihn noch einmal an.",
@@ -67,7 +66,7 @@ export const exampleSpaceDe: typeof exampleSpaceEn = {
     failures: {
       keys_taken:
         "Der Beispielbereich konnte nicht erneuert werden. Erneuern Sie ihn noch einmal; scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
-      forbidden: "Nur Administratoren der Organisation erneuern den Beispielbereich. Bitten Sie eine dieser Personen, ihn zu erneuern.",
+      forbidden: "Nur Administratoren der Installation erneuern den Beispielbereich. Bitten Sie eine dieser Personen, ihn zu erneuern.",
       failed:
         "Das Erneuern des Beispielbereichs ist unterwegs gescheitert. Die schon erneuerten Seiten bleiben erneuert und die anderen, wie sie waren; erneuern Sie ihn noch einmal, und scheitert es wieder, bitten Sie die Person, die Stator betreibt, ins Protokoll des Workers zu sehen.",
       gone: "Der Beispielbereich wurde gelöscht, bevor er erneuert wurde. Legen Sie den Beispielbereich neu an, um den aktuellen zu bekommen.",

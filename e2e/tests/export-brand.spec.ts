@@ -1,13 +1,15 @@
 import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, openAdminPage } from "../fixtures/shell";
 
 // A 1 by 1 PNG, which is all a logo needs to be for the page to draw it.
 const LOGO = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 
-test.describe("the brand of the exports", { tag: ["@auth", "@desktop"] }, () => {
+test.describe("the installation and the brand of its exports", { tag: ["@auth", "@desktop"] }, () => {
   test("an administrator sets a logo and footer lines, the sidebar shows the logo to everybody, and a member cannot change them", async ({ page, pageAs }) => {
-    await page.goto("/settings/brand");
+    await page.goto("/");
+    await openAdminPage(page, "installation");
+    await expect(page.locator("[data-installation-name-shown]")).not.toBeEmpty();
     await expect(page.getByText("There is no logo yet.", { exact: false })).toBeVisible();
     await expectAccessible(page);
 
@@ -28,8 +30,8 @@ test.describe("the brand of the exports", { tag: ["@auth", "@desktop"] }, () => 
     const bob = await pageAs("bob");
     await bob.goto("/spaces");
     await expect(bob.locator("[data-sidebar] [data-site-logo]")).toBeVisible();
-    await bob.goto("/settings/brand");
-    await expect(bob.getByText("Only an administrator of the organization changes the brand", { exact: false })).toBeVisible();
+    await bob.goto("/admin/installation");
+    await expect(bob.getByText("Only administrators can open this page")).toBeVisible();
 
     await page.getByRole("button", { name: "Remove logo" }).click();
     await expect(page.getByText("There is no logo yet.", { exact: false })).toBeVisible();
@@ -38,7 +40,7 @@ test.describe("the brand of the exports", { tag: ["@auth", "@desktop"] }, () => 
   });
 
   test("a logo that is not a picture is refused in a sentence", async ({ page }) => {
-    await page.goto("/settings/brand");
+    await page.goto("/admin/installation");
     await page.locator("[data-brand-logo-input]").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: Buffer.from("not a picture") });
     await expect(page.getByText("a PNG, JPEG or WebP picture", { exact: false }).first()).toBeVisible();
   });

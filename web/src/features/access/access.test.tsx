@@ -102,13 +102,13 @@ function stubAccess(more: Parameters<typeof stubApi>[0] = {}) {
 describe("the Access page", () => {
   it("opens on its Roles tab, and each tab is an address of its own", async () => {
     stubAccess();
-    const router = await renderAt("/settings/access");
-    await waitFor(() => expect(router.state.location.pathname).toBe("/settings/access/roles"));
+    const router = await renderAt("/admin/access");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin/access/roles"));
     expect(await screen.findByRole("tab", { name: "Roles" })).toHaveAttribute("aria-selected", "true");
     await userEvent.click(screen.getByRole("tab", { name: "Matrix" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/settings/access/matrix"));
-    await router.navigate({ to: "/settings/sso" });
-    await waitFor(() => expect(router.state.location.pathname).toBe("/settings/access/sso"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin/access/matrix"));
+    await router.navigate({ to: "/admin/access/$tab", params: { tab: "sso" } });
+    await waitFor(() => expect(router.state.location.pathname).toBe("/admin/access/sso"));
     expect(await screen.findByLabelText("Issuer")).toBeInTheDocument();
   });
 });
@@ -133,7 +133,7 @@ describe("the Roles tab", () => {
         },
       },
     });
-    await renderAt("/settings/access/roles");
+    await renderAt("/admin/access/roles");
     const table = await screen.findByRole("table", { name: "Roles" });
     expect(within(table).getByText("Everyone").closest("tr")).toHaveTextContent("Whole installation");
     expect(within(table).getByText("Writers").closest("tr")).toHaveTextContent(`${space.name} (DOCS)`);
@@ -155,7 +155,7 @@ describe("the Roles tab", () => {
   it("asks before a grant goes, and shows the server's refusal in its sentence", async () => {
     const refusal = "Stator keeps at least one active administrator. Make somebody else an administrator first, then take it from this one.";
     stubAccess({ "DELETE /role-assignments/g-1": { status: 409, body: { error: { code: "installation_keeps_administrator", message: refusal } } } });
-    await renderAt("/settings/access/roles");
+    await renderAt("/admin/access/roles");
     const table = await screen.findByRole("table", { name: "Roles" });
     await userEvent.click(within(table).getByRole("button", { name: "Revoke Administrator from Ada Lovelace" }));
     await answerConfirm(true);
@@ -166,7 +166,7 @@ describe("the Roles tab", () => {
 describe("the Matrix tab", () => {
   it("saves a box the moment it is ticked, and keeps the administrator administering", async () => {
     const sent = stubAccess({ "PATCH /roles/commenter": { status: 200, body: { role: { ...roles[3], permissions: ["view", "addComments", "addPages"] } } } });
-    await renderAt("/settings/access/matrix");
+    await renderAt("/admin/access/matrix");
     const matrix = await screen.findByRole("table", { name: "Matrix" });
     const fixed = matrix.querySelector<HTMLInputElement>('[data-permission-cell="administrator:administerSite"]')!;
     expect(fixed).toBeChecked();
@@ -197,7 +197,7 @@ describe("the Matrix tab", () => {
         return { status: 204 };
       },
     });
-    await renderAt("/settings/access/matrix");
+    await renderAt("/admin/access/matrix");
     await userEvent.click(await screen.findByRole("button", { name: "New role" }));
     const dialog = await screen.findByRole("dialog", { name: "New role" });
     await userEvent.type(within(dialog).getByLabelText("Name"), "Reviewer");
@@ -232,7 +232,7 @@ describe("the Groups tab", () => {
       "POST /groups": { status: 201, body: { group: { ...groups[2], id: "g-new", name: "Leads", externalRef: "leads" } } },
       [`POST /groups/${ids.writers}/members`]: { status: 200, body: { group: { ...groups[1], memberCount: 2 } } },
     });
-    await renderAt("/settings/access/groups");
+    await renderAt("/admin/access/groups");
     const everyone = await screen.findByText("Every member of the installation, now and later, never a guest. Grant it a role to reach everybody at once.");
     expect(everyone.closest("[data-group-builtin]")).toHaveAttribute("data-group-builtin", "everyone");
     const staff = document.querySelector<HTMLElement>('[data-group="Staff"]')!;
@@ -288,7 +288,7 @@ describe("the Members tab", () => {
         },
       },
     });
-    await renderAt("/settings/access/members");
+    await renderAt("/admin/access/members");
     const ada = (await screen.findByText("ada@stator.test")).closest("tr")!;
     expect(within(ada).getByText("Member", { selector: "[data-member-role]" })).toBeInTheDocument();
     expect(ada.querySelector('[data-member-holds="administrator"]')).toHaveTextContent("Administrator");

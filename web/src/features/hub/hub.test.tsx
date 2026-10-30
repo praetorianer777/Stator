@@ -66,7 +66,7 @@ describe("choosing the hub", () => {
       { status: 200, body: { hub: { page: null, landing: false } } },
       { "PUT /site/hub": { status: 200, body: { hub: { page: hubPage, landing: true } } } },
     );
-    await renderAt("/settings/hub");
+    await renderAt("/admin/hub");
     expect(await screen.findByText("There is no hub page yet.")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText("Page")).not.toBeDisabled());
     await userEvent.selectOptions(screen.getByLabelText("Page"), front.id);
@@ -79,7 +79,7 @@ describe("choosing the hub", () => {
 
   it("tells a member who chooses it", async () => {
     stubHub({ status: 200, body: { hub: { page: null, landing: false } } });
-    await renderAt("/settings/hub", { me: member });
-    expect(await screen.findByText(/Only an administrator of the organization chooses its hub page/)).toBeInTheDocument();
+    await renderAt("/admin/hub", { me: member });
+    expect(await screen.findByText("Only administrators can open this page")).toBeInTheDocument();
   });
 });

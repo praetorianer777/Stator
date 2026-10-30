@@ -4,7 +4,7 @@ import type { ArmatureOutcome } from "@/config";
 /** The English strings of the Armature connection and the issues it shows. */
 export const armatureEn = {
   title: "Armature",
-  intro: "Connect the Armature instance your organization tracks its work in. Pages then show its issues, each person seeing what Armature shows them.",
+  intro: "Connect the Armature instance your installation tracks its work in. Pages then show its issues, each person seeing what Armature shows them.",
   notAdmin: "Only an administrator can connect Armature.",
   baseUrl: "Armature address",
   baseUrlHint: "Where people open Armature, such as https://armature.example.com.",
@@ -17,7 +17,7 @@ export const armatureEn = {
   webhookTitle: "Webhook",
   webhookIntro: "Armature tells Stator when issues change, so pages show a change at once instead of within a minute.",
   webhookSteps: [
-    "In Armature, open Settings, then Webhooks.",
+    "In Armature, open Admin, then Webhooks.",
     "Add an endpoint with the address below and subscribe it to the topics listed.",
     "Paste the secret Armature shows once into the field below, then save.",
   ],
@@ -57,7 +57,7 @@ export const armatureEn = {
   webhookPending: {
     title: "Armature has not delivered to Stator yet",
     intro: "Until it does, pages show a change to an issue only within a minute. Set up the webhook in this order:",
-    add: (url: string) => `In Armature, open Settings, then Webhooks, and add an endpoint with the address ${url}.`,
+    add: (url: string) => `In Armature, open Admin, then Webhooks, and add an endpoint with the address ${url}.`,
     topics: (topics: string) => `Subscribe it to ${topics}.`,
     secret: (prefix: string) => `Save it in Armature first. Armature then shows the endpoint's secret once; it starts with ${prefix}. Copy it.`,
     paste: "Paste the secret into Webhook secret above, then save here.",
@@ -94,7 +94,7 @@ export const armatureEn = {
       webhook_admin:
         "Armature did not let this connection manage Stator's webhook. An Armature administrator must connect again: sign in to Armature as one, then choose Connect.",
       scope_refused:
-        "Armature's app for Stator may not ask to send its events. In Armature, allow the scope webhooks.partner for Stator under Settings, Connected apps, then connect again.",
+        "Armature's app for Stator may not ask to send its events. In Armature, allow the scope webhooks.partner for Stator under Admin, Connected apps, then connect again.",
       unavailable: "This Armature does not let Stator make its own webhook. Paste the secret of a webhook made in Armature instead.",
     } as Partial<Record<ArmatureOutcome, string>>,
   },
@@ -126,7 +126,7 @@ export const armatureEn = {
     /** The account, as the dialog that asks before disconnecting names it. */
     thing: "your Armature account",
     intro: "Connect your Armature account so pages show you the issues you may see in Armature.",
-    notConfigured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",
+    notConfigured: "Stator is not connected to Armature yet. Ask an administrator to connect it under Admin, Armature.",
     steps: "In Armature, open Tokens and make a token without the read-only mark, so pages can also create issues and link to them. Then paste it here.",
     openTokens: "Open Armature's tokens",
     returns: "Once Armature accepts the token, you go back to the page you came from.",
@@ -162,9 +162,9 @@ export const armatureEn = {
       unavailable: "This Armature does not offer connecting with one click. Paste a token instead.",
       unreachable: "Armature did not answer. Try again in a moment.",
       other_installation: "That Armature account belongs to another Armature installation than the one connected. Sign in to the right one and connect again.",
-      not_configured: "Your organization has not connected Armature yet. Ask an administrator to connect it under Settings, Armature.",
+      not_configured: "Stator is not connected to Armature yet. Ask an administrator to connect it under Admin, Armature.",
       failed: "Armature did not connect your account. Try again, or paste a token instead.",
-      webhook_refused: "Your Armature account is connected, but Armature would not make Stator's webhook. Settings, Armature says why.",
+      webhook_refused: "Your Armature account is connected, but Armature would not make Stator's webhook. Admin, Armature says why.",
       webhook_admin: "Armature did not let this connection manage Stator's webhook. An Armature administrator must connect again.",
       scope_refused: "Armature's app for Stator may not ask to send its events. Allow webhooks.partner for Stator in Armature, then connect again.",
     } as Record<ArmatureOutcome, string>,
@@ -185,7 +185,7 @@ export const armatureEn = {
     clientIdShown: (id: string) => `Client id ${id}.`,
     pasteTitle: "Register Stator by hand",
     pasteIntro:
-      "In Armature, add Stator under Settings, Connected apps with the return address below and the scopes read and issue.write, then paste the client id and secret Armature shows.",
+      "In Armature, add Stator under Admin, Connected apps with the return address below and the scopes read and issue.write, then paste the client id and secret Armature shows.",
     redirectUri: "Return address",
     clientId: "Client id",
     clientSecret: "Client secret",
@@ -272,7 +272,7 @@ export const armatureEn = {
       due: "Due",
     } as Record<string, string>,
     loading: "Loading the issues from Armature.",
-    notConfigured: "Your organization has not connected Armature, so this list shows no issues.",
+    notConfigured: "Your installation has not connected Armature, so this list shows no issues.",
     connect: "Connect your Armature account to see the issues this list finds.",
     connectLink: "Connect your account",
     unreachable: "Armature did not answer. Reload the page in a moment to try again.",

@@ -323,7 +323,7 @@ issues (#440), as agreed in Exciter's `docs/api-contract-backlog.md`, section
 follows `internal/armature` and goes through its outbound client, cache and
 signatures; the routes are under `/exciter`.
 
-- **Connecting.** An administrator saves Exciter's origin under Settings,
+- **Connecting.** An administrator saves Exciter's origin under Admin,
   Exciter (`PUT /exciter/connection`); it must answer `product` `exciter` at
   `GET /api/v1/meta`, and `POST /exciter/connection/check` asks before
   saving. The outbound guard refuses an address inside the network in the
@@ -394,7 +394,7 @@ signatures; the routes are under `/exciter`.
   `requirement.created`, `requirement.revised`, `requirement.changed`,
   `requirement.trashed`, `requirement.restored`, `requirement.moved` and
   `review.decided`, and the administrator pastes its `exciter_whs_` secret
-  into Settings, Exciter. A delivery must carry `X-Exciter-Signature-256`,
+  into Admin, Exciter. A delivery must carry `X-Exciter-Signature-256`,
   `X-Exciter-Timestamp` and `X-Exciter-Signature-Timestamped-256` over the
   body, within five minutes of Stator's clock (401 `bad_signature` or
   `stale_delivery`), and `X-Exciter-Webhook-Version` and `version` 1 (422
@@ -440,8 +440,8 @@ instead", and is all an Armature without the capability is offered.
 - **Registration closed.** An Armature that registers apps only by hand
   answers 403 `access_denied`, or names no registration endpoint. Stator keeps
   Armature's sentence and shows it to members, who keep the token form, and
-  to administrators under Settings, Armature, Connected app, where they paste
-  the client id and secret an Armature administrator made under Settings,
+  to administrators under Admin, Armature, Connected app, where they paste
+  the client id and secret an Armature administrator made under Admin,
   Connected apps (`PUT /armature/connection/app`). A new client id forgets
   every grant of the old one; `DELETE /armature/connection/app` forgets the
   app and its grants, and the next person to connect registers Stator again.
@@ -493,7 +493,7 @@ instead", and is all an Armature without the capability is offered.
 ## Connecting Armature in one step
 
 Where Armature lists `webhooks.partner@1` beside `oauth.partner-tokens@1`,
-an administrator connects Armature with **Connect** under Settings, Armature,
+an administrator connects Armature with **Connect** under Admin, Armature,
 and Armature makes the webhook to Stator itself (#429), as Armature's
 `docs/oauth.md` sets out under "The partner's own webhook". No secret is
 copied by hand. The pasted secret stays, under "Paste a webhook secret
@@ -540,7 +540,7 @@ instead", and is all an Armature without the capability is offered.
 - **Leaving.** A new address or Disconnect removes the webhook with
   `DELETE /webhooks/partner` first, with the caller's grant; where that
   cannot be done it is logged and stays in Armature, where an Armature
-  administrator removes it under Settings, Webhooks. The secret is forgotten
+  administrator removes it under Admin, Webhooks. The secret is forgotten
   here either way: the database drops it with the address
   (`armature_connection_moved`), and holds that a webhook marked as Stator's
   has a secret.
@@ -582,8 +582,8 @@ no click and no token (#430), as Armature's `docs/oauth.md` sets out under
   their own.
 - **What it needs.** In Armature, Stator's app (registered by an Armature
   administrator, or by Stator and allowed) with its Keycloak client named,
-  `stator` in the realm (`keycloakClientId` under Settings, Connected apps);
-  in Stator, that app's client id and secret under Settings, Armature,
+  `stator` in the realm (`keycloakClientId` under Admin, Connected apps);
+  in Stator, that app's client id and secret under Admin, Armature,
   Connected app (`PUT /armature/connection/app`), unless Stator registered
   itself; in Keycloak, an audience mapper on Stator's client that adds
   Armature's client id (`armature`) to Stator's access tokens, since Armature
@@ -622,7 +622,7 @@ for one answers the other.
 - **The person** is found by the token's subject or its verified address, as
   a sign-in finds them, and their groups are kept as the token says. A
   member is answered; somebody who is not a member yet is let in only by the
-  group mapping under Settings, Single sign-on, as at sign-in, and only while
+  group mapping under Admin, Access, Single sign-on, as at sign-in, and only while
   "Let people in by their groups" (`admitByGroup`) is on there. Anybody
   else, a guest or somebody
   switched off is `invalid_grant`: "Ada Lovelace has no Stator account yet.
@@ -824,7 +824,7 @@ sign in through the shared Keycloak realm, so nobody pastes an
   Stator administrator stored the partner app.
 - **The app.** An Exciter administrator registers Stator as a partner app
   with its Keycloak client, `stator` in the realm; a Stator administrator
-  stores its client id and secret (`exciter_ocs_`) under Settings, Exciter,
+  stores its client id and secret (`exciter_ocs_`) under Admin, Exciter,
   Connecting at sign-in: `PUT /exciter/connection/app` with
   `{clientId, clientSecret}`, `DELETE /exciter/connection/app`. The secret is
   sealed and never answered; `GET /exciter/connection` says under `app`

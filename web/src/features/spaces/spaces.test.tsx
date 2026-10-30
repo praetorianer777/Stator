@@ -43,7 +43,7 @@ describe("the space directory", () => {
   it("tells a member who to ask when there is nothing yet", async () => {
     stubApi({ "GET /spaces": { status: 200, body: { spaces: [] } } });
     await renderAt("/spaces", { me: member });
-    expect(await screen.findByText(/Ask an administrator of your organization to create one/)).toBeInTheDocument();
+    expect(await screen.findByText(/Ask an administrator of your installation to create one/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create space" })).toBeNull();
   });
 });
@@ -171,7 +171,7 @@ describe("creating a space from a template", () => {
     const group = await screen.findByRole("radiogroup", { name: "Start from" });
     expect(within(group).getByRole("radio", { name: /Blank space/ })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("region", { name: "What Blank space sets up" })).toHaveTextContent(
-      "Everyone in the organization may view, add pages, add comments and delete.",
+      "Everyone in the installation may view, add pages, add comments and delete.",
     );
 
     await userEvent.click(await within(group).findByRole("radio", { name: /Team space/ }));
@@ -182,7 +182,7 @@ describe("creating a space from a template", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual(expect.arrayContaining(["meeting-notes", "onboarding", "team"]));
-    expect(preview).toHaveTextContent("Everyone in the organization may view and add comments.");
+    expect(preview).toHaveTextContent("Everyone in the installation may view and add comments.");
     expect(await axeViolations()).toEqual([]);
 
     // Arrows move the choice as in any radio group.
@@ -288,7 +288,7 @@ describe("space settings", () => {
     });
     await renderAt("/s/DOCS/settings", { me: member });
     expect(
-      await screen.findByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization."),
+      await screen.findByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the installation."),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: "Save details" })).toBeNull();

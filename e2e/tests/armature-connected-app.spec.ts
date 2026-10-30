@@ -92,7 +92,7 @@ test.describe("connecting Armature with one click", { tag: ["@auth"] }, () => {
 
   test("a hint to connect goes to Armature and back to where it was, and a cancel says so", async ({ page, team }) => {
     const tenant = team.label;
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     const hint = page.locator("[data-armature-members]").getByRole("link", { name: "Connect your own account" });
     await expect(hint).toHaveAttribute("data-one-click", "");
 
@@ -103,10 +103,10 @@ test.describe("connecting Armature with one click", { tag: ["@auth"] }, () => {
     await expect(page.locator('[data-armature-outcome="denied"]')).toContainText("You did not allow Stator in Armature");
     await expectAccessible(page);
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await page.locator("[data-armature-members]").getByRole("link", { name: "Connect your own account" }).click();
     await allow(page, tenant, "admin");
-    await expect(page).toHaveURL(/\/settings\/armature$/);
+    await expect(page).toHaveURL(/\/admin\/armature$/);
     await expect(page.locator("[data-armature-returned]")).toHaveText(/Your Armature account is connected, and here is the page you came from\./);
     await expect(page.locator("[data-armature-app]")).toHaveAttribute("data-armature-app", "active");
   });

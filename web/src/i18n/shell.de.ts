@@ -35,10 +35,6 @@ export const themeDe: typeof themeEn = {
 };
 
 export const accountDe: typeof accountEn = {
-  hub: "Hub-Seite",
-  brand: "Marke der Exporte",
-  siteTransfer: "Export und Import",
-  exampleSpace: "Beispielbereich",
   menu: "Ihr Konto",
   guest: "Gast",
   profile: "Ihr Profil",
@@ -46,16 +42,8 @@ export const accountDe: typeof accountEn = {
   tokens: "Zugriffstokens",
   notifications: "Benachrichtigungseinstellungen",
   watching: "Beobachtet",
-  access: "Zugriff",
-  armature: "Armature",
-  exciter: "Exciter",
-  audit: "Audit-Log",
-  webhooks: "Webhooks",
-  templates: "Vorlagen",
-  stale: "Veraltete Seiten",
   signOut: "Abmelden",
   switchTo: "Wechseln zu",
-  settings: "Einstellungen",
   armatureAccount: "Armature-Konto",
   exciterAccount: "Exciter-Konto",
 };

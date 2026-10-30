@@ -51,7 +51,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const seed = readSeed();
     const { admin, member } = seed.people;
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await page.getByLabel("Armature address", { exact: true }).fill(seed.url);
     await page.getByLabel("Webhook secret", { exact: true }).fill(seed.webhookSecret);
     await page.locator('[data-action="save-armature"]').click();
@@ -159,7 +159,7 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     const stub = (await (await request.get(`${armatureURL()}/api/v1/meta`)).json()) as { capabilities: string[] };
     expect([...stub.capabilities, ...BEYOND_THE_STUB].sort()).toEqual([...real.capabilities].sort());
 
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await expect(page.locator("[data-armature-capabilities]")).toHaveAttribute("data-armature-capabilities", "all");
     await expect(page.getByText("Armature offers everything Stator uses.")).toBeVisible();
   });
@@ -171,6 +171,6 @@ test.describe("connecting a real Armature", { tag: ["@auth"] }, () => {
     await paste(page, seed.people.member.token);
     await expect(page.locator("[data-armature-account]")).not.toContainText("another Armature installation");
     await expect.poll(async () => (await api.GET("/armature/connection")).data?.connection?.installationId).toBe(seed.installationId);
-    await openShowing(page, "/settings/armature", page.getByText(/confirmed its installation through a member's token/));
+    await openShowing(page, "/admin/armature", page.getByText(/confirmed its installation through a member's token/));
   });
 });

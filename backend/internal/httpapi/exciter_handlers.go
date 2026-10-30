@@ -331,7 +331,7 @@ func (s *Server) handleSuggestExciterQuery(w http.ResponseWriter, r *http.Reques
 // address never tells which exist.
 
 var errExciterBadSignature = &APIError{Status: http.StatusUnauthorized, Code: "bad_signature",
-	Message: "The signature does not match. Check that the webhook secret in Exciter is the one saved in Stator under Settings, Exciter."}
+	Message: "The signature does not match. Check that the webhook secret in Exciter is the one saved in Stator under Admin, Exciter."}
 
 var errExciterWebhookStale = &APIError{Status: http.StatusUnauthorized, Code: "stale_delivery",
 	Message: fmt.Sprintf("The delivery was signed more than %d minutes away from Stator's clock. Check that both servers keep the right time; Exciter sends it again by itself.", int(armature.WebhookTimestampTolerance.Minutes()))}

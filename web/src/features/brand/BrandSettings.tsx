@@ -1,12 +1,12 @@
 import { useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/api/client";
 import { brandLogoHref, useBrand, useRemoveBrandLogo, useSetBrandFooter, useSetBrandLogo } from "@/api/brand";
-import { Page, PageHeader, Button, Field, ErrorBanner, Skeleton } from "@/components/ui";
+import { Button, Field, ErrorBanner, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { BRAND_FOOTER_MAX_LENGTH, BRAND_LOGO_MAX_BYTES } from "@/config";
 import { t } from "@/i18n";
 
-/** Where an administrator sets the logo and the footer line the organization's exports carry. */
+/** Where an administrator sets the logo and the footer line the installation's exports carry, a section of the Installation page. */
 export function BrandSettings() {
   const { data: brand, isLoading } = useBrand();
   const setLogo = useSetBrandLogo();
@@ -37,16 +37,18 @@ export function BrandSettings() {
   }
 
   return (
-    <Page width="narrow" data-brand-settings="">
-      <PageHeader title={t.brand.title} />
-      <p className="mb-4 text-sm text-ink-muted">{t.brand.intro}</p>
+    <section aria-labelledby="brand-title" className="space-y-3" data-brand-settings="">
+      <h2 id="brand-title" className="text-base font-semibold text-ink">
+        {t.brand.title}
+      </h2>
+      <p className="text-sm text-ink-muted">{t.brand.intro}</p>
       {isLoading && <Skeleton />}
       {brand && (
         <div className="space-y-6">
           <section aria-labelledby="brand-logo" className="space-y-3">
-            <h2 id="brand-logo" className="text-sm font-semibold text-ink">
+            <h3 id="brand-logo" className="text-sm font-semibold text-ink">
               {t.brand.logo}
-            </h2>
+            </h3>
             {href ? (
               <img src={href} alt={t.brand.logoAlt} className="max-h-24 max-w-xs rounded-control border border-border bg-surface p-2" data-brand-logo />
             ) : (
@@ -84,7 +86,7 @@ export function BrandSettings() {
             <p className="text-sm text-ink-subtle">{t.brand.logoHint}</p>
           </section>
           <form onSubmit={submit} className="space-y-3" aria-label={t.brand.footer}>
-            <h2 className="text-sm font-semibold text-ink">{t.brand.footer}</h2>
+            <h3 className="text-sm font-semibold text-ink">{t.brand.footer}</h3>
             {saveFooter.error && !Object.keys(fields).length && <ErrorBanner>{saveFooter.error.message}</ErrorBanner>}
             <Field
               label={t.brand.footerEn}
@@ -116,6 +118,6 @@ export function BrandSettings() {
           </form>
         </div>
       )}
-    </Page>
+    </section>
   );
 }

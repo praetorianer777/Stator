@@ -49,7 +49,7 @@ func (e *AppRefusedError) Error() string { return e.Message }
 
 // registrationClosed is said for an Armature whose metadata names no
 // registration endpoint, which it leaves out where registration is closed.
-const registrationClosed = "This Armature registers connected apps only by hand. Ask an Armature administrator to add Stator under Settings, Connected apps, and a Stator administrator to paste its client id and secret under Settings, Armature."
+const registrationClosed = "This Armature registers connected apps only by hand. Ask an Armature administrator to add Stator under Admin, Connected apps, and a Stator administrator to paste its client id and secret under Admin, Armature."
 
 // metadataCache keeps each Armature's metadata in the process.
 type metadataCache struct {
@@ -239,7 +239,7 @@ func (s *Service) SaveApp(ctx context.Context, in AppInput, ip string) (*Connect
 	clientID := strings.TrimSpace(in.ClientID)
 	secret := strings.TrimSpace(in.ClientSecret)
 	if clientID == "" || len(clientID) > MaxClientIDLength || strings.ContainsAny(clientID, " \t\r\n") {
-		return nil, 0, &FieldError{Field: "clientId", Message: "Paste the client id Armature showed when the app was added under Settings, Connected apps."}
+		return nil, 0, &FieldError{Field: "clientId", Message: "Paste the client id Armature showed when the app was added under Admin, Connected apps."}
 	}
 	if secret != "" && (!strings.HasPrefix(secret, ClientSecretPrefix) || len(secret) == len(ClientSecretPrefix)) {
 		return nil, 0, &FieldError{Field: "clientSecret", Message: "That is not an Armature client secret. Paste the secret Armature showed once for the app; it starts with " + ClientSecretPrefix + ", and is empty only for a public app."}

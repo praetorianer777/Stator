@@ -3,10 +3,10 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { usePage, type Page } from "@/api/pages";
 import { useSpace } from "@/api/spaces";
 import { Breadcrumbs, type Crumb } from "@/components/ui";
-import { SETTINGS_PATH, TEMPLATES_PATH } from "@/config";
+import { ACCESS_PATH, ADMIN_PATH, SETTINGS_PATH } from "@/config";
 import { t } from "@/i18n";
 import { pageSlug } from "@/lib/slug";
-import { placesFor, type Place } from "./places";
+import { adminPlaces, placesFor } from "./places";
 
 /** One crumb of the trail: a place to go back to, with where it leads. */
 export interface PlaceCrumb {
@@ -42,16 +42,20 @@ function pagePath(spaceKey: string, page: { id: string; title: string; home: boo
 // Every place is listed, whoever reads: the trail names where a page sits, and
 // the page itself decides whether the reader may be there.
 function settingsLabel(to: string): string | undefined {
-  const all: Place[] = placesFor({ guest: false, siteAdmin: true, homePath: "/", hubPath: null });
-  return all.find((place) => place.area !== "wiki" && place.to === to)?.label;
+  return placesFor({ guest: false, siteAdmin: false, homePath: "/", hubPath: null }).find((place) => place.area === "you" && place.to === to)?.label;
+}
+
+function adminLabel(to: string): string | undefined {
+  return adminPlaces().find((place) => place.to === to)?.label;
 }
 
 /**
  * The places a page lies under, as the sidebar leads to it, without the page
  * itself: Spaces, the space and the pages above it on a page, Settings below
- * the settings area. Home, Spaces and the other places of the wiki lie under nothing.
+ * the settings area, Admin below the Admin area. Home, Spaces and the other
+ * places of the wiki lie under nothing.
  */
-export function crumbsFor(pathname: string, search: Record<string, unknown> = {}, names: CrumbNames = {}): PlaceCrumb[] {
+export function crumbsFor(pathname: string, names: CrumbNames = {}): PlaceCrumb[] {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
   const parts = path.split("/").filter(Boolean);
   const spaces: PlaceCrumb = { label: t.spaces.title, to: "/spaces", name: "spaces" };
@@ -60,6 +64,11 @@ export function crumbsFor(pathname: string, search: Record<string, unknown> = {}
     const spaceName = names.spaceName ?? key;
     const space: PlaceCrumb = { label: spaceName, to: `/s/${key}`, name: "space" };
     if (parts.length === 2) return [spaces];
+    // A space's template or its stale pages sit below its settings.
+    if (parts[2] === "settings" && parts.length > 3) {
+      const tab = parts[3] === "templates" ? { tab: "templates" } : undefined;
+      return [spaces, space, { label: t.spaceSettings.title, to: `/s/${key}/settings`, search: tab, name: "space-settings" }];
+    }
     if (parts[2] !== "p") return [spaces, space];
     const page = names.page;
     if (!page) return [spaces];
@@ -75,19 +84,18 @@ export function crumbsFor(pathname: string, search: Record<string, unknown> = {}
   }
   if (parts[0] === SETTINGS_PATH.slice(1)) {
     if (parts.length === 1) return [];
-    const forSpace = typeof search.space === "string" && search.space ? search.space : undefined;
-    // A space's template is made from its settings, so the trail leads back there.
-    if (forSpace && path.startsWith(`${TEMPLATES_PATH}/`)) {
-      return [
-        spaces,
-        { label: names.spaceName ?? forSpace, to: `/s/${forSpace}`, name: "space" },
-        { label: t.spaceSettings.title, to: `/s/${forSpace}/settings`, search: { tab: "templates" }, name: "space-settings" },
-      ];
-    }
     const settings: PlaceCrumb = { label: t.settings.title, to: SETTINGS_PATH, name: "settings" };
     const page = `/${parts.slice(0, 2).join("/")}`;
     const label = parts.length > 2 ? settingsLabel(page) : undefined;
     return label ? [settings, { label, to: page }] : [settings];
+  }
+  if (parts[0] === ADMIN_PATH.slice(1)) {
+    if (parts.length === 1) return [];
+    const admin: PlaceCrumb = { label: t.admin.title, to: ADMIN_PATH, name: "admin" };
+    const page = `/${parts.slice(0, 2).join("/")}`;
+    // Access's tabs are the one page, so a tab lies under Admin alone.
+    const label = parts.length > 2 && page !== ACCESS_PATH ? adminLabel(page) : undefined;
+    return label ? [admin, { label, to: page, name: "admin-page" }] : [admin];
   }
   if (parts[0] === "spaces" && parts.length > 1) return [spaces];
   return [];
@@ -96,14 +104,12 @@ export function crumbsFor(pathname: string, search: Record<string, unknown> = {}
 /** Where the reader is, read off the address and drawn in the page's head in the sticky strip. */
 export function PlaceCrumbs() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const search = useRouterState({ select: (s) => s.location.search as Record<string, unknown> });
   const pageId = pageOfPath(pathname);
-  const forSpace = typeof search.space === "string" ? search.space : "";
-  const spaceKey = spaceOfPath(pathname) ?? forSpace;
+  const spaceKey = spaceOfPath(pathname) ?? "";
   const { data: onPage } = usePage(pageId);
   const { data: space } = useSpace(pageId ? "" : spaceKey);
   const names: CrumbNames = { spaceName: onPage?.space.name ?? space?.name, page: onPage?.page };
-  const crumbs: Crumb[] = crumbsFor(pathname, search, names).map(({ label, to, search: query, name }) => ({
+  const crumbs: Crumb[] = crumbsFor(pathname, names).map(({ label, to, search: query, name }) => ({
     label,
     render: (shown: ReactNode) => (
       <Link to={to as never} search={query as never} className="hover:text-ink" data-crumb={name}>

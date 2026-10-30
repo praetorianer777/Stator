@@ -72,7 +72,7 @@ test.describe("connecting Armature in one step", { tag: ["@auth"] }, () => {
   });
 
   test("an administrator connects once, Armature makes the webhook, and an issue change reaches Stator", async ({ page, api, request, team }) => {
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     const section = page.locator("[data-armature-one-step]");
     await expect(section.getByRole("heading", { name: "Connect in one step" })).toBeVisible();
     await expect(page.getByLabel("Webhook secret", { exact: true })).toHaveCount(0);
@@ -80,7 +80,7 @@ test.describe("connecting Armature in one step", { tag: ["@auth"] }, () => {
 
     await section.locator('[data-action="connect-armature-webhook"]').click();
     await allow(page, team.label, "admin");
-    await expect(page).toHaveURL(/\/settings\/armature\?armature=connected$/);
+    await expect(page).toHaveURL(/\/admin\/armature\?armature=connected$/);
     await expect(page.getByText("Armature is connected: Stator made its webhook there, and your own account is connected.")).toBeVisible();
     await expect(section).toHaveAttribute("data-armature-one-step", "connected");
     await expect(section.locator("[data-armature-webhook-made]")).toContainText(RECEIVER);
@@ -131,10 +131,10 @@ test.describe("connecting Armature in one step", { tag: ["@auth"] }, () => {
 
   test("Armature's outbound guard refusing Stator's address is said in Armature's words", async ({ page, request, team }) => {
     await stub(request, "PUT", `/_stub-oauth/hosts/${oneStep().host}/outbound`, { refuse: "outbound_refused" });
-    await page.goto("/settings/armature");
+    await page.goto("/admin/armature");
     await page.locator('[data-action="connect-armature-webhook"]').click();
     await allow(page, team.label, "admin");
-    await expect(page).toHaveURL(/\/settings\/armature\?armature=webhook_refused$/);
+    await expect(page).toHaveURL(/\/admin\/armature\?armature=webhook_refused$/);
     await expect(page.locator('[data-armature-outcome="webhook_refused"]')).toBeVisible();
     await expect(page.locator("[data-armature-webhook-refusal]")).toContainText("Add api to network.outboundAllow (ARMATURE_OUTBOUND_ALLOW)");
     await expect(page.locator('[data-action="connect-armature-webhook"]')).toHaveText("Connect again");

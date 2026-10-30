@@ -136,7 +136,7 @@ describe("the share dialog", () => {
     });
     await renderAt(PATH);
     const dialog = await openDialog();
-    expect(await within(dialog).findByText("Everyone in the organization can view this page.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("Everyone in the installation can view this page.")).toBeInTheDocument();
     expect(await axeViolations()).toEqual([]);
   });
 

@@ -15,7 +15,7 @@ import { t } from "@/i18n";
 import { AccountMenu } from "./AccountMenu";
 import { BuildStamp } from "./BuildStamp";
 import { NavItem } from "./nav";
-import { installationName, usePlaces, type Place } from "./places";
+import { adminEntry, installationName, usePlaces, type Place } from "./places";
 import { Rail } from "./Rail";
 import { searchShortcutHint } from "./searchShortcut";
 import { settingsReturn } from "./settingsReturn";
@@ -108,11 +108,13 @@ function WikiGroups({ onNavigate }: { onNavigate?: () => void }) {
     reviews: me?.organization ? <WaitingReviewsCount /> : null,
     notifications: me?.organization ? <UnreadCount /> : null,
   };
-  const places = usePlaces().filter((place) => place.area === "wiki");
+  const places = usePlaces();
+  const wiki = places.filter((place) => place.area === "wiki");
+  const administers = places.some((place) => place.area === "admin");
   return (
     <>
       <SidebarGroup id="wiki" title={t.nav.groupWiki} open={isOpen("wiki", true)} onToggle={() => toggleGroup("wiki", true)}>
-        {places.map((place) => placeItem(place, onNavigate, trailing[place.id]))}
+        {wiki.map((place) => placeItem(place, onNavigate, trailing[place.id]))}
       </SidebarGroup>
       <SpaceNav
         open={isOpen("space", true)}
@@ -121,18 +123,16 @@ function WikiGroups({ onNavigate }: { onNavigate?: () => void }) {
         onToggleAdmin={() => toggleGroup("space-admin", false)}
         onNavigate={onNavigate}
       />
+      {administers && <div className="mt-3">{placeItem(adminEntry(), onNavigate, <JoinRequestsCount />)}</div>}
     </>
   );
 }
 
-/** The settings area's own sidebar: the way back, the person's own pages, and the organization's settings for site administrators. */
+/** The settings area's own sidebar: the way back and the person's own pages. */
 function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
   const [groups, toggleGroup] = useSidebarGroups();
   const isOpen = (id: string) => groups[id] ?? true;
-  const places = usePlaces();
-  const you = places.filter((place) => place.area === "you");
-  const settings = places.filter((place) => place.area === "settings");
-  const trailing: Record<string, ReactNode> = { access: <JoinRequestsCount /> };
+  const you = usePlaces().filter((place) => place.area === "you");
   const router = useRouter();
   const back = settingsReturn();
   return (
@@ -155,17 +155,12 @@ function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarGroup id="settings-you" title={t.settings.you} open={isOpen("settings-you")} onToggle={() => toggleGroup("settings-you", true)}>
         {you.map((place) => placeItem(place, onNavigate))}
       </SidebarGroup>
-      {settings.length > 0 && (
-        <SidebarGroup id="settings-site" title={t.settings.site} open={isOpen("settings-site")} onToggle={() => toggleGroup("settings-site", true)}>
-          {settings.map((place) => placeItem(place, onNavigate, trailing[place.id]))}
-        </SidebarGroup>
-      )}
     </>
   );
 }
 
-/** How many people wait to be let in, beside Single sign-on; asked only of those the list answers. */
-function JoinRequestsCount() {
+/** How many people wait to be let in, beside Admin and Users; asked only of those the list answers. */
+export function JoinRequestsCount() {
   const { data: me } = useMe();
   const waiting = useJoinRequests(administers(me)).data?.length ?? 0;
   return <Count count={waiting} name="join-requests" says={t.sso.waitingCount(waiting)} />;

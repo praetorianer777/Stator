@@ -282,10 +282,13 @@ export const TEMPLATE_DEFAULT_TODAY = "today";
 /** A variable's name as the API takes it; the form derives one from the label. */
 export const TEMPLATE_VARIABLE_NAME_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
 export const TEMPLATE_VARIABLE_NAME_MAX_LENGTH = 40;
-/** Where administrators keep the organization's templates, and make or change one. */
-export const TEMPLATES_PATH = "/settings/templates";
-export const TEMPLATE_NEW_PATH = "/settings/templates/new";
-export const TEMPLATE_EDIT_PATH = "/settings/templates/$templateKey";
+/** Where administrators keep the installation's templates, and make or change one. */
+export const TEMPLATES_PATH = "/admin/templates";
+export const TEMPLATE_NEW_PATH = "/admin/templates/new";
+export const TEMPLATE_EDIT_PATH = "/admin/templates/$templateKey";
+/** Where a space's administrators make or change one of its templates, below the space's settings. */
+export const SPACE_TEMPLATE_NEW_PATH = "/s/$spaceKey/settings/templates/new";
+export const SPACE_TEMPLATE_EDIT_PATH = "/s/$spaceKey/settings/templates/$templateKey";
 /** The picker's value for a space that starts blank; the API takes no template then. */
 export const BLANK_SPACE_TEMPLATE = "";
 /** What everyone may do in a blank space, matching the database's space_default_grants. */
@@ -487,7 +490,7 @@ export const ARMATURE_RETURN_MAX_LENGTH = 2000;
 /** Armature's own page for making tokens, under the connected Armature's address. */
 export const ARMATURE_TOKENS_PATH = "/settings/tokens";
 /** Where an administrator connects the organization's Armature. */
-export const ARMATURE_SETTINGS_PATH = "/settings/armature";
+export const ARMATURE_SETTINGS_PATH = "/admin/armature";
 /** Where the browser goes to connect an account with one click; the server sends it on to Armature's consent page. */
 export const ARMATURE_CONNECT_PATH = `${API_BASE}/armature/oauth/start`;
 /** The query parameter the server lands on the profile with, naming how a connect ended. */
@@ -515,13 +518,13 @@ export type ArmatureOutcome = (typeof ARMATURE_OUTCOMES)[number];
 export const ARMATURE_CLIENT_SECRET_PREFIX = "armature_ocs_";
 
 /** Where an administrator reads the organization's audit log. */
-export const AUDIT_PATH = "/settings/audit";
+export const AUDIT_PATH = "/admin/audit";
 /** Entries the audit log shows per page, within the API's 200; the export has the rest. */
 export const AUDIT_PAGE_SIZE = 50;
 /** Where the audit log is downloaded as a spreadsheet, under the API's base. */
 export const AUDIT_EXPORT_PATH = "/audit/export";
 /** Where an administrator keeps the organization's outbound webhooks. */
-export const WEBHOOKS_PATH = "/settings/webhooks";
+export const WEBHOOKS_PATH = "/admin/webhooks";
 /** The topic that takes every event, and the events a webhook may take, as the API lists them. */
 export const WEBHOOK_TOPIC_ANY = "*";
 export const WEBHOOK_TOPICS = ["page.published", "page.moved", "page.deleted", "comment.created", "page.remote_link.removed"] as const;
@@ -536,7 +539,7 @@ export const WEBHOOK_SIGNATURE_HEADER = "X-Stator-Signature-256";
 export const WEBHOOK_TIMESTAMP_HEADER = "X-Stator-Timestamp";
 export const WEBHOOK_TIMESTAMPED_SIGNATURE_HEADER = "X-Stator-Signature-Timestamped-256";
 /** Where administrators read which pages nobody opened or published for a while. */
-export const STALE_PATH = "/settings/stale";
+export const STALE_PATH = "/admin/stale";
 /** Pages the stale report shows per page, within the API's 100. */
 export const STALE_PAGE_SIZE = 25;
 /** The periods the stale report offers, in days; it starts at the API's own default. */
@@ -561,7 +564,7 @@ export const ARMATURE_FEATURE_CAPABILITIES = {
   webhooks: "webhooks@1",
 } as const;
 /** Where an administrator connects Exciter, and the anchor of a person's Exciter section in their profile. */
-export const EXCITER_SETTINGS_PATH = "/settings/exciter";
+export const EXCITER_SETTINGS_PATH = "/admin/exciter";
 export const EXCITER_SECTION_ID = "exciter";
 /** Exciter's own page for making tokens, under the connected Exciter's address. */
 export const EXCITER_TOKENS_PATH = "/settings/tokens";
@@ -880,21 +883,22 @@ export const CONNECTED_TOOLS = {
   armature: { name: "Armature", mark: "/tools/armature.webp" },
   exciter: { name: "Exciter", mark: "/tools/exciter.webp" },
 } as const;
-/** The settings area: every page under it trades the wiki's sidebar for the settings sidebar. */
+/** The settings area, the person's own pages: every page under it trades the wiki's sidebar for the settings sidebar. */
 export const SETTINGS_PATH = "/settings";
 export const NOTIFICATION_SETTINGS_PATH = "/settings/notifications";
 export const WATCHING_PATH = "/settings/watching";
 export const THEMES_PATH = "/settings/themes";
 export const TOKENS_PATH = "/settings/tokens";
+/** The Admin area, the installation's pages for its administrators. */
+export const ADMIN_PATH = "/admin";
 /** Roles, the matrix, members, groups and single sign-on, a tab each under this path. */
-export const ACCESS_PATH = "/settings/access";
-/** The addresses of before, which lead to the Access page's tab that took them in. */
-export const SSO_PATH = "/settings/sso";
-export const SITE_PERMISSIONS_PATH = "/settings/permissions";
-export const HUB_SETTINGS_PATH = "/settings/hub";
-export const BRAND_PATH = "/settings/brand";
-export const SITE_TRANSFER_PATH = "/settings/transfer";
-export const EXAMPLE_SPACE_PATH = "/settings/example-space";
+export const ACCESS_PATH = "/admin/access";
+export const INSTALLATION_PATH = "/admin/installation";
+export const USERS_PATH = "/admin/users";
+export const CONNECTED_APPS_PATH = "/admin/connected-apps";
+export const HUB_SETTINGS_PATH = "/admin/hub";
+export const SITE_TRANSFER_PATH = "/admin/transfer";
+export const EXAMPLE_SPACE_PATH = "/admin/example-space";
 /** Where the person goes back to from the settings area when nothing outside it was open in this tab. */
 export const SETTINGS_LEAVE_FALLBACK = "/";
 /** Keeps the last page outside the settings area for the tab, so "Back to Stator" survives a reload. */

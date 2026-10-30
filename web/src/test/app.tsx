@@ -44,11 +44,16 @@ export async function renderAt(path: string, { me = signedIn }: { me?: Me | null
   return router;
 }
 
-/** Opens a page of the settings area as a site administrator does: Settings in the avatar menu, then the page in the settings sidebar. */
-export async function viaSettings(name: string | RegExp) {
+/** Opens a page of the Admin area as an administrator does: Admin in the avatar menu, then the page in the Admin area's navigation. */
+export async function viaAdmin(name: string | RegExp) {
   await userEvent.click(screen.getByRole("button", { name: "Your account" }));
-  await userEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
-  await userEvent.click(within(await settingsSidebar()).getByRole("link", { name }));
+  await userEvent.click(await screen.findByRole("menuitem", { name: "Admin" }));
+  await userEvent.click(within(await adminNavigation()).getByRole("link", { name }));
+}
+
+/** The Admin area's navigation beside its pages. */
+export function adminNavigation() {
+  return screen.findByRole("navigation", { name: "Admin sections" });
 }
 
 /** The settings area's own sidebar. */

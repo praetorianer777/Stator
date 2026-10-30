@@ -37,7 +37,7 @@ export const permissionsDe: typeof permissionsEn = {
     "Sie sind angemeldet, aber noch erlaubt Ihnen keine Rolle, Stator hier zu nutzen. Bitten Sie einen Administrator, Ihnen unter Zugriff eine zu vergeben, und versuchen Sie es dann noch einmal.",
   noAccessRetry: "Erneut versuchen",
   noAccessSignOut: "Abmelden",
-  thisOrganization: "der Organisation",
+  thisOrganization: "der Installation",
 };
 
 export const permissionCopyDe: typeof permissionCopyEn = {
@@ -174,7 +174,7 @@ export const accessDe: typeof accessEn = {
 export const guestsDe: typeof guestsEn = {
   title: "Gäste",
   intro:
-    "Personen außerhalb der Organisation, die in diesem Bereich mitarbeiten und nirgends sonst. Sie melden sich mit der eingeladenen Adresse über Ihren Identitätsanbieter an und sehen diesen Bereich und die Personen darin, nie die anderen Bereiche oder die Personen der Organisation.",
+    "Personen außerhalb der Installation, die in diesem Bereich mitarbeiten und nirgends sonst. Sie melden sich mit der eingeladenen Adresse über Ihren Identitätsanbieter an und sehen diesen Bereich und die Personen darin, nie die anderen Bereiche oder die Personen der Installation.",
   inviteTitle: "Gast einladen",
   email: "E-Mail-Adresse",
   emailHint: "Die Adresse, mit der sich der Gast bei Ihrem Identitätsanbieter anmeldet.",

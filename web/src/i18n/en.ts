@@ -36,6 +36,7 @@ import { reviewEn, waitingReviewsEn } from "./reviews.en";
 import { editorEn, inlineValuesEn, devEditorEn } from "./editor.en";
 import { permissionsEn, permissionCopyEn, restrictionsEn, accessEn, guestsEn } from "./permissions.en";
 import { accessAdminEn } from "./access.en";
+import { adminEn } from "./admin.en";
 import { starEn } from "./stars.en";
 import { watchEn } from "./watching.en";
 import { stewardshipEn } from "./stewardship.en";
@@ -128,6 +129,7 @@ export const en = {
   star: starEn,
   access: accessEn,
   accessAdmin: accessAdminEn,
+  admin: adminEn,
   watch: watchEn,
   stewardship: stewardshipEn,
   notifications: notificationsEn,

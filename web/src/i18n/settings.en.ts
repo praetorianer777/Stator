@@ -4,9 +4,16 @@ export const settingsEn = {
   navigation: "Settings",
   backTo: "Back to Stator",
   you: "You",
-  site: "Settings",
   youIntro: "Your profile, how Stator tells you about changes, what you watch, your themes and your accounts in the other tools.",
-  siteIntro: "How the organization signs in, who may do what, and what it shares with the other tools. For administrators of the organization.",
+  places: {
+    profile: "Your name, picture, language and time zone.",
+    notifications: "What Stator tells you about, and whether by mail.",
+    watching: "The pages and spaces you follow, to stop following any of them.",
+    themes: "How Stator looks to you, and themes of your own.",
+    tokens: "Tokens that let a script, an assistant or another tool act as you, and the apps you connected.",
+    armature: "Your Armature account, so pages show your issues and you act in Armature from here.",
+    exciter: "Your Exciter account, so pages show your requirements.",
+  },
 };
 
 export const tokensEn = {
@@ -21,7 +28,7 @@ export const tokensEn = {
   readOnlyHint: "It reads everything you can and changes nothing.",
   spaces: "Spaces",
   spacesAll: "Every space you can reach. Pick some to limit this token to them.",
-  spacesSome: "This token reaches only the spaces picked here, never more than you can, and nothing that concerns the whole organization.",
+  spacesSome: "This token reaches only the spaces picked here, never more than you can, and nothing that concerns the whole installation.",
   reachesAll: "Every space you can reach",
   reachesOnly: (keys: string) => `Only ${keys}`,
   reachesNone: "No space any more: every one it named was deleted.",
@@ -79,7 +86,7 @@ export const oauthEn = {
   reachAll: "Every space you can see",
   reachAllHint: "Spaces you are given later included.",
   reachSome: "Only the spaces chosen here",
-  reachSomeHint: "Never more than you can see, and nothing that concerns the whole organization.",
+  reachSomeHint: "Never more than you can see, and nothing that concerns the whole installation.",
   spaces: "Spaces",
   spacesHint: "Choose the spaces it reaches.",
   spacesMissing: "Choose at least one space, or let it reach every space you can see.",

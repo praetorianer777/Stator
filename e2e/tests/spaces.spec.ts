@@ -64,7 +64,7 @@ test.describe("spaces", { tag: ["@auth"] }, () => {
     await expect(bob.locator('[data-action="new-space"]')).toHaveCount(0);
     await bob.goto(`/s/${key}/settings`);
     await expect(
-      bob.getByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the organization."),
+      bob.getByText("Only an administrator of this space can change its details. Ask one of them, or an administrator of the installation."),
     ).toBeVisible();
     await expect(bob.locator('[data-action="delete-space"]')).toHaveCount(0);
   });

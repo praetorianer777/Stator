@@ -3,7 +3,7 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { ageExample } from "../fixtures/testapi";
 import { ONE_LOOK, openUntil } from "../fixtures/replica";
-import { expectAccessible } from "../fixtures/shell";
+import { expectAccessible, openAdminPage } from "../fixtures/shell";
 import { deleteSpace } from "../fixtures/spaces";
 
 const KEY = "STATOR";
@@ -66,7 +66,7 @@ test.describe("the example space", { tag: ["@auth"] }, () => {
     await expect(bob.getByRole("link", { name: "Getting to know Stator" })).toBeVisible();
     await expect(bob.locator('[data-action="create-example-space"]')).toHaveCount(0);
 
-    await page.goto("/settings/example-space");
+    await openAdminPage(page, "example-space-settings");
     await expect(page.locator("[data-example-exists]")).toContainText("Getting to know Stator");
     await page.locator('[data-action="create-example-space"]').click();
     await expect(page.locator("[data-example-exists]")).toContainText("The example space exists already");

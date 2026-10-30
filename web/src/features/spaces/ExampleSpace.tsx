@@ -11,7 +11,7 @@ import {
   useRenewExampleSpace,
 } from "@/api/exampleSpace";
 import type { Space } from "@/api/spaces";
-import { Page, PageHeader, Button, EmptyState, ErrorBanner, Segmented, Skeleton } from "@/components/ui";
+import { Page, PageHeader, Button, ErrorBanner, Segmented, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { EXAMPLE_SPACE_GIVE_UP_MS, EXAMPLE_SPACE_SLOW_MS } from "@/config";
 import { PageLink } from "@/features/pages/PageLink";
@@ -111,18 +111,9 @@ export function ExampleSpaceButton() {
   );
 }
 
-/** The organization settings' page for the example space. */
+/** The Admin page for the example space; the Admin area lets only administrators in. */
 export function ExampleSpaceSettings() {
-  const admin = useCanAdministerSite();
-  const { query, make, run, found, underWay, failure, note } = useMakeExample(admin);
-  if (!admin) {
-    return (
-      <Page width="narrow">
-        <PageHeader title={t.exampleSpace.title} />
-        <EmptyState icon={<Icon.Lock />} title={t.exampleSpace.title} description={t.exampleSpace.notAdmin} />
-      </Page>
-    );
-  }
+  const { query, make, run, found, underWay, failure, note } = useMakeExample(true);
   const shown = found ?? query.data?.space ?? undefined;
   return (
     <Page width="narrow" className="space-y-4" data-example-space-settings="">

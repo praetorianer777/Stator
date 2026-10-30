@@ -5,7 +5,7 @@ export const staleEn = {
   title: "Stale pages",
   intro: (days: number) =>
     `Published pages nobody has published again or opened for at least ${days} days, the longest untouched first. Check each one, then bring it up to date, verify it, or move it to the trash.`,
-  notAdmin: "Only administrators of a space, or of the organization, read which pages went stale. Ask one of them to check your space.",
+  notAdmin: "Only administrators of a space, or of the installation, read which pages went stale. Ask one of them to check your space.",
   filters: "Filter the stale pages",
   space: "Space",
   everySpace: "Every space you administer",

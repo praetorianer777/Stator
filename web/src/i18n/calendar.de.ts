@@ -25,7 +25,7 @@ export const calendarDe: typeof calendarEn = {
     "Dieser Monat hat mehr Termine, als eine Ansicht zeigt, daher fehlen seine letzten. Verschieben Sie einige in einen anderen Kalender, um alle zu sehen.",
   issues: {
     connect: "Verbinden Sie Ihr Armature-Konto, um die in diesem Monat fälligen Vorgänge zu sehen.",
-    notConfigured: "Ihre Organisation hat Armature nicht verbunden, daher werden keine Vorgänge gezeigt.",
+    notConfigured: "Ihre Installation hat Armature nicht verbunden, daher werden keine Vorgänge gezeigt.",
     unreachable: "Armature hat nicht geantwortet, daher fehlen die fälligen Vorgänge. Laden Sie die Seite neu, um es erneut zu versuchen.",
     failed: "Die in diesem Monat fälligen Vorgänge konnten nicht gelesen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
     truncated: "Armature hat einige Vorgänge dieses Monats ausgelassen.",

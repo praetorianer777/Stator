@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useDeleteTemplate, useTemplates, type Template } from "@/api/templates";
 import { EmptyState, ErrorBanner, IconButton, Skeleton, Table, Td, Th, useToast } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { TEMPLATE_EDIT_PATH, TEMPLATE_NEW_PATH } from "@/config";
+import { SPACE_TEMPLATE_EDIT_PATH, SPACE_TEMPLATE_NEW_PATH, TEMPLATE_EDIT_PATH, TEMPLATE_NEW_PATH } from "@/config";
 import { t } from "@/i18n";
 import { useConfirm } from "@/features/shell/ConfirmProvider";
 
@@ -10,7 +10,7 @@ const linkButton =
   "inline-flex h-8 items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3 text-sm font-medium text-ink no-underline hover:bg-surface-raised";
 
 /**
- * The templates of the organization, or of one space, with a way to make,
+ * The templates of the installation, or of one space, with a way to make,
  * change and delete them for whoever keeps them.
  */
 export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit: boolean }) {
@@ -35,7 +35,11 @@ export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit
           {spaceKey ? t.templates.spaceList : t.templates.siteList}
         </h2>
         {canEdit && (
-          <Link to={TEMPLATE_NEW_PATH} search={spaceKey ? { space: spaceKey } : {}} className={linkButton} data-action="new-template">
+          <Link
+            {...(spaceKey ? { to: SPACE_TEMPLATE_NEW_PATH, params: { spaceKey } } : { to: TEMPLATE_NEW_PATH })}
+            className={linkButton}
+            data-action="new-template"
+          >
             <Icon.Plus />
             {t.templates.newTemplate}
           </Link>
@@ -71,8 +75,9 @@ export function TemplateList({ spaceKey, canEdit }: { spaceKey?: string; canEdit
                   {tpl.canEdit && (
                     <div className="flex justify-end gap-1">
                       <Link
-                        to={TEMPLATE_EDIT_PATH}
-                        params={{ templateKey: tpl.key }}
+                        {...(spaceKey
+                          ? { to: SPACE_TEMPLATE_EDIT_PATH, params: { spaceKey, templateKey: tpl.key } }
+                          : { to: TEMPLATE_EDIT_PATH, params: { templateKey: tpl.key } })}
                         aria-label={t.templates.edit(tpl.name)}
                         className="inline-flex size-8 items-center justify-center rounded-control text-ink-muted hover:bg-surface-raised hover:text-ink"
                         data-action="edit-template"

@@ -156,7 +156,7 @@ describe("the installation's members", () => {
         },
       },
     });
-    await renderAt("/settings/access/members");
+    await renderAt("/admin/access/members");
     const row = (await screen.findByText("Gwen Guest")).closest("tr")!;
     expect(row).toHaveAttribute("data-member", gwen.email);
     expect(within(row).getByText("Guest", { selector: "[data-member-role]" })).toBeInTheDocument();

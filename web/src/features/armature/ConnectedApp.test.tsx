@@ -189,9 +189,9 @@ describe("a connect hint where Armature offers connected apps", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection() } },
       "GET /armature/account": { status: 200, body: { account: account() } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     const hint = await screen.findByRole("link", { name: "Connect your own account" });
-    await waitFor(() => expect(hint).toHaveAttribute("href", `${START}?return=%2Fsettings%2Farmature`));
+    await waitFor(() => expect(hint).toHaveAttribute("href", `${START}?return=%2Fadmin%2Farmature`));
     expect(hint).toHaveAttribute("data-one-click");
     expect(screen.getByText(/connects their own Armature account with one click/)).toBeInTheDocument();
   });
@@ -209,7 +209,7 @@ describe("the connected app, for administrators", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
     expect(screen.getByLabelText("Return address")).toHaveValue("http://stator.test/api/v1/armature/oauth/callback");
     expect(await axeViolations()).toEqual([]);
@@ -235,7 +235,7 @@ describe("the connected app, for administrators", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     await user.type(await screen.findByLabelText("Client id"), "abc");
     await user.type(screen.getByLabelText("Client secret"), "hunter2");
     await user.click(screen.getByRole("button", { name: "Save app" }));
@@ -254,7 +254,7 @@ describe("the connected app, for administrators", () => {
       },
     });
     const user = userEvent.setup();
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText(/waits for an Armature administrator to allow it/)).toBeInTheDocument();
     expect(screen.getByText(/Stator registered itself/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Client id")).toBeNull();
@@ -269,7 +269,7 @@ describe("the connected app, for administrators", () => {
       "GET /armature/connection": { status: 200, body: { connection: connection({ offered: false }) } },
       "GET /armature/account": { status: 200, body: { account: account({}, { offered: false }) } },
     });
-    await renderAt("/settings/armature");
+    await renderAt("/admin/armature");
     expect(await screen.findByText("This Armature does not offer connected apps, so members paste a token.")).toBeInTheDocument();
   });
 });

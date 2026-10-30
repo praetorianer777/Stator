@@ -6,9 +6,16 @@ export const settingsDe: typeof settingsEn = {
   navigation: "Einstellungen",
   backTo: "Zurück zu Stator",
   you: "Sie",
-  site: "Einstellungen",
   youIntro: "Ihr Profil, wie Stator Ihnen Änderungen meldet, was Sie beobachten, Ihre Designs und Ihre Konten in den anderen Werkzeugen.",
-  siteIntro: "Wie sich die Organisation anmeldet, wer was darf und was sie mit den anderen Werkzeugen teilt. Für Administratoren der Organisation.",
+  places: {
+    profile: "Ihr Name, Ihr Bild, Ihre Sprache und Ihre Zeitzone.",
+    notifications: "Worüber Stator Sie benachrichtigt, und ob per E-Mail.",
+    watching: "Die Seiten und Bereiche, denen Sie folgen, um einzelnen nicht mehr zu folgen.",
+    themes: "Wie Stator für Sie aussieht, und eigene Designs.",
+    tokens: "Tokens, mit denen ein Skript, ein Assistent oder ein anderes Werkzeug in Ihrem Namen handelt, und die Apps, die Sie verbunden haben.",
+    armature: "Ihr Armature-Konto, damit Seiten Ihre Vorgänge zeigen und Sie von hier aus in Armature handeln.",
+    exciter: "Ihr Exciter-Konto, damit Seiten Ihre Anforderungen zeigen.",
+  },
 };
 
 export const tokensDe: typeof tokensEn = {
@@ -23,7 +30,7 @@ export const tokensDe: typeof tokensEn = {
   readOnlyHint: "Es liest alles, was Sie lesen können, und ändert nichts.",
   spaces: "Bereiche",
   spacesAll: "Alle Bereiche, die Sie erreichen. Wählen Sie welche aus, um dieses Token auf sie zu beschränken.",
-  spacesSome: "Dieses Token erreicht nur die hier gewählten Bereiche, nie mehr als Sie, und nichts, was die ganze Organisation betrifft.",
+  spacesSome: "Dieses Token erreicht nur die hier gewählten Bereiche, nie mehr als Sie, und nichts, was die ganze Installation betrifft.",
   reachesAll: "Alle Bereiche, die Sie erreichen",
   reachesOnly: (keys: string) => `Nur ${keys}`,
   reachesNone: "Kein Bereich mehr: Alle, die es nannte, wurden gelöscht.",
@@ -83,7 +90,7 @@ export const oauthDe: typeof oauthEn = {
   reachAll: "Jeder Bereich, den Sie sehen können",
   reachAllHint: "Auch Bereiche, die Sie später erhalten.",
   reachSome: "Nur die hier gewählten Bereiche",
-  reachSomeHint: "Nie mehr, als Sie sehen können, und nichts, was die ganze Organisation betrifft.",
+  reachSomeHint: "Nie mehr, als Sie sehen können, und nichts, was die ganze Installation betrifft.",
   spaces: "Bereiche",
   spacesHint: "Wählen Sie die Bereiche, die sie erreicht.",
   spacesMissing: "Wählen Sie mindestens einen Bereich, oder lassen Sie sie jeden Bereich erreichen, den Sie sehen können.",

@@ -92,7 +92,7 @@ export const exciterEn = {
     /** The account, as the dialog that asks before disconnecting names it. */
     thing: "your Exciter account",
     intro: "Connect your Exciter account so pages show you the requirements you may see in Exciter.",
-    notConfigured: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Settings, Exciter.",
+    notConfigured: "Stator is not connected to Exciter yet. Ask an administrator to connect it under Admin, Exciter.",
     steps: "In Exciter, open Your account, then Access tokens, and make a token; a read-only one is enough. Then paste it here.",
     openTokens: "Open Exciter's access tokens",
     returns: "Once Exciter accepts the token, you go back to the page you came from.",
@@ -159,7 +159,7 @@ export const exciterEn = {
     caption: (project: string, query: string) => (query ? `Exciter requirements in ${project} matching ${query}` : `Exciter requirements in ${project}`),
     columns: { key: "Key", title: "Title", status: "Status", revision: "Revision" },
     loading: "Loading the requirements from Exciter.",
-    notConfigured: "Your organization has not connected Exciter, so this list shows no requirements.",
+    notConfigured: "Your installation has not connected Exciter, so this list shows no requirements.",
     connect: "Connect your Exciter account to see the requirements this list finds.",
     connectLink: "Connect your account",
     noProject: "This list names no Exciter project. Edit it and pick one.",

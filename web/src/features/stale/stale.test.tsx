@@ -115,9 +115,9 @@ describe("the stale content report", () => {
     expect(within(screen.getByLabelText("Owner")).getByRole("option", { name: "Carl Owner" })).toBeInTheDocument();
   });
 
-  it("starts in the space a space's settings link to", async () => {
-    const { queries } = report();
-    await renderAt(`${STALE_PATH}?space=docs`);
+  it("starts in the space whose settings it lies below", async () => {
+    const { queries } = report({ "GET /spaces/DOCS": { status: 200, body: { space: aSpace() } } });
+    await renderAt("/s/DOCS/settings/stale");
     await screen.findByRole("table");
     expect(queries[0]?.get("space")).toBe("DOCS");
     expect(screen.getByLabelText("Space")).toHaveValue("DOCS");
@@ -145,15 +145,16 @@ describe("the stale content report", () => {
     expect(screen.getByText("Every page here was published or opened within the period.")).toBeInTheDocument();
   });
 
-  it("tells a member who administers nothing whom to ask", async () => {
+  it("tells a member who administers nothing whom to ask, below a space's settings", async () => {
     report({
+      "GET /spaces/DOCS": { status: 200, body: { space: aSpace() } },
       "GET /stale-pages": {
         status: 403,
         body: { error: { code: "forbidden", message: "Only administrators of a space, or of the organization, can read which of its pages went stale." } },
       },
     });
-    await renderAt(STALE_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } } });
-    expect(await screen.findByText(/Only administrators of a space, or of the organization, read which pages went stale/)).toBeInTheDocument();
+    await renderAt("/s/DOCS/settings/stale", { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } } });
+    expect(await screen.findByText(/Only administrators of a space, or of the installation, read which pages went stale/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });
 
