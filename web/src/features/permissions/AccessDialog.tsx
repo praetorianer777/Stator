@@ -50,7 +50,7 @@ export function stepSentence(step: AccessStep, report: Pick<AccessReport, "role"
 export function AccessDialog({ pageId, pageTitle, onClose }: { pageId: string; pageTitle: string; onClose: () => void }) {
   const [person, setPerson] = useState<Subject>();
   return (
-    <Dialog title={t.access.title(pageTitle)} wide onClose={onClose} data-access-dialog={pageId}>
+    <Dialog open title={t.access.title(pageTitle)} onClose={onClose} size="lg" attrs={{ "data-access-dialog": pageId }}>
       <div className="space-y-4">
         <p className="text-sm text-ink-muted">{t.access.intro}</p>
         <SubjectPicker label={t.access.pickerLabel} peopleOnly inline onPick={setPerson} />

@@ -2,6 +2,7 @@ import {
   ARMATURE_CHART_DEFAULT_DAYS,
   ARMATURE_CHART_GROUPINGS,
   ARMATURE_CHART_MAX_SLICES,
+  CHART_SLOTS,
   ARMATURE_QUERY_MAX_LENGTH,
   type ArmatureChartGrouping,
 } from "@/config";
@@ -52,6 +53,14 @@ export interface Slice {
   /** Set on the slice that holds what did not get one of its own. */
   other?: boolean;
 }
+
+/** The colour of a series by its place, from the suite's six chart tokens. */
+export function chartColor(index: number): string {
+  return `var(--color-chart-${(index % CHART_SLOTS) + 1})`;
+}
+
+/** The slice that holds the rest, drawn in a neutral that no series wears. */
+export const CHART_OTHER_COLOR = "var(--color-border-strong)";
 
 /**
  * The slices a pie draws: the largest first, at most max, the rest in one

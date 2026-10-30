@@ -43,7 +43,7 @@ function Figures({ heading, viewCount, readerCount, ...rest }: { heading: string
 export function PageViewsDialog({ pageId, onClose }: { pageId: string; onClose: () => void }) {
   const { data, error, refetch } = usePageViews(pageId);
   return (
-    <Dialog title={t.views.title} onClose={onClose} data-page-views-dialog="">
+    <Dialog open title={t.views.title} onClose={onClose} attrs={{ "data-page-views-dialog": "" }}>
       {error && <ErrorBanner onRetry={() => void refetch()}>{t.views.failed}</ErrorBanner>}
       {!data && !error && <Skeleton />}
       {data && (

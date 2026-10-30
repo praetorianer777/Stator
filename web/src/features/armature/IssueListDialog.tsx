@@ -95,7 +95,7 @@ export function IssueListDialog({
   else if (check.data || check.isError) checkText = d.cannotCheck;
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-issue-list-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} size="lg" attrs={{ "data-issue-list-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Labelled id={queryId} label={d.query} hint={d.queryHint} error={problems.query}>
           <Textarea

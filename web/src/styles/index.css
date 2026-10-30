@@ -11,6 +11,10 @@
 /* KaTeX's fonts come along the same way, so a formula needs no third party either. */
 @import "katex/dist/katex.min.css";
 
+/* A window with room for a dialog to pin its title and buttons and still show
+ * the form between them; shorter, they scroll along with it. */
+@custom-variant tall (@media (min-height: 420px));
+
 /* Design tokens: the Clay identity. Armature's docs/design/01-tokens.md is the table
  * these values come from.
  *
@@ -142,35 +146,11 @@
  * first follows the system when nothing was chosen, the second is the explicit
  * choice, which overrides the system in both directions. */
 @layer theme {
-  /* Chart series, in a fixed order checked for colour blindness against the
-   * light surface; a chart takes them in turn and never by rank. Outside
-   * @theme, since a chart names its slots by number and Tailwind would keep
-   * only the ones it finds written out. */
-  :root {
-    --chart-1: #2a78d6;
-    --chart-2: #eb6834;
-    --chart-3: #1baf7a;
-    --chart-4: #eda100;
-    --chart-5: #e87ba4;
-    --chart-6: #008300;
-    --chart-7: #4a3aa7;
-    --chart-8: #e34948;
-    --chart-other: #a8a29a;
-  }
   :root[data-theme="dark"],
   :root:not([data-theme="light"]) {
     @media (prefers-color-scheme: dark) {
       --color-canvas: #14171c;
       --color-surface: #1a1e24;
-      --chart-1: #3987e5;
-      --chart-2: #d95926;
-      --chart-3: #199e70;
-      --chart-4: #c98500;
-      --chart-5: #d55181;
-      --chart-6: #008300;
-      --chart-7: #9085e9;
-      --chart-8: #e66767;
-      --chart-other: #6f6a62;
       --color-surface-raised: #222731;
       --color-surface-sunken: #0f1216;
       --color-surface-overlay: #262c36;
@@ -222,15 +202,6 @@
   :root[data-theme="dark"] {
     --color-canvas: #14171c;
     --color-surface: #1a1e24;
-    --chart-1: #3987e5;
-    --chart-2: #d95926;
-    --chart-3: #199e70;
-    --chart-4: #c98500;
-    --chart-5: #d55181;
-    --chart-6: #008300;
-    --chart-7: #9085e9;
-    --chart-8: #e66767;
-    --chart-other: #6f6a62;
     --color-surface-raised: #222731;
     --color-surface-sunken: #0f1216;
     --color-surface-overlay: #262c36;

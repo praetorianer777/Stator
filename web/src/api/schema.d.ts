@@ -7319,6 +7319,7 @@ export interface components {
             /** @enum {string} */
             locale?: "" | "en" | "de";
             showInReaders?: boolean;
+            timezone?: string;
         };
         UpdatedPage: {
             authorName: string;
@@ -7339,6 +7340,7 @@ export interface components {
             locale: "" | "en" | "de";
             name: string;
             showInReaders: boolean;
+            timezone: string;
         };
         Variable: {
             default: string;

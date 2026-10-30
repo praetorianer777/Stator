@@ -178,7 +178,7 @@ export function RequirementListDialog({
   };
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-requirement-list-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} size="lg" attrs={{ "data-requirement-list-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Labelled id={projectId} label={d.project} hint={choices ? undefined : d.projectHint} error={problems.project} className="max-w-sm">
           {choices ? (

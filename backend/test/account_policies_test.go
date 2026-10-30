@@ -86,11 +86,11 @@ func TestAccountsSignInsAndJoinRequestsAreHeldByTheDatabase(t *testing.T) {
 
 		var timezone, email string
 		var active bool
-		if err := h.super.QueryRow(ctx, `SELECT o.timezone, o.is_active, m.email FROM app_user o, app_user m WHERE o.id = $1 AND m.id = $2`,
+		if err := h.super.QueryRow(ctx, `SELECT COALESCE(o.timezone, ''), o.is_active, m.email FROM app_user o, app_user m WHERE o.id = $1 AND m.id = $2`,
 			otherID, memberID).Scan(&timezone, &active, &email); err != nil {
 			t.Fatal(err)
 		}
-		if timezone != "UTC" || !active || email == taken {
+		if timezone != "" || !active || email == taken {
 			t.Errorf("a member changed accounts: timezone %q, active %v, address %q", timezone, active, email)
 		}
 		if n := h.countRows(t, `SELECT count(*) FROM oidc_login WHERE state = $1 AND redirect = ''`, state); n != 1 {

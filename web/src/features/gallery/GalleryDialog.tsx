@@ -82,7 +82,7 @@ export function GalleryDialog({
   const move = (from: number, to: number) => setPictures((was) => movePicture(was, from, to));
 
   return (
-    <Dialog title={isNew ? g.titleNew : g.titleEdit} wide onClose={onClose} data-gallery-dialog="">
+    <Dialog open title={isNew ? g.titleNew : g.titleEdit} onClose={onClose} size="lg" attrs={{ "data-gallery-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {!pageId ? (
           <p className="text-sm text-ink-muted">{g.unsaved}</p>

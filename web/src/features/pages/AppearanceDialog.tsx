@@ -132,7 +132,7 @@ export function AppearanceDialog({ page, onClose }: { page: Page; onClose: () =>
   };
 
   return (
-    <Dialog title={a.dialog} onClose={onClose} data-appearance-dialog="">
+    <Dialog open title={a.dialog} onClose={onClose} attrs={{ "data-appearance-dialog": "" }}>
       <form
         className="space-y-4"
         noValidate

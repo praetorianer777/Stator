@@ -1,0 +1,36 @@
+import type { shortcutsEn } from "./shortcuts.en";
+
+/** The German strings of space shortcuts, held to the English shape. */
+export const shortcutsDe: typeof shortcutsEn = {
+  sidebar: "Verknüpfungen",
+  opensNewTab: "(öffnet in einem neuen Tab)",
+  intro:
+    "Verknüpfungen stehen über dem Seitenbaum, einen Klick entfernt für alle, die den Bereich lesen. Eine Verknüpfung zu einer Seite sehen nur Personen, die diese Seite öffnen dürfen.",
+  notAdmin: "Nur ein Administrator dieses Bereichs kann Verknüpfungen hinzufügen, verschieben oder entfernen. Fragen Sie einen von ihnen.",
+  list: "Verknüpfungen dieses Bereichs",
+  empty: "Noch keine Verknüpfungen.",
+  emptyAdmin: "Noch keine Verknüpfungen. Fügen Sie unten eine Seite oder eine Webadresse hinzu.",
+  addTitle: "Verknüpfung hinzufügen",
+  kind: "Verknüpfung zu",
+  kindPage: "Einer Seite",
+  kindLink: "Einer Webadresse",
+  space: "Bereich",
+  page: "Seite",
+  loadingPages: "Die Seiten des Bereichs werden geladen.",
+  url: "Adresse",
+  urlHint: "Beginnt mit https:// oder http://.",
+  label: "Bezeichnung",
+  labelPageHint: "Lassen Sie sie leer, um den Titel der Seite zu zeigen.",
+  labelLinkHint: "Lassen Sie sie leer, um den Namen der Website zu zeigen.",
+  add: "Verknüpfung hinzufügen",
+  added: (name: string) => `${name} hinzugefügt.`,
+  moveUp: (name: string) => `${name} nach oben verschieben`,
+  moveDown: (name: string) => `${name} nach unten verschieben`,
+  remove: (name: string) => `${name} entfernen`,
+  moved: (name: string, position: number, total: number) => `${name} steht jetzt an Stelle ${position} von ${total}.`,
+  removed: (name: string) => `${name} entfernt.`,
+  full: (max: number) => `Dieser Bereich hat ${max} Verknüpfungen, so viele wie möglich. Entfernen Sie eine, um eine weitere hinzuzufügen.`,
+  badUrl: "Eine Adresse beginnt mit https:// oder http://, zum Beispiel https://example.com.",
+  pageIn: (space: string) => `Seite in ${space}`,
+  link: "Webadresse",
+};

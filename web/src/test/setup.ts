@@ -53,6 +53,18 @@ if (!globalThis.localStorage) {
   }
 }
 
+// jsdom has no ResizeObserver, which the kit's overlays watch their size with.
+// This one never calls back, as jsdom lays nothing out to report; a test that
+// needs sizes installs its own.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  class StillResizeObserver implements ResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  Object.defineProperty(globalThis, "ResizeObserver", { value: StillResizeObserver, writable: true });
+}
+
 // The page's AbortSignal is jsdom's, which Node's Request refuses outright, so a
 // query that hands its signal to a request would fail in every test. Tests
 // answer every request from a stub, so there is nothing for the signal to abort.

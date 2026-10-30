@@ -14,7 +14,7 @@ export function LinkCardDialog({ onInsert, onClose }: { onInsert: (url: string) 
   const problem = tried && !url ? l.invalid : undefined;
   const fieldId = `${id}-url`;
   return (
-    <Dialog title={l.dialog} onClose={onClose} data-link-card-dialog="">
+    <Dialog open title={l.dialog} onClose={onClose} attrs={{ "data-link-card-dialog": "" }}>
       <form
         noValidate
         className="space-y-3"

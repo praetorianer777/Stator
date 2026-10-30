@@ -238,11 +238,11 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await expect(row(page, name)).toHaveAttribute("data-theme-default", "true");
 
     const bob = await pageAs("bob");
-    await openShowing(bob, THEMES_PATH, bob.getByText(`You are using ${name}, the organization's default.`));
+    await openShowing(bob, THEMES_PATH, bob.getByText(`You are using ${name}, everyone's default.`));
     await expect(customStyle(bob)).toBeAttached();
 
     await bob.locator('[data-action="built-in-theme"]').click();
-    await expect(bob.getByText(`You are using the built-in theme, over the organization's default ${name}.`)).toBeVisible();
+    await expect(bob.getByText(`You are using the built-in theme, over everyone's default ${name}.`)).toBeVisible();
     await expect(customStyle(bob)).toHaveCount(0);
 
     await rowAction(page, name, "share-theme");

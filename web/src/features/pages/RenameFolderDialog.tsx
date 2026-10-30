@@ -22,7 +22,7 @@ export function RenameFolderDialog({ folder, onClose }: { folder: Page; onClose:
   }
 
   return (
-    <Dialog title={t.page.renameTitle(folder.title)} onClose={onClose} data-rename-dialog="">
+    <Dialog open title={t.page.renameTitle(folder.title)} onClose={onClose} attrs={{ "data-rename-dialog": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         {rename.error && <ErrorBanner>{rename.error.message}</ErrorBanner>}
         <Field

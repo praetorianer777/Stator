@@ -53,7 +53,7 @@ export function PlaceDialog({ page, mode, onClose, onDone }: { page: PlacedPage;
   }
 
   return (
-    <Dialog title={moving ? t.page.moveTitle(page.title) : t.page.copyTitle(page.title)} onClose={onClose} data-place-dialog={mode}>
+    <Dialog open title={moving ? t.page.moveTitle(page.title) : t.page.copyTitle(page.title)} onClose={onClose} attrs={{ "data-place-dialog": mode }}>
       <form onSubmit={submit} className="space-y-3">
         {error && <ErrorBanner>{error.message}</ErrorBanner>}
         <Select label={t.page.space} value={spaceKey} onChange={(event) => setSpaceKey(event.target.value)}>

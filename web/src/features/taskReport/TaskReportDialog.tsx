@@ -43,7 +43,7 @@ export function TaskReportDialog({
 
   const listed = people.data?.people ?? [];
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} data-task-report-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} attrs={{ "data-task-report-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Select label={d.space} value={space} onChange={(event) => setSpace(event.target.value)}>
           <option value="">{d.everySpace}</option>

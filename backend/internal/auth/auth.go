@@ -27,6 +27,8 @@ type Principal struct {
 	// Locale is the language the person chose for the interface; empty
 	// means the browser's.
 	Locale Locale
+	// Timezone is the zone the person chose for their dates; empty means the browser's.
+	Timezone string
 	// ShowInReaders says the person's name appears among a page's readers.
 	ShowInReaders bool
 	// SiteName is the site's display name, empty for a person who is no member.

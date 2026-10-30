@@ -82,7 +82,7 @@ describe("choosing the language", () => {
     expect(applyLanguage("de")).toBe("de");
     expect(language()).toBe("de");
     expect(t).toBe(de);
-    expect(t.common.close).toBe("Schließen");
+    expect(t.kit.close).toBe("Schließen");
     expect(document.documentElement.lang).toBe("de");
     expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("de");
 

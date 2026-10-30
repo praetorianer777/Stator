@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "../icons";
 import { cx } from "./cx";
 import { focusables, useAnchored, useEscape, useOutsidePress, type AnchoredSide } from "./overlay";
 
@@ -9,9 +10,13 @@ export interface MenuItem {
   onSelect?: () => void;
   /** Makes the item a link, so the browser's own open in a new tab works on it. */
   href?: string;
+  /** Sets the item apart from those above it by a line, without a heading. */
+  separated?: boolean;
   icon?: ReactNode;
   danger?: boolean;
   disabled?: boolean;
+  /** Makes the item one of a set to pick from, such as a language, marked when it is the one picked. */
+  checked?: boolean;
   /** Forwarded to the item, for the attributes tests read. */
   attrs?: Record<string, string>;
 }
@@ -24,6 +29,11 @@ export interface MenuGroup {
 }
 
 export type MenuEntry = MenuItem | MenuGroup;
+
+/** Whether an entry is a group of items rather than one item. */
+export function isMenuGroup(entry: MenuEntry): entry is MenuGroup {
+  return "group" in entry;
+}
 
 const ITEM_CLASS =
   "flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-sm focus:bg-surface-raised focus-visible:-outline-offset-2 aria-disabled:cursor-not-allowed aria-disabled:opacity-50";
@@ -143,6 +153,11 @@ export function Menu({
     const className = cx(ITEM_CLASS, item.danger ? "text-danger hover:bg-danger-subtle" : "text-ink hover:bg-surface-raised");
     const content = (
       <>
+        {item.checked !== undefined && (
+          <span className="size-4 text-accent [&_svg]:size-4" aria-hidden="true">
+            {item.checked && <Icon.Check />}
+          </span>
+        )}
         {item.icon && <span className="text-ink-muted [&_svg]:size-4 [&_img]:size-4">{item.icon}</span>}
         {item.label}
       </>
@@ -169,7 +184,8 @@ export function Menu({
       <button
         key={key}
         type="button"
-        role="menuitem"
+        role={item.checked === undefined ? "menuitem" : "menuitemradio"}
+        aria-checked={item.checked}
         // aria-disabled rather than disabled keeps the item in the
         // arrow order, so the reader learns it exists.
         aria-disabled={item.disabled || undefined}
@@ -204,15 +220,18 @@ export function Menu({
             {header}
             <div id={listId} role="menu" aria-label={label}>
               {items.map((entry, i) =>
-                "group" in entry ? (
-                  <div key={i} role="group" aria-labelledby={`${listId}-${i}`} className="mt-1 border-t border-border pt-1" {...entry.attrs}>
-                    <div id={`${listId}-${i}`} className="px-2 pt-1 pb-0.5 text-2xs font-medium text-ink-subtle">
+                isMenuGroup(entry) ? (
+                  <div key={i} role="group" aria-labelledby={`${listId}-${i}`} className={cx(i > 0 && "mt-1 border-t border-border pt-1")} {...entry.attrs}>
+                    <div id={`${listId}-${i}`} className="px-2 pt-1 pb-0.5 text-2xs font-semibold text-ink-subtle" data-menu-group={entry.group}>
                       {entry.group}
                     </div>
                     {entry.items.map((item, j) => renderItem(item, j))}
                   </div>
                 ) : (
-                  renderItem(entry, i)
+                  <Fragment key={i}>
+                    {entry.separated && i > 0 && <div role="separator" className="my-1 border-t border-border" />}
+                    {renderItem(entry, i)}
+                  </Fragment>
                 ),
               )}
             </div>

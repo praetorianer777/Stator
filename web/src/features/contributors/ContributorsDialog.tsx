@@ -26,7 +26,7 @@ export function ContributorsDialog({
   }
 
   return (
-    <Dialog title={d.title} onClose={onClose} data-contributors-dialog="">
+    <Dialog open title={d.title} onClose={onClose} attrs={{ "data-contributors-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Select label={d.scope} value={scope} onChange={(event) => setScope(event.target.value as ContributorScope)}>
           {CONTRIBUTOR_SCOPES.map((choice) => (

@@ -65,7 +65,12 @@ export function PublishDialog({
   ];
 
   return (
-    <Dialog title={review ? t.review.submitTitle(title) : t.draft.publishTitle(title)} onClose={onClose} data-publish-dialog={review ? "review" : ""}>
+    <Dialog
+      open
+      title={review ? t.review.submitTitle(title) : t.draft.publishTitle(title)}
+      onClose={onClose}
+      attrs={{ "data-publish-dialog": review ? "review" : "" }}
+    >
       <form onSubmit={submit} className="space-y-3" noValidate>
         {review && (
           <p className="text-sm text-ink-muted" data-review-submit-note="">

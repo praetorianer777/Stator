@@ -424,6 +424,8 @@ func toAPIError(err error) *APIError {
 			Message: "Stator is not set up yet. Ask its operator to run seed bootstrap.", cause: err}
 	case errors.Is(err, auth.ErrBadLocale):
 		return ErrValidation(map[string]string{"locale": "Choose English, German, or the language of your browser."})
+	case errors.Is(err, auth.ErrBadTimezone):
+		return ErrValidation(map[string]string{"timezone": "Choose a time zone from the list, or the one of your browser."})
 	case errors.Is(err, auth.ErrNoSuchRequest):
 		return ErrNotFound("That person is not waiting to be let in. Reload the list; somebody may have answered already.")
 	case errors.Is(err, auth.ErrNoSuchMember):

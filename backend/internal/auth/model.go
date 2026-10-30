@@ -83,6 +83,9 @@ type User struct {
 	// Locale is the interface language the person chose, "en" or "de"; empty
 	// means the browser's.
 	Locale Locale `json:"locale"`
+	// Timezone is the IANA zone the person's dates are written in, such as
+	// Europe/Berlin; empty means the browser's.
+	Timezone string `json:"timezone"`
 	// ShowInReaders says editors of the pages the person reads see their
 	// name among its readers; they are counted either way.
 	ShowInReaders bool `json:"showInReaders"`
@@ -118,6 +121,8 @@ var (
 	ErrUserInactive = errors.New("account is deactivated")
 	// ErrBadLocale is returned for a language the interface does not speak.
 	ErrBadLocale = errors.New("choose a language from the list")
+	// ErrBadTimezone is returned for a zone the database of zones does not know.
+	ErrBadTimezone = errors.New("choose a time zone from the list")
 	// ErrNoSuchMember is returned when the person named is not a member here.
 	ErrNoSuchMember = errors.New("that person is not a member of this organization")
 	// ErrOwnerStays is returned when somebody tries to remove the owner, who

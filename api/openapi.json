@@ -31361,6 +31361,9 @@
           },
           "showInReaders": {
             "type": "boolean"
+          },
+          "timezone": {
+            "type": "string"
           }
         }
       },
@@ -31423,6 +31426,9 @@
           },
           "showInReaders": {
             "type": "boolean"
+          },
+          "timezone": {
+            "type": "string"
           }
         },
         "required": [
@@ -31430,6 +31436,7 @@
           "email",
           "name",
           "locale",
+          "timezone",
           "showInReaders"
         ]
       },

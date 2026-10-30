@@ -63,7 +63,7 @@ function CopyDialog({ space, onClose, onCopied }: { space: Space; onClose: () =>
   }
 
   return (
-    <Dialog title={t.permissionCopy.title(space.name)} wide onClose={onClose} data-permission-copy-dialog="">
+    <Dialog open title={t.permissionCopy.title(space.name)} onClose={onClose} size="lg" attrs={{ "data-permission-copy-dialog": "" }}>
       <div className="space-y-4">
         {spaces.error && <ErrorBanner onRetry={() => void spaces.refetch()}>{spaces.error.message}</ErrorBanner>}
         {spaces.data && sources.length === 0 ? (

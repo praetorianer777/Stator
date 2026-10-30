@@ -84,7 +84,7 @@ type SitePerson struct {
 	Ref           string  `json:"ref"`
 	Name          string  `json:"name"`
 	Email         string  `json:"email"`
-	Timezone      string  `json:"timezone"`
+	Timezone      *string `json:"timezone"`
 	Locale        *string `json:"locale"`
 	Active        bool    `json:"active"`
 	ShowInReaders bool    `json:"showInReaders"`

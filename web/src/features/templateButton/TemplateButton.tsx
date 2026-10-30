@@ -126,7 +126,7 @@ function AskValues({
   }
 
   return (
-    <Dialog title={t.templateButton.fillIn(found.template.name)} onClose={onClose} data-template-button-values="">
+    <Dialog open title={t.templateButton.fillIn(found.template.name)} onClose={onClose} attrs={{ "data-template-button-values": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? banner}</ErrorBanner>}
         <TemplateValues variables={variables} values={values} onChange={setValues} parentId={found.parent.id} errors={fields} />

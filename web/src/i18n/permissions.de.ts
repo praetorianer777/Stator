@@ -1,0 +1,216 @@
+import type { permissionsEn, permissionCopyEn, restrictionsEn, accessEn, guestsEn } from "./permissions.en";
+
+/** The German strings of permissions, restrictions and guests, held to the English shape. */
+export const permissionsDe: typeof permissionsEn = {
+  everyone: "Alle",
+  everyoneDetail: "Alle Mitglieder, die die Organisation nutzen dürfen",
+  group: "Gruppe",
+  person: "Person",
+  members: (n: number) => (n === 1 ? "1 Mitglied" : `${n} Mitglieder`),
+  you: "Sie",
+  remove: (name: string) => `${name} entfernen`,
+  removeColumn: "Entfernen",
+  pickerLabel: "Person oder Gruppe hinzufügen",
+  pickerPlaceholder: "Namen oder E-Mail eingeben",
+  pickerEmpty: "Niemand mit diesem Namen.",
+  pickerOptions: "Personen und Gruppen",
+  pickerLoading: "Suche läuft",
+  added: (name: string) => `${name} hinzugefügt.`,
+  save: "Änderungen speichern",
+  discard: "Änderungen verwerfen",
+  saved: "Gespeichert.",
+  unsaved: "Sie haben Änderungen, die nicht gespeichert sind.",
+  siteTitle: "Berechtigungen",
+  siteIntro:
+    "Was Personen in der gesamten Organisation tun dürfen. Was sie in einem Bereich dürfen, steht in dessen Einstellungen, und einzelne Seiten lassen sich weiter einschränken.",
+  globalNames: { use: "Stator nutzen", createSpace: "Bereiche anlegen", administer: "Organisation verwalten" },
+  globalHints: {
+    use: "Die Bereiche und Seiten lesen, zu denen sie Zugang haben. Ohne diese Berechtigung sieht, wer sich anmeldet, nur einen Hinweis auf fehlenden Zugang.",
+    createSpace: "Neue Bereiche anlegen und die selbst angelegten Bereiche verwalten. Administratoren der Organisation können das immer.",
+    administer: "Jede Einstellung, jeden Bereich und jede Berechtigung ändern. Folgt den Rollen Inhaber und Administrator.",
+  },
+  globalEmpty: "Niemand außer den Administratoren.",
+  fixedNote: "Dies folgt den Rollen der Mitglieder der Organisation. Ändern Sie eine Rolle unter Single Sign-on.",
+  fixedLink: "Single Sign-on öffnen",
+  notSiteAdmin: "Nur ein Administrator der Organisation kann ihre Berechtigungen sehen und ändern.",
+  spaceIntro:
+    "Wer in diesem Bereich was tun darf. Jede Berechtigung schließt Ansehen ein, und Verwalten schließt alle ein. Administratoren der Organisation dürfen in jedem Bereich alles.",
+  spaceGrid: "Berechtigungen in diesem Bereich",
+  columnWho: "Wer",
+  spaceNames: { view: "Ansehen", addPages: "Seiten hinzufügen", addComments: "Kommentieren", delete: "Löschen", administer: "Verwalten" },
+  spaceHints: {
+    view: "Den Bereich und seine Seiten lesen.",
+    addPages: "Seiten schreiben, bearbeiten, verschieben, kopieren und veröffentlichen, Versionen wiederherstellen und Dateien anhängen.",
+    addComments: "Seiten kommentieren.",
+    delete: "Seiten in den Papierkorb verschieben und zurückholen sowie Dateien anderer löschen.",
+    administer: "Einstellungen und Berechtigungen des Bereichs ändern, Kommentare anderer löschen, den Papierkorb leeren und den Bereich löschen.",
+  },
+  cell: (who: string, permission: string) => `${who}: ${permission}`,
+  implied: "Enthalten in einer Berechtigung weiter rechts.",
+  spaceEmpty: "Hier ist niemandem etwas gewährt, daher können nur Administratoren der Organisation diesen Bereich öffnen.",
+  rowDropped: "Eine Zeile ohne Häkchen wird beim Speichern entfernt.",
+  notSpaceAdmin: "Nur ein Administrator dieses Bereichs kann sehen und ändern, wer darin was tun darf.",
+  noAccessTitle: (org: string) => `Sie haben keinen Zugang zu ${org}`,
+  noAccessBody:
+    "Sie sind angemeldet, aber niemand hat Ihnen bisher erlaubt, Stator hier zu nutzen. Bitten Sie einen Administrator, Sie unter Berechtigungen hinzuzufügen, und versuchen Sie es dann noch einmal.",
+  noAccessRetry: "Erneut versuchen",
+  noAccessSignOut: "Abmelden",
+  thisOrganization: "der Organisation",
+};
+
+export const permissionCopyDe: typeof permissionCopyEn = {
+  open: "Aus einem anderen Bereich kopieren",
+  intro: "Beginnen Sie mit den Berechtigungen eines anderen Bereichs, den Sie verwalten. Sie sehen jede Änderung, bevor etwas gespeichert wird.",
+  saveFirst: "Speichern oder verwerfen Sie Ihre Änderungen oben, bevor Sie kopieren.",
+  title: (space: string) => `Berechtigungen nach ${space} kopieren`,
+  source: "Kopieren aus",
+  sourcePlaceholder: "Bereich wählen",
+  noSources: "Sie verwalten keinen anderen Teambereich, aus dem Sie kopieren könnten.",
+  mode: "Wie kopieren",
+  modes: { replace: "Ersetzen", merge: "Zusammenführen" },
+  modeHints: {
+    replace:
+      "Die Berechtigungen dieses Bereichs werden die des anderen. Wen der andere Bereich nicht nennt, verliert, was er hier hat; Gäste dieses Bereichs behalten ihres.",
+    merge: "Fügt hinzu, was der andere Bereich gewährt und dieser nicht, und erweitert, was jemand hat. Niemand verliert etwas.",
+  },
+  loading: "Änderungen werden ermittelt",
+  table: "Änderungen an den Berechtigungen dieses Bereichs",
+  columnWho: "Wer",
+  columnChange: "Änderung",
+  columnBefore: "Jetzt",
+  columnAfter: "Nach dem Kopieren",
+  kinds: { added: "Hinzugefügt", widened: "Erweitert", narrowed: "Eingeschränkt", changed: "Geändert", removed: "Entfernt" },
+  nothing: "Nichts",
+  anonymous: "Alle ohne Anmeldung",
+  guest: "Gast",
+  noChanges: "Dieser Bereich gewährt all das schon, Kopieren ändert also nichts.",
+  summary: (changes: number, unchanged: number) =>
+    `${changes === 1 ? "1 Änderung" : `${changes} Änderungen`}, ${unchanged === 1 ? "1 unverändert" : `${unchanged} unverändert`}.`,
+  skippedTitle: "Nicht kopiert",
+  skippedGuest: (name: string) => `${name} ist Gast des anderen Bereichs, und ein Gast gehört zu dem einen Bereich, in den er eingeladen wurde.`,
+  keptTitle: "Bleiben, wie sie sind",
+  keptGuest: (name: string) => `${name} ist Gast dieses Bereichs und behält, was er hat.`,
+  restrictionsNote: "Einschränkungen einzelner Seiten werden nicht kopiert.",
+  noAdministrator:
+    "Nach dieser Kopie hätte der Bereich keinen Administrator mehr, deshalb kann sie nicht angewendet werden. Führen Sie stattdessen zusammen, oder geben Sie vorher jemandem im anderen Bereich das Recht zu verwalten.",
+  apply: "Berechtigungen kopieren",
+  cancel: "Abbrechen",
+  copied: (space: string) => `Die Berechtigungen von ${space} wurden kopiert.`,
+};
+
+export const restrictionsDe: typeof restrictionsEn = {
+  menu: "Einschränkungen",
+  title: (page: string) => `Einschränkungen für ${page}`,
+  indicator: "Eingeschränkt",
+  indicatorView: "Nur manche Personen können diese Seite ansehen",
+  indicatorEdit: "Nur manche Personen können diese Seite bearbeiten",
+  showWhy: "Zeigen, wer diese Seite ansehen und bearbeiten kann",
+  treeView: "eingeschränkt",
+  intro: "Listen engen ein, was der Bereich erlaubt. Wer zugreifen will, muss jede Liste auf dieser Seite und auf allen Seiten darüber passieren.",
+  viewTitle: "Wer ansehen kann",
+  editTitle: "Wer bearbeiten kann",
+  viewOpen: "Alle, die den Bereich ansehen können.",
+  editOpen: "Alle, die im Bereich Seiten hinzufügen können.",
+  viewHint: "Nur diese Personen und Gruppen sehen diese Seite und die Seiten darunter.",
+  editHint:
+    "Nur diese Personen und Gruppen bearbeiten diese Seite und die Seiten darunter. Wer auf dieser Liste steht, kommt deshalb nicht an der Ansehen-Liste vorbei.",
+  homeNoView:
+    "Die Startseite sehen alle, die den Bereich ansehen können. Um Personen aus dem ganzen Bereich herauszuhalten, ändern Sie die Berechtigungen des Bereichs.",
+  addMe: "Sich selbst hinzufügen",
+  inheritedTitle: "Von Seiten darüber",
+  inheritedNone: "Keine Seite über dieser ist eingeschränkt.",
+  inheritedFrom: (title: string) => `Von ${title}`,
+  inheritedView: "Ansehen",
+  inheritedEdit: "Bearbeiten",
+  inheritedOpen: "Nicht eingeschränkt",
+  inheritedGrant: "Auch bearbeiten",
+  grantTitle: "Darf außerdem bearbeiten",
+  grantHint:
+    "Diese Personen und Gruppen bearbeiten diese Seite und die Seiten darunter, obwohl sie im Bereich keine Seiten hinzufügen dürfen. Sie müssen die Seite trotzdem ansehen dürfen und jede Bearbeiten-Liste darüber passieren; Seiten hinzufügen, verschieben und löschen bleibt bei den Berechtigungen des Bereichs.",
+  grantOpen: "Sonst niemand.",
+  grantAdminsOnly: "Nur Administratoren des Bereichs ändern diese Liste.",
+  cannotEdit: "Kann nicht bearbeiten",
+  cannotEditMembers: (n: number) => (n === 1 ? "1 Mitglied kann nicht bearbeiten" : `${n} Mitglieder können nicht bearbeiten`),
+  cannotEditNote:
+    "Die Markierten können nicht bearbeiten, weil sie im Bereich keine Seiten hinzufügen dürfen. Fügen Sie sie unten bei Darf außerdem bearbeiten hinzu, oder geben Sie ihnen in den Berechtigungen des Bereichs Seiten hinzufügen.",
+  cannotEditAsk:
+    "Die Markierten können nicht bearbeiten, weil sie im Bereich keine Seiten hinzufügen dürfen. Bitten Sie einen Administrator des Bereichs, sie bei Darf außerdem bearbeiten hinzuzufügen oder ihnen Seiten hinzufügen zu geben.",
+  adminNote: "Administratoren des Bereichs und der Organisation passieren diese Listen immer.",
+  readOnly: "Nur wer diese Seite bearbeiten kann, kann ihre Einschränkungen ändern.",
+  save: "Einschränkungen speichern",
+  cancel: "Abbrechen",
+  close: "Schließen",
+  lockedOut:
+    "Wenn Sie das speichern, sperren Sie sich selbst aus der Seite aus. Fügen Sie sich oder eine Ihrer Gruppen beiden Listen hinzu, oder bitten Sie einen Administrator des Bereichs um die Änderung.",
+  saved: "Einschränkungen gespeichert.",
+};
+
+export const accessDe: typeof accessEn = {
+  menu: "Zugriff prüfen",
+  title: (page: string) => `Wer was auf ${page} darf`,
+  intro: "Wählen Sie eine Person, um zu sehen, was sie auf dieser Seite darf und welche Berechtigung oder Einschränkung jede Antwort entscheidet.",
+  pickerLabel: "Zu prüfende Person",
+  pickerPlaceholder: "Namen oder E-Mail-Adresse eingeben",
+  pickerOptions: "Personen",
+  loading: "Wird geprüft",
+  heading: (name: string) => `Was ${name} darf`,
+  rights: { view: "Ansehen", edit: "Bearbeiten", delete: "In den Papierkorb verschieben", comment: "Kommentieren" },
+  allowed: "Erlaubt",
+  denied: "Nicht erlaubt",
+  passed: "Erfüllt",
+  failed: "Nicht erfüllt",
+  decides: "Das entscheidet",
+  grantedTo: "Gewährt an",
+  namedAs: "Genannt als",
+  listNames: "Die Liste nennt",
+  nobody: "Niemanden",
+  orgAdmin: (owner: boolean) =>
+    owner
+      ? "Besitzt die Organisation und hat damit jede Berechtigung in jedem Bereich und passiert jede Liste."
+      : "Administriert die Organisation und hat damit jede Berechtigung in jedem Bereich und passiert jede Liste.",
+  fromProvider: "Diese Rolle kommt aus den Gruppen des Identitätsanbieters.",
+  useYes: "Darf Stator nutzen.",
+  useNo: "Darf Stator nicht nutzen. Ein Administrator kann das unter Berechtigungen gewähren.",
+  spaceYes: (permission: string) => `Hat in diesem Bereich die Berechtigung ${permission}.`,
+  spaceNo: (permission: string) =>
+    `Hat in diesem Bereich die Berechtigung ${permission} nicht. Gewähren Sie sie der Person oder einer ihrer Gruppen in den Berechtigungen des Bereichs.`,
+  unpublished: (title: string) => `${title} ist noch nicht veröffentlicht, daher sehen nur die Autorin oder der Autor sie und die Seiten darunter.`,
+  listYes: (kind: "view" | "edit", title: string) => `Steht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}.`,
+  listBypassed: (kind: "view" | "edit", title: string) =>
+    `Steht nicht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}, aber Administratoren des Bereichs passieren jede Liste.`,
+  listNo: (kind: "view" | "edit", title: string) =>
+    `Steht nicht auf der ${kind === "view" ? "Ansehen" : "Bearbeiten"}-Liste von ${title}. Fügen Sie die Person oder eine ihrer Gruppen in den Einschränkungen dieser Seite hinzu.`,
+  grantYes: (title: string) => `Darf ${title} und die Seiten darunter bearbeiten, obwohl der Bereich keine Seiten hinzufügen erlaubt.`,
+  viewYes: "Darf die Seite ansehen.",
+  viewNo: "Darf die Seite nicht ansehen und daher auch sonst nichts mit ihr tun.",
+  publishedNo: "Die Seite ist noch nicht veröffentlicht. Kommentare sind möglich, sobald sie es ist.",
+  homeNo:
+    "Die Startseite eines Bereichs kann nicht in den Papierkorb verschoben werden. Um sie zu entfernen, löschen Sie den ganzen Bereich in seinen Einstellungen.",
+  archivedPage: (title: string) =>
+    `${title} ist mit allen Seiten darunter archiviert, daher ändert niemand sie. Ein Administrator des Bereichs kann ${title} zuerst aus dem Archiv holen.`,
+  archivedSpace:
+    "Der ganze Bereich ist archiviert, daher ändert niemand seine Seiten. Ein Administrator des Bereichs kann den Bereich zuerst in seinen Einstellungen aus dem Archiv holen.",
+};
+
+export const guestsDe: typeof guestsEn = {
+  title: "Gäste",
+  intro:
+    "Personen außerhalb der Organisation, die in diesem Bereich mitarbeiten und nirgends sonst. Sie melden sich mit der eingeladenen Adresse über Ihren Identitätsanbieter an und sehen diesen Bereich und die Personen darin, nie die anderen Bereiche oder die Personen der Organisation.",
+  inviteTitle: "Gast einladen",
+  email: "E-Mail-Adresse",
+  emailHint: "Die Adresse, mit der sich der Gast bei Ihrem Identitätsanbieter anmeldet.",
+  role: "Darf",
+  roleNames: { viewer: "Lesen", commenter: "Lesen und kommentieren", editor: "Lesen, kommentieren und bearbeiten", none: "Nichts" } as Record<string, string>,
+  invite: "Gast einladen",
+  invited: (email: string) => `${email} kann sich jetzt in diesem Bereich anmelden.`,
+  empty: "Dieser Bereich hat keine Gäste.",
+  columnGuest: "Gast",
+  columnRole: "Darf",
+  remove: "Entfernen",
+  removeWho: (name: string) => `${name} entfernen`,
+  confirmRemove: (name: string) => `${name} entfernen? Die Person kann sich dann hier nicht mehr anmelden, bis Sie sie wieder einladen.`,
+  confirm: "Entfernen",
+  cancel: "Abbrechen",
+  removed: (name: string) => `${name} wurde entfernt.`,
+  guestOf: (space: string) => `Gast in ${space}`,
+};

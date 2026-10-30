@@ -57,7 +57,7 @@ export function IssueChartDialog({
 
   const queryId = `${id}-query`;
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-issue-chart-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} size="lg" attrs={{ "data-issue-chart-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Select
           label={d.project}

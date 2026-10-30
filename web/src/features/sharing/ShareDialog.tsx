@@ -31,7 +31,7 @@ export function shareError(error: Error): string {
 export function ShareDialog({ page, onClose }: { page: Page; onClose: () => void }) {
   const [sent, setSent] = useState<Share>();
   return (
-    <Dialog title={t.share.title(page.title)} onClose={onClose} data-share-dialog={page.id}>
+    <Dialog open title={t.share.title(page.title)} onClose={onClose} attrs={{ "data-share-dialog": page.id }}>
       {sent ? <Sent share={sent} onClose={onClose} /> : <Compose page={page} onClose={onClose} onSent={setSent} />}
       <div className="mt-4">
         <PublicLinks pageId={page.id} />

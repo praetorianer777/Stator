@@ -385,7 +385,7 @@ export function AnnotateDialog({
           onClick={() => setHistory(redo)}
           data-action="annotate-redo"
         />
-        <IconButton icon={<Icon.X />} label={t.common.close} size="sm" onClick={requestClose} data-focus-last="" data-action="annotate-close" />
+        <IconButton icon={<Icon.X />} label={t.kit.close} size="sm" onClick={requestClose} data-focus-last="" data-action="annotate-close" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">

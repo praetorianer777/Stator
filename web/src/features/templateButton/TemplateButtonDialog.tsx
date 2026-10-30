@@ -51,7 +51,7 @@ export function TemplateButtonDialog({
   }
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} data-template-button-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} attrs={{ "data-template-button-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {templates.isError && <ErrorBanner>{t.page.templatesFailed}</ErrorBanner>}
         <Select label={d.template} value={template} onChange={(event) => setTemplate(event.target.value)} error={error}>

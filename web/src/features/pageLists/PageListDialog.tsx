@@ -58,7 +58,7 @@ export function PageListDialog(props: Props) {
 
   const title = kind === "labelled" ? (isNew ? d.labelledNew : d.labelledEdit) : isNew ? d.updatedNew : d.updatedEdit;
   return (
-    <Dialog title={title} onClose={onClose} data-page-list-dialog={kind}>
+    <Dialog open title={title} onClose={onClose} attrs={{ "data-page-list-dialog": kind }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         {kind === "labelled" && (
           <>

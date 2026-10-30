@@ -52,7 +52,7 @@ export function EventDialog({ calendarId, day, event, onClose }: { calendarId: s
   }
 
   return (
-    <Dialog title={event ? e.titleEdit : e.titleNew} onClose={onClose} data-calendar-event-dialog="">
+    <Dialog open title={event ? e.titleEdit : e.titleNew} onClose={onClose} attrs={{ "data-calendar-event-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field
           label={e.title}

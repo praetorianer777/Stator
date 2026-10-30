@@ -127,7 +127,7 @@ export function CreateIssuesDialog({
   const n = kept.length;
 
   return (
-    <Dialog title={c.title(plan.items.length)} onClose={onClose} wide data-create-issues-dialog="">
+    <Dialog open title={c.title(plan.items.length)} onClose={onClose} size="lg" attrs={{ "data-create-issues-dialog": "" }}>
       {result ? (
         <div className="space-y-3">
           <p role="status" className="text-sm text-ink">

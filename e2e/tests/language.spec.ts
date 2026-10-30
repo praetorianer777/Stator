@@ -8,6 +8,8 @@ import { expectAccessible, openShell } from "../fixtures/shell";
 const PROFILE_PATH = "/settings/profile";
 const TOKENS_PATH = "/settings/tokens";
 const LANGUAGE_FIELD = { en: "Interface language", de: "Sprache der Oberfläche" };
+const TIMEZONE_FIELD = { en: "Time zone", de: "Zeitzone" };
+const SAVE = { en: "Save", de: "Speichern" };
 const PROFILE_TITLE = { en: "Your profile", de: "Ihr Profil" };
 /** A medium date as German writes it, day first and dotted: 02.11.2026. */
 const GERMAN_DATE = /\b\d{2}\.\d{2}\.\d{4}\b/;
@@ -37,14 +39,22 @@ test.describe("the interface language", { tag: "@desktop" }, () => {
     await expectProfileIn(page, "en");
 
     await page.getByLabel(LANGUAGE_FIELD.en, { exact: true }).selectOption("de");
+    await page.getByRole("button", { name: SAVE.en, exact: true }).click();
     await expectProfileIn(page, "de");
-    await expect(page.locator("[data-language-saved]")).toHaveText("Ihre Sprache ist gespeichert.");
+    await expect(page.locator("[data-language-saved]")).toHaveText("Ihre Sprache und Zeitzone sind gespeichert.");
     await expect(page.getByRole("button", { name: "Ihr Konto" })).toBeVisible();
     await expectAccessible(page);
 
     await page.reload();
     await expectProfileIn(page, "de");
     await expect(page.getByLabel(LANGUAGE_FIELD.de, { exact: true })).toHaveValue("de");
+
+    await page.getByLabel(`Suchen: ${TIMEZONE_FIELD.de}`, { exact: true }).fill("Tokyo");
+    await page.getByLabel(TIMEZONE_FIELD.de, { exact: true }).selectOption("Asia/Tokyo");
+    await page.getByRole("button", { name: SAVE.de, exact: true }).click();
+    await expect(page.locator("[data-language-saved]")).toHaveText("Ihre Sprache und Zeitzone sind gespeichert.");
+    await page.reload();
+    await expect(page.getByLabel(TIMEZONE_FIELD.de, { exact: true })).toHaveValue("Asia/Tokyo");
 
     await openShell(page, TOKENS_PATH);
     await expect(page.getByRole("heading", { level: 1, name: "Persönliche Zugriffstokens" })).toBeVisible();
@@ -78,6 +88,7 @@ test.describe("the interface language", { tag: "@desktop" }, () => {
       await expectAccessible(page);
 
       await field.selectOption("en");
+      await page.getByRole("button", { name: SAVE.de, exact: true }).click();
       await expectProfileIn(page, "en");
       await expectAccessible(page);
 

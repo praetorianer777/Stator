@@ -1,0 +1,21 @@
+/** The English strings of page views. */
+export const viewsEn = {
+  title: "Page views",
+  views: (n: number, shown: string) => (n === 1 ? "1 view" : `${shown} views`),
+  people: (n: number, shown: string) => (n === 1 ? "1 person" : `${shown} people`),
+  open: (views: string, people: string) => `${views} by ${people}. Show the page views.`,
+  inAll: "In all",
+  lately: (days: number) => `Last ${days} days`,
+  howCounted: "A view counts each person once a day, however often they open the page.",
+  readers: "Who read it",
+  readersIntro: (days: number) => `People who opened the page in the last ${days} days, the latest first.`,
+  readersIntroForever: "People who opened the page, the latest first.",
+  lastOpened: (day: string) => `Last opened ${day}`,
+  onDays: (n: number) => (n === 1 ? "on 1 day" : `on ${n} days`),
+  unnamed: (n: number) => (n === 1 ? "1 more person chose not to be named." : `${n} more people chose not to be named.`),
+  noReaders: "Nobody opened the page in this period.",
+  more: "Show more",
+  editorsOnly: "Only people who may edit this page see who read it.",
+  yourChoice: "Whether your own name is shown is up to you, in your profile.",
+  failed: "The page views could not be loaded. Try again in a moment.",
+};

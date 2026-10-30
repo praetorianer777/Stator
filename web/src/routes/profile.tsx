@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createRoute, useRouter, useRouterState } from "@tanstack/react-router";
-import { useMe, useSetLanguage } from "@/api/auth";
+import { useMe, useSaveReading } from "@/api/auth";
 import { useSetShowInReaders } from "@/api/pageviews";
-import { Avatar, Card, ErrorBanner, PageHeader, SectionTitle, Select, Switch } from "@/components/ui";
+import { Avatar, Button, Card, ErrorBanner, Labelled, PageHeader, SearchPicker, SectionTitle, Select, Switch } from "@/components/ui";
 import { AccountSection } from "@/features/armature/AccountSection";
 import { announceReturn, safeReturn } from "@/features/armature/connectLink";
 import { ExciterAccountSection } from "@/features/exciter/AccountSection";
@@ -13,9 +13,11 @@ import {
   ARMATURE_SECTION_ID,
   EXCITER_SECTION_ID,
   PROFILE_PATH,
+  TIME_ZONE_MATCHES_MAX,
   type ArmatureOutcome,
 } from "@/config";
 import { browserLanguage, isLanguage, LANGUAGES, resolveLanguage, t, useLanguage, type LanguageChoice } from "@/i18n";
+import { browserTimeZone, isTimeZone, timeZone, timeZones } from "@/lib/format";
 import { appRoute } from "./app";
 import { settingsCrumb } from "@/features/settings/SettingsHome";
 
@@ -73,7 +75,7 @@ function ProfilePage() {
           </Card>
         </section>
       )}
-      {me && <LanguageSection choice={me.user.locale} />}
+      {me && <ReadingSection language={me.user.locale} zone={me.user.timezone} />}
       {me && <PrivacySection shown={me.user.showInReaders} />}
       <AccountSection focusToken={hash === ARMATURE_SECTION_ID && !outcome} onReturn={goBack} returnTo={back} outcome={outcome} />
       <ExciterAccountSection focusToken={hash === EXCITER_SECTION_ID} onReturn={goBackFromExciter} />
@@ -112,54 +114,116 @@ function PrivacySection({ shown }: { shown: boolean }) {
   );
 }
 
-// A new language draws the page again from scratch, so the notice that the
-// choice was saved has to outlive the component that made it.
+/** A zone as a person reads it: America/New York rather than America/New_York. */
+function zoneName(zone: string): string {
+  return zone.replace(/_/g, " ");
+}
+
+// The zones whose name holds what was typed, a few at most, with the chosen one
+// among them so the select can show it; nothing typed lists only the choice.
+function zoneMatches(words: string, chosen: string): string[] {
+  const wanted = words.trim().toLowerCase().replace(/_/g, " ");
+  const found = wanted
+    ? timeZones()
+        .filter((zone) => zoneName(zone).toLowerCase().includes(wanted))
+        .slice(0, TIME_ZONE_MATCHES_MAX)
+    : [];
+  return chosen && !found.includes(chosen) ? [chosen, ...found] : found;
+}
+
+// A new language or zone draws the page again from scratch, so the notice that
+// the choice was saved has to outlive the component that made it.
 let savedNotice = false;
 
-function LanguageSection({ choice }: { choice: LanguageChoice }) {
+/** The language and the time zone, chosen together and kept by one Save. */
+function ReadingSection({ language, zone }: { language: LanguageChoice; zone: string }) {
   const active = useLanguage();
-  const save = useSetLanguage();
+  const save = useSaveReading();
+  const [choice, setChoice] = useState<LanguageChoice>(language);
+  const [chosenZone, setChosenZone] = useState(zone);
+  const [zoneWords, setZoneWords] = useState("");
   const [saved, setSaved] = useState(savedNotice);
   useEffect(() => {
     savedNotice = false;
   }, []);
+  const zones = zoneMatches(zoneWords, chosenZone);
+  const previewZone = isTimeZone(chosenZone) ? chosenZone : browserTimeZone();
+  const preview = new Intl.DateTimeFormat(resolveLanguage(choice), { dateStyle: "medium", timeStyle: "short", timeZone: previewZone }).format(new Date());
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    setSaved(false);
+    savedNotice = resolveLanguage(choice) !== active || (isTimeZone(chosenZone) ? chosenZone : browserTimeZone()) !== timeZone();
+    save.mutate(
+      { locale: choice, timezone: chosenZone },
+      {
+        onSuccess: () => setSaved(true),
+        onError: () => {
+          savedNotice = false;
+        },
+      },
+    );
+  }
+
   return (
     <section aria-labelledby="profile-language" className="space-y-3" data-profile-language="">
       <SectionTitle id="profile-language">{t.profile.language}</SectionTitle>
-      <Card className="space-y-3 p-4">
-        <p className="text-sm text-ink-muted">{t.profile.languageIntro}</p>
-        {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
-        <Select
-          id="field-language"
-          label={t.profile.languageField}
-          value={choice}
-          disabled={save.isPending}
-          onChange={(event) => {
-            const next: LanguageChoice = isLanguage(event.target.value) ? event.target.value : "";
-            setSaved(false);
-            savedNotice = resolveLanguage(next) !== active;
-            save.mutate(next, {
-              onSuccess: () => setSaved(true),
-              onError: () => {
-                savedNotice = false;
-              },
-            });
-          }}
-          data-field="language"
-        >
-          <option value="">{t.profile.languageBrowser(t.languages[browserLanguage()])}</option>
-          {LANGUAGES.map((each) => (
-            <option key={each} value={each} lang={each}>
-              {t.languages[each]}
-            </option>
-          ))}
-        </Select>
-        {active !== "en" && <p className="text-sm text-ink-subtle">{t.profile.languageBoundary}</p>}
-        {saved && (
-          <p role="status" className="text-sm text-ink-muted" data-language-saved="">
-            {t.profile.languageSaved}
+      <Card className="p-4">
+        <form onSubmit={submit} className="space-y-3" noValidate>
+          <p className="text-sm text-ink-muted">{t.profile.languageIntro}</p>
+          {save.error && <ErrorBanner>{save.error.message}</ErrorBanner>}
+          <Select
+            id="field-language"
+            label={t.profile.languageField}
+            value={choice}
+            disabled={save.isPending}
+            onChange={(event) => {
+              setSaved(false);
+              setChoice(isLanguage(event.target.value) ? event.target.value : "");
+            }}
+            data-field="language"
+          >
+            <option value="">{t.profile.languageBrowser(t.languages[browserLanguage()])}</option>
+            {LANGUAGES.map((each) => (
+              <option key={each} value={each} lang={each}>
+                {t.languages[each]}
+              </option>
+            ))}
+          </Select>
+          <Labelled id="field-timezone" label={t.profile.timezoneField}>
+            <SearchPicker
+              id="field-timezone"
+              aria-label={t.profile.timezoneField}
+              value={chosenZone}
+              onChange={(zone) => {
+                setSaved(false);
+                setChosenZone(zone);
+              }}
+              words={zoneWords}
+              onWords={setZoneWords}
+              options={zones.map((each) => ({ value: each, label: zoneName(each) }))}
+              leading={<option value="">{t.profile.timezoneBrowser(zoneName(browserTimeZone()))}</option>}
+              placeholder={t.profile.timezoneSearch}
+              nothing={zoneWords.trim() && zones.every((each) => each === chosenZone) ? t.profile.timezoneNone : undefined}
+              disabled={save.isPending}
+              controlSize="md"
+            />
+          </Labelled>
+          <p className="text-sm text-ink-muted" data-format-preview="">
+            {t.profile.preview(preview)}
           </p>
-        )}
+          {active !== "en" && <p className="text-sm text-ink-subtle">{t.profile.languageBoundary}</p>}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" loading={save.isPending} data-action="save-reading">
+              {t.profile.save}
+            </Button>
+            {saved && (
+              <p role="status" className="text-sm text-ink-muted" data-language-saved="">
+                {t.profile.languageSaved}
+              </p>
+            )}
+          </div>
+        </form>
       </Card>
     </section>
   );

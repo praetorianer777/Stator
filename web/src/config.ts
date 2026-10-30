@@ -46,6 +46,37 @@ export const ICON_STROKE = 1.5;
 
 /** The gap between a menu's trigger and its list, in pixels. */
 export const MENU_GAP_PX = 4;
+/** The suite's chart palette has six colours, --color-chart-1 to 6; a chart never draws more series than that. */
+export const CHART_SLOTS = 6;
+/** The tallest a menu, popover or list of suggestions grows before it scrolls, in pixels. */
+export const POPOVER_MAX_HEIGHT_PX = 560;
+/** The least room a menu or popover leaves between itself and the window's edge, in pixels. */
+export const POPOVER_EDGE_PX = 8;
+/** How far down the window a dialog starts, in percent of its height. */
+export const DIALOG_TOP_VH = 12;
+/** The room a dialog leaves below itself once scrolled to its end, in pixels. */
+export const DIALOG_BOTTOM_PX = 16;
+/** How wide a drawer or a docked panel opens from the right, in pixels. */
+export const DRAWER_WIDTH = 704;
+/** How wide a drawer that shows a document opens, such as a preview or a review, in pixels. */
+export const DOCUMENT_DRAWER_WIDTH = 1024;
+/** A list's search box waits this long after the last key before it asks the server. */
+export const LIST_SEARCH_DELAY_MS = 250;
+/** A typed date's year below this is one still being typed, such as 0002 on the way to 2026. */
+export const MIN_DATE_YEAR = 1000;
+/** How far a callout sits from the element it points at. */
+export const SPOTLIGHT_GAP_PX = 8;
+/** The callout's width, the room it reserves below the element, and the ring around the element. */
+export const SPOTLIGHT_WIDTH_PX = 320;
+export const SPOTLIGHT_HEIGHT_PX = 120;
+export const SPOTLIGHT_RING_PX = 4;
+/** How long the callout waits for its element to appear after a navigation. */
+export const SPOTLIGHT_WAIT_MS = 3000;
+/** The largest count a badge writes out; more reads as this with a plus. */
+export const COUNT_MAX = 99;
+/** How long a toast stays, and how many stack before the oldest goes. */
+export const TOAST_MS = 6000;
+export const TOAST_MAX = 3;
 /** The room a menu under the caret keeps from the window's edge, and the room below the caret under which it opens above instead. */
 export const CARET_MENU_EDGE_PX = 8;
 export const CARET_MENU_MIN_ROOM_PX = 160;
@@ -68,6 +99,8 @@ export const ME_STALE_MS = 60_000;
 
 /** Where this browser remembers the interface language the profile chose, so a reload starts in it. */
 export const LANGUAGE_STORAGE_KEY = "stator.language";
+/** The most time zones the profile lists for what was typed; the rest wait for a closer search. */
+export const TIME_ZONE_MATCHES_MAX = 50;
 
 /** The groups claim and scopes an identity provider starts with, matching the API's defaults. */
 export const SSO_DEFAULT_GROUPS_CLAIM = "groups";
@@ -682,7 +715,7 @@ export const ARMATURE_CHART_DAY_CHOICES: readonly number[] = [7, 14, 30, 90, 180
 /** A new created against resolved chart's window, as armature.DefaultChartDays. */
 export const ARMATURE_CHART_DEFAULT_DAYS = 30;
 /** The most slices a pie draws; the rest share one slice, Other, rather than take a colour nobody tells apart. */
-export const ARMATURE_CHART_MAX_SLICES = 8;
+export const ARMATURE_CHART_MAX_SLICES = CHART_SLOTS;
 /** A pie's size and its hole, in SVG units. */
 export const ARMATURE_PIE_SIZE = 160;
 export const ARMATURE_PIE_HOLE = 0.6;
@@ -735,7 +768,7 @@ export const CONTRIBUTORS_LIMIT_CHOICES: readonly number[] = [5, 10, 20, 50];
 /** The charts a table becomes, as document.TableCharts. */
 export const TABLE_CHARTS = ["bar", "line", "pie"] as const;
 /** The most series a chart from a table draws, one per categorical colour; more columns are left out. */
-export const TABLE_CHART_MAX_SERIES = 8;
+export const TABLE_CHART_MAX_SERIES = CHART_SLOTS;
 /** The plot of a bar or line chart from a table, before it takes its box's width. */
 export const TABLE_CHART_WIDTH = 640;
 export const TABLE_CHART_HEIGHT = 220;

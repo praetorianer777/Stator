@@ -19,7 +19,7 @@ export function ExportDialog({ page, onClose }: { page: { id: string; title: str
   const [scope, setScope] = useState<ExportScope>("page");
   const name = useId();
   return (
-    <Dialog title={t.markdown.exportTitle(page.title)} onClose={onClose} data-markdown-export="">
+    <Dialog open title={t.markdown.exportTitle(page.title)} onClose={onClose} attrs={{ "data-markdown-export": "" }}>
       <fieldset className="space-y-2">
         <legend className="mb-2 text-sm font-medium text-ink">{t.markdown.exportWhat}</legend>
         {scopes().map((each) => (
@@ -94,7 +94,7 @@ export function ImportDialog({ parent, spaceKey, onClose }: { parent: { id: stri
   const result = importing.data;
   if (result) {
     return (
-      <Dialog title={t.markdown.importTitle(parent.title)} onClose={onClose} data-markdown-import="done">
+      <Dialog open title={t.markdown.importTitle(parent.title)} onClose={onClose} attrs={{ "data-markdown-import": "done" }}>
         <p role="status" className="text-sm text-ink" data-import-result="">
           {t.markdown.imported(result.pages.length)}
         </p>
@@ -127,7 +127,7 @@ export function ImportDialog({ parent, spaceKey, onClose }: { parent: { id: stri
 
   const error = problem ?? importing.error?.message;
   return (
-    <Dialog title={t.markdown.importTitle(parent.title)} onClose={onClose} data-markdown-import="">
+    <Dialog open title={t.markdown.importTitle(parent.title)} onClose={onClose} attrs={{ "data-markdown-import": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-ink-muted">{t.markdown.importHint}</p>
         {error && <ErrorBanner>{error}</ErrorBanner>}

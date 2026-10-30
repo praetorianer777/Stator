@@ -84,7 +84,7 @@ export function CalendarDialog({
   }
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} data-calendar-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} attrs={{ "data-calendar-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Select
           label={d.space}

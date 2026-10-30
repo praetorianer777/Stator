@@ -11,15 +11,16 @@ import (
 )
 
 // The settings name the screen where roles change by account.sso in the web's
-// English strings; the answers about fixed roles send people there by that name.
+// English strings of the shell; the answers about fixed roles send people there
+// by that name.
 func TestFixedRoleAnswersNameTheScreenAsTheSettingsDo(t *testing.T) {
-	src, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "src", "i18n", "en.ts"))
+	src, err := os.ReadFile(filepath.Join("..", "..", "..", "web", "src", "i18n", "shell.en.ts"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	m := regexp.MustCompile(`(?s)\n  account: \{.*?\n    sso: "([^"]+)",`).FindSubmatch(src)
+	m := regexp.MustCompile(`(?s)\nexport const accountEn = \{.*?\n  sso: "([^"]+)",`).FindSubmatch(src)
 	if m == nil {
-		t.Fatal("web/src/i18n/en.ts has no account.sso")
+		t.Fatal("web/src/i18n/shell.en.ts has no account.sso")
 	}
 	screen := "under " + string(m[1])
 	for name, msg := range map[string]string{

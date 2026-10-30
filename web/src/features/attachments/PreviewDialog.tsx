@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { attachmentUrl, fetchPreview, hasPreview, previewUrl, type Attachment } from "@/api/attachments";
 import { ApiError } from "@/api/client";
-import { ButtonLink, Dialog, ErrorBanner, IconButton } from "@/components/ui";
+import { DOCUMENT_DRAWER_WIDTH } from "@/config";
+import { ButtonLink, Drawer, ErrorBanner, IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { t } from "@/i18n";
 import { Lightbox } from "./Lightbox";
@@ -41,7 +42,7 @@ export function PreviewDialog({ file, onClose }: { file: Attachment; onClose: ()
   }, [file.id, p.failed]);
 
   return (
-    <Dialog title={p.title(file.fileName)} fill onClose={onClose} data-preview-dialog={file.id}>
+    <Drawer open title={p.title(file.fileName)} onClose={onClose} width={DOCUMENT_DRAWER_WIDTH} attrs={{ "data-preview-dialog": file.id }}>
       {shown.state === "ready" ? (
         <iframe
           src={shown.url}
@@ -66,7 +67,7 @@ export function PreviewDialog({ file, onClose }: { file: Attachment; onClose: ()
           {t.attachments.download(file.fileName)}
         </ButtonLink>
       </div>
-    </Dialog>
+    </Drawer>
   );
 }
 

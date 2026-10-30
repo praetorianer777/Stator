@@ -29,7 +29,7 @@ export function ReactionSearch({ onPick, onClose }: { onPick: (emoji: string) =>
     onClose();
   };
   return (
-    <Dialog title={t.reactions.searchTitle} onClose={onClose} data-reaction-search="">
+    <Dialog open title={t.reactions.searchTitle} onClose={onClose} attrs={{ "data-reaction-search": "" }}>
       <Input
         type="search"
         aria-label={t.reactions.searchLabel}

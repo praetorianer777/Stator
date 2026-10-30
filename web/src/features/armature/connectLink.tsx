@@ -142,7 +142,7 @@ export function ReturnNotice({ pathname }: { pathname: string }) {
     >
       <span>{returnedSaying ?? t.armature.account.returned}</span>
       <button type="button" className="text-ink-muted underline hover:text-ink" onClick={dismissReturn}>
-        {t.common.close}
+        {t.kit.close}
       </button>
     </div>
   );

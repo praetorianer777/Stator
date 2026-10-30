@@ -101,7 +101,7 @@ function NewPostDialog({ spaceKey, onClose }: { spaceKey: string; onClose: () =>
 
   const banner = create.error && !Object.keys(fields).some((field) => field.startsWith("values.") || field === "title") ? create.error.message : "";
   return (
-    <Dialog title={t.blog.newPostTitle} wide onClose={onClose} data-new-post-dialog="">
+    <Dialog open title={t.blog.newPostTitle} onClose={onClose} size="lg" attrs={{ "data-new-post-dialog": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? (banner || t.blog.createFailed)}</ErrorBanner>}
         <Field

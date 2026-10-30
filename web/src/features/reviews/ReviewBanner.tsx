@@ -3,9 +3,9 @@ import type { Page } from "@/api/pages";
 import { reviewSide, useDecideReview, useSkipReview, useWithdrawReview, type DecisionOptions, type ReviewSummary } from "@/api/reviews";
 import type { Space } from "@/api/spaces";
 import { useComparison } from "@/api/versions";
-import { Button, Dialog, ErrorBanner, Field, Skeleton } from "@/components/ui";
+import { Button, Dialog, Drawer, ErrorBanner, Field, Skeleton } from "@/components/ui";
 import { Icon } from "@/components/icons";
-import { REVIEW_COMMENT_MAX_LENGTH } from "@/config";
+import { DOCUMENT_DRAWER_WIDTH, REVIEW_COMMENT_MAX_LENGTH } from "@/config";
 import { ComparisonView } from "@/features/pages/PageHistory";
 import { t } from "@/i18n";
 import { localDateFormat } from "@/lib/format";
@@ -117,7 +117,7 @@ function ReviewDialog({ page, space, review, onClose }: { page: Page; space: Spa
   }
 
   return (
-    <Dialog title={t.review.reviewTitle(page.title)} fill onClose={onClose} data-review-dialog={review.id}>
+    <Drawer open title={t.review.reviewTitle(page.title)} onClose={onClose} width={DOCUMENT_DRAWER_WIDTH} attrs={{ "data-review-dialog": review.id }}>
       <div className="space-y-4">
         <p className="text-sm text-ink-muted">{t.review.reviewIntro}</p>
         {comparison.error && <ErrorBanner onRetry={() => void comparison.refetch()}>{comparison.error.message}</ErrorBanner>}
@@ -151,7 +151,7 @@ function ReviewDialog({ page, space, review, onClose }: { page: Page; space: Spa
           </div>
         </form>
       </div>
-    </Dialog>
+    </Drawer>
   );
 }
 
@@ -173,7 +173,7 @@ function SkipDialog({ page, space, review, onClose }: { page: Page; space: Space
   }
 
   return (
-    <Dialog title={t.review.skipTitle(page.title)} onClose={onClose} data-skip-review-dialog={review.id}>
+    <Dialog open title={t.review.skipTitle(page.title)} onClose={onClose} attrs={{ "data-skip-review-dialog": review.id }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-ink-muted">{t.review.skipIntro}</p>
         {skip.error && <ErrorBanner>{skip.error.message}</ErrorBanner>}

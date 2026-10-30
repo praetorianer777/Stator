@@ -58,7 +58,7 @@ export function ExcerptPicker({
   }
 
   return (
-    <Dialog title={p.dialog} onClose={onClose} data-excerpt-picker="">
+    <Dialog open title={p.dialog} onClose={onClose} attrs={{ "data-excerpt-picker": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <Select
           label={p.space}

@@ -41,12 +41,7 @@ export function FileExportDialog({ format, href, title, onClose }: { format: Exp
 
   const state = error ? "failed" : "making";
   return (
-    <Dialog
-      title={words.title(title)}
-      onClose={onClose}
-      data-pdf-export={format === "pdf" ? state : undefined}
-      data-docx-export={format === "docx" ? state : undefined}
-    >
+    <Dialog open title={words.title(title)} onClose={onClose} attrs={format === "pdf" ? { "data-pdf-export": state } : { "data-docx-export": state }}>
       {error ? (
         <ErrorBanner onRetry={() => setAttempt((n) => n + 1)}>{error}</ErrorBanner>
       ) : (

@@ -98,7 +98,7 @@ export function RequirementPicker({ title, onInsert, onClose }: { title: string;
   const statusId = `${id}-status`;
   const listId = `${id}-requirements`;
   return (
-    <Dialog title={title} onClose={onClose} data-exciter-picker="">
+    <Dialog open title={title} onClose={onClose} attrs={{ "data-exciter-picker": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <Labelled id={fieldId} label={p.field} hint={p.fieldHint}>
           <Input

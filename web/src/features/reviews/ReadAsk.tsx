@@ -61,7 +61,7 @@ export function ReadByButton({ page, onOpen }: { page: Page; onOpen: () => void 
 export function ReadersDialog({ page, onClose }: { page: Page; onClose: () => void }) {
   const { data, error, refetch, isLoading } = useReadConfirmations(page.id);
   return (
-    <Dialog title={t.readAsk.title(page.title)} wide onClose={onClose} data-readers-dialog={page.id}>
+    <Dialog open title={t.readAsk.title(page.title)} onClose={onClose} size="lg" attrs={{ "data-readers-dialog": page.id }}>
       {error && <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>}
       {isLoading && <Skeleton />}
       {data && (

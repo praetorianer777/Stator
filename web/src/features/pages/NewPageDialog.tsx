@@ -68,10 +68,11 @@ export function NewPageDialog({
   const banner = create.error && !Object.keys(fields).some((field) => field.startsWith("values.") || field === "title") ? create.error.message : "";
   return (
     <Dialog
+      open
       title={folder ? t.page.newFolderUnder(parent.title) : t.page.newPageUnder(parent.title)}
-      wide={!folder}
       onClose={onClose}
-      data-new-page-dialog={folder ? "folder" : ""}
+      size={folder ? "md" : "lg"}
+      attrs={{ "data-new-page-dialog": folder ? "folder" : "" }}
     >
       <form onSubmit={submit} className="space-y-3" noValidate>
         {banner && <ErrorBanner>{fields.template ?? banner}</ErrorBanner>}

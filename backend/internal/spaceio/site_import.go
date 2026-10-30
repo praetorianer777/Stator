@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/praetorianer777/stator/backend/internal/audit"
+	"github.com/praetorianer777/stator/backend/internal/auth"
 	"github.com/praetorianer777/stator/backend/internal/brand"
 	"github.com/praetorianer777/stator/backend/internal/db"
 	"github.com/praetorianer777/stator/backend/internal/document"
@@ -317,9 +318,9 @@ func (oi *siteImporter) writePeople(ctx context.Context, tx db.DBTX) error {
 		if p.Locale != nil && slices.Contains(personLocales, *p.Locale) {
 			locale = p.Locale
 		}
-		timezone := p.Timezone
-		if timezone == "" {
-			timezone = "UTC"
+		var timezone *string
+		if p.Timezone != nil && *p.Timezone != "" && auth.KnownTimezone(*p.Timezone) {
+			timezone = p.Timezone
 		}
 		var id uuid.UUID
 		err := tx.QueryRow(ctx, `SELECT id FROM app_user WHERE email = $1`, email).Scan(&id)

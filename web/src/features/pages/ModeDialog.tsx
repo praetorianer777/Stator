@@ -41,7 +41,7 @@ export function ModeDialog({ page, onClose }: { page: Page; onClose: () => void 
   const failed = change.error && !(change.error instanceof ApiError && change.error.code === "drafts_pending") ? change.error : null;
 
   return (
-    <Dialog title={t.live.dialog} onClose={onClose}>
+    <Dialog open title={t.live.dialog} onClose={onClose}>
       <form onSubmit={submit} className="space-y-4" data-mode-dialog="">
         <fieldset className="space-y-3">
           <legend className="sr-only">{t.live.dialog}</legend>

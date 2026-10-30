@@ -46,7 +46,7 @@ export function IssuePicker({ onInsert, onClose }: { onInsert: (key: string) => 
   const listId = `${id}-issues`;
   const problem = state.kind === "notFound" ? p.notFound(state.key) : state.kind === "unreachable" ? p.unreachable : undefined;
   return (
-    <Dialog title={p.title} onClose={onClose} data-issue-picker="">
+    <Dialog open title={p.title} onClose={onClose} attrs={{ "data-issue-picker": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <Labelled id={fieldId} label={p.field} hint={p.hint} error={problem}>
           <Input

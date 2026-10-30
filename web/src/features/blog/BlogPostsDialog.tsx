@@ -53,7 +53,7 @@ export function BlogPostsDialog({
     { value: "every", label: d.everySpace },
   ];
   return (
-    <Dialog title={isNew ? d.new : d.edit} onClose={onClose} data-blog-posts-dialog="">
+    <Dialog open title={isNew ? d.new : d.edit} onClose={onClose} attrs={{ "data-blog-posts-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <fieldset className="space-y-1">
           <legend className="text-sm font-medium text-ink-muted">{d.scope}</legend>

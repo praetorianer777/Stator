@@ -46,7 +46,7 @@ export function StatusDialog({ initial, onSave, onClose }: { initial: StatusAttr
   const fieldId = `${id}-label`;
   const hint = s.hint(STATUS_LABEL_MAX_LENGTH);
   return (
-    <Dialog title={s.dialog} onClose={onClose} data-status-dialog="">
+    <Dialog open title={s.dialog} onClose={onClose} attrs={{ "data-status-dialog": "" }}>
       <Form
         onSubmit={() => {
           setTried(true);
@@ -106,7 +106,7 @@ export function DateDialog({ initial, onSave, onClose }: { initial: string; onSa
   const problem = tried && !picked ? d.empty : undefined;
   const fieldId = `${id}-day`;
   return (
-    <Dialog title={d.dialog} onClose={onClose} data-date-dialog="">
+    <Dialog open title={d.dialog} onClose={onClose} attrs={{ "data-date-dialog": "" }}>
       <Form
         onSubmit={() => {
           setTried(true);
@@ -147,7 +147,7 @@ export function MathDialog({ initial, display, onSave, onClose }: { initial: str
   const fieldId = `${id}-latex`;
   const hint = m.hint(MATH_MAX_LENGTH);
   return (
-    <Dialog title={m.dialog} onClose={onClose} data-math-dialog="">
+    <Dialog open title={m.dialog} onClose={onClose} attrs={{ "data-math-dialog": "" }}>
       <Form
         onSubmit={() => {
           setTried(true);

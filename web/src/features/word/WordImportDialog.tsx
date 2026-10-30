@@ -169,7 +169,7 @@ export function WordImportDialog({ parent, spaceKey, onClose }: { parent: { id: 
   const answer = importing.data;
   if (answer) {
     return (
-      <Dialog title={t.wordImport.title(parent.title)} onClose={onClose} data-word-import-dialog="done">
+      <Dialog open title={t.wordImport.title(parent.title)} onClose={onClose} attrs={{ "data-word-import-dialog": "done" }}>
         {answer.result && <SingleResult result={answer.result} spaceKey={spaceKey} />}
         {answer.job && <Followed queued={answer.job} spaceKey={spaceKey} />}
         <div className="flex justify-end pt-3">
@@ -184,7 +184,7 @@ export function WordImportDialog({ parent, spaceKey, onClose }: { parent: { id: 
   const error = problem ?? importing.error?.message;
   const percent = Math.round(importing.progress * 100);
   return (
-    <Dialog title={t.wordImport.title(parent.title)} onClose={onClose} data-word-import-dialog="">
+    <Dialog open title={t.wordImport.title(parent.title)} onClose={onClose} attrs={{ "data-word-import-dialog": "" }}>
       <form onSubmit={submit} className="space-y-3" noValidate>
         <p className="text-sm text-ink-muted">{t.wordImport.hint}</p>
         {error && <ErrorBanner>{error}</ErrorBanner>}

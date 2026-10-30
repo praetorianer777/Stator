@@ -37,7 +37,7 @@ function cannotEditLabel(entry: CannotEdit): string {
 export function RestrictionsDialog({ page, spaceKey, onClose }: { page: Page; spaceKey: string; onClose: () => void }) {
   const { data, error, refetch } = usePageRestrictions(page.id);
   return (
-    <Dialog title={t.restrictions.title(page.title)} wide onClose={onClose} data-restrictions-dialog={page.id}>
+    <Dialog open title={t.restrictions.title(page.title)} onClose={onClose} size="lg" attrs={{ "data-restrictions-dialog": page.id }}>
       {error ? (
         <ErrorBanner onRetry={() => void refetch()}>{error.message}</ErrorBanner>
       ) : !data ? (

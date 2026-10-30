@@ -15,11 +15,33 @@ and the versioning [Semantic Versioning](https://semver.org/).
   (3.3.20 and 5.1.16) under Excalidraw and Mermaid, and Mermaid draws with
   the same KaTeX as the editor (#556).
 
+### Added
+
+- The time zone is chosen on the profile beside the language, saved with one
+  Save, and every date and time is written in it; until somebody chooses, the
+  browser's zone is used. `GET` and `PATCH /auth/me` carry `timezone` (#588).
+- The kit gains Armature's `Page`, `Popover`, `Toolbar`, `Pager`,
+  `ListSearch`, `SearchPicker`, `Stat`, `ProgressBar`, `DateInput`,
+  `MentionTextarea`, `Spotlight`, `Drawer`, `DockedPanel`, `ConfirmDialog`,
+  `Toast` and `Count`, and Exciter's `Radio` and `WordButton`. Menu items take
+  `checked` and `separated` beside their groups (#588).
+
 ### Changed
 
 - CI audits what the web app ships every night and on every change to its
   dependencies, and fails on high or critical advisories (`make audit-npm`)
   (#556).
+- Dialogs take the suite's API: `open`, a `size` of sm, md or lg, a
+  `description` and a pinned `footer`. A file preview and a review open in a
+  drawer from the side (#588).
+- Tabs scroll sideways on a phone, a chip cuts a long name short and shows it
+  whole on hover, and an error banner can bring itself into view (#588).
+- The archive, comment and folder glyphs are drawn as Armature and Exciter
+  draw them, and charts use the six chart colours of the theme only (#588).
+- The default theme is called everyone's default, not the organization's
+  (#588).
+- The strings live in one catalogue per feature, in English and German,
+  instead of one file per language (#588).
 
 ## [0.2.1] - 2026-10-29
 

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { Editor, type JSONContent } from "@tiptap/core";
-import { TABLE_CHARTS } from "@/config";
+import { CHART_SLOTS, TABLE_CHARTS } from "@/config";
 import { editorExtensions } from "@/features/editor/extensions";
 import type { DocNode } from "@/features/editor/schema";
 import { axeViolations } from "@/test/axe";
@@ -59,8 +59,8 @@ describe("reading a table", () => {
     ]);
     expect(chartData(undefined)).toEqual({ categories: [], series: [], dropped: 0 });
     const wide = table(["x", ...Array.from({ length: 10 }, (_, i) => `s${i}`)], ["a", ...Array.from({ length: 10 }, () => "1")]);
-    expect(chartData(wide).series).toHaveLength(8);
-    expect(chartData(wide).dropped).toBe(2);
+    expect(chartData(wide).series).toHaveLength(CHART_SLOTS);
+    expect(chartData(wide).dropped).toBe(10 - CHART_SLOTS);
     expect(cellText({ type: "tableCell", content: [{ type: "paragraph", content: [{ type: "date", attrs: { date: "2026-10-01" } }] }] })).toBe("2026-10-01");
   });
 

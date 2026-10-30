@@ -61,7 +61,7 @@ export function PropertiesReportDialog({
   }
 
   return (
-    <Dialog title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} wide data-properties-report-dialog="">
+    <Dialog open title={isNew ? d.titleNew : d.titleEdit} onClose={onClose} size="lg" attrs={{ "data-properties-report-dialog": "" }}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field
           label={d.labels}
