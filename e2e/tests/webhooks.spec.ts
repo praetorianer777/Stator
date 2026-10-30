@@ -5,7 +5,16 @@ import { expect } from "../fixtures/auth";
 import { teamTest as test } from "../fixtures/team";
 import { openShowing } from "../fixtures/replica";
 import { uniqueName } from "../fixtures/seed";
-import { type ColourScheme, expectAccessible, expectNoSettingsEntry, openSettingsPage, scrollsSideways, startInScheme, toast, dismissToasts } from "../fixtures/shell";
+import {
+  type ColourScheme,
+  expectAccessible,
+  expectNoSettingsEntry,
+  openSettingsPage,
+  scrollsSideways,
+  startInScheme,
+  toast,
+  dismissToasts,
+} from "../fixtures/shell";
 import { armatureURL } from "../fixtures/stack";
 
 // web/src/config.ts WEBHOOKS_PATH and WEBHOOK_SIGNATURE_HEADER.

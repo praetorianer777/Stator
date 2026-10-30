@@ -98,7 +98,11 @@ test.describe("themes", { tag: ["@auth", "@desktop"] }, () => {
     await page.goto(THEMES_PATH);
     await page.locator("[data-theme-file]").setInputFiles(MINECRAFT);
     await expect(toast(page, `Imported ${MINECRAFT_NAME}`)).toBeVisible();
-    const importedName = (await toast(page, /^Imported /).locator("[data-toast-message]").textContent())!.replace(/^Imported /, "").replace(/\.$/, "");
+    const importedName = (await toast(page, /^Imported /)
+      .locator("[data-toast-message]")
+      .textContent())!
+      .replace(/^Imported /, "")
+      .replace(/\.$/, "");
     await rowAction(page, importedName, "use-theme");
     await expect(toast(page, `Now using ${importedName}.`)).toBeVisible();
 

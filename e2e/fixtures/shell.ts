@@ -127,7 +127,11 @@ export async function confirm(page: Page): Promise<void> {
 export async function dismissToasts(page: Page): Promise<void> {
   const close = page.locator('[data-toast] [data-action="dismiss-toast"]');
   // A toast may time out between counting and clicking.
-  for (let left = await close.count(); left > 0; left--) await close.first().click({ timeout: 1000 }).catch(() => {});
+  for (let left = await close.count(); left > 0; left--)
+    await close
+      .first()
+      .click({ timeout: 1000 })
+      .catch(() => {});
 }
 
 /** The latest toast that says a sentence, among those in the corner. */
