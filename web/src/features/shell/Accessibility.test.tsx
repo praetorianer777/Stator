@@ -244,7 +244,7 @@ describe("on a narrow screen", () => {
     await userEvent.click(menuButton());
     const panel = drawer() as HTMLElement;
     expect(within(panel).getByRole("link", { name: "Back to Stator" })).toBeInTheDocument();
-    expect(within(panel).getByRole("link", { name: "Single sign-on" })).toHaveAttribute("href", "/settings/sso");
+    expect(within(panel).getByRole("link", { name: "Access" })).toHaveAttribute("href", "/settings/access");
     expect(within(panel).queryByRole("button", { name: "Wiki" })).toBeNull();
   });
 

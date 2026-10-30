@@ -12,17 +12,18 @@ const dave = { userId: "0195f000-0000-7000-8000-00000000da7e", email: "dave@stat
 const provider = { provider: null, callbackUrl: "http://localhost:5173/api/v1/auth/oidc/callback" };
 
 describe("the people waiting to be let in", () => {
-  it("are listed on the single sign-on page, and let in as members with one click", async () => {
+  it("are listed on the Members tab, and let in as members with one click", async () => {
     let waiting = [carol, dave];
     const sent = stubApi({
       "GET /users/requests": () => ({ status: 200, body: { requests: waiting } }),
       "GET /oidc-provider": { status: 200, body: provider },
+      "GET /users": { status: 200, body: { members: [] } },
       [`POST /users/requests/${carol.userId}/admit`]: () => {
         waiting = [dave];
         return { status: 200, body: { admitted: { userId: "u-carol", role: "member" } } };
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     const list = await screen.findByRole("heading", { name: "Waiting to be let in" });
     const card = list.closest("[data-join-requests]") as HTMLElement;
     const row = within(card).getByText("Carol New").closest("li") as HTMLElement;
@@ -42,21 +43,22 @@ describe("the people waiting to be let in", () => {
     const sent = stubApi({
       "GET /users/requests": () => ({ status: 200, body: { requests: waiting } }),
       "GET /oidc-provider": { status: 200, body: provider },
+      "GET /users": { status: 200, body: { members: [] } },
       [`DELETE /users/requests/${carol.userId}`]: () => {
         waiting = [];
         return { status: 204 };
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     await userEvent.click(await screen.findByRole("button", { name: "Turn away" }));
     await waitFor(() => expect(sent.some((r) => r.method === "DELETE" && r.path === `/users/requests/${carol.userId}`)).toBe(true));
     expect(await screen.findByText("Carol New was turned away.")).toBeInTheDocument();
   });
 
   it("take no room when there are none", async () => {
-    stubApi({ "GET /users/requests": { status: 200, body: { requests: [] } }, "GET /oidc-provider": { status: 200, body: provider } });
-    await renderAt("/settings/sso");
-    await screen.findByLabelText("Issuer");
+    stubApi({ "GET /users/requests": { status: 200, body: { requests: [] } }, "GET /users": { status: 200, body: { members: [] } } });
+    await renderAt("/settings/access/members");
+    await screen.findByText("Nobody is a member yet.");
     expect(document.querySelector("[data-join-requests]")).toBeNull();
   });
 
@@ -64,37 +66,38 @@ describe("the people waiting to be let in", () => {
     stubApi({
       "GET /users/requests": { status: 200, body: { requests: [carol] } },
       "GET /oidc-provider": { status: 200, body: provider },
+      "GET /users": { status: 200, body: { members: [] } },
       [`POST /users/requests/${carol.userId}/admit`]: {
         status: 404,
         body: { error: { code: "not_found", message: "That person is not waiting to be let in. Reload the list; somebody may have answered already." } },
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     await userEvent.click(await screen.findByRole("button", { name: "Let in as member" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("That person is not waiting to be let in.");
   });
 
   it("pass axe", async () => {
-    stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol, dave] } }, "GET /oidc-provider": { status: 200, body: provider } });
-    await renderAt("/settings/sso");
+    stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol, dave] } }, "GET /users": { status: 200, body: { members: [] } } });
+    await renderAt("/settings/access/members");
     await screen.findByText("Carol New");
     expect(await axeViolations()).toEqual([]);
   });
 });
 
 describe("the count of people waiting", () => {
-  it("shows beside single sign-on in an administrator's settings sidebar", async () => {
+  it("shows beside Access in an administrator's settings sidebar", async () => {
     stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol, dave] } } });
     await renderAt("/settings");
-    const item = await within(await settingsSidebar()).findByRole("link", { name: /^Single sign-on\W+2 waiting$/ });
+    const item = await within(await settingsSidebar()).findByRole("link", { name: /^Access\W+2 waiting$/ });
     expect(within(item).getByText("2")).toBeInTheDocument();
   });
 
   it("is not asked for on behalf of a member", async () => {
-    const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member" } };
+    const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } };
     const sent = stubApi({ "GET /users/requests": { status: 200, body: { requests: [carol] } } });
     await renderAt("/settings", { me: member });
-    expect(within(await settingsSidebar()).queryByRole("link", { name: /Single sign-on/ })).toBeNull();
+    expect(within(await settingsSidebar()).queryByRole("link", { name: /^Access(\W+\d+ waiting)?$/ })).toBeNull();
     expect(sent.some((r) => r.path === "/users/requests")).toBe(false);
   });
 });

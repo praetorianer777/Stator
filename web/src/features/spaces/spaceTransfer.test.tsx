@@ -13,7 +13,7 @@ vi.mock("@/config", async (original) => ({ ...(await original<typeof config>()),
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const space = aSpace();
 
 function anExport(over: Partial<SpaceExport> = {}): SpaceExport {

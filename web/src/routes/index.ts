@@ -18,7 +18,6 @@ import { brandSettingsRoute } from "./brand";
 import { siteTransferRoute } from "./site-transfer";
 import { hubSettingsRoute } from "./hub";
 import { pageEditRoute } from "./page-edit";
-import { sitePermissionsRoute } from "./permissions";
 import { pageHistoryRoute } from "./page-history";
 import { printLinkRoute, printPageRoute, printPublicPageRoute } from "./print";
 import { profileRoute } from "./profile";
@@ -33,7 +32,7 @@ import { staleRoute } from "./stale";
 import { reviewsRoute } from "./reviews";
 import { tasksRoute } from "./tasks";
 import { settingsRoute } from "./settings";
-import { ssoRoute } from "./sso";
+import { accessRoute, accessTabRoute, sitePermissionsRoute, ssoRoute } from "./access";
 import { themeEditRoute, themeNewRoute } from "./theme-editor";
 import { themesRoute } from "./themes";
 import { tokensRoute } from "./tokens";
@@ -81,6 +80,8 @@ const routeTree = rootRoute.addChildren([
     notificationsRoute,
     notificationSettingsRoute,
     watchingRoute,
+    accessRoute,
+    accessTabRoute,
     ssoRoute,
     sitePermissionsRoute,
     hubSettingsRoute,

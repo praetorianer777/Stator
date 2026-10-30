@@ -32,6 +32,7 @@ export const kitDe: typeof kitEn = {
     page: { one: "Seite", many: "Seiten" },
     space: { one: "Bereich", many: "Bereiche" },
     label: { one: "Schlagwort", many: "Schlagwörter" },
+    grant: { one: "Vergabe", many: "Vergaben" },
   },
   confirm: {
     title: (verb: string, thing: string) => `${thing} ${verb}?`,

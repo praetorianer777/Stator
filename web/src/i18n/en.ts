@@ -35,6 +35,7 @@ import { shortcutsEn } from "./shortcuts.en";
 import { reviewEn, waitingReviewsEn } from "./reviews.en";
 import { editorEn, inlineValuesEn, devEditorEn } from "./editor.en";
 import { permissionsEn, permissionCopyEn, restrictionsEn, accessEn, guestsEn } from "./permissions.en";
+import { accessAdminEn } from "./access.en";
 import { starEn } from "./stars.en";
 import { watchEn } from "./watching.en";
 import { stewardshipEn } from "./stewardship.en";
@@ -126,6 +127,7 @@ export const en = {
   share: shareEn,
   star: starEn,
   access: accessEn,
+  accessAdmin: accessAdminEn,
   watch: watchEn,
   stewardship: stewardshipEn,
   notifications: notificationsEn,

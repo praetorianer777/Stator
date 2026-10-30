@@ -26,7 +26,7 @@ const item = (over: Partial<TrashItem>): TrashItem => ({
 });
 const gone = item({});
 const orphan = item({ id: "0195f000-0000-7000-8000-0000000000e2", title: "Notes", pages: 1, parentTitle: "Old plans", parentInTree: false });
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 
 describe("the trash", () => {
   it("lists what was deleted and where it goes back, and restores it", async () => {

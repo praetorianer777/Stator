@@ -9,7 +9,7 @@ import { aPage, aSpace } from "@/test/spaces";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const home = aPage();
 const space = aSpace();
 
@@ -262,7 +262,8 @@ describe("space settings", () => {
     const sent = stubApi({
       "GET /spaces/DOCS": { status: 200, body: { space } },
       "PATCH /spaces/DOCS": { status: 200, body: { space: renamed } },
-      "GET /spaces/DOCS/permissions": { status: 200, body: { grants: [] } },
+      "GET /role-assignments": { status: 200, body: { assignments: [], total: 0, limit: 50, offset: 0 } },
+      "GET /roles": { status: 200, body: { roles: [] } },
     });
     await renderAt("/s/DOCS/settings");
     const name = await screen.findByLabelText("Name");
@@ -275,7 +276,7 @@ describe("space settings", () => {
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(screen.getByRole("tab", { name: "Permissions" }));
-    expect(await screen.findByText(/Who may do what in this space/)).toBeInTheDocument();
+    expect(await screen.findByText(/Who holds which role in this space/)).toBeInTheDocument();
   });
 
   it("show a member the details without letting them change them", async () => {

@@ -185,7 +185,7 @@ function ChangeRow({ change }: { change: PermissionCopyChange }) {
     <tr data-copy-change={name} data-copy-kind={change.kind}>
       <Td className="align-top">
         <span className="flex items-center gap-2 text-ink">
-          <SubjectGlyph type={change.subject.type === "anonymous" ? "everyone" : change.subject.type} />
+          <SubjectGlyph type={change.subject.type === "user" ? "user" : "group"} />
           <span className="min-w-0 break-words">{name}</span>
         </span>
         <span className="mt-1 flex flex-wrap gap-1">
@@ -231,7 +231,7 @@ function Notes({ title, lines, kind }: { title: string; lines: string[]; kind: s
 }
 
 function subjectName(subject: CopySubject): string {
-  if (subject.type === "everyone") return t.permissions.everyone;
+  if (subject.builtin === "everyone") return t.permissions.everyone;
   if (subject.type === "anonymous") return t.permissionCopy.anonymous;
   return subject.name;
 }

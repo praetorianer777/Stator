@@ -18,13 +18,10 @@ export type ProviderView = Wire["ProviderView"];
 export type SaveProviderInput = Wire["SaveOIDCProviderRequest"];
 
 export type JoinRequest = Wire["JoinRequest"];
-export type GroupRole = Wire["GroupRole"];
-export type GrantedRole = GroupRole["role"];
 export type Member = Wire["Member"];
 
 export const meQueryKey = ["auth", "me"] as const;
 export const providerQueryKey = ["oidc-provider"] as const;
-export const groupRolesQueryKey = ["oidc-provider", "group-roles"] as const;
 export const membersQueryKey = ["users", "members"] as const;
 export const joinRequestsQueryKey = ["users", "requests"] as const;
 
@@ -77,9 +74,9 @@ export function guestSpaceOf(me: Me | undefined): Wire["SpaceRef"] | null {
   return me?.organization?.guestSpace ?? null;
 }
 
-/** Whether a role may change the organization's settings. */
-export function administers(role: SiteRole | undefined): boolean {
-  return role === "owner" || role === "admin";
+/** Whether a grant lets the signed-in person administer the installation, as the session says. */
+export function administers(me: Me | undefined): boolean {
+  return me?.organization?.administers ?? false;
 }
 
 /** Where the browser goes to sign in through the identity provider; a navigation, since it follows redirects. */
@@ -135,34 +132,7 @@ export function useAdmitJoinRequest() {
   });
 }
 
-/** Which provider groups grant which role here. */
-export function useGroupRoles() {
-  return useQuery({
-    queryKey: groupRolesQueryKey,
-    queryFn: async (): Promise<GroupRole[]> => (await api.GET("/oidc-provider/group-roles")).data!.groupRoles,
-  });
-}
-
-export function useSetGroupRole() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: { group: string; role: GrantedRole }): Promise<GroupRole> =>
-      (await api.POST("/oidc-provider/group-roles", { body })).data!.groupRole,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: groupRolesQueryKey }),
-  });
-}
-
-export function useRemoveGroupRole() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id }: { id: string }) => {
-      await api.DELETE("/oidc-provider/group-roles/{groupRoleID}", { params: { path: { groupRoleID: id } } });
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: groupRolesQueryKey }),
-  });
-}
-
-/** The organization's members, with where each role comes from; asked only of administrators. */
+/** The installation's members and guests, with the roles each holds across it; asked only of administrators. */
 export function useMembers() {
   return useQuery({
     queryKey: membersQueryKey,

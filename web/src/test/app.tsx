@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 /** The person every shell test is signed in as unless it says otherwise: an administrator. */
 export const signedIn: Me = {
   user: { id: "u-ada", email: "ada@stator.test", name: "Ada Lovelace", locale: "", timezone: "", showInReaders: true },
-  organization: { name: "Demo", role: "admin", guestSpace: null },
+  organization: { name: "Demo", role: "member", administers: true, guestSpace: null },
 };
 
 /**

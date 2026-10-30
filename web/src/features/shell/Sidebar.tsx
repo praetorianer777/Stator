@@ -132,7 +132,7 @@ function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
   const places = usePlaces();
   const you = places.filter((place) => place.area === "you");
   const settings = places.filter((place) => place.area === "settings");
-  const trailing: Record<string, ReactNode> = { "sso-settings": <JoinRequestsCount /> };
+  const trailing: Record<string, ReactNode> = { access: <JoinRequestsCount /> };
   const router = useRouter();
   const back = settingsReturn();
   return (
@@ -167,7 +167,7 @@ function SettingsGroups({ onNavigate }: { onNavigate?: () => void }) {
 /** How many people wait to be let in, beside Single sign-on; asked only of those the list answers. */
 function JoinRequestsCount() {
   const { data: me } = useMe();
-  const waiting = useJoinRequests(administers(me?.organization?.role)).data?.length ?? 0;
+  const waiting = useJoinRequests(administers(me)).data?.length ?? 0;
   return <Count count={waiting} name="join-requests" says={t.sso.waitingCount(waiting)} />;
 }
 

@@ -18,12 +18,12 @@ const member: Me = {
     timezone: "",
     showInReaders: true,
   },
-  organization: { ...signedIn.organization!, role: "member" },
+  organization: { ...signedIn.organization!, role: "member", administers: false },
 };
 
 const guest: Me = {
   ...signedIn,
-  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
+  organization: { ...signedIn.organization!, role: "guest", administers: false, guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
 };
 
 async function openMenu() {
@@ -167,8 +167,8 @@ describe("the tools to switch to", () => {
 describe("a session that ends while the page is open", () => {
   it("sends the reader to sign in, and back to the page afterwards", async () => {
     stubApi({ "GET /oidc-provider": unauthorized, "GET /auth/me": unauthorized });
-    const router = await renderAt("/settings/sso");
+    const router = await renderAt("/settings/access/sso");
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
-    expect(router.state.location.search).toEqual({ next: "/settings/sso" });
+    expect(router.state.location.search).toEqual({ next: "/settings/access/sso" });
   });
 });

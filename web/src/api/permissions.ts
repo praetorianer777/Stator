@@ -10,16 +10,13 @@ import { treeQueryKey } from "./tree";
 
 type Wire = components["schemas"];
 
-/** What the caller may do across the organization. */
+/** What the caller may do across the installation. */
 export type GlobalCan = Wire["GlobalCan"];
-export type GlobalGrant = Wire["GlobalGrant"];
-export type GlobalPermission = GlobalGrant["permission"];
-/** Somebody a grant or a restriction names, with the name to show. */
+/** Somebody a restriction names, with the name to show. */
 export type Subject = Wire["Subject"];
 export type SubjectRef = Wire["SubjectRef"];
 export type SubjectType = Subject["type"];
-export type SpaceGrant = Wire["SpaceGrant"];
-export type SpacePermission = SpaceGrant["permissions"][number];
+export type SpacePermission = Wire["CopyGrant"]["permissions"][number];
 export type Restrictions = Wire["Restrictions"];
 /** Somebody an edit list names who could not edit, since the space does not let them add pages. */
 export type CannotEdit = Wire["CannotEdit"];
@@ -30,14 +27,13 @@ export type AccessReport = Wire["AccessReport"];
 export type AccessRight = AccessReport["rights"][number];
 export type AccessStep = Wire["AccessStep"];
 export type Group = Wire["Group"];
+/** A grant the inspector names, with the permissions its role holds. */
+export type AccessGrant = Wire["AccessGrant"];
 
-/** The organization's permissions in the order the settings list them. */
-export const GLOBAL_PERMISSIONS: GlobalPermission[] = ["use", "createSpace", "administer"];
-/** A space's permissions in the order its grid shows them, weakest first. */
+/** A space's permissions in the order a copy lists them, weakest first. */
 export const SPACE_PERMISSIONS: SpacePermission[] = ["view", "addPages", "addComments", "delete", "administer"];
 
 export const accessQueryKey = ["access", "me"] as const;
-export const sitePermissionsQueryKey = ["site", "permissions"] as const;
 
 export function spacePermissionsQueryKey(spaceKey: string) {
   return ["space-permissions", spaceKey.toUpperCase()] as const;
@@ -52,14 +48,14 @@ export function isNoAccess(error: unknown): boolean {
   return error instanceof ApiError && error.status === 403 && error.code === "no_access";
 }
 
-/** The request form of a subject: everyone carries no id. */
+/** The request form of a subject. */
 export function subjectRef(subject: Subject): SubjectRef {
-  return subject.type === "everyone" || !subject.id ? { type: subject.type } : { type: subject.type, id: subject.id };
+  return subject.id ? { type: subject.type, id: subject.id } : { type: subject.type };
 }
 
 /** One string per subject, for keys and for telling two apart. */
 export function subjectKey(subject: Pick<Subject, "type" | "id">): string {
-  return subject.type === "everyone" ? "everyone" : `${subject.type}:${subject.id ?? ""}`;
+  return `${subject.type}:${subject.id ?? ""}`;
 }
 
 export const accessQuery = {
@@ -70,57 +66,6 @@ export const accessQuery = {
 /** What the caller may do across the organization; undefined while it loads or when the API cannot say. */
 export function useAccess() {
   return useQuery(accessQuery);
-}
-
-export function useSitePermissions() {
-  return useQuery({
-    queryKey: sitePermissionsQueryKey,
-    queryFn: async (): Promise<GlobalGrant[]> => (await api.GET("/site/permissions")).data!.permissions,
-  });
-}
-
-export function useSetSitePermission() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ permission, subjects }: { permission: GlobalPermission; subjects: SubjectRef[] }): Promise<GlobalGrant> =>
-      (await api.PUT("/site/permissions/{permission}", { params: { path: { permission } }, body: { subjects } })).data!.permission,
-    onSuccess: (saved) => {
-      queryClient.setQueryData<GlobalGrant[]>(sitePermissionsQueryKey, (before) =>
-        before?.map((each) => (each.permission === saved.permission ? saved : each)),
-      );
-      return queryClient.invalidateQueries({ queryKey: accessQueryKey });
-    },
-  });
-}
-
-export function useSpacePermissions(spaceKey: string, enabled = true) {
-  return useQuery({
-    queryKey: spacePermissionsQueryKey(spaceKey),
-    queryFn: async (): Promise<SpaceGrant[]> => (await api.GET("/spaces/{spaceKey}/permissions", { params: { path: { spaceKey } } })).data!.grants,
-    enabled,
-  });
-}
-
-export function useSetSpacePermissions(spaceKey: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (grants: SpaceGrant[]): Promise<SpaceGrant[]> =>
-      (
-        await api.PUT("/spaces/{spaceKey}/permissions", {
-          params: { path: { spaceKey } },
-          body: { grants: grants.map((grant) => ({ subject: subjectRef(grant.subject), permissions: grant.permissions })) },
-        })
-      ).data!.grants,
-    // What the caller may do in the space, and so what the space, its tree and its pages show them, follows from the table.
-    onSuccess: (saved) => {
-      queryClient.setQueryData(spacePermissionsQueryKey(spaceKey), saved);
-      return Promise.all([
-        queryClient.invalidateQueries({ queryKey: spacesQueryKey }),
-        queryClient.invalidateQueries({ queryKey: treeQueryKey }),
-        queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
-      ]);
-    },
-  });
 }
 
 /** What copying another space's permissions onto one would change, with the fingerprint that applies exactly that. */
@@ -148,23 +93,22 @@ export function usePermissionCopyPreview(spaceKey: string, from: string, mode: P
 export function useCopyPermissions(spaceKey: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (preview: PermissionCopyPreview): Promise<SpaceGrant[]> =>
+    mutationFn: async (preview: PermissionCopyPreview) =>
       (
         await api.POST("/spaces/{spaceKey}/permissions/copy", {
           params: { path: { spaceKey } },
           body: { from: preview.source.key, mode: preview.mode, fingerprint: preview.fingerprint },
         })
       ).data!.grants,
-    // A copy may open the space to anybody or close it, besides what the grid shows.
-    onSuccess: (saved) => {
-      queryClient.setQueryData(spacePermissionsQueryKey(spaceKey), saved);
-      return Promise.all([
+    // A copy may open the space to anybody or close it, besides what the grants show.
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["access", "assignments"] }),
         queryClient.invalidateQueries({ queryKey: spaceAnonymousAccessQueryKey(spaceKey) }),
         queryClient.invalidateQueries({ queryKey: spacesQueryKey }),
         queryClient.invalidateQueries({ queryKey: treeQueryKey }),
         queryClient.invalidateQueries({ queryKey: pagesQueryKey }),
-      ]);
-    },
+      ]),
   });
 }
 
@@ -237,7 +181,7 @@ export function useInspectAccess(pageId: string, userId: string | undefined) {
 /** What a picker finds for a text; a share's picker also says whether each may view its page. */
 export interface SubjectSearchResult {
   people: Array<Person & { canView?: boolean }>;
-  groups: Array<Group & { viewers?: number }>;
+  groups: Array<Pick<Group, "id" | "name" | "memberCount"> & { builtin?: string; viewers?: number }>;
   error: Error | null;
   /** The lists answer q itself, not a previous text kept up while q is asked. */
   current: boolean;

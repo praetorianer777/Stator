@@ -2,6 +2,7 @@ import { guestSpaceOf, useMe, type Me } from "@/api/auth";
 import { useHub } from "@/api/hub";
 import type { IconName } from "@/components/icons";
 import {
+  ACCESS_PATH,
   APP_NAME,
   ARMATURE_SECTION_ID,
   ARMATURE_SETTINGS_PATH,
@@ -15,9 +16,7 @@ import {
   NOTIFICATIONS_PATH,
   PROFILE_PATH,
   SETTINGS_PATH,
-  SITE_PERMISSIONS_PATH,
   SITE_TRANSFER_PATH,
-  SSO_PATH,
   STALE_PATH,
   TEMPLATES_PATH,
   THEMES_PATH,
@@ -86,8 +85,7 @@ export function placesFor(rules: PlaceRules): Place[] {
   // One check for the whole group; every page checks again for itself.
   const settings: Place[] = siteAdmin
     ? [
-        { id: "sso-settings", area: "settings", to: SSO_PATH, icon: "Users", label: t.account.sso },
-        { id: "site-permissions", area: "settings", to: SITE_PERMISSIONS_PATH, icon: "Lock", label: t.account.permissions },
+        { id: "access", area: "settings", to: ACCESS_PATH, icon: "Lock", label: t.account.access },
         { id: "site-hub", area: "settings", to: HUB_SETTINGS_PATH, icon: "Flag", label: t.account.hub },
         { id: "templates", area: "settings", to: TEMPLATES_PATH, icon: "Page", label: t.account.templates },
         { id: "stale-pages", area: "settings", to: STALE_PATH, icon: "Calendar", label: t.account.stale },

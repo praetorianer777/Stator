@@ -152,7 +152,7 @@ describe("the stale content report", () => {
         body: { error: { code: "forbidden", message: "Only administrators of a space, or of the organization, can read which of its pages went stale." } },
       },
     });
-    await renderAt(STALE_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member" } } });
+    await renderAt(STALE_PATH, { me: { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } } });
     expect(await screen.findByText(/Only administrators of a space, or of the organization, read which pages went stale/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).toBeNull();
   });

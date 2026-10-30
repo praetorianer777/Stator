@@ -17,7 +17,7 @@ vi.mock("@/config", async (original) => ({
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const example = aSpace({ id: "s-ex", key: "STATOR", name: "Getting to know Stator", description: "" });
 const home = aPage({ spaceKey: "STATOR" });
 

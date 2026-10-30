@@ -420,6 +420,8 @@ export const HOME_EDITED_PAGE_SIZE = 8;
 /** How many open tasks the home page shows, and the list of tasks reads at a time, within the API's limit of 100. */
 export const HOME_TASKS_PAGE_SIZE = 5;
 export const TASKS_PAGE_SIZE = 25;
+/** How many grants the Roles tab and a space's permissions list at once. */
+export const ASSIGNMENT_PAGE_SIZE = 50;
 /** How many hits one page of search results shows, within the API's limit of 100. */
 export const SEARCH_PAGE_SIZE = 20;
 /** The longest query, matching the API's limit. */
@@ -884,6 +886,9 @@ export const NOTIFICATION_SETTINGS_PATH = "/settings/notifications";
 export const WATCHING_PATH = "/settings/watching";
 export const THEMES_PATH = "/settings/themes";
 export const TOKENS_PATH = "/settings/tokens";
+/** Roles, the matrix, members, groups and single sign-on, a tab each under this path. */
+export const ACCESS_PATH = "/settings/access";
+/** The addresses of before, which lead to the Access page's tab that took them in. */
 export const SSO_PATH = "/settings/sso";
 export const SITE_PERMISSIONS_PATH = "/settings/permissions";
 export const HUB_SETTINGS_PATH = "/settings/hub";

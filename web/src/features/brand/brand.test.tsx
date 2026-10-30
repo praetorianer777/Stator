@@ -6,7 +6,7 @@ import { axeViolations } from "@/test/axe";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 const empty = { logo: null, footer: { en: "", de: "" } };
 
 describe("the brand of the exports", () => {

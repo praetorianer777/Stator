@@ -7,17 +7,16 @@ import { axeViolations } from "@/test/axe";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member" } };
+const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } };
 const guest: Me = {
   ...signedIn,
-  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
+  organization: { ...signedIn.organization!, role: "guest", administers: false, guestSpace: { id: "s-eng", key: "ENG", name: "Engineering" } },
 };
 const notAdministering = { "GET /access/me": { status: 200, body: { can: { use: true, createSpace: false, administer: false } } } };
 
 const YOU = ["Your profile", "Notification settings", "Watching", "Themes", "Access tokens", "Armature account", "Exciter account"];
 const SITE = [
-  "Single sign-on",
-  "Permissions",
+  "Access",
   "Hub page",
   "Templates",
   "Stale pages",

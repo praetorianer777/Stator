@@ -29,7 +29,6 @@ export function SubjectPicker({
   label,
   onPick,
   exclude = [],
-  allowEveryone = false,
   peopleOnly = false,
   inline = false,
   disabled,
@@ -40,7 +39,6 @@ export function SubjectPicker({
   onPick: (subject: Subject, shown: { detail: string; warning?: string }) => void;
   /** Subjects already chosen, by subjectKey, which are not offered again. */
   exclude?: string[];
-  allowEveryone?: boolean;
   /** Offers people alone, for questions about one person such as what they may do. */
   peopleOnly?: boolean;
   /** Draws the options in the flow of the page, so a dialog holding the picker grows to show them instead of cutting them off. */
@@ -62,13 +60,16 @@ export function SubjectPicker({
   const loading = !fresh && !found.error;
 
   const options: Option[] = [];
-  if (allowEveryone && t.permissions.everyone.toLowerCase().startsWith(q.toLowerCase())) {
-    options.push({ subject: { type: "everyone", id: null, name: t.permissions.everyone }, detail: t.permissions.everyoneDetail });
-  }
   for (const group of found.groups) {
+    const everyone = group.builtin === "everyone";
     options.push({
-      subject: { type: "group", id: group.id, name: group.name },
-      detail: group.viewers === undefined ? t.permissions.members(group.memberCount) : t.share.groupViewers(group.viewers, group.memberCount),
+      subject: { type: "group", id: group.id, name: everyone ? t.permissions.everyone : group.name },
+      detail:
+        group.viewers !== undefined
+          ? t.share.groupViewers(group.viewers, group.memberCount)
+          : everyone
+            ? t.permissions.everyoneDetail
+            : t.permissions.members(group.memberCount),
       warning: group.viewers === 0 ? t.share.groupClosed : undefined,
     });
   }
@@ -213,8 +214,8 @@ export function SubjectPicker({
   );
 }
 
-/** A person, a group or everyone at a glance; the name beside it says which in words. */
+/** A person or a group at a glance; the name beside it says which in words. */
 export function SubjectGlyph({ type }: { type: Subject["type"] }) {
-  const Glyph = type === "user" ? Icon.User : type === "group" ? Icon.Users : Icon.Space;
+  const Glyph = type === "user" ? Icon.User : Icon.Users;
   return <Glyph className="shrink-0 text-ink-subtle" />;
 }

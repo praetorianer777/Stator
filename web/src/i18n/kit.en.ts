@@ -31,6 +31,7 @@ export const kitEn = {
     page: { one: "page", many: "pages" },
     space: { one: "space", many: "spaces" },
     label: { one: "label", many: "labels" },
+    grant: { one: "grant", many: "grants" },
   },
   confirm: {
     // The verb and the thing, in the order the language says them.

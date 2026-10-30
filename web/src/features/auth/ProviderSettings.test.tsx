@@ -77,7 +77,7 @@ describe("the single sign-on settings", () => {
     await renderAt("/settings/sso");
     const admit = await screen.findByRole("checkbox", { name: "Let people in by their groups" });
     expect(admit).not.toBeChecked();
-    expect(admit).toHaveAccessibleDescription(/whose group from the provider is mapped to a role is let in with that role/);
+    expect(admit).toHaveAccessibleDescription(/whose group from the provider holds a grant here is let in/);
 
     await userEvent.click(admit);
     await userEvent.click(screen.getByRole("button", { name: "Save" }));

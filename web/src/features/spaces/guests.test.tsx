@@ -17,10 +17,10 @@ const gwen = {
   permissions: ["view", "addComments"],
   invitedAt: "2026-10-01T08:00:00Z",
 };
-const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member" } };
+const member: Me = { ...signedIn, organization: { ...signedIn.organization!, role: "member", administers: false } };
 const guest: Me = {
   ...signedIn,
-  organization: { ...signedIn.organization!, role: "guest", guestSpace: { id: space.id, key: space.key, name: space.name } },
+  organization: { ...signedIn.organization!, role: "guest", administers: false, guestSpace: { id: space.id, key: space.key, name: space.name } },
 };
 
 async function guestsCard() {
@@ -133,12 +133,11 @@ describe("a guest", () => {
   });
 });
 
-describe("the organization's members", () => {
+describe("the installation's members", () => {
   it("mark a guest with the space they belong to", async () => {
     stubApi({
       "GET /oidc-provider": { status: 200, body: { provider: null, callbackUrl: "http://localhost/cb" } },
       "GET /users/requests": { status: 200, body: { requests: [] } },
-      "GET /oidc-provider/group-roles": { status: 200, body: { groupRoles: [] } },
       "GET /users": {
         status: 200,
         body: {
@@ -148,18 +147,19 @@ describe("the organization's members", () => {
               email: gwen.email,
               name: gwen.name,
               role: "guest",
-              roleSource: "manual",
+              active: true,
               joinedAt: gwen.invitedAt,
               guestSpace: { id: space.id, key: space.key, name: space.name },
+              roles: [],
             },
           ],
         },
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     const row = (await screen.findByText("Gwen Guest")).closest("tr")!;
     expect(row).toHaveAttribute("data-member", gwen.email);
-    expect(within(row).getByText("Guest")).toBeInTheDocument();
+    expect(within(row).getByText("Guest", { selector: "[data-member-role]" })).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "Guest of Handbook" })).toHaveAttribute("href", "/s/DOCS/settings?tab=guests");
   });
 });

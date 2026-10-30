@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals());
 const space = aSpace({ key: "NEWS", name: "News" });
 const front = aPage({ id: "0195f000-0000-7000-8000-0000000000e1", title: "Front page", spaceKey: "NEWS", home: false });
 const hubPage = { id: front.id, title: front.title, spaceKey: "NEWS" };
-const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const } };
+const member = { ...signedIn, organization: { ...signedIn.organization!, role: "member" as const, administers: false } };
 
 function stubHub(hub: Answer, more: Record<string, Answer> = {}) {
   return stubApi({

@@ -36,6 +36,7 @@ import { shortcutsDe } from "./shortcuts.de";
 import { reviewDe, waitingReviewsDe } from "./reviews.de";
 import { editorDe, inlineValuesDe, devEditorDe } from "./editor.de";
 import { permissionsDe, permissionCopyDe, restrictionsDe, accessDe, guestsDe } from "./permissions.de";
+import { accessAdminDe } from "./access.de";
 import { starDe } from "./stars.de";
 import { watchDe } from "./watching.de";
 import { stewardshipDe } from "./stewardship.de";
@@ -127,6 +128,7 @@ export const de: Messages = {
   share: shareDe,
   star: starDe,
   access: accessDe,
+  accessAdmin: accessAdminDe,
   watch: watchDe,
   stewardship: stewardshipDe,
   notifications: notificationsDe,

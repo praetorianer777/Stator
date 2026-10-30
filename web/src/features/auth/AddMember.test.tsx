@@ -10,10 +10,11 @@ const owner = {
   userId: "0195f000-0000-7000-8000-000000000001",
   email: "owner@stator.test",
   name: "Olive Owner",
-  role: "owner",
-  roleSource: "manual",
+  role: "member",
+  active: true,
   joinedAt: "2026-09-01T08:00:00Z",
   guestSpace: null,
+  roles: [{ role: "administrator", name: "Administrator", groupId: null, groupName: null, groupBuiltin: null }],
 };
 const provider = { provider: null, callbackUrl: "http://localhost:5173/api/v1/auth/oidc/callback" };
 
@@ -22,13 +23,12 @@ const settings = (extra: Parameters<typeof stubApi>[0] = {}) =>
     "GET /oidc-provider": { status: 200, body: provider },
     "GET /users/requests": { status: 200, body: { requests: [] } },
     "GET /users": { status: 200, body: { members: [owner] } },
-    "GET /oidc-provider/group-roles": { status: 200, body: { groupRoles: [] } },
     ...extra,
   });
 
 async function membersCard() {
-  const heading = await screen.findByRole("heading", { name: "Members" });
-  return heading.closest("[data-members]") as HTMLElement;
+  await screen.findByText("Olive Owner");
+  return document.querySelector("[data-members]") as HTMLElement;
 }
 
 describe("adding a person with a password", () => {
@@ -48,7 +48,7 @@ describe("adding a person with a password", () => {
         },
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     const card = await membersCard();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     await userEvent.type(within(card).getByLabelText("Email address"), " ada@stator.test ");
@@ -72,7 +72,7 @@ describe("adding a person with a password", () => {
         body: { member: { userId: "0195f000-0000-7000-8000-000000000003", email: "bob@stator.test", name: "Bob", role: "admin", newAccount: false } },
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     const card = await membersCard();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     await userEvent.type(within(card).getByLabelText("Email address"), "bob@stator.test");
@@ -96,7 +96,7 @@ describe("adding a person with a password", () => {
         },
       },
     });
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     const card = await membersCard();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     await userEvent.type(within(card).getByLabelText("Email address"), "cy@stator.test");
@@ -108,7 +108,7 @@ describe("adding a person with a password", () => {
 
   it("passes axe with the form open", async () => {
     settings();
-    await renderAt("/settings/sso");
+    await renderAt("/settings/access/members");
     const card = await membersCard();
     await userEvent.click(within(card).getByRole("button", { name: "Add person" }));
     expect(await axeViolations()).toEqual([]);
