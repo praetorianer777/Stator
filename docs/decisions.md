@@ -43,7 +43,7 @@ drifted apart; Stator now follows it, with Armature's code where it has some.
 - **The shell derives what pages passed.** Pages take their width from
   `Page` and no longer pass crumbs: `features/shell/Crumbs.tsx` reads the
   trail off the address and the page or space it names.
-- **The chrome matches the other tools.** A 48 px strip on a phone with the
+- **The chrome matches the other tools.** A strip as tall as the rail on a phone with the
   installation's name, the installation's name beside the mark at the
   sidebar's head, a round avatar whose menu opens past the rail, counts
   drawn by the shared `Count`, a Notifications page with a count in the
