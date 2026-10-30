@@ -22,6 +22,12 @@ describe("Tabs", () => {
     expect(list.className).toContain("overflow-x-auto");
     expect(list.parentElement!.className).toContain("mb-4");
   });
+
+  it("keeps one tab in the tab order when what is shown is none of them", () => {
+    render(<Tabs label="Space settings" value="hidden" tabs={["a", "b"].map((v) => ({ value: v, label: v }))} onChange={() => {}} />);
+    expect(screen.getAllByRole("tab").map((tab) => tab.tabIndex)).toEqual([0, -1]);
+    expect(screen.queryAllByRole("tab", { selected: true })).toHaveLength(0);
+  });
 });
 
 describe("ErrorBanner", () => {
