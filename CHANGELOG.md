@@ -7,6 +7,8 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-31
+
 ### Added
 
 - Search finds pages when a word is mistyped: when the words find nothing,
