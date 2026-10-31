@@ -15103,7 +15103,7 @@
     "/search": {
       "get": {
         "operationId": "search",
-        "summary": "Pages, attachments and comments whose words match, among what the caller may see.",
+        "summary": "Pages, attachments and comments whose words match, among what the caller may see. When the words find nothing, each one no page holds is corrected to the nearest word that is held; correctedQuery names the words searched for instead, and is null when they are as typed.",
         "tags": [
           "search"
         ],
@@ -15197,6 +15197,14 @@
             }
           },
           {
+            "name": "asTyped",
+            "in": "query",
+            "description": "true searches for the words exactly as typed; when absent, words that find nothing are corrected to the nearest words held, and correctedQuery says so.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "description": "1 to 100; 20 when absent.",
@@ -15220,6 +15228,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "correctedQuery": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "hits": {
                       "type": "array",
                       "items": {
@@ -15237,6 +15251,7 @@
                     }
                   },
                   "required": [
+                    "correctedQuery",
                     "hits",
                     "limit",
                     "offset",
@@ -15262,7 +15277,7 @@
     "/search/quick": {
       "get": {
         "operationId": "quickSearch",
-        "summary": "Pages whose titles start with the words typed so far, for the top bar and the command palette.",
+        "summary": "Pages whose titles start with the words typed so far, for the top bar and the command palette; fewer than limit are made up from the words corrected to the nearest ones held.",
         "tags": [
           "search"
         ],

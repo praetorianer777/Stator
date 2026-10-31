@@ -3,6 +3,33 @@
 Newest first. Each entry says what was decided and why, so a later change can
 tell whether the reason still holds.
 
+## 2026-10-31: A word that finds nothing is corrected to the nearest word held (#598)
+
+Search corrects the words, not the matching: full text, its ranking and its
+rights checks stay as they are, and a word that finds nothing is replaced by
+the closest word Stator holds. The vocabulary, `search_word`, holds the
+lexemes of every page, comment and file name as their `search_vector` has
+them, so a correction matches the way the word itself would. Triggers on
+the three tables keep it, adding only the lexemes a write brought; a word left
+by a deleted page stays, which does no harm. Its trigram index (`pg_trgm`)
+finds the nearest word, one lookup per word the vocabulary does not hold, and
+only once the words as typed found nothing, so a search that matches costs
+what it did.
+
+A correction is taken only above a similarity of 0.35, and only for words
+of 3 to 40 characters that are not numbers. The corrected tsquery is the
+typed one with the lexemes swapped in by `ts_rewrite`, never parsed again.
+The answer names the words it ran as `correctedQuery`, and `asTyped=true`
+runs them as typed. Quick search makes up what its prefixes miss from the
+corrected words, without saying so; a word that starts a held word is never
+corrected there.
+
+Nobody learns a word from a page they may not view. The app role reads
+neither the table nor the nearest-word function; `search_corrected` and
+`search_prefix_corrected` answer a correction only when it finds something the
+actor may view through `page_search_rows` and the hit functions of #370, so
+not even raw SQL offers a word of a closed page.
+
 ## 2026-10-30: Spaces live at /spaces/, and the old /s/ addresses lead there (#586)
 
 The suite's standard puts a project's or space's settings at

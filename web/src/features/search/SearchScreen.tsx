@@ -1,5 +1,6 @@
 import { localDateFormat } from "@/lib/format";
 import { useId, useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { useMe } from "@/api/auth";
 import { ApiError } from "@/api/client";
 import { HIT_TYPES, usePeople, useSearch, type Hit, type HitType, type SearchRequest, type SearchSort } from "@/api/search";
@@ -27,6 +28,8 @@ export interface SearchAddress {
   sort?: SearchSort;
   /** Archived pages and spaces are left out unless this is set. */
   archived?: boolean;
+  /** The words are searched for as typed, and never corrected. */
+  asTyped?: boolean;
   page?: number;
 }
 
@@ -50,6 +53,7 @@ function request(address: SearchAddress): SearchRequest {
     updatedBefore: address.updatedBefore,
     sort: address.sort,
     archived: address.archived === true,
+    asTyped: address.asTyped === true,
     offset: ((address.page ?? 1) - 1) * SEARCH_PAGE_SIZE,
   };
 }
@@ -78,7 +82,7 @@ export function SearchScreen({ address, onChange }: { address: SearchAddress; on
   const filter = (patch: Partial<SearchAddress>) => onChange(without({ ...address, ...patch, page: undefined }), true);
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(without({ ...address, q: draft.trim() || undefined, page: undefined }), false);
+    onChange(without({ ...address, q: draft.trim() || undefined, asTyped: undefined, page: undefined }), false);
   };
 
   const hits = data?.hits ?? [];
@@ -124,6 +128,9 @@ export function SearchScreen({ address, onChange }: { address: SearchAddress; on
             <EmptyState icon={<Icon.Search />} title={t.search.emptyTitle} description={t.search.emptyBody} />
           ) : (
             <>
+              {data.correctedQuery && address.q && (
+                <Corrected words={data.correctedQuery} typed={address.q} asTyped={{ ...address, asTyped: true, page: undefined }} />
+              )}
               <p className="mb-2 text-sm text-ink-subtle tabular-nums" role="status" data-search-count>
                 {t.search.count(data.total, data.offset + 1, data.offset + hits.length)}
               </p>
@@ -160,6 +167,18 @@ export function SearchScreen({ address, onChange }: { address: SearchAddress; on
         </section>
       </div>
     </>
+  );
+}
+
+/** Says the words were corrected, and offers the search for them as typed. */
+function Corrected({ words, typed, asTyped }: { words: string; typed: string; asTyped: SearchAddress }) {
+  return (
+    <p className="mb-2 text-ink-muted" data-search-corrected>
+      {t.search.showingResultsFor} <strong className="font-semibold text-ink">{words}</strong>. {t.search.searchInsteadFor}{" "}
+      <Link to="/search" search={asTyped} className="text-accent hover:underline" data-action="search-as-typed">
+        {typed}
+      </Link>
+    </p>
   );
 }
 

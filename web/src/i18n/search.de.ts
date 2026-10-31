@@ -48,6 +48,8 @@ export const searchDe: typeof searchEn = {
   changed: (who: string, when: string) => `${who} hat sie am ${when} geändert`,
   count: (total: number, from: number, to: number) =>
     total === 0 ? "Keine Treffer" : total <= to && from === 1 ? (total === 1 ? "1 Treffer" : `${total} Treffer`) : `${from} bis ${to} von ${total} Treffern`,
+  showingResultsFor: "Ergebnisse für",
+  searchInsteadFor: "Stattdessen suchen nach",
   emptyTitle: "Nichts gefunden",
   emptyBody: "Versuchen Sie weniger oder andere Wörter, oder lockern Sie einen Filter.",
   failed: "Die Suche antwortet gerade nicht. Versuchen Sie es gleich noch einmal.",

@@ -20,12 +20,12 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q.Limit, q.Offset = limit, offset
-	hits, total, err := s.Search.Search(r.Context(), actorFrom(r), q)
+	found, err := s.Search.Search(r.Context(), actorFrom(r), q)
 	if err != nil {
 		respondError(w, r, err)
 		return
 	}
-	respondJSON(w, r, http.StatusOK, map[string]any{"hits": hits, "total": total, "limit": limit, "offset": offset})
+	respondJSON(w, r, http.StatusOK, map[string]any{"hits": found.Hits, "total": found.Total, "correctedQuery": found.Corrected, "limit": limit, "offset": offset})
 }
 
 func (s *Server) handleQuickSearch(w http.ResponseWriter, r *http.Request) {

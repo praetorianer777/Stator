@@ -95,6 +95,7 @@ func TestParseQueryRefusesBadInput(t *testing.T) {
 		"updatedAfter":  {"updatedAfter": {"2026-13-01"}},
 		"updatedBefore": {"updatedBefore": {"yesterday"}},
 		"sort":          {"sort": {"title"}},
+		"asTyped":       {"asTyped": {"yes"}},
 	} {
 		_, err := ParseQuery(v)
 		var fe *FieldError
@@ -122,5 +123,53 @@ func TestPrefixQueryKeepsOnlyWords(t *testing.T) {
 	}
 	if got := strings.Count(PrefixQuery(strings.Repeat("w ", 40)), "&"); got != maxQuickWords-1 {
 		t.Errorf("%d words kept", got+1)
+	}
+}
+
+func TestParseQueryCorrectsUnlessAskedForTheWordsAsTyped(t *testing.T) {
+	for raw, want := range map[string]bool{"": false, "false": false, "true": true} {
+		v := url.Values{"q": {"kubernets"}}
+		if raw != "" {
+			v.Set("asTyped", raw)
+		}
+		q, err := ParseQuery(v)
+		if err != nil || q.AsTyped != want {
+			t.Errorf("asTyped=%q reads as %v (%v), want %v", raw, q.AsTyped, err, want)
+		}
+	}
+}
+
+// The quick search's corrections are looked up for the very words its prefix
+// query asks for, so the two must split and lowercase alike.
+func TestPrefixWordsAreThoseOfThePrefixQuery(t *testing.T) {
+	for typed, want := range map[string][]string{
+		"":                {},
+		"Kuberntes ru":    {"kuberntes", "ru"},
+		"Konfiguraton!?":  {"konfiguraton"},
+		"it's 'b' | c":    {"it", "s", "b", "c"},
+		"Crème-BRÛLÉE x2": {"crème", "brûlée", "x2"},
+	} {
+		got := prefixWords(typed)
+		if len(got) != len(want) || (len(want) > 0 && !reflect.DeepEqual(got, want)) {
+			t.Errorf("prefixWords(%q) = %q, want %q", typed, got, want)
+		}
+		terms := make([]string, len(got))
+		for i, w := range got {
+			terms[i] = "'" + w + "':*A"
+		}
+		if q := PrefixQuery(typed); q != strings.Join(terms, " & ") {
+			t.Errorf("PrefixQuery(%q) = %q asks for other words than %q", typed, q, got)
+		}
+	}
+	if got := len(prefixWords(strings.Repeat("w ", 40))); got != maxQuickWords {
+		t.Errorf("%d words kept", got)
+	}
+}
+
+func TestCorrectionsAreNoLooserThanTrigramsFindThem(t *testing.T) {
+	// pg_trgm's % finds candidates at its similarity_threshold, 0.3, and the
+	// vocabulary is only searched through it.
+	if SimilarEnough < 0.3 || SimilarEnough >= 1 {
+		t.Fatalf("SimilarEnough is %v", SimilarEnough)
 	}
 }
