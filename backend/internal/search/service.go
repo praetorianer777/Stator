@@ -145,9 +145,12 @@ func find(ctx context.Context, tx db.DBTX, actor perm.Actor, q Query, corrected 
 	var tsq string
 	pageScore, fileScore, commentScore := `FALSE, 0::real`, `FALSE, 0::real`, `FALSE, 0::real`
 	if q.Text != "" {
-		tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
+		// Only one of the two is bound: a parameter the SQL never reads has no
+		// type, and Postgres refuses the statement.
 		if corrected != "" {
 			tsq = bind(corrected) + `::tsquery`
+		} else {
+			tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
 		}
 		// The words are matched through the indexes before anybody's rights are
 		// checked, which row level security alone would do the other way round,

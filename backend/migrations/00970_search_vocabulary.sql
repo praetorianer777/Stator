@@ -200,8 +200,11 @@ CREATE POLICY search_word_not_anonymous ON search_word AS RESTRICTIVE FOR ALL TO
     USING (NOT current_anonymous()) WITH CHECK (NOT current_anonymous());
 REVOKE ALL ON search_word FROM stator_app, stator_admin;
 
+-- 00001's default privileges grant every new function to both roles, so
+-- revoking it from PUBLIC alone leaves them theirs.
 REVOKE EXECUTE ON FUNCTION search_word_nearest(text[], real, boolean), search_corrected(text, real),
     search_prefix_corrected(text[], real), search_word_learn() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION search_word_nearest(text[], real, boolean), search_word_learn() FROM stator_app, stator_admin;
 GRANT EXECUTE ON FUNCTION search_corrected(text, real), search_prefix_corrected(text[], real) TO stator_app, stator_admin;
 
 -- +goose Down
