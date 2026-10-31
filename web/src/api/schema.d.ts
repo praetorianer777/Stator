@@ -3372,7 +3372,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Pages, attachments and comments whose words match, among what the caller may see. */
+        /** Pages, attachments and comments whose words match, among what the caller may see. When the words find nothing, each one no page holds is corrected to the nearest word that is held; correctedQuery names the words searched for instead, and is null when they are as typed. */
         get: operations["search"];
         put?: never;
         post?: never;
@@ -3389,7 +3389,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Pages whose titles start with the words typed so far, for the top bar and the command palette. */
+        /** Pages whose titles start with the words typed so far, for the top bar and the command palette; fewer than limit are made up from the words corrected to the nearest ones held. */
         get: operations["quickSearch"];
         put?: never;
         post?: never;
@@ -18003,6 +18003,8 @@ export interface operations {
                 updatedBefore?: string;
                 /** @description relevance unless said, and updated when q is empty. */
                 sort?: "relevance" | "updated";
+                /** @description true searches for the words exactly as typed; when absent, words that find nothing are corrected to the nearest words held, and correctedQuery says so. */
+                asTyped?: boolean;
                 /** @description 1 to 100; 20 when absent. */
                 limit?: number;
                 offset?: number;
@@ -18020,6 +18022,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        correctedQuery: string | null;
                         hits: components["schemas"]["Hit"][];
                         limit: number;
                         offset: number;

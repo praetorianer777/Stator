@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -87,8 +88,51 @@ LEFT JOIN app_user cu ON cu.id = c.author_id
 WHERE p.trashed_at IS NULL AND p.version > 0 AND c.deleted_at IS NULL`
 )
 
+// Found is one page of a full search's hits, how many there are, and the
+// words searched for instead of those typed, when they were corrected.
+type Found struct {
+	Hits      []Hit
+	Total     int
+	Corrected *string
+}
+
+// SimilarEnough is how alike, by pg_trgm's similarity, a word Stator holds
+// must be to one typed to stand in for it; pg_trgm finds none below 0.3.
+const SimilarEnough = 0.35
+
 // Search answers a full search with one page of hits and how many there are.
-func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit, int, error) {
+// Words that find nothing are corrected to the nearest words Stator holds,
+// unless q asks for them as typed, and the correction is only answered when
+// it finds something the actor may view.
+func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) (Found, error) {
+	var found Found
+	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
+		hits, total, err := find(ctx, tx, actor, q, "")
+		found = Found{Hits: hits, Total: total}
+		if err != nil || total > 0 || q.Text == "" || q.AsTyped {
+			return err
+		}
+		var words, corrected string
+		err = tx.QueryRow(ctx, `SELECT corrected_words, corrected_query::text FROM search_corrected($1, $2)`, q.Text, SimilarEnough).Scan(&words, &corrected)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("correct the words: %w", err)
+		}
+		hits, total, err = find(ctx, tx, actor, q, corrected)
+		if err != nil || total == 0 {
+			return err
+		}
+		found = Found{Hits: hits, Total: total, Corrected: &words}
+		return nil
+	})
+	return found, err
+}
+
+// find runs a full search for q's words or, when corrected is set, for that
+// tsquery, taken as it is.
+func find(ctx context.Context, tx db.DBTX, actor perm.Actor, q Query, corrected string) ([]Hit, int, error) {
 	args := []any{actor.UserID}
 	bind := func(v any) string {
 		args = append(args, v)
@@ -101,7 +145,13 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 	var tsq string
 	pageScore, fileScore, commentScore := `FALSE, 0::real`, `FALSE, 0::real`, `FALSE, 0::real`
 	if q.Text != "" {
-		tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
+		// Only one of the two is bound: a parameter the SQL never reads has no
+		// type, and Postgres refuses the statement.
+		if corrected != "" {
+			tsq = bind(corrected) + `::tsquery`
+		} else {
+			tsq = `websearch_to_tsquery(` + config + `, ` + bind(q.Text) + `)`
+		}
 		// The words are matched through the indexes before anybody's rights are
 		// checked, which row level security alone would do the other way round,
 		// and page_search_rows has checked them (00700_search_hits.sql).
@@ -189,37 +239,34 @@ func (s *Service) Search(ctx context.Context, actor perm.Actor, q Query) ([]Hit,
 
 	out := []Hit{}
 	var total int
-	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		if err := tx.QueryRow(ctx, hits+` SELECT count(*) FROM hit`, args[:countArgs]...).Scan(&total); err != nil {
-			return fmt.Errorf("count the hits: %w", err)
+	if err := tx.QueryRow(ctx, hits+` SELECT count(*) FROM hit`, args[:countArgs]...).Scan(&total); err != nil {
+		return out, 0, fmt.Errorf("count the hits: %w", err)
+	}
+	rows, err := tx.Query(ctx, sql, args...)
+	if err != nil {
+		return out, 0, fmt.Errorf("search: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			h            Hit
+			marked, body string
+		)
+		if err := rows.Scan(&h.Type, &h.AttachmentID, &h.CommentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
+			&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Archived, &h.Labels, &h.Verified); err != nil {
+			return out, 0, err
 		}
-		rows, err := tx.Query(ctx, sql, args...)
-		if err != nil {
-			return fmt.Errorf("search: %w", err)
+		if h.Labels == nil {
+			h.Labels = []string{}
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var (
-				h            Hit
-				marked, body string
-			)
-			if err := rows.Scan(&h.Type, &h.AttachmentID, &h.CommentID, &h.Page.ID, &h.Page.Title, &h.Page.SpaceKey, &h.Page.SpaceName,
-				&marked, &body, &h.UpdatedAt, &h.UpdatedByName, &h.Archived, &h.Labels, &h.Verified); err != nil {
-				return err
-			}
-			if h.Labels == nil {
-				h.Labels = []string{}
-			}
-			if tsq != "" {
-				h.Title, h.Snippet = Split(marked), Split(body)
-			} else {
-				h.Title, h.Snippet = Plain(marked), Plain(firstWords(body, snippetMinWords))
-			}
-			out = append(out, h)
+		if tsq != "" {
+			h.Title, h.Snippet = Split(marked), Split(body)
+		} else {
+			h.Title, h.Snippet = Plain(marked), Plain(firstWords(body, snippetMinWords))
 		}
-		return rows.Err()
-	})
-	return out, total, err
+		out = append(out, h)
+	}
+	return out, total, rows.Err()
 }
 
 // How much of a body is read for its snippet. A headline reads its whole
@@ -231,36 +278,64 @@ const (
 
 // Quick finds pages whose title words start with each word typed, the best
 // title matches first, archived ones never; spaceKey stays inside one space.
+// Fewer than limit are made up from the words corrected, after the rest.
 func (s *Service) Quick(ctx context.Context, actor perm.Actor, typed, spaceKey string, limit int) ([]PageHit, error) {
 	out := []PageHit{}
-	tsq := PrefixQuery(typed)
-	if tsq == "" {
+	words := prefixWords(typed)
+	if len(words) == 0 {
 		return out, nil
 	}
-	// page_search_rows checks the actor's rights, which the transaction names.
-	args := []any{tsq, strings.TrimSpace(typed), limit}
-	within := ``
-	if spaceKey = strings.TrimSpace(spaceKey); spaceKey != "" {
-		args = append(args, spaceKey)
-		within = ` AND s.key = upper($4)`
-	}
-	query := `to_tsquery(` + config + `, $1)`
+	spaceKey = strings.TrimSpace(spaceKey)
 	err := s.db.Read(ctx, func(ctx context.Context, tx db.DBTX) error {
-		rows, err := tx.Query(ctx, `
-			SELECT p.id, p.title, s.key, s.name, `+pathOf+`
-			FROM page_search_rows(`+query+`) p
-			JOIN space s ON s.id = p.space_id
-			WHERE p.trashed_at IS NULL AND p.version > 0 AND `+unarchived+within+`
-			ORDER BY starts_with(lower(p.title), lower($2)) DESC, p.rank DESC,
-			         char_length(p.title), p.changed_at DESC, p.id
-			LIMIT $3`, args...)
-		if err != nil {
-			return fmt.Errorf("quick search: %w", err)
+		var err error
+		out, err = quickPages(ctx, tx, `to_tsquery(`+config+`, $1)`, PrefixQuery(typed), typed, spaceKey, limit, nil)
+		if err != nil || len(out) >= limit {
+			return err
 		}
-		out, err = pgx.CollectRows(rows, scanPageHit)
+		var corrected *string
+		if err := tx.QueryRow(ctx, `SELECT search_prefix_corrected($1, $2)::text`, words, SimilarEnough).Scan(&corrected); err != nil {
+			return fmt.Errorf("correct the words: %w", err)
+		}
+		if corrected == nil {
+			return nil
+		}
+		seen := make([]uuid.UUID, len(out))
+		for i, p := range out {
+			seen[i] = p.ID
+		}
+		more, err := quickPages(ctx, tx, `$1::tsquery`, *corrected, typed, spaceKey, limit-len(out), seen)
+		out = append(out, more...)
 		return err
 	})
+	if out == nil {
+		out = []PageHit{}
+	}
 	return out, err
+}
+
+// quickPages reads up to limit pages matching query, the tsquery made of $1,
+// leaving out those of seen.
+func quickPages(ctx context.Context, tx db.DBTX, query, tsq, typed, spaceKey string, limit int, seen []uuid.UUID) ([]PageHit, error) {
+	// page_search_rows checks the actor's rights, which the transaction names.
+	args := []any{tsq, strings.TrimSpace(typed), limit, seen}
+	within := ``
+	if spaceKey != "" {
+		args = append(args, spaceKey)
+		within = ` AND s.key = upper($5)`
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT p.id, p.title, s.key, s.name, `+pathOf+`
+		FROM page_search_rows(`+query+`) p
+		JOIN space s ON s.id = p.space_id
+		WHERE p.trashed_at IS NULL AND p.version > 0 AND `+unarchived+within+`
+		  AND p.id <> ALL(COALESCE($4::uuid[], '{}'))
+		ORDER BY starts_with(lower(p.title), lower($2)) DESC, p.rank DESC,
+		         char_length(p.title), p.changed_at DESC, p.id
+		LIMIT $3`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("quick search: %w", err)
+	}
+	return pgx.CollectRows(rows, scanPageHit)
 }
 
 func scanPageHit(row pgx.CollectableRow) (PageHit, error) {

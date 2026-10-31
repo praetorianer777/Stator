@@ -32,6 +32,8 @@ export interface SearchRequest {
   sort?: SearchSort;
   /** Finds archived pages, and pages of archived spaces, too. */
   archived?: boolean;
+  /** Searches for the words exactly as typed, never for corrected ones. */
+  asTyped?: boolean;
   offset: number;
 }
 
@@ -57,6 +59,7 @@ export function useSearch(request: SearchRequest) {
               updatedBefore: request.updatedBefore,
               sort: request.sort,
               archived: request.archived || undefined,
+              asTyped: request.asTyped || undefined,
               limit: SEARCH_PAGE_SIZE,
               offset: request.offset || undefined,
             },

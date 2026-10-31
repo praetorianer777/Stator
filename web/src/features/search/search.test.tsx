@@ -36,7 +36,10 @@ const hit = (over: Partial<Hit> = {}): Hit => ({
   ...over,
 });
 
-const results = (hits: Hit[], total = hits.length, offset = 0): Answer => ({ status: 200, body: { hits, total, limit: 20, offset } });
+const results = (hits: Hit[], total = hits.length, offset = 0, correctedQuery: string | null = null): Answer => ({
+  status: 200,
+  body: { hits, total, correctedQuery, limit: 20, offset },
+});
 const query = (request: Request) => new URL(request.url).searchParams;
 
 async function openPalette() {
@@ -237,6 +240,43 @@ describe("the full search", () => {
     await waitFor(() => expect(router.state.location.search).toEqual({ q: "onboarding", page: 2 }));
     expect(await screen.findByText("Page 2 of 3")).toBeInTheDocument();
     expect(offsets).toEqual(["0", "20"]);
+  });
+
+  it("says which words it searched for instead, and links to the search as typed", async () => {
+    const sent: URLSearchParams[] = [];
+    stubApi({
+      "GET /search": (request) => {
+        sent.push(query(request));
+        return query(request).get("asTyped") === "true" ? results([]) : results([hit()], 1, 0, "onboarding");
+      },
+      "GET /spaces": { status: 200, body: { spaces: [space] } },
+    });
+    const router = await renderAt("/search?q=onbaording&space=DOCS");
+    const notice = await screen.findByText((_, element) => element?.hasAttribute("data-search-corrected") ?? false);
+    expect(notice).toHaveTextContent("Showing results for onboarding. Search instead for onbaording");
+    expect(within(notice).getByText("onboarding").tagName).toBe("STRONG");
+    expect(sent[0]?.get("asTyped")).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+
+    const asTyped = within(notice).getByRole("link", { name: "onbaording" });
+    expect(asTyped).toHaveAttribute("href", "/search?q=onbaording&space=DOCS&asTyped=true");
+    await userEvent.click(asTyped);
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "onbaording", space: "DOCS", asTyped: true }));
+    expect(await screen.findByText("Nothing matches")).toBeInTheDocument();
+    expect(sent.at(-1)?.get("asTyped")).toBe("true");
+    expect(screen.queryByText(/Showing results for/)).toBeNull();
+    expect(screen.getByRole("searchbox", { name: "Search for" })).toHaveValue("onbaording");
+
+    await userEvent.clear(screen.getByRole("searchbox", { name: "Search for" }));
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search for" }), "onbaording guide{Enter}");
+    await waitFor(() => expect(router.state.location.search).toEqual({ q: "onbaording guide", space: "DOCS" }));
+  });
+
+  it("says nothing of a correction when the words ran as typed", async () => {
+    stubApi({ "GET /search": results([hit()]), "GET /spaces": { status: 200, body: { spaces: [space] } } });
+    await renderAt("/search?q=onboarding");
+    await screen.findByText("1 result");
+    expect(screen.queryByText(/Showing results for/)).toBeNull();
   });
 
   it("says when nothing matches", async () => {

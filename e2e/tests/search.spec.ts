@@ -128,6 +128,27 @@ test.describe("search", { tag: ["@auth"] }, () => {
     await expect(option(page, `${walrus} handover gone`)).toHaveCount(0);
   });
 
+  test("corrects a mistyped word, and searches for it as typed when asked", async ({ page, api }, testInfo) => {
+    const space = await freshSpace(api, testInfo, "Typo");
+    const word = uniqueWord(testInfo, "kubernetes");
+    const typo = word.replace("kubernetes", "kubernets");
+    const title = `${word} upgrade`;
+    await createPage(api, space.homePageId, title);
+
+    await openShowing(page, `/search?q=${typo}`, hit(page, title));
+    const notice = page.locator("[data-search-corrected]");
+    await expect(notice).toHaveText(`Showing results for ${word}. Search instead for ${typo}`);
+    await expect(notice.locator("strong")).toHaveText(word);
+    await expect(hit(page, title).locator("mark").first()).toHaveText(word);
+    await expect(page.locator("[data-search-query]")).toHaveValue(typo);
+
+    await notice.getByRole("link", { name: typo }).click();
+    await expect(page).toHaveURL(new RegExp(`/search\\?q=${typo}&asTyped=true$`));
+    await expect(page.getByText("Nothing matches")).toBeVisible();
+    await expect(hit(page, title)).toHaveCount(0);
+    await expect(notice).toHaveCount(0);
+  });
+
   for (const scheme of ["light", "dark"] as ColourScheme[]) {
     test(`the search page and quick search pass axe in ${scheme}`, async ({ page, api }, testInfo) => {
       const space = await freshSpace(api, testInfo, "Axe");

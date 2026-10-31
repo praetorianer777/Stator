@@ -46,6 +46,8 @@ export const searchEn = {
   changed: (who: string, when: string) => `${who} changed it on ${when}`,
   count: (total: number, from: number, to: number) =>
     total === 0 ? "No results" : total <= to && from === 1 ? (total === 1 ? "1 result" : `${total} results`) : `${from} to ${to} of ${total} results`,
+  showingResultsFor: "Showing results for",
+  searchInsteadFor: "Search instead for",
   emptyTitle: "Nothing matches",
   emptyBody: "Try fewer or other words, or loosen a filter.",
   failed: "Search is not answering right now. Try again in a moment.",

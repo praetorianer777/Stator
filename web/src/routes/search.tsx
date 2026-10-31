@@ -30,6 +30,7 @@ export const searchRoute = createRoute({
       ...(before && DAY.test(before) ? { updatedBefore: before } : {}),
       ...(search.sort === "updated" || search.sort === "relevance" ? { sort: search.sort } : {}),
       ...(search.archived === true || search.archived === "true" ? { archived: true } : {}),
+      ...(search.asTyped === true || search.asTyped === "true" ? { asTyped: true } : {}),
       ...(Number.isInteger(page) && page > 1 ? { page } : {}),
     };
   },

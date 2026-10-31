@@ -185,7 +185,8 @@ func TestAnIssueListStoresItsQueryAndNeverItsRows(t *testing.T) {
 	good := map[string]any{"query": "statusCategory != done", "columns": []string{"key", "summary", "due"}, "limit": 20}
 	page := docs.add(docs.homeID, "Status", map[string]any{"body": listNode(good)})
 
-	if hits := list(t, searchFor(t, owner, url.Values{"q": {"statusCategory"}}), "hits"); len(hits) != 0 {
+	// As typed: a correction would find the page by its title "Status".
+	if hits := list(t, searchFor(t, owner, url.Values{"q": {"statusCategory"}, "asTyped": {"true"}}), "hits"); len(hits) != 0 {
 		t.Errorf("a list's query is among the page's words: %v", hits)
 	}
 	for name, attrs := range map[string]map[string]any{

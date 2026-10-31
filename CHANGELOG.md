@@ -7,6 +7,17 @@ and the versioning [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Search finds pages when a word is mistyped: when the words find nothing,
+  each word no page, comment or file name holds is replaced by the nearest
+  word that one does hold, and the search page says "Showing results
+  for kubernetes. Search instead for kubernets", the second a link that
+  searches as typed. `GET /search` answers the words it ran as
+  `correctedQuery` and takes `asTyped=true`; quick search and the palette
+  fill up from the corrected words. A word only in a page the reader may not
+  view is never offered (#598).
+
 ## [0.3.0] - 2026-10-30
 
 ### Security

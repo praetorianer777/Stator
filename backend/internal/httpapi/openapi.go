@@ -458,9 +458,9 @@ var operations = append([]operation{
 		}, responses: ok(env{"comparison": page.Comparison{}})},
 
 	// Search (#18).
-	{method: "GET", path: "/search", handler: "handleSearch", tool: "search", toolHelp: "Find pages, files and comments by their words among what the caller may see; q takes words, quoted phrases, or and -word.", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see.",
-		query: searchQuery, responses: ok(env{"hits": []search.Hit{}, "total": 0, "limit": 0, "offset": 0})},
-	{method: "GET", path: "/search/quick", handler: "handleQuickSearch", tag: "search", summary: "Pages whose titles start with the words typed so far, for the top bar and the command palette.",
+	{method: "GET", path: "/search", handler: "handleSearch", tool: "search", toolHelp: "Find pages, files and comments by their words among what the caller may see; q takes words, quoted phrases, or and -word.", tag: "search", summary: "Pages, attachments and comments whose words match, among what the caller may see. When the words find nothing, each one no page holds is corrected to the nearest word that is held; correctedQuery names the words searched for instead, and is null when they are as typed.",
+		query: searchQuery, responses: ok(env{"hits": []search.Hit{}, "total": 0, "correctedQuery": (*string)(nil), "limit": 0, "offset": 0})},
+	{method: "GET", path: "/search/quick", handler: "handleQuickSearch", tag: "search", summary: "Pages whose titles start with the words typed so far, for the top bar and the command palette; fewer than limit are made up from the words corrected to the nearest ones held.",
 		query: []param{
 			{name: "q", description: "The words typed so far."},
 			{name: "space", description: "A space key to stay inside."},
@@ -1188,6 +1188,7 @@ var (
 		{name: "updatedAfter", schema: &openapi.Schema{Type: "string", Format: "date"}, description: "Changed on or after this day."},
 		{name: "updatedBefore", schema: &openapi.Schema{Type: "string", Format: "date"}, description: "Changed before this day."},
 		{name: "sort", schema: &openapi.Schema{Type: "string", Enum: search.Sorts}, description: "relevance unless said, and updated when q is empty."},
+		{name: "asTyped", schema: &openapi.Schema{Type: "boolean"}, description: "true searches for the words exactly as typed; when absent, words that find nothing are corrected to the nearest words held, and correctedQuery says so."},
 		{name: "limit", schema: intParam, description: "1 to 100; 20 when absent."},
 		{name: "offset", schema: intParam},
 	}

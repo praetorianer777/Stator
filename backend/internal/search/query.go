@@ -43,8 +43,11 @@ type Query struct {
 	// Archived finds archived pages and pages of archived spaces too, which a
 	// search leaves out unless asked.
 	Archived bool
-	Limit    int
-	Offset   int
+	// AsTyped searches for the words as typed even when they find nothing,
+	// never for corrected ones.
+	AsTyped bool
+	Limit   int
+	Offset  int
 }
 
 // ParseQuery reads a full search from the query string of GET /search.
@@ -96,6 +99,13 @@ func ParseQuery(v url.Values) (Query, error) {
 	default:
 		return q, &FieldError{"archived", "Say true to find archived pages too, or false."}
 	}
+	switch v.Get("asTyped") {
+	case "", "false":
+	case "true":
+		q.AsTyped = true
+	default:
+		return q, &FieldError{"asTyped", "Say true to search for the words exactly as typed, or false."}
+	}
 	switch sort := v.Get("sort"); sort {
 	case "", "relevance":
 		q.ByUpdate = q.Text == ""
@@ -127,17 +137,24 @@ func (q Query) wants(t HitType) bool {
 // for every word as the prefix of a title word. Words are runs of letters and
 // digits, so nothing typed can reach the tsquery syntax; empty means none.
 func PrefixQuery(typed string) string {
-	words := strings.FieldsFunc(typed, func(r rune) bool {
+	words := prefixWords(typed)
+	terms := make([]string, len(words))
+	for i, w := range words {
+		terms[i] = "'" + w + "':*A"
+	}
+	return strings.Join(terms, " & ")
+}
+
+// prefixWords are the words of a quick search, lowercased, as PrefixQuery
+// reads them.
+func prefixWords(typed string) []string {
+	words := strings.FieldsFunc(strings.ToLower(typed), func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
 	if len(words) > maxQuickWords {
 		words = words[:maxQuickWords]
 	}
-	terms := make([]string, len(words))
-	for i, w := range words {
-		terms[i] = "'" + strings.ToLower(w) + "':*A"
-	}
-	return strings.Join(terms, " & ")
+	return words
 }
 
 // maxQuickWords bounds the words of a quick search, which only ever types a
